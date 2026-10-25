@@ -215,6 +215,39 @@ test('new purchase still charges once and persists alongside a stored item', asy
   assert.equal(app.value.rewardTokens.decor, 5);
 });
 
+test('checking out and completing the same goal again today only awards coins once, including after reload', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  let app = await mount(storage);
+  const today = app.value.today;
+  const rewardKey = `starter-walk:${today}`;
+
+  assert.equal(app.value.coins, 0);
+  assert.equal(await app.value.toggleCheckIn('starter-walk'), 20);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(app.value.coins, 20);
+
+  assert.equal(await app.value.toggleCheckIn('starter-walk'), 0);
+  assert.ok(!app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+
+  assert.equal(await app.value.toggleCheckIn('starter-walk'), 0);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(app.value.coins, 20, 'the same goal cannot award a second 20 coins today');
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+
+  app = await mount(storage);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+});
+
 test('shop interior decorations spend earned coins once, can move for free, and persist per shop', async () => {
   const storage = seed({
     schemaVersion: 3,

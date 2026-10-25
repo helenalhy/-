@@ -15,8 +15,12 @@ new Function('exports', ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-layout.ts'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS } },
 ).outputText)(layoutModule.exports);
+const wingPagerSource = ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../components/MallWingPager.tsx'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
+).outputText;
 
-function mount(overrides = {}, catalog) {
+function mount(overrides = {}, catalog, platformOS = 'ios') {
   const states = [];
   let cursor = 0;
   let first = true;
@@ -27,6 +31,8 @@ function mount(overrides = {}, catalog) {
     props: { ...props, children: renderWing('main', true) },
   });
   const announcements = [];
+  const announcementOptions = [];
+  const alerts = [];
   const item = { id: 'test-planter', visual: 'colorful-planter', floor: 1, name: '彩色花圃', category: 'decor', price: 20, ticketCost: 0 };
   const owned = { ...item, id: 'owned', name: '已擁有花圃' };
   const items = catalog ?? [item, owned];
@@ -52,6 +58,7 @@ function mount(overrides = {}, catalog) {
       if (first) states[index] = { current: initial };
       return states[index];
     },
+    useCallback: (fn) => fn,
     useEffect: () => {},
     useMemo: (fn) => fn(),
   };
@@ -60,9 +67,17 @@ function mount(overrides = {}, catalog) {
     if (name === 'react') return react;
     if (name === 'react-native') return {
       Animated: { Value: class { setValue() {} }, View: 'View', timing: animation, spring: animation, parallel: animation, multiply: () => 1 },
-      AccessibilityInfo: { announceForAccessibility: (message) => announcements.push(message) },
+      AccessibilityInfo: {
+        announceForAccessibility: (message) => announcements.push(message),
+        announceForAccessibilityWithOptions: (message, options) => {
+          announcements.push(message);
+          announcementOptions.push(options);
+        },
+        setAccessibilityFocus() {},
+      },
+      findNodeHandle: () => 1,
       Keyboard: { dismiss() {} },
-      Alert: { alert() {} }, StyleSheet: { create: (s) => s }, Platform: { OS: 'ios' },
+      Alert: { alert: (...args) => alerts.push(args) }, StyleSheet: { create: (s) => s }, Platform: { OS: platformOS },
       ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View'].map((key) => [key, key])),
     };
     if (name === '@expo/vector-icons') return { Feather: 'Feather' };
@@ -101,7 +116,7 @@ function mount(overrides = {}, catalog) {
   }
   render();
   return {
-    habits, calls, announcements, render, find, nodes: (node = tree) => nodes(node),
+    habits, calls, announcements, announcementOptions, alerts, render, find, nodes: (node = tree) => nodes(node),
     slot(id) {
       const node = find(`mall-slot-${id}`);
       cursor = states.length;
@@ -241,7 +256,54 @@ test('screen readers distinguish every location including plaza rows and annex',
   for (const [column, label] of [['left', '左側'], ['center', '中央'], ['right', '右側']]) {
     assert.match(app.slot(`floor-1-${column}`).props.accessibilityLabel, new RegExp(`1F 店面區${label}`));
   }
+  for (const [slotId, expected] of [
+    ['floor-1-plaza-1-left', /1F 中庭第 1 排左側/],
+    ['floor-1-plaza-3-right', /1F 中庭第 3 排右側/],
+    ['floor-1-annex-2-left', /1F 延伸區中庭第 1 排左側/],
+    ['floor-1-extension-4-center', /1F 延伸區二中庭第 4 排中央/],
+    ['floor-1-extension3-1-right', /1F 延伸區三中庭第 1 排右側/],
+    ['floor-1-extension4-2-center', /1F 延伸區四中庭第 2 排中央/],
+  ]) {
+    const position = layoutModule.exports.getMallSlotPosition(slotId);
+    assert.match(`${position.floor} ${position.label}`, expected);
+  }
   assert.match(app.slot('floor-1-right').props.accessibilityLabel, /已兌換/);
+});
+
+test('mall wing controls announce their section name, capacity and selected state', () => {
+  const react = {
+    createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    useRef: (current) => ({ current }),
+    useState: (initial) => [initial, () => {}],
+  };
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', wingPagerSource)(
+    (name) => {
+      if (name === 'react') return react;
+      if (name === 'react-native') return {
+        Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles },
+        Text: 'Text', View: 'View',
+      };
+      if (name === '@/hooks/useColors') return { useColors: () => ({}) };
+      throw new Error(`Unexpected dependency: ${name}`);
+    },
+    module,
+    module.exports,
+  );
+  const pager = module.exports.MallWingPager({
+    counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
+    onWingChange() {},
+    renderWing: () => null,
+  });
+  const wingNodes = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(wingNodes) : [
+    node,
+    ...wingNodes(node.props?.children),
+  ];
+  const findWing = (id) => wingNodes(pager).find((node) => node.props.testID === id);
+  const extension = findWing('mall-wing-extension');
+  assert.equal(extension.props.accessibilityLabel, '延伸區二分區，0 個位置已使用，共 12 個位置');
+  assert.equal(findWing('mall-wing-main').props.accessibilityState.selected, true);
+  assert.equal(extension.props.accessibilityState.selected, false);
 });
 
 test('preview announces position and unredeemed state; changing and cancelling update the status', async () => {
@@ -270,7 +332,13 @@ test('preview announces position and unredeemed state; changing and cancelling u
 test('confirmation exposes busy and disabled states, then announces the actual outcome', async () => {
   const app = mount();
   let release;
-  app.habits.purchaseMallItem = () => new Promise((resolve) => { release = resolve; });
+  app.habits.purchaseMallItem = (itemId, _price, _category, _ticketCost, slotId) => new Promise((resolve) => {
+    release = () => {
+      app.habits.purchasedItems.push(itemId);
+      app.habits.mallPlacements[slotId] = itemId;
+      resolve();
+    };
+  });
   await preview(app);
   await app.press('confirm-purchase-preview');
   assert.match(app.announcements.at(-1), /正在兌換.*1F 店面區左側/);
@@ -282,6 +350,9 @@ test('confirmation exposes busy and disabled states, then announces the actual o
   app.render();
   assert.match(app.announcements.at(-1), /已兌換.*1F 店面區左側.*扣除 20 金幣/);
   assert.match(textContent(app.find('mall-placement-status')), /已兌換/);
+  assert.deepEqual(app.announcementOptions.at(-1), { queue: true });
+  assert.deepEqual(app.alerts, [], 'purchase result should not be repeated in a modal alert');
+  assert.match(app.slot('floor-1-left').props.accessibilityLabel, /1F 店面區左側 彩色花圃，已兌換/);
 
   const failed = mount({ purchaseMallItem: async () => { throw new Error('disk full'); } });
   await preview(failed);
@@ -289,8 +360,28 @@ test('confirmation exposes busy and disabled states, then announces the actual o
   await new Promise((resolve) => setImmediate(resolve));
   failed.render();
   assert.match(failed.announcements.at(-1), /兌換未完成.*disk full.*1F 店面區左側.*重新確認/);
+  assert.deepEqual(failed.announcementOptions.at(-1), { queue: true });
+  assert.deepEqual(failed.alerts, [], 'purchase failure should not cover the live result or retry controls');
+  assert.ok(failed.find('confirm-purchase-preview'), 'retry remains available after a failed redemption');
   assert.deepEqual(failed.find('confirm-purchase-preview').props.accessibilityState, { disabled: false, busy: false });
   assert.ok(failed.find('mall-purchase-preview'));
+});
+
+test('Android relies on one polite live region for progress and redemption results', async () => {
+  const app = mount({}, undefined, 'android');
+  let release;
+  app.habits.purchaseMallItem = () => new Promise((resolve) => { release = resolve; });
+  await preview(app);
+  await app.press('confirm-purchase-preview');
+  assert.equal(app.announcements.length, 0, 'Android must not receive a duplicate explicit announcement');
+  assert.equal(app.find('mall-placement-status').props.accessibilityLiveRegion, 'polite');
+  assert.match(textContent(app.find('mall-placement-status')), /正在兌換/);
+  release();
+  await new Promise((resolve) => setImmediate(resolve));
+  app.render();
+  assert.equal(app.announcements.length, 0);
+  assert.match(textContent(app.find('mall-placement-status')), /已兌換/);
+  assert.deepEqual(app.alerts, []);
 });
 
 test('preview uses the real visual mapping without purchase, ownership or placement changes; cancel discards it', async () => {

@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
   Alert,
   ImageBackground,
   Keyboard,
+  findNodeHandle,
   Platform,
   Pressable,
   ScrollView,
@@ -55,6 +56,8 @@ function MallSceneSlot({
   isPreview = false,
   disabled = false,
   busy = false,
+  focusAfterResult = false,
+  onFocusAfterResult,
   onPress,
 }: {
   slotId: MallSlotId;
@@ -64,11 +67,14 @@ function MallSceneSlot({
   isPreview?: boolean;
   disabled?: boolean;
   busy?: boolean;
+  focusAfterResult?: boolean;
+  onFocusAfterResult?: () => void;
   onPress?: () => void;
 }) {
   const colors = useColors();
   const popIn = useRef(new Animated.Value(0.78)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
+  const accessibilityRef = useRef<React.ElementRef<typeof Pressable>>(null);
   const position = getSlotPosition(slotId);
 
   useEffect(() => {
@@ -83,11 +89,22 @@ function MallSceneSlot({
     return () => animation.stop();
   }, [item?.id, popIn, fadeIn]);
 
+  useEffect(() => {
+    if (!focusAfterResult) return;
+    const frame = requestAnimationFrame(() => {
+      const node = findNodeHandle(accessibilityRef.current);
+      if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
+      onFocusAfterResult?.();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAfterResult, onFocusAfterResult]);
+
   if (item) {
     return (
       <Pressable
         style={[styles.sceneSlot, { left: position.left, top: position.top, width: position.width, height: position.height }, isPreview && styles.sceneSlotTarget]}
         onPress={onPress}
+        ref={accessibilityRef}
         disabled={disabled}
         accessibilityRole="button"
         accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : '已兌換，點選可搬動或存入倉庫'}`}
@@ -113,6 +130,7 @@ function MallSceneSlot({
         isPlacementTarget && styles.sceneSlotTarget,
       ]}
       onPress={onPress}
+      ref={accessibilityRef}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={isPlacementMode ? `${position.floor} ${position.label}空位，放置選擇的項目` : `${position.floor} ${position.label}空位，選擇要建造的項目`}
@@ -147,6 +165,8 @@ export default function MallScreen() {
   const [showCollection, setShowCollection] = useState(false);
   const [warehouseNotice, setWarehouseNotice] = useState<string | null>(null);
   const [placementAnnouncement, setPlacementAnnouncement] = useState('');
+  const [focusResultSlotId, setFocusResultSlotId] = useState<MallSlotId | null>(null);
+  const clearFocusResultSlot = useCallback(() => setFocusResultSlotId(null), []);
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
@@ -207,10 +227,13 @@ export default function MallScreen() {
     scrollRef.current?.scrollTo({ y: Math.max(0, mallSceneY.current - 8), animated: true });
   }
 
-  function announcePlacement(message: string) {
+  function announcePlacement(message: string, queue = false) {
     setPlacementAnnouncement(message);
-    // Android and web announce the live region below; VoiceOver needs an explicit announcement.
-    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+    // Android uses the live region below. Queue VoiceOver's result behind the
+    // in-progress announcement so the final outcome is not cut off.
+    if (Platform.OS === 'ios') {
+      AccessibilityInfo.announceForAccessibilityWithOptions(message, { queue });
+    }
   }
 
   function changeFloor(direction: number) {
@@ -295,8 +318,8 @@ export default function MallScreen() {
           currentPlacementItem.ticketCost,
           slotId,
         );
-        announcePlacement(`${currentPlacementItem.name}已兌換，已放在 ${location}，扣除 ${currentPlacementItem.price} 金幣。`);
-        Alert.alert('建造完成！', `${currentPlacementItem.name}已兌換，已放在 ${location}，扣除 ${currentPlacementItem.price} 金幣。`);
+        setFocusResultSlotId(slotId);
+        announcePlacement(`${currentPlacementItem.name}已兌換，已放在 ${location}，扣除 ${currentPlacementItem.price} 金幣。`, true);
       } else {
         await moveMallItem(currentPlacementItem.id, slotId);
         Alert.alert('位置已更新', `${currentPlacementItem.name}已放到 ${getSlotPosition(slotId).floor}，沒有扣除金幣。`);
@@ -305,8 +328,11 @@ export default function MallScreen() {
       setPreviewSlotId(null);
       scrollToMallScene();
     } catch (error) {
-      if (placementIntent.mode === 'purchase') announcePlacement(`兌換未完成：${error instanceof Error ? error.message : '請再試一次。'} 試擺位置仍為 ${location}，可重新確認兌換或取消。`);
-      Alert.alert('沒有更新成功', error instanceof Error ? error.message : '請再試一次。');
+      if (placementIntent.mode === 'purchase') {
+        announcePlacement(`兌換未完成：${error instanceof Error ? error.message : '請再試一次。'} 試擺位置仍為 ${location}，可重新確認兌換或取消。`, true);
+      } else {
+        Alert.alert('沒有更新成功', error instanceof Error ? error.message : '請再試一次。');
+      }
     } finally {
       operationLock.current = false;
       setPurchasing(null);
@@ -542,6 +568,8 @@ export default function MallScreen() {
                     isPreview={isPreview}
                     disabled={isLoading || purchasing !== null}
                     busy={purchasing !== null}
+                    focusAfterResult={focusResultSlotId === slotId}
+                    onFocusAfterResult={clearFocusResultSlot}
                     isPlacementMode={placementIntent !== null}
                     isPlacementTarget={placementIntent !== null && !itemId}
                     onPress={() => handleSceneSlotPress(slotId)}
@@ -578,7 +606,7 @@ export default function MallScreen() {
               </View>
             </View>
           )}
-          <Text testID="mall-placement-status" accessibilityLiveRegion="polite" style={[styles.previewDetails, { color: colors.mutedForeground }]}>
+          <Text testID="mall-placement-status" accessibilityRole="text" accessibilityLiveRegion="polite" style={[styles.previewDetails, { color: colors.mutedForeground }]}>
             {placementAnnouncement}
           </Text>
         </View>

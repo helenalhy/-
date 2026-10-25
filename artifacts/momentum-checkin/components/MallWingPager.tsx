@@ -49,7 +49,7 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
         {WINGS.map((wing) => {
           const selected = activeWing === wing.id;
           return (
-            <Pressable key={wing.id} testID={`mall-wing-${wing.id}`} onPress={() => changeWing(wing.id)} accessibilityRole="button" accessibilityState={{ selected }} style={[s.tab, { backgroundColor: selected ? colors.secondary : colors.card, borderColor: selected ? colors.primary : colors.border }]}>
+            <Pressable key={wing.id} testID={`mall-wing-${wing.id}`} onPress={() => changeWing(wing.id)} accessibilityRole="button" accessibilityLabel={`${wing.name}分區，${counts[wing.id]} 個位置已使用，共 ${wing.capacity} 個位置`} accessibilityState={{ selected }} style={[s.tab, { backgroundColor: selected ? colors.secondary : colors.card, borderColor: selected ? colors.primary : colors.border }]}>
               <Text style={[s.tabText, { color: selected ? colors.primary : colors.mutedForeground }]}>{wing.name} {counts[wing.id]} / {wing.capacity}</Text>
             </Pressable>
           );

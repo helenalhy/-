@@ -7,6 +7,8 @@ const WINGS: { id: MallWing; name: string; capacity: number }[] = [
   { id: 'main', name: '主商場', capacity: 12 },
   { id: 'annex', name: '延伸區', capacity: 8 },
   { id: 'extension', name: '延伸區二', capacity: 12 },
+  { id: 'extension3', name: '延伸區三', capacity: 12 },
+  { id: 'extension4', name: '延伸區四', capacity: 12 },
 ];
 
 export function MallWingPager({ counts, onWingChange, renderWing }: {
@@ -16,8 +18,14 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
 }) {
   const colors = useColors();
   const pager = useRef<ScrollView>(null);
+  const tabs = useRef<ScrollView>(null);
   const [width, setWidth] = useState(360);
   const [activeWing, setActiveWing] = useState<MallWing>('main');
+
+  function scrollTabsToWing(wing: MallWing) {
+    const index = WINGS.findIndex((page) => page.id === wing);
+    tabs.current?.scrollTo({ x: Math.max(0, index * 112 - 224), animated: true });
+  }
 
   function changeWing(wing: MallWing) {
     if (wing !== activeWing) {
@@ -25,6 +33,7 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
       setActiveWing(wing);
     }
     pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === wing) * width, animated: true });
+    scrollTabsToWing(wing);
   }
 
   return (
@@ -33,9 +42,10 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
       if (nextWidth > 0 && nextWidth !== width) {
         setWidth(nextWidth);
         requestAnimationFrame(() => pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === activeWing) * nextWidth, animated: false }));
+        requestAnimationFrame(() => scrollTabsToWing(activeWing));
       }
     }}>
-      <View style={[s.tabs, { backgroundColor: colors.candyCream }]}>
+      <ScrollView ref={tabs} horizontal showsHorizontalScrollIndicator={false} style={[s.tabScroller, { backgroundColor: colors.candyCream }]} contentContainerStyle={s.tabs} testID="mall-wing-tabs">
         {WINGS.map((wing) => {
           const selected = activeWing === wing.id;
           return (
@@ -44,7 +54,7 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
       <ScrollView ref={pager} horizontal pagingEnabled nestedScrollEnabled showsHorizontalScrollIndicator={false} style={{ width, height: width }} testID="mall-wing-pager"
         onMomentumScrollEnd={(event) => {
           const page = Math.max(0, Math.min(WINGS.length - 1, Math.round(event.nativeEvent.contentOffset.x / width)));
@@ -52,6 +62,7 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
           if (wing !== activeWing) {
             setActiveWing(wing);
             onWingChange();
+            scrollTabsToWing(wing);
           }
         }}>
         {WINGS.map((wing) => <View key={wing.id} style={{ width, height: width }}>{renderWing(wing.id, activeWing === wing.id)}</View>)}
@@ -61,7 +72,8 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
 }
 
 const s = StyleSheet.create({
+  tabScroller: { flexGrow: 0 },
   tabs: { flexDirection: 'row', gap: 8, padding: 8 },
-  tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1 },
+  tab: { width: 112, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1 },
   tabText: { fontSize: 12, fontWeight: '600' },
 });

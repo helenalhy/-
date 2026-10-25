@@ -51,6 +51,10 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
           [1, 2, 3, 4].flatMap((row) => ['left', 'right'].map((column) => `floor-${floor}-annex-${row}-${column}`))),
         ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
           [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension-${row}-${column}`))),
+        ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
+          [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension3-${row}-${column}`))),
+        ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
+          [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension4-${row}-${column}`))),
       ],
     };
     if (name === 'expo-haptics') return {
@@ -138,7 +142,7 @@ test('store, reload, reward, restore on another floor, swap and reload preserve 
 });
 
 test('empty versioned placements stay empty, even with more purchases than slots', async () => {
-  const items = Array.from({ length: 330 }, (_, index) => `item-${index}`);
+  const items = Array.from({ length: 570 }, (_, index) => `item-${index}`);
   const storage = seed({ schemaVersion: 2, purchasedItems: items, placements: {} });
   const app = await mount(storage);
   assert.deepEqual(app.value.mallPlacements, {});
@@ -161,15 +165,15 @@ test('normalization removes invalid slots, duplicate placements and unowned item
 });
 
 test('legacy overflow retains every purchase and does not refill a deliberately emptied slot on reload', async () => {
-  const items = Array.from({ length: 330 }, (_, index) => `item-${index}`);
+  const items = Array.from({ length: 570 }, (_, index) => `item-${index}`);
   const storage = seed({ purchasedItems: items, placements: undefined });
   let app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 320);
-  assert.equal(app.value.purchasedItems.length, 330);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 560);
+  assert.equal(app.value.purchasedItems.length, 570);
   await app.value.storeMallItem('item-0');
   app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 319);
-  assert.equal(app.value.purchasedItems.length, 330);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 559);
+  assert.equal(app.value.purchasedItems.length, 570);
   assert.equal(Object.values(app.value.mallPlacements).includes('item-0'), false);
 });
 

@@ -444,6 +444,8 @@ export default function MallScreen() {
                 main: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'main' && mallPlacements[slotId]).length,
                 annex: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'annex' && mallPlacements[slotId]).length,
                 extension: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'extension' && mallPlacements[slotId]).length,
+                extension3: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'extension3' && mallPlacements[slotId]).length,
+                extension4: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'extension4' && mallPlacements[slotId]).length,
               }}
               onWingChange={() => setPreviewSlotId(null)}
               renderWing={(wing, active) => <ImageBackground
@@ -473,7 +475,7 @@ export default function MallScreen() {
             <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
               <Feather name="move" size={13} color={colors.primary} />
               <Text style={[styles.mapFooterText, { color: colors.foreground }]}>
-                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑或點上方切換區域 · 點物件可搬動或存倉'}
+                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑動切換區域 · 點物件可搬動或存倉'}
               </Text>
             </View>
           </Animated.View>

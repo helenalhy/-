@@ -16,7 +16,7 @@ new Function('exports', ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS } },
 ).outputText)(layoutModule.exports);
 
-function mount(overrides = {}) {
+function mount(overrides = {}, catalog) {
   const states = [];
   let cursor = 0;
   let first = true;
@@ -29,6 +29,7 @@ function mount(overrides = {}) {
   const announcements = [];
   const item = { id: 'test-planter', visual: 'colorful-planter', floor: 1, name: '彩色花圃', category: 'decor', price: 20, ticketCost: 0 };
   const owned = { ...item, id: 'owned', name: '已擁有花圃' };
+  const items = catalog ?? [item, owned];
   const habits = {
     coins: 100, purchasedItems: ['owned'], mallPlacements: { 'floor-1-right': 'owned' },
     isLoading: false,
@@ -60,8 +61,9 @@ function mount(overrides = {}) {
     if (name === 'react-native') return {
       Animated: { Value: class { setValue() {} }, View: 'View', timing: animation, spring: animation, parallel: animation, multiply: () => 1 },
       AccessibilityInfo: { announceForAccessibility: (message) => announcements.push(message) },
+      Keyboard: { dismiss() {} },
       Alert: { alert() {} }, StyleSheet: { create: (s) => s }, Platform: { OS: 'ios' },
-      ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'View'].map((key) => [key, key])),
+      ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View'].map((key) => [key, key])),
     };
     if (name === '@expo/vector-icons') return { Feather: 'Feather' };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
@@ -74,7 +76,7 @@ function mount(overrides = {}) {
     if (name === '@/constants/mall-layout') return layoutModule.exports;
     if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
     if (name === '@/constants/mall') return {
-      MALL_ITEMS: [item, owned], MALL_ITEM_BY_ID: { [item.id]: item, owned },
+      MALL_ITEMS: items, MALL_ITEM_BY_ID: Object.fromEntries(items.map((entry) => [entry.id, entry])),
       MALL_FLOORS: Array.from({ length: 10 }, () => ({ title: '測試樓層' })),
     };
     if (name === '@/components/MallVisuals') return { MallObjectVisual: 'MallObjectVisual', MallAmbience: 'MallAmbience' };
@@ -117,6 +119,112 @@ function mount(overrides = {}) {
     },
   };
 }
+
+const filterCatalog = Array.from({ length: 60 }, (_, i) => ({
+  id: `option-${i}`, floor: 1, name: `款式 ${i}`, description: '測試選物',
+  category: ['shop', 'facility', 'decor'][i % 3], price: 60 - i, ticketCost: 0,
+}));
+filterCatalog.push({ ...filterCatalog[0], id: 'other-floor', name: '外層款式', floor: 2, price: 10 });
+
+function pager(app) {
+  return app.nodes().find((node) => node.type === 'CatalogPager');
+}
+function selectionIds(app) {
+  return app.nodes().map((node) => node.props.testID).filter((id) => /^(build|search-select)-/.test(id ?? ''));
+}
+
+test('affordable filter includes exact balance, excludes owned items, updates counts and follows balance changes', async () => {
+  const app = mount({ coins: 10, purchasedItems: ['option-59'], mallPlacements: {} }, filterCatalog);
+  assert.equal(pager(app).props.total, 60);
+  await app.press('mall-affordable-toggle');
+  assert.equal(pager(app).props.total, 9);
+  assert.ok(app.find('build-option-50'));
+  assert.equal(app.find('build-option-49'), undefined);
+  assert.equal(app.find('build-option-59'), undefined);
+  assert.match(textContent(app.find('mall-filter-results')), /10 金幣.*9 款.*不含已擁有/);
+  assert.match(textContent(app.find('mall-category-decor')), /裝潢 3/);
+  app.habits.coins = 2;
+  app.render();
+  assert.equal(pager(app).props.total, 1);
+  assert.ok(app.find('build-option-58'));
+  app.habits.purchasedItems.push('option-58');
+  app.render();
+  assert.equal(pager(app).props.total, 0);
+  assert.match(textContent(app.find('mall-affordable-empty')), /完成目標賺取更多金幣/);
+  assert.equal(app.calls.length, 0);
+});
+
+test('price sorting works across pages without mutating the complete catalog and resets pagination', async () => {
+  const originalIds = filterCatalog.map((item) => item.id);
+  const app = mount({ coins: 100, purchasedItems: [], mallPlacements: {} }, filterCatalog);
+  pager(app).props.onChange(3);
+  app.render();
+  assert.equal(pager(app).props.page, 3);
+  await app.press('mall-price-sort');
+  assert.equal(pager(app).props.page, 1);
+  assert.deepEqual(selectionIds(app), Array.from({ length: 10 }, (_, i) => `build-option-${59 - i}`));
+  pager(app).props.onChange(2);
+  app.render();
+  assert.deepEqual(selectionIds(app), Array.from({ length: 10 }, (_, i) => `build-option-${49 - i}`));
+  await app.press('mall-affordable-toggle');
+  assert.equal(pager(app).props.page, 1);
+  await app.press('mall-category-shop');
+  assert.equal(pager(app).props.total, 20);
+  assert.deepEqual(selectionIds(app).slice(0, 3), ['build-option-57', 'build-option-54', 'build-option-51']);
+  await app.press('mall-price-sort');
+  assert.equal(selectionIds(app)[0], 'build-option-0');
+  assert.deepEqual(filterCatalog.map((item) => item.id), originalIds);
+});
+
+test('search combines affordability and category; complete-list entry clears every condition', async () => {
+  const app = mount({ coins: 10, purchasedItems: [], mallPlacements: {} }, filterCatalog);
+  await app.press('mall-affordable-toggle');
+  await app.press('mall-price-sort');
+  await app.press('mall-category-shop');
+  app.find('mall-search-input').props.onChangeText('外層');
+  app.render();
+  assert.equal(pager(app).props.total, 1);
+  assert.ok(app.find('search-select-other-floor'));
+  app.find('mall-search-input').props.onChangeText('沒有這款');
+  app.render();
+  assert.equal(pager(app).props.total, 0);
+  assert.ok(app.find('mall-affordable-empty'));
+  assert.equal(app.find('mall-search-empty'), undefined);
+  await app.press('mall-full-catalog');
+  assert.equal(app.find('mall-search-input').props.value, '');
+  assert.equal(app.find('mall-affordable-toggle').props.accessibilityState.selected, false);
+  assert.equal(app.find('mall-price-sort').props.accessibilityState.selected, false);
+  assert.equal(pager(app).props.total, 60);
+  assert.equal(pager(app).props.page, 1);
+  for (const category of ['shop', 'facility', 'decor']) {
+    await app.press(`mall-category-${category}`);
+    assert.equal(pager(app).props.total, 20);
+  }
+  await app.press('floor-next');
+  assert.equal(pager(app).props.page, 1);
+  await app.press('mall-full-catalog');
+  assert.ok(app.find('build-other-floor'));
+  assert.equal(app.calls.length, 0);
+});
+
+test('affordable filtering preserves confirmation-only charging and free warehouse placement at zero coins', async () => {
+  const app = mount({ mallPlacements: {} });
+  await app.press('mall-affordable-toggle');
+  await app.press('mall-price-sort');
+  await preview(app);
+  assert.equal(app.calls.length, 0);
+  await app.press('confirm-purchase-preview');
+  assert.deepEqual(app.calls, [['purchase', 'test-planter', 20, 'decor', 0, 'floor-1-left']]);
+  app.habits.coins = 0;
+  app.render();
+  assert.ok(app.find('mall-affordable-empty'));
+  await app.press('collection-tab');
+  assert.equal(app.find('mall-affordable-toggle'), undefined);
+  assert.equal(pager(app).props.total, 1);
+  await app.press('restore-owned');
+  await app.press('mall-slot-floor-1-center');
+  assert.deepEqual(app.calls[1], ['move', 'owned', 'floor-1-center']);
+});
 
 async function preview(app) {
   await app.press('build-test-planter');

@@ -151,6 +151,8 @@ export default function MallScreen() {
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [affordableOnly, setAffordableOnly] = useState(false);
+  const [priceAscending, setPriceAscending] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const operationLock = useRef(false);
   const [previewSlotId, setPreviewSlotId] = useState<MallSlotId | null>(null);
@@ -171,7 +173,12 @@ export default function MallScreen() {
     [searchTerm],
   );
   const catalogItems = isSearching ? searchItems : showCollection ? collectionItems : floorItems;
-  const visibleItems = catalogItems.filter((item) => category === 'all' || item.category === category);
+  // Warehouse items are already owned and always free to place.
+  const showRedemptionControls = !showCollection || isSearching;
+  const filteringAffordable = showRedemptionControls && affordableOnly;
+  const eligibleItems = catalogItems.filter((item) => !filteringAffordable || (!ownedIds.has(item.id) && item.price <= coins));
+  const visibleItems = eligibleItems.filter((item) => category === 'all' || item.category === category);
+  if (showRedemptionControls && priceAscending) visibleItems.sort((a, b) => a.price - b.price);
   const catalogPages = Math.max(1, Math.ceil(visibleItems.length / CATALOG_PAGE_SIZE));
   const currentCatalogPage = Math.min(catalogPage, catalogPages);
   const pagedItems = visibleItems.slice((currentCatalogPage - 1) * CATALOG_PAGE_SIZE, currentCatalogPage * CATALOG_PAGE_SIZE);
@@ -620,6 +627,44 @@ export default function MallScreen() {
 
         {showCollection && warehouseNotice && <Text testID="warehouse-notice" accessibilityRole="alert" style={[styles.collectionEmpty, { color: colors.primary }]}>{warehouseNotice}</Text>}
 
+        {showRedemptionControls && (
+          <View style={styles.redemptionControls}>
+            <View style={styles.redemptionOptions}>
+              <Pressable
+                testID="mall-affordable-toggle"
+                accessibilityRole="button"
+                accessibilityState={{ selected: affordableOnly }}
+                onPress={() => { setAffordableOnly(!affordableOnly); setCatalogPage(1); }}
+                style={[styles.filterPill, styles.redemptionOption, { backgroundColor: affordableOnly ? colors.primary : colors.card, borderColor: affordableOnly ? colors.primary : colors.border }]}
+              >
+                <Text style={[styles.filterText, { color: affordableOnly ? colors.primaryForeground : colors.mutedForeground }]}>目前換得到</Text>
+              </Pressable>
+              <Pressable
+                testID="mall-price-sort"
+                accessibilityRole="button"
+                accessibilityState={{ selected: priceAscending }}
+                accessibilityLabel={priceAscending ? '金幣由低至高排序，按下恢復原本排序' : '按金幣由低至高排序'}
+                onPress={() => { setPriceAscending(!priceAscending); setCatalogPage(1); }}
+                style={[styles.filterPill, styles.redemptionOption, { backgroundColor: priceAscending ? colors.primary : colors.card, borderColor: priceAscending ? colors.primary : colors.border }]}
+              >
+                <Text style={[styles.filterText, { color: priceAscending ? colors.primaryForeground : colors.mutedForeground }]}>{priceAscending ? '金幣：由低至高 ✓' : '金幣：由低至高'}</Text>
+              </Pressable>
+            </View>
+            <Text testID="mall-filter-results" accessibilityLiveRegion="polite" style={[styles.sceneSub, { color: colors.mutedForeground }]}>
+              {filteringAffordable ? `目前 ${coins} 金幣 · 本分類換得到 ${visibleItems.length} 款（不含已擁有）` : `目前 ${coins} 金幣 · 本分類共 ${visibleItems.length} 款`}
+            </Text>
+            <Pressable
+              testID="mall-full-catalog"
+              accessibilityRole="button"
+              accessibilityLabel="查看本層完整清單，清除搜尋、分類、金幣篩選及排序"
+              onPress={() => { setShowCollection(false); setSearchQuery(''); setCategory('all'); setAffordableOnly(false); setPriceAscending(false); setCatalogPage(1); }}
+              style={[styles.fullCatalogButton, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.filterText, { color: colors.primary }]}>查看 {currentFloor}F 完整清單 · 20 商店／20 設施／20 裝修</Text>
+            </Pressable>
+          </View>
+        )}
+
         <View style={styles.categoryFilters}>
           {CATEGORIES.map((filter) => {
             const active = filter.id === category;
@@ -632,9 +677,10 @@ export default function MallScreen() {
                   { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border },
                 ]}
                 accessibilityRole="button"
+                testID={`mall-category-${filter.id}`}
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label} {catalogItems.filter((item) => filter.id === 'all' || item.category === filter.id).length}</Text>
+                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label} {eligibleItems.filter((item) => filter.id === 'all' || item.category === filter.id).length}</Text>
               </Pressable>
             );
           })}
@@ -642,7 +688,10 @@ export default function MallScreen() {
 
         <CatalogPager id="catalog-top" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
         <View style={styles.catalogList}>
-          {isSearching && visibleItems.length === 0 && (
+          {filteringAffordable && visibleItems.length === 0 && (
+            <Text testID="mall-affordable-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>目前沒有符合條件、金幣足夠且未擁有的款式。完成目標賺取更多金幣，再來挑選吧！也可切換分類、清除搜尋或查看本層完整清單；已兌換的物件可到倉庫免費重擺。</Text>
+          )}
+          {!filteringAffordable && isSearching && visibleItems.length === 0 && (
             <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有符合「{searchQuery.trim()}」的選物，試試其他名稱、切換「全部」分類或清除搜尋。</Text>
           )}
           {!isSearching && showCollection && visibleItems.length === 0 && (
@@ -770,6 +819,10 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, minWidth: 0, fontSize: 12, paddingVertical: 12 },
   searchClear: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   searchHint: { fontSize: 11, marginTop: 7, marginBottom: 12 },
+  redemptionControls: { gap: 9, marginBottom: 12 },
+  redemptionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  redemptionOption: { minHeight: 44, justifyContent: 'center' },
+  fullCatalogButton: { minHeight: 44, justifyContent: 'center', paddingVertical: 8, borderBottomWidth: 1 },
   filterPill: { paddingHorizontal: 13, paddingVertical: 8, borderWidth: 1, borderRadius: 99 },
   filterText: { fontSize: 11, fontWeight: '600' },
   catalogList: { gap: 9 },

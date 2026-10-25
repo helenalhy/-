@@ -616,6 +616,39 @@ test('long-pressing a goal opens edit and delete actions', async () => {
   ]);
 });
 
+test('today shows only an unclaimed first-check-in reward and hides it after earning', async () => {
+  const app = createHarness();
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  const getStarterRow = (tree) => findNodes(tree, (node) =>
+    typeof node.type === 'function'
+    && node.type.name === 'HabitRow'
+    && node.props?.habit?.id === 'starter-walk',
+  )[0];
+  const initialRow = getStarterRow(app.renderToday());
+  assert.equal(initialRow.props.reward, 20);
+  let rowTree = renderHabitRow(app, initialRow);
+  assert.match(textContent(findByTestId(rowTree, 'habit-reward-starter-walk')), /首次打卡 \+20 金幣/);
+
+  assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 20);
+  app.renderProvider();
+  let rewardedRow = getStarterRow(app.renderToday());
+  assert.equal(rewardedRow.props.done, true);
+  assert.equal(rewardedRow.props.reward, 0);
+  rowTree = renderHabitRow(app, rewardedRow);
+  assert.equal(findByTestId(rowTree, 'habit-reward-starter-walk'), undefined);
+
+  assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 0);
+  app.renderProvider();
+  const uncheckedRow = getStarterRow(app.renderToday());
+  assert.equal(uncheckedRow.props.done, false);
+  assert.equal(uncheckedRow.props.reward, 0, 'a reward already earned today is not offered again');
+  assert.equal(app.contextExports.useHabits().coins, 20);
+  assert.equal(findByTestId(renderHabitRow(app, uncheckedRow), 'habit-reward-starter-walk'), undefined);
+});
+
 test('deleting a goal confirms lost check-in history and preserves earned coins after reload', async () => {
   const app = createHarness();
   app.storage.set(storageKeys.mall, JSON.stringify({

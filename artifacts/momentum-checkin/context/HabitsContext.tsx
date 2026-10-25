@@ -59,6 +59,7 @@ interface HabitsContextValue {
   mallPlacements: Record<string, string>;
   shopInteriors: ShopInteriorCollection;
   rewardTokens: RewardTokens;
+  getCheckInReward: (habitId: string) => number;
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns'>) => Promise<void>;
   updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory'>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
@@ -193,6 +194,9 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [storageError, setStorageError] = useState<string | null>(null);
   const actionLock = useRef(false);
   const today = getLocalDate();
+  const getCheckInReward = useCallback((habitId: string) => (
+    rewardedCheckIns.includes(`${habitId}:${today}`) ? 0 : CHECK_IN_REWARD
+  ), [rewardedCheckIns, today]);
 
   useEffect(() => {
     let active = true;
@@ -449,8 +453,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

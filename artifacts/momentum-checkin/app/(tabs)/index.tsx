@@ -41,9 +41,10 @@ function getWeek(todayKey: string) {
   });
 }
 
-function HabitRow({ habit, done, onToggle, onEdit, onManage }: {
+function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
+  reward: number;
   onToggle: () => void;
   onEdit: () => void;
   onManage: () => void;
@@ -66,6 +67,18 @@ function HabitRow({ habit, done, onToggle, onEdit, onManage }: {
       >
         <Text style={[styles.habitTitle, { color: colors.foreground }, done && styles.doneText]}>{habit.title}</Text>
         <Text style={[styles.habitReason, { color: colors.mutedForeground }]} numberOfLines={1}>{habit.reason}</Text>
+        {!done && reward > 0 && (
+          <View
+            style={[styles.rewardHint, { backgroundColor: colors.candyLemon }]}
+            accessibilityLabel={`今日首次打卡可獲得 ${reward} 金幣`}
+            testID={`habit-reward-${habit.id}`}
+          >
+            <Feather name="circle" size={11} color={colors.candyCaramelDark} />
+            <Text style={[styles.rewardHintText, { color: colors.candyCaramelDark }]}>
+              首次打卡 +{reward} 金幣
+            </Text>
+          </View>
+        )}
       </Pressable>
       <Pressable
         style={styles.manageButton}
@@ -92,7 +105,7 @@ function HabitRow({ habit, done, onToggle, onEdit, onManage }: {
 export function TodayScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { habits, isLoading, storageError, today, coins, toggleCheckIn, deleteHabit } = useHabits();
+  const { habits, isLoading, storageError, today, coins, getCheckInReward, toggleCheckIn, deleteHabit } = useHabits();
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -272,6 +285,7 @@ export function TodayScreen() {
                 key={habit.id}
                 habit={habit}
                 done={habit.checkIns.includes(today)}
+                reward={getCheckInReward(habit.id)}
                 onToggle={() => void handleToggle(habit)}
                 onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
                 onManage={() => openHabitActions(habit)}
@@ -443,6 +457,8 @@ const styles = StyleSheet.create({
   habitTitle: { fontSize: 15, fontWeight: '600' },
   doneText: { textDecorationLine: 'line-through', opacity: 0.62 },
   habitReason: { fontSize: 11, marginTop: 5 },
+  rewardHint: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, marginTop: 6 },
+  rewardHintText: { fontSize: 10, fontWeight: '700' },
   checkButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   loader: { paddingVertical: 30 },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, marginBottom: 12 },

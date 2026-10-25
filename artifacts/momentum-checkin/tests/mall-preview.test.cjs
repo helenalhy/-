@@ -11,7 +11,7 @@ const source = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
 
-function mount() {
+function mount(overrides = {}) {
   const states = [];
   let cursor = 0;
   let first = true;
@@ -25,6 +25,7 @@ function mount() {
     purchaseMallItem: async (...args) => { calls.push(['purchase', ...args]); },
     moveMallItem: async (...args) => { calls.push(['move', ...args]); },
     storeMallItem: async (...args) => { calls.push(['store', ...args]); },
+    ...overrides,
   };
   const react = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
@@ -82,7 +83,7 @@ function mount() {
   }
   render();
   return {
-    habits, calls, render, find, nodes,
+    habits, calls, render, find, nodes: (node = tree) => nodes(node),
     async press(id) {
       const node = find(id);
       assert.ok(node, `Missing ${id}`);
@@ -171,4 +172,79 @@ test('failed confirmation keeps preview available for retry; move and restore re
   await app.press('mall-slot-floor-1-center');
   assert.deepEqual(app.calls[2], ['move', 'owned', 'floor-1-center']);
   assert.equal(app.find('mall-purchase-preview'), undefined);
+});
+
+const fullFirstFloor = {
+  'floor-1-left': 'owned',
+  'floor-1-center': 'other-center',
+  'floor-1-right': 'other-right',
+};
+
+function textContent(node) {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textContent).join('');
+  return node?.props ? textContent(node.props.children) : '';
+}
+
+test('a full floor lists actual vacancies and can jump floors without spending or losing purchase intent', async () => {
+  const app = mount({ mallPlacements: { ...fullFirstFloor, 'floor-2-left': 'other-floor' } });
+  assert.equal(app.find('mall-floor-full'), undefined);
+  await app.press('build-test-planter');
+  assert.match(textContent(app.find('mall-floor-full')), /1F 本層已滿/);
+  assert.equal(app.find('mall-available-floor-1'), undefined);
+  assert.match(textContent(app.find('mall-available-floor-2')), /2F · 2 空位/);
+  assert.match(textContent(app.find('mall-available-floor-10')), /10F · 3 空位/);
+  await app.press('mall-slot-floor-1-center');
+  assert.equal(app.calls.length, 0);
+  assert.equal(app.find('mall-purchase-preview'), undefined);
+  await app.press('mall-available-floor-10');
+  assert.equal(app.find('mall-floor-full'), undefined);
+  await app.press('mall-slot-floor-10-right');
+  assert.equal(app.find('mall-slot-floor-10-right').props.isPreview, true);
+  assert.equal(app.calls.length, 0);
+  assert.equal(app.habits.coins, 100);
+  await app.press('confirm-purchase-preview');
+  assert.deepEqual(app.calls, [['purchase', 'test-planter', 20, 'decor', 0, 'floor-10-right']]);
+});
+
+test('when all floors are full purchase and restore explain how to free space without charging', async () => {
+  const placements = Object.fromEntries(
+    Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((column) => [`floor-${i + 1}-${column}`, 'occupied'])).flat(),
+  );
+  const app = mount({ mallPlacements: placements });
+  await app.press('build-test-planter');
+  const notice = textContent(app.find('mall-floor-full'));
+  assert.match(notice, /十層都已放滿/);
+  assert.match(notice, /先取消擺放.*收起/);
+  assert.match(notice, /尚未扣除金幣/);
+  assert.equal(app.find('mall-available-floor-2'), undefined);
+  assert.equal(app.calls.length, 0);
+  // Cancel using the existing banner control, then restore the owned item.
+  const cancelButton = app.nodes().find((node) => node.props.accessibilityLabel === '取消擺放');
+  await cancelButton.props.onPress();
+  app.render();
+  await app.press('collection-tab');
+  await app.press('restore-owned');
+  assert.match(textContent(app.find('mall-floor-full')), /十層都已放滿/);
+  assert.equal(app.calls.length, 0);
+});
+
+test('full-floor move retains exchanges and storage, while restore can use another floor for free', async () => {
+  const app = mount({ mallPlacements: { ...fullFirstFloor } });
+  await app.press('mall-slot-floor-1-left');
+  assert.match(textContent(app.find('mall-floor-full')), /交換位置/);
+  await app.press('mall-slot-floor-1-center');
+  assert.deepEqual(app.calls, [['move', 'owned', 'floor-1-center']]);
+  await app.press('mall-slot-floor-1-left');
+  await app.press('store-selected-item');
+  assert.deepEqual(app.calls[1], ['store', 'owned']);
+  app.habits.mallPlacements['floor-1-left'] = 'another-item';
+  app.render();
+  await app.press('collection-tab');
+  await app.press('restore-owned');
+  assert.ok(app.find('mall-floor-full'));
+  await app.press('mall-available-floor-2');
+  await app.press('mall-slot-floor-2-left');
+  assert.deepEqual(app.calls[2], ['move', 'owned', 'floor-2-left']);
+  assert.equal(app.habits.coins, 100);
 });

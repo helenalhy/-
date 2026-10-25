@@ -158,6 +158,14 @@ export default function MallScreen() {
   const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
   const floorSlots = MALL_SLOT_IDS.filter((slotId) => slotId.startsWith(`floor-${currentFloor}-`));
   const floorItemCount = floorSlots.filter((slotId) => mallPlacements[slotId]).length;
+  const isFloorFull = floorItemCount === floorSlots.length;
+  const availableFloors = MALL_FLOORS.map((_, index) => {
+    const floor = index + 1;
+    const emptyCount = MALL_SLOT_IDS.filter(
+      (slotId) => slotId.startsWith(`floor-${floor}-`) && !mallPlacements[slotId],
+    ).length;
+    return { floor, emptyCount };
+  }).filter(({ emptyCount }) => emptyCount > 0);
 
   useEffect(() => {
     const entrance = Animated.parallel([
@@ -172,7 +180,7 @@ export default function MallScreen() {
     scrollRef.current?.scrollTo({ y: Math.max(0, mallSceneY.current - 8), animated: true });
   }
 
-  function changeFloor(direction: -1 | 1) {
+  function changeFloor(direction: number) {
     if (operationLock.current || purchasing) return;
     const nextFloor = Math.min(MALL_FLOOR_COUNT, Math.max(1, currentFloor + direction));
     if (nextFloor === currentFloor) return;
@@ -387,6 +395,46 @@ export default function MallScreen() {
             </Pressable>
           </View>
           <Text testID="floor-description" style={[styles.floorDescription, { color: colors.mutedForeground }]}>{floorTheme.description}</Text>
+          {placementIntent && isFloorFull && (
+            <View testID="mall-floor-full" style={[styles.fullFloorNotice, { backgroundColor: colors.secondary, borderColor: colors.primary }]}>
+              <Text accessibilityLiveRegion="polite" style={[styles.placementTitle, { color: colors.foreground }]}>
+                {currentFloor}F 本層已滿 · 3 個位置皆已佔用
+              </Text>
+              <Text style={[styles.fullFloorCopy, { color: colors.foreground }]}>
+                {placementIntent.mode === 'move'
+                  ? '仍可點選其他物件交換位置，或按「收起」放回收藏櫃，不扣金幣。'
+                  : availableFloors.length > 0
+                    ? '請前往下方有空位的樓層繼續擺放，已選物件會保留。'
+                    : '十層都已放滿。請先取消擺放，點選已放置物件，再按「收起」騰出空位；之後可重新選擇物件擺放。'}
+              </Text>
+              {availableFloors.length > 0 ? (
+                <>
+                  <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>有空位的樓層（也可用左右箭頭換層）：</Text>
+                  <View style={styles.availableFloorActions}>
+                    {availableFloors.map(({ floor, emptyCount }) => (
+                      <Pressable
+                        key={floor}
+                        testID={`mall-available-floor-${floor}`}
+                        onPress={() => changeFloor(floor - currentFloor)}
+                        disabled={purchasing !== null}
+                        accessibilityRole="button"
+                        accessibilityLabel={`前往 ${floor}F，尚有 ${emptyCount} 個空位，保留已選物件`}
+                        accessibilityState={{ disabled: purchasing !== null }}
+                        style={[styles.availableFloorButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      >
+                        <Text style={[styles.filterText, { color: colors.primary }]}>{floor}F · {emptyCount} 空位</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              ) : placementIntent.mode === 'move' ? (
+                <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>十層都已放滿；可用左右箭頭換層交換，或先收起物件騰出空位。</Text>
+              ) : null}
+              {placementIntent.mode === 'purchase' && (
+                <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>尚未扣除金幣；選好空位並確認兌換後才扣金幣。</Text>
+              )}
+            </View>
+          )}
           <Animated.View style={[
             styles.scene,
             { borderColor: colors.border, opacity: sceneOpacity, transform: [{ translateY: sceneOffset }] },
@@ -608,6 +656,10 @@ const styles = StyleSheet.create({
   placementCopy: { flex: 1 },
   placementTitle: { fontSize: 12, fontWeight: '700' },
   placementSubtitle: { fontSize: 10, marginTop: 3 },
+  fullFloorNotice: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 10, gap: 6 },
+  fullFloorCopy: { fontSize: 12, lineHeight: 18 },
+  availableFloorActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  availableFloorButton: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, minHeight: 44, justifyContent: 'center' },
   mapFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 11 },
   mapFooterText: { fontSize: 10 },
   storageError: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 10, borderRadius: 12, marginTop: 12 },

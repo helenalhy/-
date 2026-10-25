@@ -20,7 +20,7 @@ const wingPagerSource = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
 
-function mount(overrides = {}, catalog, platformOS = 'ios') {
+function mount(overrides = {}, catalog, platformOS = 'ios', slotIds) {
   const states = [];
   let cursor = 0;
   let first = true;
@@ -28,7 +28,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios') {
   const calls = [];
   const mallWingPager = ({ renderWing, ...props }) => ({
     type: 'MallWingPager',
-    props: { ...props, children: renderWing('main', true) },
+    props: { ...props, renderWing, children: renderWing('main', true) },
   });
   const announcements = [];
   const announcementOptions = [];
@@ -86,7 +86,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios') {
     if (name === '@/hooks/useColors') return { useColors: () => ({}) };
     if (name === '@/context/HabitsContext') return {
       useHabits: () => habits, MALL_FLOOR_COUNT: 10,
-      MALL_SLOT_IDS: Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
+      MALL_SLOT_IDS: slotIds ?? Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
     };
     if (name === '@/constants/mall-layout') return layoutModule.exports;
     if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
@@ -222,6 +222,56 @@ test('search combines affordability and category; complete-list entry clears eve
   assert.equal(app.calls.length, 0);
 });
 
+test('search location jumps to the saved floor and annex, highlights it, and leaves placement and coins unchanged', async () => {
+  const savedSlot = 'floor-9-extension4-1-left';
+  const slots = [...Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(), savedSlot];
+  const app = mount({
+    coins: 7,
+    purchasedItems: ['owned'],
+    mallPlacements: { [savedSlot]: 'owned' },
+  }, undefined, 'ios', slots);
+  app.find('mall-search-input').props.onChangeText('已擁有花圃');
+  app.render();
+
+  assert.ok(app.find('search-location-owned'));
+  assert.ok(app.find('search-select-owned'), 'the existing select/rearrange action remains available');
+  await app.press('search-location-owned');
+
+  const pagerNode = app.nodes().find((node) => node.type === 'MallWingPager');
+  assert.equal(pagerNode.props.focusWing, 'extension4');
+  assert.equal(pagerNode.props.focusRequestId, 1);
+  assert.match(textContent(app.find('floor-current')), /^9F/);
+  assert.match(app.announcements.at(-1), /9F・延伸區四.*沒有進入搬動模式.*未更改擺放或扣除金幣/);
+  const wingScene = pagerNode.props.renderWing('extension4', true);
+  const targetSlot = wingScene.props.children.flat(Infinity)
+    .find((child) => child.props.slotId === savedSlot);
+  assert.ok(targetSlot, `Rendered slots: ${wingScene.props.children.flat(Infinity).map((child) => child.props.slotId).filter(Boolean).join(', ')}`);
+  assert.equal(targetSlot.props.isLocationHighlighted, true);
+  assert.deepEqual(app.habits.mallPlacements, { [savedSlot]: 'owned' });
+  assert.equal(app.habits.coins, 7);
+  assert.equal(app.calls.length, 0);
+});
+
+test('the existing search select action still enters free rearrangement on the item’s catalog floor', async () => {
+  const savedSlot = 'floor-9-extension4-1-left';
+  const slots = [...Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(), savedSlot];
+  const app = mount({
+    coins: 7,
+    purchasedItems: ['owned'],
+    mallPlacements: { [savedSlot]: 'owned' },
+  }, undefined, 'ios', slots);
+  app.find('mall-search-input').props.onChangeText('已擁有花圃');
+  app.render();
+
+  await app.press('search-select-owned');
+
+  assert.match(textContent(app.find('mall-placement-status')), /已前往 1F.*免費重新擺放/);
+  assert.match(app.nodes().map(textContent).join(' '), /搬動或存入倉庫/);
+  assert.equal(app.habits.coins, 7);
+  assert.deepEqual(app.habits.mallPlacements, { [savedSlot]: 'owned' });
+  assert.equal(app.calls.length, 0);
+});
+
 test('affordable filtering preserves confirmation-only charging and free warehouse placement at zero coins', async () => {
   const app = mount({ mallPlacements: {} });
   await app.press('mall-affordable-toggle');
@@ -276,6 +326,7 @@ test('mall wing controls announce their section name, capacity and selected stat
   const react = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useRef: (current) => ({ current }),
+    useEffect: (effect) => { effect(); },
     useState: (initial) => {
       const index = cursor++;
       return [state[index] ?? initial, (next) => { state[index] = next; }];
@@ -296,11 +347,15 @@ test('mall wing controls announce their section name, capacity and selected stat
     module.exports,
   );
   let wingChanges = 0;
+  let focusWing = null;
+  let focusRequestId = null;
   const renderPager = () => {
     cursor = 0;
     return module.exports.MallWingPager({
       counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
       onWingChange() { wingChanges += 1; },
+      focusWing,
+      focusRequestId,
       renderWing: (wing) => ({ type: 'WingContent', props: { testID: `wing-content-${wing}` } }),
     });
   };
@@ -339,6 +394,14 @@ test('mall wing controls announce their section name, capacity and selected stat
   assert.equal(findWing('mall-wing-extension').props.accessibilityState.selected, true);
   assert.equal(wingChanges, 2);
   assert.deepEqual(findWing('mall-wing-content-extension').props.style, { width: 360, height: 360 });
+
+  focusWing = 'extension4';
+  focusRequestId = 1;
+  pager = renderPager();
+  pager = renderPager();
+  assertOnlyWingIsAccessible('extension4');
+  assert.equal(findWing('mall-wing-extension4').props.accessibilityState.selected, true);
+  assert.equal(wingChanges, 2, 'programmatic location navigation does not trigger a placement change');
 });
 
 test('preview announces position and unredeemed state; changing and cancelling update the status', async () => {

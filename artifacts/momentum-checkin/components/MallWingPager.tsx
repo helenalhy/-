@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { MallWing } from '@/constants/mall-layout';
 import { useColors } from '@/hooks/useColors';
@@ -11,10 +11,12 @@ const WINGS: { id: MallWing; name: string; capacity: number }[] = [
   { id: 'extension4', name: '延伸區四', capacity: 12 },
 ];
 
-export function MallWingPager({ counts, onWingChange, renderWing }: {
+export function MallWingPager({ counts, onWingChange, renderWing, focusWing, focusRequestId }: {
   counts: Record<MallWing, number>;
   onWingChange: () => void;
   renderWing: (wing: MallWing, active: boolean) => React.ReactNode;
+  focusWing?: MallWing | null;
+  focusRequestId?: number | null;
 }) {
   const colors = useColors();
   const pager = useRef<ScrollView>(null);
@@ -26,6 +28,15 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
     const index = WINGS.findIndex((page) => page.id === wing);
     tabs.current?.scrollTo({ x: Math.max(0, index * 112 - 224), animated: true });
   }
+
+  useEffect(() => {
+    if (!focusWing || focusRequestId == null) return;
+    const page = WINGS.findIndex((wing) => wing.id === focusWing);
+    if (page < 0) return;
+    setActiveWing(focusWing);
+    pager.current?.scrollTo({ x: page * width, animated: true });
+    scrollTabsToWing(focusWing);
+  }, [focusWing, focusRequestId, width]);
 
   function changeWing(wing: MallWing) {
     if (wing !== activeWing) {

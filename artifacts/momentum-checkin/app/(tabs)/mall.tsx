@@ -28,7 +28,7 @@ import { useColors } from '@/hooks/useColors';
 import { MallAmbience, MallObjectVisual } from '@/components/MallVisuals';
 import { MALL_FLOORS, MALL_ITEMS, MALL_ITEM_BY_ID, type MallItem } from '@/constants/mall';
 import { CatalogPager } from '@/components/CatalogPager';
-import { getMallSlotPosition, MALL_POSITIONS_PER_FLOOR } from '@/constants/mall-layout';
+import { getMallSlotPosition, MALL_POSITIONS_PER_FLOOR, type MallWing } from '@/constants/mall-layout';
 import { MallWingPager } from '@/components/MallWingPager';
 
 const CATALOG_PAGE_SIZE = 10;
@@ -47,6 +47,13 @@ const CATEGORY_NAMES: Record<RewardCategory, string> = {
 };
 
 const getSlotPosition = getMallSlotPosition;
+const WING_NAMES: Record<MallWing, string> = {
+  main: '主商場',
+  annex: '延伸區',
+  extension: '延伸區二',
+  extension3: '延伸區三',
+  extension4: '延伸區四',
+};
 
 function MallSceneSlot({
   slotId,
@@ -56,6 +63,7 @@ function MallSceneSlot({
   isPreview = false,
   disabled = false,
   busy = false,
+  isLocationHighlighted = false,
   focusAfterResult = false,
   onFocusAfterResult,
   onPress,
@@ -67,6 +75,7 @@ function MallSceneSlot({
   isPreview?: boolean;
   disabled?: boolean;
   busy?: boolean;
+  isLocationHighlighted?: boolean;
   focusAfterResult?: boolean;
   onFocusAfterResult?: () => void;
   onPress?: () => void;
@@ -102,13 +111,18 @@ function MallSceneSlot({
   if (item) {
     return (
       <Pressable
-        style={[styles.sceneSlot, { left: position.left, top: position.top, width: position.width, height: position.height }, isPreview && styles.sceneSlotTarget]}
+        style={[
+          styles.sceneSlot,
+          { left: position.left, top: position.top, width: position.width, height: position.height },
+          isPreview && styles.sceneSlotTarget,
+          isLocationHighlighted && { borderWidth: 2, borderColor: colors.primary, borderRadius: 10, backgroundColor: colors.secondary },
+        ]}
         onPress={onPress}
         ref={accessibilityRef}
         disabled={disabled}
         accessibilityRole="button"
-        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : '已兌換，點選可搬動或存入倉庫'}`}
-        accessibilityState={{ selected: isPreview, disabled, busy }}
+        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : isLocationHighlighted ? '目前查看位置，已擺放' : '已兌換，點選可搬動或存入倉庫'}`}
+        accessibilityState={{ selected: isPreview || isLocationHighlighted, disabled, busy }}
         testID={`mall-slot-${slotId}`}
       >
         <Animated.View style={[
@@ -118,6 +132,7 @@ function MallSceneSlot({
           <MallObjectVisual id={item.visual ?? item.id} color={item.color} icon={item.icon} category={item.category} />
         </Animated.View>
         <Text numberOfLines={1} style={[styles.sceneShopName, { color: palette.light.foreground, fontSize: position.plaza ? 7 : 8 }]}>{item.name}</Text>
+        {isLocationHighlighted && <Text style={[styles.locationMarker, { color: colors.primary, backgroundColor: colors.secondary }]}>目前位置</Text>}
         {isPreview && !position.plaza && <Text style={[styles.sceneShopName, { color: colors.primary }]}>預覽</Text>}
       </Pressable>
     );
@@ -167,6 +182,8 @@ export default function MallScreen() {
   const [placementAnnouncement, setPlacementAnnouncement] = useState('');
   const [focusResultSlotId, setFocusResultSlotId] = useState<MallSlotId | null>(null);
   const clearFocusResultSlot = useCallback(() => setFocusResultSlotId(null), []);
+  const [locationFocus, setLocationFocus] = useState<{ slotId: MallSlotId; requestId: number } | null>(null);
+  const locationFocusRequestId = useRef(0);
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
@@ -179,6 +196,10 @@ export default function MallScreen() {
   const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' | 'restore' } | null>(null);
   const ownedIds = useMemo(() => new Set(purchasedItems), [purchasedItems]);
   const placedIds = useMemo(() => new Set(Object.values(mallPlacements)), [mallPlacements]);
+  const placedSlotsByItem = useMemo(
+    () => new Map(Object.entries(mallPlacements).map(([slotId, itemId]) => [itemId, slotId as MallSlotId])),
+    [mallPlacements],
+  );
   const constructed = useMemo(() => MALL_ITEMS.filter((item) => placedIds.has(item.id)), [placedIds]);
   const collectionItems = useMemo(
     () => MALL_ITEMS.filter((item) => ownedIds.has(item.id) && !placedIds.has(item.id)),
@@ -288,6 +309,19 @@ export default function MallScreen() {
       : 'purchase';
     setPlacementIntent({ itemId: item.id, mode });
     announcePlacement(`已前往 ${item.floor}F，選擇${item.name}。${mode === 'purchase' ? '請選擇空位試擺，確認兌換才扣金幣。' : '已兌換，可免費重新擺放。'}搜尋及換層沒有扣除金幣。`);
+    scrollToMallScene();
+  }
+
+  function viewPlacedItemLocation(item: MallItem) {
+    if (isLoading || purchasing || operationLock.current || placementIntent) return;
+    const slotId = placedSlotsByItem.get(item.id);
+    if (!slotId) return;
+    Keyboard.dismiss();
+    const position = getSlotPosition(slotId);
+    locationFocusRequestId.current += 1;
+    setLocationFocus({ slotId, requestId: locationFocusRequestId.current });
+    changeFloor(Number(position.floor.replace('F', '')) - currentFloor);
+    announcePlacement(`${item.name}目前位於 ${position.floor}・${WING_NAMES[position.wing]}・${position.label}。已跳轉並標示位置；沒有進入搬動模式、未更改擺放或扣除金幣。`);
     scrollToMallScene();
   }
 
@@ -540,6 +574,8 @@ export default function MallScreen() {
             { borderColor: colors.border, opacity: sceneOpacity, transform: [{ translateY: sceneOffset }] },
           ]}>
             <MallWingPager
+              focusWing={locationFocus ? getSlotPosition(locationFocus.slotId).wing : null}
+              focusRequestId={locationFocus?.requestId ?? null}
               counts={{
                 main: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'main' && mallPlacements[slotId]).length,
                 annex: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'annex' && mallPlacements[slotId]).length,
@@ -568,6 +604,7 @@ export default function MallScreen() {
                     isPreview={isPreview}
                     disabled={isLoading || purchasing !== null}
                     busy={purchasing !== null}
+                    isLocationHighlighted={locationFocus?.slotId === slotId}
                     focusAfterResult={focusResultSlotId === slotId}
                     onFocusAfterResult={clearFocusResultSlot}
                     isPlacementMode={placementIntent !== null}
@@ -754,30 +791,46 @@ export default function MallScreen() {
                     <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>
                   </View>}
                 </View>
-                <Pressable
-                  onPress={() => {
-                    if (isSearching) {
-                      selectSearchItem(item);
-                    } else if (showCollection) {
-                      setWarehouseNotice(null);
-                      setPlacementIntent({ itemId: item.id, mode: 'restore' });
-                      scrollToMallScene();
-                    } else {
-                      startPurchasePlacement(item);
-                    }
-                  }}
-                  disabled={disabled}
-                  style={[
-                    styles.buildButton,
-                    { backgroundColor: owned ? colors.secondary : colors.primary, opacity: disabled && !owned ? 0.55 : 1 },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={isSearching ? `選擇${item.name}，前往 ${item.floor}F，${CATEGORY_NAMES[item.category]}，${item.price} 金幣，${owned ? '已兌換，可免費重擺' : '未兌換，先試擺再確認'}` : showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}
-                  accessibilityState={{ disabled }}
-                  testID={`${isSearching ? 'search-select' : showCollection ? 'restore' : 'build'}-${item.id}`}
-                >
-                  <Feather name={isSearching ? 'arrow-up-right' : showCollection ? 'map-pin' : owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
-                </Pressable>
+                <View style={styles.catalogActions}>
+                  {isSearching && placedIds.has(item.id) && (
+                    <Pressable
+                      onPress={() => viewPlacedItemLocation(item)}
+                      disabled={disabled}
+                      style={[styles.locationButton, { backgroundColor: colors.secondary, opacity: disabled ? 0.55 : 1 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`查看${item.name}目前擺放位置，不搬動物件`}
+                      accessibilityState={{ disabled }}
+                      testID={`search-location-${item.id}`}
+                    >
+                      <Feather name="map-pin" size={14} color={colors.primary} />
+                      <Text style={[styles.locationButtonText, { color: colors.primary }]}>查看位置</Text>
+                    </Pressable>
+                  )}
+                  <Pressable
+                    onPress={() => {
+                      if (isSearching) {
+                        selectSearchItem(item);
+                      } else if (showCollection) {
+                        setWarehouseNotice(null);
+                        setPlacementIntent({ itemId: item.id, mode: 'restore' });
+                        scrollToMallScene();
+                      } else {
+                        startPurchasePlacement(item);
+                      }
+                    }}
+                    disabled={disabled}
+                    style={[
+                      styles.buildButton,
+                      { backgroundColor: owned ? colors.secondary : colors.primary, opacity: disabled && !owned ? 0.55 : 1 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={isSearching ? `選擇${item.name}，前往 ${item.floor}F，${CATEGORY_NAMES[item.category]}，${item.price} 金幣，${owned ? '已兌換，可免費重擺' : '未兌換，先試擺再確認'}` : showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}
+                    accessibilityState={{ disabled }}
+                    testID={`${isSearching ? 'search-select' : showCollection ? 'restore' : 'build'}-${item.id}`}
+                  >
+                    <Feather name={isSearching ? 'arrow-up-right' : showCollection ? 'map-pin' : owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
+                  </Pressable>
+                </View>
                 {!owned && !enoughCoins && (
                   <Text style={[styles.missingText, { color: colors.mutedForeground }]}>
                     {`還差 ${item.price - coins} 金幣`}
@@ -836,6 +889,7 @@ const styles = StyleSheet.create({
   mallArtworkImage: { width: '100%', height: '100%' },
   sceneSlot: { position: 'absolute', height: '18%', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   sceneSlotTarget: { borderWidth: 1, borderColor: palette.light.primary, borderStyle: 'dashed', borderRadius: 10, backgroundColor: palette.light.candyCream },
+  locationMarker: { fontSize: 8, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, overflow: 'hidden' },
   sceneShopBadge: { alignItems: 'center', justifyContent: 'center' },
   sceneShopName: { fontSize: 8, fontWeight: '700', backgroundColor: palette.light.candyCream, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, maxWidth: '100%' },
   sceneEmptyBadge: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', opacity: 0.75 },
@@ -865,6 +919,9 @@ const styles = StyleSheet.create({
   filterPill: { paddingHorizontal: 13, paddingVertical: 8, borderWidth: 1, borderRadius: 99 },
   filterText: { fontSize: 11, fontWeight: '600' },
   catalogList: { gap: 9 },
+  catalogActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  locationButton: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 8, borderRadius: 12 },
+  locationButtonText: { fontSize: 10, fontWeight: '700' },
   catalogCard: { minHeight: 83, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 17, padding: 10, gap: 10 },
   catalogIcon: { width: 43, height: 43, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   catalogInfo: { flex: 1, minWidth: 0 },

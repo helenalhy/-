@@ -293,7 +293,7 @@ test('search filters keep original floor separate from the current mall placemen
   assert.ok(app.find('search-select-unplaced-item'));
 
   await app.press('mall-search-clear-filters');
-  assert.equal(pager(app).props.total, 3, 'clearing both filters restores every name match');
+  assert.equal(pager(app).props.total, 3, 'clearing both filters restores every name or description match');
   assert.equal(app.find('mall-search-wing-all').props.accessibilityState.selected, true);
   assert.equal(app.find('mall-search-floor-all').props.accessibilityState.selected, true);
   assert.equal(app.find('mall-search-clear-filters'), undefined);
@@ -331,7 +331,10 @@ test('real 1500-item catalog is fully searchable by name with the correct origin
     app.find('mall-search-input').props.onChangeText(item.name);
     app.render();
 
-    const matchingItems = MALL_ITEMS.filter((candidate) => candidate.name.toLocaleLowerCase().includes(item.name.toLocaleLowerCase()));
+    const query = item.name.toLocaleLowerCase();
+    const matchingItems = MALL_ITEMS.filter((candidate) =>
+      `${candidate.name} ${candidate.description}`.toLocaleLowerCase().includes(query),
+    );
     assert.equal(pager(app).props.total, matchingItems.length, `${item.id} (${item.name}) search count`);
     const result = app.find(`search-select-${item.id}`);
     assert.ok(result, `${item.id} appears in the search results`);
@@ -362,7 +365,7 @@ test('search whitespace, empty results, category counts, pagination and clear re
   assert.ok(app.find('mall-search-empty'));
 
   const pageQuery = '店';
-  const expectedResults = mallCatalog.MALL_ITEMS.filter((item) => item.name.includes(pageQuery));
+  const expectedResults = mallCatalog.MALL_ITEMS.filter((item) => `${item.name} ${item.description}`.includes(pageQuery));
   app.find('mall-search-input').props.onChangeText(pageQuery);
   app.render();
   assert.equal(pager(app).props.total, expectedResults.length);
@@ -388,6 +391,65 @@ test('search whitespace, empty results, category counts, pagination and clear re
   assert.equal(pager(app).props.total, 150);
   assert.equal(pager(app).props.page, 1);
   assert.ok(app.find(`build-${floorOneItems[0].id}`), 'clearing search returns to the original floor list');
+});
+
+test('description keywords return catalog items with correct category counts, pagination and clear behavior', () => {
+  const descriptionCatalog = Array.from({ length: 21 }, (_, i) => ({
+    id: `description-match-${i}`,
+    floor: i === 0 ? 2 : 1,
+    name: `獨特選物 ${i}`,
+    description: '雨天也能安心休息的好去處',
+    category: ['shop', 'facility', 'decor'][i % 3],
+    price: 20 + i,
+    ticketCost: 0,
+  }));
+  descriptionCatalog.push({
+    id: 'name-only-match',
+    floor: 1,
+    name: '雨天小舖',
+    description: '明亮的日常選物',
+    category: 'shop',
+    price: 30,
+    ticketCost: 0,
+  });
+  const app = mount({ purchasedItems: ['description-match-0'], mallPlacements: {} }, descriptionCatalog);
+
+  app.find('mall-search-input').props.onChangeText('雨天');
+  app.render();
+  assert.equal(pager(app).props.total, 22);
+  assert.equal(pager(app).props.page, 1);
+  assert.match(textContent(app.find('mall-category-shop')), /店鋪 8$/);
+  assert.match(textContent(app.find('mall-category-facility')), /設施 7$/);
+  assert.match(textContent(app.find('mall-category-decor')), /裝潢 7$/);
+  assert.ok(app.find('search-select-description-match-0'), 'description-only keyword match is included');
+  assert.match(
+    app.find('search-select-description-match-0').props.accessibilityLabel,
+    /前往 2F.*已兌換，可免費重擺/,
+    'description-only result keeps its original floor and redeemed state',
+  );
+  assert.ok(app.nodes().some((node) =>
+    textContent(node) === `2F · ${mallCatalog.MALL_FLOORS[1].title} · 20 金幣`,
+  ), 'description-only result shows the original floor theme and price');
+  assert.ok(app.nodes().some((node) =>
+    textContent(node) === '已兌換 · 倉庫保存中 · 免費擺放',
+  ), 'description-only result keeps its warehouse status');
+
+  const renderedIds = [];
+  for (let page = 1; page <= pager(app).props.pages; page += 1) {
+    pager(app).props.onChange(page);
+    app.render();
+    renderedIds.push(...selectionIds(app));
+  }
+  assert.ok(renderedIds.includes('search-select-name-only-match'), 'name-only keyword match remains included');
+  assert.deepEqual(renderedIds, [
+    ...descriptionCatalog.map((item) => `search-select-${item.id}`),
+  ], 'all description and name matches appear once across pages');
+
+  app.find('mall-search-input').props.onChangeText('');
+  app.render();
+  assert.equal(pager(app).props.total, 21, 'clearing search restores the current-floor catalog');
+  assert.equal(pager(app).props.page, 1);
+  assert.ok(app.find('build-description-match-1'));
 });
 
 test('search selection and cancellation preserve coins, ownership and placements', async () => {

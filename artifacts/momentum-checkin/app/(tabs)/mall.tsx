@@ -227,7 +227,8 @@ export default function MallScreen() {
   const isSearching = searchTerm.length > 0;
   const searchItems = useMemo(
     () => MALL_ITEMS.filter((item) => {
-      if (!item.name.toLocaleLowerCase().includes(searchTerm)) return false;
+      const searchableText = `${item.name} ${item.description}`.toLocaleLowerCase();
+      if (!searchableText.includes(searchTerm)) return false;
       if (searchFloor !== null && item.floor !== searchFloor) return false;
       if (searchWing === null) return true;
       const slotId = placedSlotsByItem.get(item.id);
@@ -744,7 +745,7 @@ export default function MallScreen() {
         >
           <View>
             <Text testID="floor-catalog-title" style={[styles.sceneTitle, { color: colors.foreground }]}>{isSearching ? '搜尋結果 · 所有樓層' : showCollection ? '倉庫 · 所有樓層' : `${currentFloor}F 專屬兌換 · ${floorTheme.title}`}</Text>
-            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>{isSearching ? `全 ${MALL_ITEMS.length} 款名稱搜尋 · 本分類 ${visibleItems.length} 款結果` : showCollection ? '商店、設施、裝修都可保存 · 不設件數上限 · 免費取出重擺' : `本層 ${floorItems.length} 款選物 · ${MALL_POSITIONS_PER_FLOOR} 個展示位，可存倉輪替`}</Text>
+            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>{isSearching ? `全 ${MALL_ITEMS.length} 款名稱或描述搜尋 · 本分類 ${visibleItems.length} 款結果` : showCollection ? '商店、設施、裝修都可保存 · 不設件數上限 · 免費取出重擺' : `本層 ${floorItems.length} 款選物 · ${MALL_POSITIONS_PER_FLOOR} 個展示位，可存倉輪替`}</Text>
           </View>
           <Feather name="arrow-down" size={17} color={colors.primary} />
         </View>
@@ -753,7 +754,7 @@ export default function MallScreen() {
           <Feather name="search" size={18} color={colors.primary} />
           <TextInput
             testID="mall-search-input"
-            accessibilityLabel={`搜尋全部 ${MALL_ITEMS.length} 款選物名稱`}
+            accessibilityLabel={`搜尋全部 ${MALL_ITEMS.length} 款選物名稱或描述`}
             placeholder="搜尋所有樓層的商店、設施、裝修"
             placeholderTextColor={colors.mutedForeground}
             value={searchQuery}
@@ -779,7 +780,7 @@ export default function MallScreen() {
             style={styles.searchClear}
           ><Feather name="x" size={18} color={colors.primary} /></Pressable>}
         </View>
-        <Text style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋 · 可配合分類 · 搜尋及換層不扣金幣</Text>
+        <Text style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋名稱或描述關鍵字 · 可配合分類 · 搜尋及換層不扣金幣</Text>
 
         {isSearching && (
           <View style={styles.searchLocationFilters}>
@@ -925,7 +926,7 @@ export default function MallScreen() {
             </View>
           )}
           {!filteringAffordable && isSearching && visibleItems.length === 0 && (
-            <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有符合「{searchQuery.trim()}」的選物，試試其他名稱、切換「全部」分類或清除搜尋。</Text>
+            <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有符合「{searchQuery.trim()}」的選物，試試其他名稱或描述關鍵字、切換「全部」分類或清除搜尋。</Text>
           )}
           {!isSearching && showCollection && visibleItems.length === 0 && (
             <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>{collectionItems.length === 0 ? '倉庫暫時沒有物件。點選商場中的舊商店、設施或裝修，再按「存入倉庫」，就能騰出位置換新；之後可免費取出。' : '這個分類暫時沒有存倉物件，試試其他分類。'}</Text>

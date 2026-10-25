@@ -82,7 +82,7 @@ function MallSceneSlot({
         style={[styles.sceneSlot, { left: position.left, top: position.top, width: position.width, height: position.height }, isPreview && styles.sceneSlotTarget]}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : '點選可移動或收起'}`}
+        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : '點選可搬動或存入倉庫'}`}
         testID={`mall-slot-${slotId}`}
       >
         <Animated.View style={[
@@ -297,7 +297,7 @@ export default function MallScreen() {
       setCatalogPage(1);
       requestAnimationFrame(scrollToCatalog);
     } catch (error) {
-      Alert.alert('沒有收起成功', error instanceof Error ? error.message : '請再試一次。');
+      Alert.alert('沒有存入倉庫', error instanceof Error ? error.message : '請再試一次。');
     } finally {
       operationLock.current = false;
       setPurchasing(null);
@@ -398,14 +398,14 @@ export default function MallScreen() {
           {placementIntent && isFloorFull && (
             <View testID="mall-floor-full" style={[styles.fullFloorNotice, { backgroundColor: colors.secondary, borderColor: colors.primary }]}>
               <Text accessibilityLiveRegion="polite" style={[styles.placementTitle, { color: colors.foreground }]}>
-                {currentFloor}F 本層已滿 · 3 個位置皆已佔用
+                {currentFloor}F 本層已滿 · {floorItemCount} 個位置皆已佔用
               </Text>
               <Text style={[styles.fullFloorCopy, { color: colors.foreground }]}>
                 {placementIntent.mode === 'move'
-                  ? '仍可點選其他物件交換位置，或按「收起」放回收藏櫃，不扣金幣。'
+                  ? '仍可點選其他物件交換位置，或按「存入倉庫」騰出位置，不扣金幣。'
                   : availableFloors.length > 0
                     ? '請前往下方有空位的樓層繼續擺放，已選物件會保留。'
-                    : '十層都已放滿。請先取消擺放，點選已放置物件，再按「收起」騰出空位；之後可重新選擇物件擺放。'}
+                    : '十層都已放滿。請先取消擺放，點選已放置物件，再按「存入倉庫」騰出空位；之後可重新選擇物件擺放。'}
               </Text>
               {availableFloors.length > 0 ? (
                 <>
@@ -428,7 +428,7 @@ export default function MallScreen() {
                   </View>
                 </>
               ) : placementIntent.mode === 'move' ? (
-                <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>十層都已放滿；可用左右箭頭換層交換，或先收起物件騰出空位。</Text>
+                <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>十層都已放滿；可用樓層箭頭換層交換，或先將物件存入倉庫騰出空位。</Text>
               ) : null}
               {placementIntent.mode === 'purchase' && (
                 <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>尚未扣除金幣；選好空位並確認兌換後才扣金幣。</Text>
@@ -443,6 +443,7 @@ export default function MallScreen() {
               counts={{
                 main: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'main' && mallPlacements[slotId]).length,
                 annex: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'annex' && mallPlacements[slotId]).length,
+                extension: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'extension' && mallPlacements[slotId]).length,
               }}
               onWingChange={() => setPreviewSlotId(null)}
               renderWing={(wing, active) => <ImageBackground
@@ -472,7 +473,7 @@ export default function MallScreen() {
             <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
               <Feather name="move" size={13} color={colors.primary} />
               <Text style={[styles.mapFooterText, { color: colors.foreground }]}>
-                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑看延伸區 · 點物件可搬動或存倉'}
+                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑或點上方切換區域 · 點物件可搬動或存倉'}
               </Text>
             </View>
           </Animated.View>

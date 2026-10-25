@@ -17,6 +17,7 @@ function mount(overrides = {}) {
   let first = true;
   let tree;
   const calls = [];
+  const mallWingPager = ({ renderWing }) => renderWing('main', true);
   const item = { id: 'test-planter', visual: 'colorful-planter', floor: 1, name: '彩色花圃', category: 'decor', price: 20, ticketCost: 0 };
   const owned = { ...item, id: 'owned', name: '已擁有花圃' };
   const habits = {
@@ -28,7 +29,9 @@ function mount(overrides = {}) {
     ...overrides,
   };
   const react = {
-    createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    createElement: (type, props, ...children) => type === mallWingPager
+      ? mallWingPager({ ...props, children })
+      : ({ type, props: { ...props, children } }),
     useState(initial) {
       const index = cursor++;
       if (first) states[index] = initial;
@@ -58,6 +61,15 @@ function mount(overrides = {}) {
       useHabits: () => habits, MALL_FLOOR_COUNT: 10,
       MALL_SLOT_IDS: Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
     };
+    if (name === '@/constants/mall-layout') return {
+      MALL_POSITIONS_PER_FLOOR: 32,
+      getMallSlotPosition: (slotId) => ({
+        floor: `${slotId.split('-')[1]}F`,
+        wing: slotId.includes('-extension-') ? 'extension' : slotId.includes('-annex-') ? 'annex' : 'main',
+        label: '店面區左側', left: '12%', top: '39%', width: '24%', height: '18%', scale: 1, plaza: false,
+      }),
+    };
+    if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
     if (name === '@/constants/mall') return {
       MALL_ITEMS: [item, owned], MALL_ITEM_BY_ID: { [item.id]: item, owned },
       MALL_FLOORS: Array.from({ length: 10 }, () => ({ title: '測試樓層' })),
@@ -215,7 +227,7 @@ test('when all floors are full purchase and restore explain how to free space wi
   await app.press('build-test-planter');
   const notice = textContent(app.find('mall-floor-full'));
   assert.match(notice, /十層都已放滿/);
-  assert.match(notice, /先取消擺放.*收起/);
+  assert.match(notice, /先取消擺放.*存入倉庫/);
   assert.match(notice, /尚未扣除金幣/);
   assert.equal(app.find('mall-available-floor-2'), undefined);
   assert.equal(app.calls.length, 0);

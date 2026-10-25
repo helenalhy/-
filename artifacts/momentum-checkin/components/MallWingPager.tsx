@@ -6,6 +6,7 @@ import { useColors } from '@/hooks/useColors';
 const WINGS: { id: MallWing; name: string; capacity: number }[] = [
   { id: 'main', name: '主商場', capacity: 12 },
   { id: 'annex', name: '延伸區', capacity: 8 },
+  { id: 'extension', name: '延伸區二', capacity: 12 },
 ];
 
 export function MallWingPager({ counts, onWingChange, renderWing }: {
@@ -23,7 +24,7 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
       onWingChange();
       setActiveWing(wing);
     }
-    pager.current?.scrollTo({ x: wing === 'main' ? 0 : width, animated: true });
+    pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === wing) * width, animated: true });
   }
 
   return (
@@ -31,7 +32,7 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
       const nextWidth = event.nativeEvent.layout.width;
       if (nextWidth > 0 && nextWidth !== width) {
         setWidth(nextWidth);
-        requestAnimationFrame(() => pager.current?.scrollTo({ x: activeWing === 'main' ? 0 : nextWidth, animated: false }));
+        requestAnimationFrame(() => pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === activeWing) * nextWidth, animated: false }));
       }
     }}>
       <View style={[s.tabs, { backgroundColor: colors.candyCream }]}>
@@ -46,7 +47,8 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
       </View>
       <ScrollView ref={pager} horizontal pagingEnabled nestedScrollEnabled showsHorizontalScrollIndicator={false} style={{ width, height: width }} testID="mall-wing-pager"
         onMomentumScrollEnd={(event) => {
-          const wing: MallWing = event.nativeEvent.contentOffset.x >= width / 2 ? 'annex' : 'main';
+          const page = Math.max(0, Math.min(WINGS.length - 1, Math.round(event.nativeEvent.contentOffset.x / width)));
+          const wing = WINGS[page].id;
           if (wing !== activeWing) {
             setActiveWing(wing);
             onWingChange();

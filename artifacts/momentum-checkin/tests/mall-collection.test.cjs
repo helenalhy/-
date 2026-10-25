@@ -41,6 +41,18 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
   const mockedRequire = (name) => {
     if (name === 'react') return react;
     if (name === '@/constants/colors') return { light: {} };
+    if (name === '@/constants/mall-layout') return {
+      MALL_SLOT_IDS: [
+        ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
+          ['left', 'center', 'right'].map((column) => `floor-${floor}-${column}`)),
+        ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
+          [1, 2, 3].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-plaza-${row}-${column}`))),
+        ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
+          [1, 2, 3, 4].flatMap((row) => ['left', 'right'].map((column) => `floor-${floor}-annex-${row}-${column}`))),
+        ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
+          [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension-${row}-${column}`))),
+      ],
+    };
     if (name === 'expo-haptics') return {
       selectionAsync: async () => {},
       notificationAsync: async () => {},
@@ -126,7 +138,7 @@ test('store, reload, reward, restore on another floor, swap and reload preserve 
 });
 
 test('empty versioned placements stay empty, even with more purchases than slots', async () => {
-  const items = Array.from({ length: 40 }, (_, index) => `item-${index}`);
+  const items = Array.from({ length: 330 }, (_, index) => `item-${index}`);
   const storage = seed({ schemaVersion: 2, purchasedItems: items, placements: {} });
   const app = await mount(storage);
   assert.deepEqual(app.value.mallPlacements, {});
@@ -149,15 +161,15 @@ test('normalization removes invalid slots, duplicate placements and unowned item
 });
 
 test('legacy overflow retains every purchase and does not refill a deliberately emptied slot on reload', async () => {
-  const items = Array.from({ length: 40 }, (_, index) => `item-${index}`);
+  const items = Array.from({ length: 330 }, (_, index) => `item-${index}`);
   const storage = seed({ purchasedItems: items, placements: undefined });
   let app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 30);
-  assert.equal(app.value.purchasedItems.length, 40);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 320);
+  assert.equal(app.value.purchasedItems.length, 330);
   await app.value.storeMallItem('item-0');
   app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 29);
-  assert.equal(app.value.purchasedItems.length, 40);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 319);
+  assert.equal(app.value.purchasedItems.length, 330);
   assert.equal(Object.values(app.value.mallPlacements).includes('item-0'), false);
 });
 

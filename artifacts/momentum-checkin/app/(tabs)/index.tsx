@@ -112,8 +112,8 @@ export default function TodayScreen() {
           </View>
           <View style={styles.headerActions}>
             <Pressable style={[styles.coinPill, { backgroundColor: colors.secondary }]} onPress={() => router.navigate('/(tabs)/mall')} accessibilityRole="button" accessibilityLabel={`${coins} 金幣，前往商場`}>
-              <Feather name="circle" size={15} color={colors.primary} />
-              <Text style={[styles.coinText, { color: colors.primary }]}>{coins}</Text>
+              <Feather name="shopping-bag" size={14} color={colors.primary} />
+              <Text style={[styles.coinText, { color: colors.primary }]}>商場 {coins}</Text>
             </Pressable>
             <Pressable style={[styles.addButton, { backgroundColor: colors.primary }]} onPress={() => router.push('/habit-editor')} accessibilityRole="button" accessibilityLabel="新增目標">
               <Feather name="plus" size={20} color={colors.primaryForeground} />
@@ -125,6 +125,22 @@ export default function TodayScreen() {
           <Text style={[styles.greetingTitle, { color: colors.foreground }]}>今天，先完成一小步。</Text>
           <Text style={[styles.greetingBody, { color: colors.mutedForeground }]}>不用一次做到完美，願意開始就很了不起。</Text>
         </View>
+
+        <Pressable
+          style={[styles.mallShortcut, { backgroundColor: colors.secondary }]}
+          onPress={() => router.navigate('/(tabs)/mall')}
+          accessibilityRole="button"
+          accessibilityLabel="前往商場"
+        >
+          <View style={[styles.mallShortcutIcon, { backgroundColor: '#D4E2CC' }]}>
+            <Feather name="shopping-bag" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.mallShortcutCopy}>
+            <Text style={[styles.mallShortcutTitle, { color: colors.foreground }]}>前往你的商場</Text>
+            <Text style={[styles.mallShortcutSubtitle, { color: colors.mutedForeground }]}>用打卡獎勵打造喜歡的街區</Text>
+          </View>
+          <Feather name="arrow-right" size={17} color={colors.primary} />
+        </Pressable>
 
         <View style={[styles.weekCard, { backgroundColor: colors.primary }]}>
           <View style={styles.weekHeader}>
@@ -226,6 +242,11 @@ const styles = StyleSheet.create({
   greeting: { marginTop: 28, marginBottom: 20 },
   greetingTitle: { fontSize: 25, fontWeight: '700', letterSpacing: -0.6 },
   greetingBody: { fontSize: 14, marginTop: 8, lineHeight: 21 },
+  mallShortcut: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 17, padding: 12, marginBottom: 17 },
+  mallShortcutIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  mallShortcutCopy: { flex: 1 },
+  mallShortcutTitle: { fontSize: 12, fontWeight: '700' },
+  mallShortcutSubtitle: { fontSize: 10, marginTop: 4 },
   weekCard: { borderRadius: 24, padding: 20, overflow: 'hidden' },
   weekHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   weekEyebrow: { color: '#D6E4D9', fontSize: 12, fontWeight: '500' },

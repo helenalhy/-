@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "B8NUTSd5SXH4JhhtT3aPT"
+uri = "file://artifacts/momentum-checkin/assets/images/icon.png"
+type = "image"
+title = "Momentum 我的商場 App 圖示"
+description = "暖粉與金色商場插畫，已設為 App 圖示、開機畫面及網頁分頁圖示。"
+logical_id = "b4e26b34-a429-4f6a-96b0-b80d1df19078"
+content_hash = "sha256:865efbbe1ccfcdd81f0c39d7984e98360e06b7882b43bc59d2ad0732b3464477"
+size = 1325746
+mtime_ms = 1792927613798
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:618d14b0-a603-4ece-99a1-db327560834c/b4e26b34-a429-4f6a-96b0-b80d1df19078/78fb66e7-042b-467d-ac10-a47d5f6ef802"
+storage_version_token = "1792927744286467"
+content_type = "image/png"

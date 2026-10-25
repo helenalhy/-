@@ -1,7 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Alert,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHabits } from '@/context/HabitsContext';
+import { MallObjectVisual } from '@/components/MallVisuals';
 import {
   getShopInteriorDecorations,
   getShopTypeLabel,
@@ -19,7 +21,58 @@ import {
   type ShopInteriorSlotId,
 } from '@/constants/mall-shop-interior';
 import { MALL_FLOORS, MALL_ITEM_BY_ID } from '@/constants/mall';
+import type { MallVisualCategory } from '@/constants/mall-visual-profile';
 import { useColors } from '@/hooks/useColors';
+
+function ShopInteriorAnimatedObject({
+  id,
+  itemId,
+  color,
+  icon,
+  category,
+  testID,
+}: {
+  id: string;
+  itemId: string;
+  color: string;
+  icon: string;
+  category: MallVisualCategory;
+  testID?: string;
+}) {
+  const entranceScale = useRef(new Animated.Value(0.76)).current;
+  const entranceOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    entranceScale.setValue(0.76);
+    entranceOpacity.setValue(0);
+    const animation = Animated.parallel([
+      Animated.spring(entranceScale, {
+        toValue: 1,
+        friction: 6,
+        tension: 130,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(entranceOpacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+    ]);
+    animation.start();
+    return () => animation.stop();
+  }, [id, itemId, entranceScale, entranceOpacity]);
+
+  return (
+    <Animated.View
+      testID={testID}
+      accessible={false}
+      pointerEvents="none"
+      style={[styles.objectEntrance, { opacity: entranceOpacity, transform: [{ scale: entranceScale }] }]}
+    >
+      <MallObjectVisual id={id} itemId={itemId} color={color} icon={icon} category={category} isActive />
+    </Animated.View>
+  );
+}
 
 export default function MallShopInteriorScreen() {
   const colors = useColors();
@@ -147,6 +200,14 @@ export default function MallShopInteriorScreen() {
         ) : shop ? (
           <>
             <View style={[styles.shopHeader, { backgroundColor: floor.surface, borderColor: colors.border }]}>
+              <ShopInteriorAnimatedObject
+                testID="shop-interior-storefront-visual"
+                id={shop.visual ?? shop.id}
+                itemId={shop.id}
+                color={shop.color}
+                icon={shop.icon}
+                category="shop"
+              />
               <View style={[styles.shopTypePill, { backgroundColor: colors.card }]}>
                 <Feather name="shopping-bag" size={13} color={colors.primary} />
                 <Text style={[styles.shopTypeText, { color: colors.primary }]}>{getShopTypeLabel(shop.shopType)}</Text>
@@ -200,12 +261,29 @@ export default function MallShopInteriorScreen() {
                           },
                         ]}
                       >
-                        <View style={[styles.slotIllustration, { backgroundColor: decoration?.color ?? colors.secondary }]}>
-                          <Feather
-                            name={(decoration?.icon ?? slot.icon) as keyof typeof Feather.glyphMap}
-                            size={19}
-                            color={colors.primary}
-                          />
+                        <View
+                          style={[
+                            styles.roomObjectStage,
+                            {
+                              backgroundColor: decoration ? colors.candyCream : colors.secondary,
+                              borderColor: decoration?.color ?? colors.border,
+                            },
+                          ]}
+                        >
+                          {decoration ? (
+                            <ShopInteriorAnimatedObject
+                              testID={`shop-interior-placed-${slot.id}`}
+                              id={decoration.id}
+                              itemId={`${shop.id}:${decoration.id}`}
+                              color={decoration.color}
+                              icon={decoration.icon}
+                              category="decor"
+                            />
+                          ) : (
+                            <View style={[styles.emptyDecorBadge, { backgroundColor: colors.card }]}>
+                              <Feather name={slot.icon as keyof typeof Feather.glyphMap} size={16} color={colors.primary} />
+                            </View>
+                          )}
                         </View>
                         <Text numberOfLines={1} style={[styles.slotName, { color: colors.foreground }]}>
                           {decoration?.name ?? slot.label}
@@ -275,8 +353,15 @@ export default function MallShopInteriorScreen() {
                     testID={`shop-decoration-${decoration.id}`}
                     style={[styles.decorationCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
-                    <View style={[styles.decorationIcon, { backgroundColor: decoration.color }]}>
-                      <Feather name={decoration.icon as keyof typeof Feather.glyphMap} size={20} color={colors.foreground} />
+                    <View style={[styles.decorationShowcase, { backgroundColor: colors.candyCream, borderColor: decoration.color }]}>
+                      <ShopInteriorAnimatedObject
+                        testID={`shop-decoration-visual-${decoration.id}`}
+                        id={decoration.id}
+                        itemId={`${shop.id}:catalog:${decoration.id}`}
+                        color={decoration.color}
+                        icon={decoration.icon}
+                        category="decor"
+                      />
                     </View>
                     <View style={styles.decorationCopy}>
                       <Text style={[styles.decorationName, { color: colors.foreground }]}>{decoration.name}</Text>
@@ -345,8 +430,10 @@ const styles = StyleSheet.create({
   shelfLine: { height: 27, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', borderBottomWidth: 3, borderColor: '#D7B891', paddingBottom: 3, marginBottom: 7 },
   miniProduct: { width: 15, height: 15, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderWidth: 1, borderColor: 'rgba(110,80,65,0.18)' },
   roomGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8, borderBottomWidth: 2, paddingBottom: 10 },
-  roomSlot: { width: '31.8%', minHeight: 78, borderWidth: 1.5, borderRadius: 13, paddingVertical: 6, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  slotIllustration: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  roomSlot: { width: '31.8%', minHeight: 104, borderWidth: 1.5, borderRadius: 15, paddingVertical: 7, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  objectEntrance: { alignItems: 'center', justifyContent: 'center' },
+  roomObjectStage: { width: 70, height: 56, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
+  emptyDecorBadge: { width: 31, height: 31, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   slotName: { maxWidth: '100%', fontSize: 9, fontWeight: '700', textAlign: 'center' },
   slotStatus: { fontSize: 8 },
   roomFloor: { height: 28, marginHorizontal: -10, paddingHorizontal: 9, paddingTop: 3 },
@@ -362,7 +449,7 @@ const styles = StyleSheet.create({
   notice: { fontSize: 12, lineHeight: 17 },
   decorationList: { gap: 9 },
   decorationCard: { minHeight: 81, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  decorationIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  decorationShowcase: { width: 70, height: 56, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   decorationCopy: { flex: 1, gap: 2 },
   decorationName: { fontSize: 13, fontWeight: '800' },
   decorationDescription: { fontSize: 10, lineHeight: 14 },

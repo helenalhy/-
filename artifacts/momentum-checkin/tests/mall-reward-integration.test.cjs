@@ -556,6 +556,16 @@ test('shop interior page shows its matching decor catalog and charges only goal-
   let interiorTree = app.renderShopInterior();
   assert.equal(textContent(findByTestId(interiorTree, 'shop-interior-name')), '女裝店');
   assert.ok(findByTestId(interiorTree, 'shop-interior-scene'));
+  const animatedVisuals = findNodes(
+    interiorTree,
+    (node) => node.type?.name === 'ShopInteriorAnimatedObject',
+  );
+  assert.ok(animatedVisuals.some((node) =>
+    node.props.testID === 'shop-interior-storefront-visual' && node.props.category === 'shop',
+  ), 'the shop facade uses the shared animated mall visual');
+  assert.ok(animatedVisuals.some((node) =>
+    node.props.testID === 'shop-decoration-visual-womenswear-clothing-rack' && node.props.category === 'decor',
+  ), 'decoration choices preview with the shared animated mall visual');
   for (const slot of ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter']) {
     assert.ok(findByTestId(interiorTree, `shop-interior-slot-${slot}`), `${slot} can be selected`);
   }
@@ -569,6 +579,9 @@ test('shop interior page shows its matching decor catalog and charges only goal-
     ownedDecorations: ['womenswear-clothing-rack'],
     placements: { 'front-window': 'womenswear-clothing-rack' },
   });
+  const installedVisual = findByTestId(interiorTree, 'shop-interior-placed-front-window');
+  assert.equal(installedVisual.props.category, 'decor');
+  assert.equal(installedVisual.props.id, 'womenswear-clothing-rack');
   assert.match(
     textContent(findByTestId(interiorTree, 'shop-decoration-womenswear-clothing-rack')),
     /已佈置於櫥窗/,

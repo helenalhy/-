@@ -501,7 +501,7 @@ test('screen readers distinguish every location including plaza rows and annex',
 });
 
 test('mall wing controls announce their section name, capacity and selected state', () => {
-  const state = [360, 'main'];
+  const state = [360, 'main', ''];
   let cursor = 0;
   const react = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
@@ -509,7 +509,7 @@ test('mall wing controls announce their section name, capacity and selected stat
     useEffect: (effect) => { effect(); },
     useState: (initial) => {
       const index = cursor++;
-      return [state[index] ?? initial, (next) => { state[index] = next; }];
+      return [state[index] ?? initial, (next) => { state[index] = typeof next === 'function' ? next(state[index]) : next; }];
     },
   };
   const module = { exports: {} };
@@ -564,6 +564,9 @@ test('mall wing controls announce their section name, capacity and selected stat
   assert.equal(findWing('mall-wing-main').props.tabIndex, 0);
   assert.equal(extension.props.accessibilityState.selected, false);
   assert.equal(extension.props.tabIndex, -1);
+  assert.equal(findWing('mall-wing-announcement').props.role, 'status');
+  assert.equal(findWing('mall-wing-announcement').props['aria-live'], 'polite');
+  assert.deepEqual(findWing('mall-wing-announcement').props.children, ['']);
 
   const assertOnlyWingIsAccessible = (activeWing) => {
     for (const wing of ['main', 'annex', 'extension', 'extension3', 'extension4']) {
@@ -579,15 +582,21 @@ test('mall wing controls announce their section name, capacity and selected stat
 
   findWing('mall-wing-annex').props.onPress();
   pager = renderPager();
+  assert.deepEqual(findWing('mall-wing-announcement').props.children, ['目前所在區域：延伸區']);
   assertOnlyWingIsAccessible('annex');
   assert.equal(findWing('mall-wing-annex').props.accessibilityState.selected, true);
   assert.equal(findWing('mall-wing-annex').props.tabIndex, 0);
   assert.equal(findWing('mall-wing-main').props.tabIndex, -1);
   assert.equal(wingChanges, 1);
+  findWing('mall-wing-annex').props.onPress();
+  pager = renderPager();
+  assert.deepEqual(findWing('mall-wing-announcement').props.children, ['目前所在區域：延伸區']);
+  assert.equal(wingChanges, 1, 'reselecting the current wing does not announce again');
 
   let prevented = false;
   findWing('mall-wing-annex').props.onKeyDown({ key: 'ArrowRight', preventDefault() { prevented = true; } });
   pager = renderPager();
+  assert.deepEqual(findWing('mall-wing-announcement').props.children, ['目前所在區域：延伸區二']);
   assert.equal(prevented, true);
   assert.equal(findWing('mall-wing-extension').props.accessibilityState.selected, true);
   assert.deepEqual(focusedWings.at(-1), 'extension');
@@ -614,6 +623,7 @@ test('mall wing controls announce their section name, capacity and selected stat
 
   findWing('mall-wing-pager').props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 2 * 360 } } });
   pager = renderPager();
+  assert.deepEqual(findWing('mall-wing-announcement').props.children, ['目前所在區域：延伸區二']);
   assertOnlyWingIsAccessible('extension');
   assert.equal(findWing('mall-wing-extension').props.accessibilityState.selected, true);
   assert.equal(wingChanges, 9);
@@ -625,7 +635,67 @@ test('mall wing controls announce their section name, capacity and selected stat
   pager = renderPager();
   assertOnlyWingIsAccessible('extension4');
   assert.equal(findWing('mall-wing-extension4').props.accessibilityState.selected, true);
+  assert.deepEqual(findWing('mall-wing-announcement').props.children, ['目前所在區域：延伸區二']);
   assert.equal(wingChanges, 9, 'programmatic location navigation does not trigger a placement change');
+});
+
+test('native mall wing changes use one platform-appropriate polite announcement', () => {
+  for (const platformOS of ['ios', 'android']) {
+    const state = [360, 'main', ''];
+    let cursor = 0;
+    const announcements = [];
+    const react = {
+      createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+      useRef: (current) => ({ current }),
+      useEffect: () => {},
+      useState: (initial) => {
+        const index = cursor++;
+        return [state[index] ?? initial, (next) => { state[index] = next; }];
+      },
+    };
+    const module = { exports: {} };
+    new Function('require', 'module', 'exports', wingPagerSource)(
+      (name) => {
+        if (name === 'react') return react;
+        if (name === 'react-native') return {
+          AccessibilityInfo: { announceForAccessibility: (message) => announcements.push(message) },
+          Platform: { OS: platformOS },
+          Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles },
+          Text: 'Text', View: 'View',
+        };
+        if (name === '@/hooks/useColors') return { useColors: () => ({}) };
+        throw new Error(`Unexpected dependency: ${name}`);
+      },
+      module,
+      module.exports,
+    );
+    const renderPager = () => {
+      cursor = 0;
+      return module.exports.MallWingPager({
+        counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
+        onWingChange() {},
+        renderWing: () => null,
+      });
+    };
+    const nodes = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node)
+      ? node.flatMap(nodes)
+      : [node, ...nodes(node.props?.children)];
+    let pager = renderPager();
+    const find = (testID) => nodes(pager).find((node) => node.props.testID === testID);
+    find('mall-wing-annex').props.onPress();
+    pager = renderPager();
+    find('mall-wing-pager').props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 2 * 360 } } });
+    pager = renderPager();
+
+    if (platformOS === 'ios') {
+      assert.deepEqual(announcements, ['目前所在區域：延伸區', '目前所在區域：延伸區二']);
+      assert.equal(find('mall-wing-announcement'), undefined, 'iOS does not also render a live region');
+    } else {
+      assert.deepEqual(announcements, [], 'Android does not also call the iOS announcement API');
+      assert.equal(find('mall-wing-announcement').props.accessibilityLiveRegion, 'polite');
+      assert.deepEqual(find('mall-wing-announcement').props.children, ['目前所在區域：延伸區二']);
+    }
+  }
 });
 
 test('preview announces position and unredeemed state; changing and cancelling update the status', async () => {

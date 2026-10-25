@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { MallWing } from '@/constants/mall-layout';
 import { useColors } from '@/hooks/useColors';
 
@@ -35,6 +35,15 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   const tabRefs = useRef<Partial<Record<MallWing, React.ElementRef<typeof Pressable>>>>({});
   const [width, setWidth] = useState(360);
   const [activeWing, setActiveWing] = useState<MallWing>('main');
+  const [wingAnnouncement, setWingAnnouncement] = useState('');
+
+  function announceWing(wing: MallWing) {
+    const message = `目前所在區域：${WINGS.find((page) => page.id === wing)?.name ?? ''}`;
+    setWingAnnouncement(message);
+    if (Platform.OS === 'ios') {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
+  }
 
   function scrollTabsToWing(wing: MallWing) {
     const index = WINGS.findIndex((page) => page.id === wing);
@@ -54,6 +63,7 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
     if (wing !== activeWing) {
       onWingChange();
       setActiveWing(wing);
+      announceWing(wing);
     }
     pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === wing) * width, animated: true });
     scrollTabsToWing(wing);
@@ -115,6 +125,17 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
           );
         })}
       </ScrollView>
+      {Platform.OS !== 'ios' && (
+        <Text
+          testID="mall-wing-announcement"
+          accessibilityLiveRegion={Platform.OS === 'android' ? 'polite' : undefined}
+          role={Platform.OS === 'web' ? 'status' : undefined}
+          aria-live={Platform.OS === 'web' ? 'polite' : undefined}
+          style={s.visuallyHidden}
+        >
+          {wingAnnouncement}
+        </Text>
+      )}
       <ScrollView ref={pager} horizontal pagingEnabled nestedScrollEnabled showsHorizontalScrollIndicator={false} style={{ width, height: width }} testID="mall-wing-pager"
         onMomentumScrollEnd={(event) => {
           const page = Math.max(0, Math.min(WINGS.length - 1, Math.round(event.nativeEvent.contentOffset.x / width)));
@@ -123,6 +144,7 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
             setActiveWing(wing);
             onWingChange();
             scrollTabsToWing(wing);
+            announceWing(wing);
           }
         }}>
         {WINGS.map((wing) => {
@@ -150,4 +172,5 @@ const s = StyleSheet.create({
   tabs: { flexDirection: 'row', gap: 8, padding: 8 },
   tab: { width: 112, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1 },
   tabText: { fontSize: 12, fontWeight: '600' },
+  visuallyHidden: { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', borderWidth: 0 },
 });

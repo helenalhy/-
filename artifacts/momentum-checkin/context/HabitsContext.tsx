@@ -25,6 +25,19 @@ export interface Habit {
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
 export type RewardTokens = Record<RewardCategory, number>;
+export type MallSlotId = (typeof MALL_SLOT_IDS)[number];
+
+export const MALL_SLOT_IDS = [
+  'floor-3-left',
+  'floor-3-center',
+  'floor-3-right',
+  'floor-2-left',
+  'floor-2-center',
+  'floor-2-right',
+  'floor-1-left',
+  'floor-1-center',
+  'floor-1-right',
+] as const;
 
 export const REWARD_CATEGORY_LABELS: Record<RewardCategory, string> = {
   facility: '設施券',
@@ -39,12 +52,14 @@ interface HabitsContextValue {
   today: string;
   coins: number;
   purchasedItems: string[];
+  mallPlacements: Record<string, string>;
   rewardTokens: RewardTokens;
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns'>) => Promise<void>;
   updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory'>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   toggleCheckIn: (id: string) => Promise<number>;
-  purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number) => Promise<void>;
+  purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
+  moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
 }
 
 const STORAGE_KEY = 'momentum.habits.v1';
@@ -68,6 +83,32 @@ function normalizeHabits(habits: Habit[]): Habit[] {
         : palette.light.candyPink;
     return { ...habit, rewardCategory, color: categoryColor };
   });
+}
+
+function normalizeMallPlacements(
+  savedPlacements: Record<string, string> | undefined,
+  purchasedItems: string[],
+): Record<string, string> {
+  const placements: Record<string, string> = {};
+  const assignedItems = new Set<string>();
+  for (const [slotId, itemId] of Object.entries(savedPlacements ?? {})) {
+    if (
+      (MALL_SLOT_IDS as readonly string[]).includes(slotId)
+      && purchasedItems.includes(itemId)
+      && !assignedItems.has(itemId)
+    ) {
+      placements[slotId] = itemId;
+      assignedItems.add(itemId);
+    }
+  }
+  for (const itemId of purchasedItems) {
+    if (assignedItems.has(itemId)) continue;
+    const openSlot = MALL_SLOT_IDS.find((slotId) => !placements[slotId]);
+    if (!openSlot) break;
+    placements[openSlot] = itemId;
+    assignedItems.add(itemId);
+  }
+  return placements;
 }
 
 const starterHabits: Habit[] = [
@@ -100,6 +141,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [coins, setCoins] = useState(50);
   const [purchasedItems, setPurchasedItems] = useState<string[]>([]);
+  const [mallPlacements, setMallPlacements] = useState<Record<string, string>>({});
   const [rewardTokens, setRewardTokens] = useState<RewardTokens>(EMPTY_TOKENS);
   const [rewardedCheckIns, setRewardedCheckIns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +160,9 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         const initialHabits = saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]);
         const initialMall = savedMall === null
           ? { coins: 50, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
-          : JSON.parse(savedMall) as { coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens> };
+          : JSON.parse(savedMall) as { coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string> };
+        const initialPurchasedItems = initialMall.purchasedItems ?? [];
+        const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems);
         await Promise.all([
           ...(saved === null ? [AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initialHabits))] : []),
           ...(savedMall === null ? [AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify(initialMall))] : []),
@@ -126,7 +170,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         if (active) {
           setHabits(initialHabits);
           setCoins(initialMall.coins ?? 50);
-          setPurchasedItems(initialMall.purchasedItems ?? []);
+          setPurchasedItems(initialPurchasedItems);
+          setMallPlacements(initialPlacements);
           setRewardedCheckIns(initialMall.rewardedCheckIns ?? []);
           setRewardTokens({ ...EMPTY_TOKENS, ...initialMall.rewardTokens });
         }
@@ -151,11 +196,12 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens }) => {
+  const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens; placements: Record<string, string> }) => {
     try {
       await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify(next));
       setCoins(next.coins);
       setPurchasedItems(next.purchasedItems);
+      setMallPlacements(next.placements);
       setRewardedCheckIns(next.rewardedCheckIns);
       setRewardTokens(next.rewardTokens);
       setStorageError(null);
@@ -201,6 +247,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         const nextMall = {
           coins: coins + reward,
           purchasedItems,
+          placements: mallPlacements,
           rewardedCheckIns: [...rewardedCheckIns, rewardKey],
           rewardTokens: nextRewardTokens,
         };
@@ -224,18 +271,21 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     } finally {
       actionLock.current = false;
     }
-  }, [habits, today, rewardedCheckIns, coins, purchasedItems, rewardTokens, save]);
+  }, [habits, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, rewardTokens, save]);
 
-  const purchaseMallItem = useCallback(async (itemId: string, price: number, category: RewardCategory, ticketCost: number) => {
+  const purchaseMallItem = useCallback(async (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
     if (purchasedItems.includes(itemId)) throw new Error('這個項目已經建造完成');
     if (coins < price) throw new Error('金幣還不夠');
     if (rewardTokens[category] < ticketCost) throw new Error(`還需要 ${REWARD_CATEGORY_LABELS[category]}`);
+    if (!(MALL_SLOT_IDS as readonly string[]).includes(slotId)) throw new Error('這個商場位置不存在');
+    if (mallPlacements[slotId]) throw new Error('這個位置已經有設施');
     actionLock.current = true;
     try {
       await saveMall({
         coins: coins - price,
         purchasedItems: [...purchasedItems, itemId],
+        placements: { ...mallPlacements, [slotId]: itemId },
         rewardedCheckIns,
         rewardTokens: { ...rewardTokens, [category]: rewardTokens[category] - ticketCost },
       });
@@ -243,11 +293,29 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     } finally {
       actionLock.current = false;
     }
-  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, saveMall]);
+  }, [coins, purchasedItems, mallPlacements, rewardedCheckIns, rewardTokens, saveMall]);
+
+  const moveMallItem = useCallback(async (itemId: string, slotId: MallSlotId) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (!purchasedItems.includes(itemId)) throw new Error('這個項目尚未建造');
+    if (!(MALL_SLOT_IDS as readonly string[]).includes(slotId)) throw new Error('這個商場位置不存在');
+    if (mallPlacements[slotId] && mallPlacements[slotId] !== itemId) throw new Error('這個位置已經有設施');
+    actionLock.current = true;
+    try {
+      const placements = Object.fromEntries(
+        Object.entries(mallPlacements).filter(([, placedItemId]) => placedItemId !== itemId),
+      );
+      placements[slotId] = itemId;
+      await saveMall({ coins, purchasedItems, rewardedCheckIns, rewardTokens, placements });
+      await Haptics.selectionAsync();
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, saveMall]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

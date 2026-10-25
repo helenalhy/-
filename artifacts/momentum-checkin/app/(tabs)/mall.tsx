@@ -3,20 +3,21 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Alert,
+  ImageBackground,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  type StyleProp,
-  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import palette from '@/constants/colors';
 import {
+  MALL_SLOT_IDS,
   REWARD_CATEGORY_LABELS,
   useHabits,
+  type MallSlotId,
   type RewardCategory,
 } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
@@ -51,68 +52,48 @@ const MALL_ITEMS: MallItem[] = [
   { id: 'colorful-planter', name: '彩色花圃', description: '每天多一點新芽和顏色', icon: 'sunrise', color: palette.light.candyCoral, category: 'decor', price: 35, ticketCost: 2 },
 ];
 
+const MALL_ITEM_BY_ID = Object.fromEntries(MALL_ITEMS.map((item) => [item.id, item])) as Record<string, MallItem>;
+
 const CATEGORY_NAMES: Record<RewardCategory, string> = {
   facility: '設施',
   shop: '店鋪',
   decor: '裝潢',
 };
 
-function FloatingCloud({
-  style,
-  size,
-  duration,
-}: {
-  style: StyleProp<ViewStyle>;
-  size: number;
-  duration: number;
-}) {
-  const drift = useRef(new Animated.Value(0)).current;
+const MALL_SLOT_POSITIONS: Record<MallSlotId, {
+  left: `${number}%`;
+  top: `${number}%`;
+  width: `${number}%`;
+  floor: string;
+}> = {
+  'floor-3-left': { left: '8%', top: '16%', width: '25%', floor: '3F' },
+  'floor-3-center': { left: '37.5%', top: '16%', width: '25%', floor: '3F' },
+  'floor-3-right': { left: '67%', top: '16%', width: '25%', floor: '3F' },
+  'floor-2-left': { left: '8%', top: '43%', width: '25%', floor: '2F' },
+  'floor-2-center': { left: '37.5%', top: '43%', width: '25%', floor: '2F' },
+  'floor-2-right': { left: '67%', top: '43%', width: '25%', floor: '2F' },
+  'floor-1-left': { left: '8%', top: '70%', width: '25%', floor: '1F' },
+  'floor-1-center': { left: '37.5%', top: '70%', width: '25%', floor: '1F' },
+  'floor-1-right': { left: '67%', top: '70%', width: '25%', floor: '1F' },
+};
 
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(drift, { toValue: 11, duration, useNativeDriver: false }),
-        Animated.timing(drift, { toValue: 0, duration, useNativeDriver: false }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [drift, duration]);
-
-  return (
-    <Animated.View style={[style, { transform: [{ translateX: drift }] }]}>
-      <Feather name="cloud" size={size} color={palette.light.card} />
-    </Animated.View>
-  );
-}
-
-function PulsingSun({ style }: { style: StyleProp<ViewStyle> }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 1.06, duration: 1800, useNativeDriver: false }),
-        Animated.timing(scale, { toValue: 1, duration: 1800, useNativeDriver: false }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [scale]);
-  return <Animated.View style={[style, { transform: [{ scale }] }]} />;
-}
-
-function BuildingTile({
+function MallSceneSlot({
+  slotId,
   item,
-  isLandmark = false,
+  isPlacementTarget,
+  isPlacementMode,
   onPress,
 }: {
+  slotId: MallSlotId;
   item?: MallItem;
-  isLandmark?: boolean;
+  isPlacementTarget: boolean;
+  isPlacementMode: boolean;
   onPress?: () => void;
 }) {
   const colors = useColors();
   const popIn = useRef(new Animated.Value(0.78)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
+  const position = MALL_SLOT_POSITIONS[slotId];
 
   useEffect(() => {
     if (!item) return;
@@ -126,52 +107,45 @@ function BuildingTile({
 
   if (item) {
     return (
-      <Animated.View style={[
-        styles.buildingTile,
-        { backgroundColor: colors.card, borderColor: colors.border },
-        { opacity: fadeIn, transform: [{ scale: popIn }] },
-      ]}>
-        <View style={[styles.buildingRoof, { backgroundColor: item.color }]}>
-          <Feather name={item.icon as keyof typeof Feather.glyphMap} size={25} color={colors.foreground} />
-        </View>
-        <View style={styles.buildingDoorRow}>
-          <View style={[styles.buildingWindow, { backgroundColor: colors.candySky }]} />
-          <View style={[styles.buildingDoor, { backgroundColor: colors.candyPeach }]} />
-          <View style={[styles.buildingWindow, { backgroundColor: colors.candySky }]} />
-        </View>
-        <Text numberOfLines={1} style={[styles.buildingName, { color: colors.foreground }]}>{item.name}</Text>
-        <View style={[styles.builtMark, { backgroundColor: colors.primary }]}><Feather name="check" size={10} color={colors.primaryForeground} /></View>
-      </Animated.View>
-    );
-  }
-  if (isLandmark) {
-    return (
-      <View style={[styles.buildingTile, { backgroundColor: colors.candyCream, borderColor: colors.candyMintDark }]}>
-        <View style={[styles.buildingRoof, { backgroundColor: colors.candyMint }]}>
-          <Feather name="map-pin" size={24} color={colors.candyMintDark} />
-        </View>
-        <View style={styles.buildingDoorRow}>
-          <View style={[styles.buildingWindow, { backgroundColor: colors.candySky }]} />
-          <View style={[styles.buildingDoor, { backgroundColor: colors.candyMintDark }]} />
-          <View style={[styles.buildingWindow, { backgroundColor: colors.candySky }]} />
-        </View>
-        <Text style={[styles.buildingName, { color: colors.foreground }]}>中庭廣場</Text>
-        <View style={[styles.builtMark, { backgroundColor: colors.primary }]}><Feather name="check" size={10} color={colors.primaryForeground} /></View>
-      </View>
+      <Pressable
+        style={[styles.sceneSlot, { left: position.left, top: position.top, width: position.width }]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${position.floor} ${item.name}，點選可移動`}
+      >
+        <Animated.View style={[
+          styles.sceneShopBadge,
+          { backgroundColor: item.color, opacity: fadeIn, transform: [{ scale: popIn }] },
+        ]}>
+          <Feather name={item.icon as keyof typeof Feather.glyphMap} size={17} color={colors.foreground} />
+        </Animated.View>
+        <Text numberOfLines={1} style={[styles.sceneShopName, { color: colors.foreground }]}>{item.name}</Text>
+      </Pressable>
     );
   }
   return (
     <Pressable
-      style={[styles.emptyLot, { borderColor: colors.candyMintDark, backgroundColor: colors.candyCream }]}
+      style={[
+        styles.sceneSlot,
+        { left: position.left, top: position.top, width: position.width },
+        isPlacementTarget && styles.sceneSlotTarget,
+      ]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="選擇要建造的商場項目"
+      accessibilityLabel={isPlacementMode ? `${position.floor} 空位，放置選擇的項目` : `${position.floor} 空位，選擇要建造的項目`}
     >
-      <View style={[styles.emptyLotIcon, { backgroundColor: colors.candyMint }]}>
-        <Feather name="plus" size={18} color={colors.primary} />
+      <View style={[
+        styles.sceneEmptyBadge,
+        { backgroundColor: isPlacementTarget ? colors.primary : colors.card },
+        isPlacementTarget && styles.sceneEmptyBadgeActive,
+      ]}>
+        <Feather
+          name={isPlacementTarget ? 'map-pin' : 'plus'}
+          size={isPlacementTarget ? 14 : 12}
+          color={isPlacementTarget ? colors.primaryForeground : colors.primary}
+        />
       </View>
-      <Text style={[styles.emptyLotTitle, { color: colors.primary }]}>待規劃</Text>
-      <Text style={[styles.emptyLotCopy, { color: colors.mutedForeground }]}>選一個新項目</Text>
+      {isPlacementTarget && <Text style={[styles.sceneShopName, { color: colors.primary }]}>放這裡</Text>}
     </Pressable>
   );
 }
@@ -181,11 +155,13 @@ export default function MallScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const shopSectionY = useRef(0);
+  const mallSceneY = useRef(0);
   const sceneOpacity = useRef(new Animated.Value(0)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
-  const { coins, purchasedItems, rewardTokens, purchaseMallItem, storageError } = useHabits();
+  const { coins, purchasedItems, mallPlacements, rewardTokens, purchaseMallItem, moveMallItem, storageError } = useHabits();
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' } | null>(null);
   const constructed = useMemo(
     () => MALL_ITEMS.filter((item) => purchasedItems.includes(item.id)),
     [purchasedItems],
@@ -193,11 +169,7 @@ export default function MallScreen() {
   const visibleItems = category === 'all'
     ? MALL_ITEMS
     : MALL_ITEMS.filter((item) => item.category === category);
-  const slots = Array.from({ length: Math.max(6, constructed.length + 2) }, (_, index) => {
-    if (index === 0) return { type: 'landmark' as const };
-    const item = constructed[index - 1];
-    return item ? { type: 'building' as const, item } : { type: 'empty' as const };
-  });
+  const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
 
   useEffect(() => {
     const entrance = Animated.parallel([

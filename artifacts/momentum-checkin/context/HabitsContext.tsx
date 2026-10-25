@@ -53,10 +53,13 @@ interface HabitsContextValue {
   toggleCheckIn: (id: string) => Promise<number>;
   purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
   moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
+  storeMallItem: (itemId: string) => Promise<void>;
 }
 
 const STORAGE_KEY = 'momentum.habits.v1';
 const MALL_STORAGE_KEY = 'momentum.mall.v1';
+// Version 2 makes an owned item without a placement an intentional collection item.
+const MALL_SCHEMA_VERSION = 2;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
 
@@ -81,6 +84,7 @@ function normalizeHabits(habits: Habit[]): Habit[] {
 function normalizeMallPlacements(
   savedPlacements: Record<string, string> | undefined,
   purchasedItems: string[],
+  schemaVersion = 1,
 ): Record<string, string> {
   const placements: Record<string, string> = {};
   const assignedItems = new Set<string>();
@@ -94,7 +98,7 @@ function normalizeMallPlacements(
       assignedItems.add(itemId);
     }
   }
-  for (const itemId of purchasedItems) {
+  for (const itemId of schemaVersion < MALL_SCHEMA_VERSION ? purchasedItems : []) {
     if (assignedItems.has(itemId)) continue;
     const openSlot = MALL_SLOT_IDS.find((slotId) => !placements[slotId]);
     if (!openSlot) break;
@@ -153,13 +157,9 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         const initialHabits = saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]);
         const initialMall = savedMall === null
           ? { coins: 0, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
-          : JSON.parse(savedMall) as { coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string> };
+          : JSON.parse(savedMall) as { schemaVersion?: number; coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string> };
         const initialPurchasedItems = initialMall.purchasedItems ?? [];
-        const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems);
-        await Promise.all([
-          ...(saved === null ? [AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initialHabits))] : []),
-          ...(savedMall === null ? [AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify(initialMall))] : []),
-        ]);
+        const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems, initialMall.schemaVersion);
         if (active) {
           setHabits(initialHabits);
           setCoins(initialMall.coins ?? 0);
@@ -167,6 +167,21 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           setMallPlacements(initialPlacements);
           setRewardedCheckIns(initialMall.rewardedCheckIns ?? []);
           setRewardTokens({ ...EMPTY_TOKENS, ...initialMall.rewardTokens });
+        }
+        // Reading existing data must not depend on being able to write a migration.
+        try {
+          await Promise.all([
+            ...(saved === null ? [AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initialHabits))] : []),
+            ...((initialMall.schemaVersion ?? 1) < MALL_SCHEMA_VERSION ? [
+              AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify({
+                ...initialMall,
+                schemaVersion: MALL_SCHEMA_VERSION,
+                placements: initialPlacements,
+              })),
+            ] : []),
+          ]);
+        } catch {
+          if (active) setStorageError('紀錄已載入，但初始化儲存失敗，請檢查裝置空間後重新開啟 App。');
         }
       } catch {
         if (active) setStorageError('目前無法讀取已儲存的紀錄，請重新開啟 App。');
@@ -191,7 +206,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens; placements: Record<string, string> }) => {
     try {
-      await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify(next));
+      await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify({ ...next, schemaVersion: MALL_SCHEMA_VERSION }));
       setCoins(next.coins);
       setPurchasedItems(next.purchasedItems);
       setMallPlacements(next.placements);
@@ -236,6 +251,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       if (reward > 0) {
         const rewardKey = `${id}:${today}`;
         const nextMall = {
+          schemaVersion: MALL_SCHEMA_VERSION,
           coins: coins + reward,
           purchasedItems,
           placements: mallPlacements,
@@ -307,9 +323,23 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, saveMall]);
 
+  const storeMallItem = useCallback(async (itemId: string) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (!purchasedItems.includes(itemId)) throw new Error('這個項目尚未購買');
+    actionLock.current = true;
+    try {
+      const placements = Object.fromEntries(
+        Object.entries(mallPlacements).filter(([, placedItemId]) => placedItemId !== itemId),
+      );
+      await saveMall({ coins, purchasedItems, rewardedCheckIns, rewardTokens, placements });
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, saveMall]);
+
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

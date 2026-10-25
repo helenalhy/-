@@ -82,7 +82,7 @@ function MallSceneSlot({
         style={[styles.sceneSlot, { left: position.left, top: position.top, width: position.width }]}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${position.floor} ${item.name}，點選可移動`}
+        accessibilityLabel={`${position.floor} ${item.name}，點選可移動或收起`}
         testID={`mall-slot-${slotId}`}
       >
         <Animated.View style={[
@@ -131,21 +131,24 @@ export default function MallScreen() {
   const mallSceneY = useRef(0);
   const sceneOpacity = useRef(new Animated.Value(0)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
-  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storageError } = useHabits();
+  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, storageError, isLoading } = useHabits();
+  const [showCollection, setShowCollection] = useState(false);
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
   const [purchasing, setPurchasing] = useState<string | null>(null);
-  const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' } | null>(null);
+  const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' | 'restore' } | null>(null);
   const constructed = useMemo(
-    () => MALL_ITEMS.filter((item) => purchasedItems.includes(item.id)),
-    [purchasedItems],
+    () => MALL_ITEMS.filter((item) => Object.values(mallPlacements).includes(item.id)),
+    [mallPlacements],
   );
+  const collectionItems = MALL_ITEMS.filter((item) => purchasedItems.includes(item.id) && !Object.values(mallPlacements).includes(item.id));
   const floorTheme = MALL_FLOORS[currentFloor - 1];
   const floorItems = MALL_ITEMS.filter((item) => item.floor === currentFloor);
-  const visibleItems = floorItems.filter((item) => category === 'all' || item.category === category);
+  const visibleItems = (showCollection ? collectionItems : floorItems).filter((item) => category === 'all' || item.category === category);
   const catalogPages = Math.max(1, Math.ceil(visibleItems.length / CATALOG_PAGE_SIZE));
-  const pagedItems = visibleItems.slice((catalogPage - 1) * CATALOG_PAGE_SIZE, catalogPage * CATALOG_PAGE_SIZE);
+  const currentCatalogPage = Math.min(catalogPage, catalogPages);
+  const pagedItems = visibleItems.slice((currentCatalogPage - 1) * CATALOG_PAGE_SIZE, currentCatalogPage * CATALOG_PAGE_SIZE);
   const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
   const floorSlots = MALL_SLOT_IDS.filter((slotId) => slotId.startsWith(`floor-${currentFloor}-`));
   const floorItemCount = floorSlots.filter((slotId) => mallPlacements[slotId]).length;
@@ -179,7 +182,7 @@ export default function MallScreen() {
   }
 
   function startPurchasePlacement(item: MallItem) {
-    if (purchasedItems.includes(item.id) || purchasing || placementIntent) return;
+    if (isLoading || purchasedItems.includes(item.id) || purchasing || placementIntent) return;
     if (coins < item.price) {
       Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
       return;
@@ -190,7 +193,7 @@ export default function MallScreen() {
 
   async function placeItemInSlot(slotId: MallSlotId) {
     if (!placementIntent || !currentPlacementItem || purchasing) return;
-    if (placementIntent.mode === 'purchase' && mallPlacements[slotId]) return;
+    if (placementIntent.mode !== 'move' && mallPlacements[slotId]) return;
     if (mallPlacements[slotId] === currentPlacementItem.id) return;
     setPurchasing(currentPlacementItem.id);
     try {
@@ -205,18 +208,19 @@ export default function MallScreen() {
         Alert.alert('建造完成！', `${currentPlacementItem.name}已放在 ${getSlotPosition(slotId).floor}。`);
       } else {
         await moveMallItem(currentPlacementItem.id, slotId);
-        Alert.alert('位置已更新', `${currentPlacementItem.name}已搬到 ${getSlotPosition(slotId).floor}。`);
+        Alert.alert('位置已更新', `${currentPlacementItem.name}已放到 ${getSlotPosition(slotId).floor}，沒有扣除金幣。`);
       }
       setPlacementIntent(null);
       scrollToMallScene();
-    } catch {
-      Alert.alert('沒有更新成功', '請再試一次。');
+    } catch (error) {
+      Alert.alert('沒有更新成功', error instanceof Error ? error.message : '請再試一次。');
     } finally {
       setPurchasing(null);
     }
   }
 
   function handleSceneSlotPress(slotId: MallSlotId) {
+    if (isLoading || purchasing) return;
     const itemId = mallPlacements[slotId];
     if (placementIntent) {
       if (!itemId || placementIntent.mode === 'move') void placeItemInSlot(slotId);
@@ -226,11 +230,26 @@ export default function MallScreen() {
       setPlacementIntent({ itemId, mode: 'move' });
       return;
     }
+    setShowCollection(false);
+    setCatalogPage(1);
     scrollToCatalog();
   }
 
   function scrollToCatalog() {
     scrollRef.current?.scrollTo({ y: Math.max(0, shopSectionY.current - 14), animated: true });
+  }
+
+  async function storeSelectedItem() {
+    if (!currentPlacementItem || purchasing || placementIntent?.mode !== 'move') return;
+    setPurchasing(currentPlacementItem.id);
+    try {
+      await storeMallItem(currentPlacementItem.id);
+      setPlacementIntent(null);
+    } catch (error) {
+      Alert.alert('沒有收起成功', error instanceof Error ? error.message : '請再試一次。');
+    } finally {
+      setPurchasing(null);
+    }
   }
 
   return (
@@ -282,10 +301,16 @@ export default function MallScreen() {
               <Feather name="map-pin" size={19} color={colors.primary} />
               <View style={styles.placementCopy}>
                 <Text style={[styles.placementTitle, { color: colors.foreground }]}>
-                  {placementIntent.mode === 'purchase' ? '選擇擺放位置' : '選擇新的位置'}
+                  {placementIntent.mode === 'purchase' ? '選擇擺放位置' : placementIntent.mode === 'restore' ? '從收藏免費擺放' : '搬動或收起'}
                 </Text>
-                <Text style={[styles.placementSubtitle, { color: colors.mutedForeground }]}>{currentPlacementItem.name} · 可用箭頭換層，{placementIntent.mode === 'move' ? '選位置搬動或交換' : '選好位置才扣款'}</Text>
+                <Text style={[styles.placementSubtitle, { color: colors.mutedForeground }]}>{currentPlacementItem.name} · 可用箭頭換層，{placementIntent.mode === 'move' ? '選位置搬動或交換；收起不退金幣' : placementIntent.mode === 'restore' ? '選任一空位，不扣金幣' : '選好位置才扣金幣'}</Text>
               </View>
+              {placementIntent.mode === 'move' && (
+                <Pressable onPress={() => void storeSelectedItem()} disabled={purchasing !== null} accessibilityRole="button" accessibilityLabel={`收起${currentPlacementItem.name}到收藏櫃`} testID="store-selected-item" style={styles.collectionAction}>
+                  <Feather name="archive" size={20} color={colors.primary} />
+                  <Text style={[styles.filterText, { color: colors.primary }]}>收起</Text>
+                </Pressable>
+              )}
               <Pressable onPress={() => setPlacementIntent(null)} disabled={purchasing !== null} accessibilityRole="button" accessibilityLabel="取消擺放" hitSlop={10}>
                 <Feather name="x-circle" size={21} color={colors.primary} />
               </Pressable>
@@ -346,7 +371,7 @@ export default function MallScreen() {
             <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
               <Feather name="move" size={13} color={colors.primary} />
               <Text style={[styles.mapFooterText, { color: colors.foreground }]}>
-                {placementIntent ? '點選「放這裡」完成擺放，確認後才扣款' : '點選空位新增 · 點選已建設施可搬動'}
+                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選「放這裡」完成擺放，確認後才扣款' : placementIntent.mode === 'restore' ? '用箭頭換層，選空位免費擺放' : '選位置免費搬動或交換，也可收起到收藏櫃') : '點選空位新增 · 點選已建設施可搬動或收起'}
               </Text>
             </View>
           </Animated.View>
@@ -359,13 +384,21 @@ export default function MallScreen() {
           </View>
         )}
 
+        <View style={styles.collectionTabs}>
+          {([{ id: false, label: '本層兌換', icon: 'shopping-bag' }, { id: true, label: `收藏櫃 · ${collectionItems.length}`, icon: 'archive' }] as const).map((tab) => (
+            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
+              <Feather name={tab.icon} size={16} color={colors.primary} />
+              <Text style={[styles.filterText, { color: colors.primary }]}>{tab.label}</Text>
+            </Pressable>
+          ))}
+        </View>
         <View
           style={styles.catalogHeader}
           onLayout={(event) => { shopSectionY.current = event.nativeEvent.layout.y; }}
         >
           <View>
-            <Text testID="floor-catalog-title" style={[styles.sceneTitle, { color: colors.foreground }]}>{currentFloor}F 專屬兌換 · {floorTheme.title}</Text>
-            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>本層 {floorItems.length} 款限定選物 · 選好款式，再決定擺放位置</Text>
+            <Text testID="floor-catalog-title" style={[styles.sceneTitle, { color: colors.foreground }]}>{showCollection ? '收藏櫃 · 所有樓層' : `${currentFloor}F 專屬兌換 · ${floorTheme.title}`}</Text>
+            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>{showCollection ? '保留所有權 · 收起不退金幣，重新擺放免費' : `本層 ${floorItems.length} 款限定選物 · 選好款式，再決定擺放位置`}</Text>
           </View>
           <Feather name="arrow-down" size={17} color={colors.primary} />
         </View>
@@ -384,18 +417,21 @@ export default function MallScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label} {floorItems.filter((item) => filter.id === 'all' || item.category === filter.id).length}</Text>
+                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label} {(showCollection ? collectionItems : floorItems).filter((item) => filter.id === 'all' || item.category === filter.id).length}</Text>
               </Pressable>
             );
           })}
         </View>
 
-        <CatalogPager id="catalog-top" page={catalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
+        <CatalogPager id="catalog-top" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
         <View style={styles.catalogList}>
+          {showCollection && visibleItems.length === 0 && (
+            <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>{collectionItems.length === 0 ? '收藏櫃暫時沒有項目。點選場景中的設施，再按「收起」，就能留待下次布置。' : '這個分類暫時沒有收藏，試試其他分類。'}</Text>
+          )}
           {pagedItems.map((item) => {
             const owned = purchasedItems.includes(item.id);
             const enoughCoins = coins >= item.price;
-            const disabled = owned || purchasing !== null || placementIntent !== null;
+            const disabled = isLoading || (owned && !showCollection) || purchasing !== null || placementIntent !== null;
             return (
               <View key={item.id} style={[styles.catalogCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={[styles.catalogIcon, { backgroundColor: item.color }]}>
@@ -407,23 +443,30 @@ export default function MallScreen() {
                     <Text style={[styles.itemType, { color: colors.primary, backgroundColor: colors.secondary }]}>{CATEGORY_NAMES[item.category]}</Text>
                   </View>
                   <Text numberOfLines={1} style={[styles.itemDescription, { color: colors.mutedForeground }]}>{item.description}</Text>
-                  <View style={styles.costRow}>
+                  {showCollection ? <Text style={[styles.sceneSub, { color: colors.primary }]}>已擁有 · 免費擺放</Text> : <View style={styles.costRow}>
                     <View style={styles.costPart}><Feather name="circle" size={11} color={colors.candyCaramelDark} /><Text style={[styles.costText, { color: colors.candyCaramelDark }]}>{item.price}</Text></View>
                     <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>
-                  </View>
+                  </View>}
                 </View>
                 <Pressable
-                  onPress={() => startPurchasePlacement(item)}
+                  onPress={() => {
+                    if (showCollection) {
+                      setPlacementIntent({ itemId: item.id, mode: 'restore' });
+                      scrollToMallScene();
+                    } else {
+                      startPurchasePlacement(item);
+                    }
+                  }}
                   disabled={disabled}
                   style={[
                     styles.buildButton,
                     { backgroundColor: owned ? colors.secondary : colors.primary, opacity: disabled && !owned ? 0.55 : 1 },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={owned ? `${item.name}已建造` : `選擇位置建造${item.name}`}
-                  testID={`build-${item.id}`}
+                  accessibilityLabel={showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}
+                  testID={`${showCollection ? 'restore' : 'build'}-${item.id}`}
                 >
-                  <Feather name={owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
+                  <Feather name={showCollection ? 'map-pin' : owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
                 </Pressable>
                 {!owned && !enoughCoins && (
                   <Text style={[styles.missingText, { color: colors.mutedForeground }]}>
@@ -434,7 +477,7 @@ export default function MallScreen() {
             );
           })}
         </View>
-        <CatalogPager id="catalog-bottom" page={catalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
+        <CatalogPager id="catalog-bottom" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -442,6 +485,10 @@ export default function MallScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  collectionTabs: { flexDirection: 'row', gap: 8, marginTop: 20 },
+  collectionTab: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  collectionAction: { alignItems: 'center', gap: 4, padding: 6 },
+  collectionEmpty: { fontSize: 12, lineHeight: 20, paddingVertical: 16 },
   content: { paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   eyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },

@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import palette from '@/constants/colors';
 import { ThemedMallObject } from './ThemedMallObject';
+import { MallCustomers } from './MallCustomers';
 
 const c = palette.light;
 
@@ -59,33 +60,22 @@ function MiniFountain({ color }: { color: string }) {
   return <View style={s.object}><Animated.View style={{ transform: [{ translateY: rise }] }}><Feather name="droplet" size={24} color={c.candySkyDark} /></Animated.View><View style={[s.fountainBowl, { backgroundColor: color, borderColor: c.candySkyDark }]} /><View style={[s.fountainFoot, { backgroundColor: c.candyLavender }]} /></View>;
 }
 
-export function MallAmbience() {
+export function MallAmbience({ floor = 1 }: { floor?: number }) {
   const shimmer = useRef(new Animated.Value(0.25)).current;
-  const stroll = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const twinkle = Animated.loop(Animated.sequence([
       Animated.timing(shimmer, { toValue: 0.95, duration: 1600, useNativeDriver: false }),
       Animated.timing(shimmer, { toValue: 0.25, duration: 1600, useNativeDriver: false }),
     ]));
-    const visitors = Animated.loop(Animated.sequence([
-      Animated.timing(stroll, { toValue: 85, duration: 12000, easing: Easing.linear, useNativeDriver: false }),
-      Animated.timing(stroll, { toValue: 0, duration: 12000, easing: Easing.linear, useNativeDriver: false }),
-    ]));
     twinkle.start();
-    visitors.start();
-    return () => { twinkle.stop(); visitors.stop(); };
-  }, [shimmer, stroll]);
+    return () => { twinkle.stop(); };
+  }, [shimmer]);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <Animated.View style={[s.sparkle, { left: '24%', top: '8%', opacity: shimmer }]}><Feather name="star" size={11} color={c.card} /></Animated.View>
       <Animated.View style={[s.sparkle, { right: '20%', top: '11%', opacity: shimmer }]}><Feather name="star" size={8} color={c.card} /></Animated.View>
       <Animated.View style={[s.waterGlint, { opacity: shimmer }]}><Feather name="droplet" size={14} color={c.candySkyDark} /></Animated.View>
-      <Animated.View style={[s.visitor, { left: '25%', top: '68%', transform: [{ translateX: stroll }] }]}>
-        <View style={[s.head, { backgroundColor: c.candyCaramel }]} /><View style={[s.body, { backgroundColor: c.candyRoseDark }]} />
-      </Animated.View>
-      <Animated.View style={[s.visitor, { left: '43%', top: '73%', transform: [{ translateX: Animated.multiply(stroll, -0.7) }] }]}>
-        <View style={[s.head, { backgroundColor: c.candyPeach }]} /><View style={[s.body, { backgroundColor: c.candySkyDark }]} />
-      </Animated.View>
+      <MallCustomers floor={floor} />
     </View>
   );
 }

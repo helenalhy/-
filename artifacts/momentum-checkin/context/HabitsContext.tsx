@@ -11,6 +11,9 @@ import React, {
   type ReactNode,
 } from 'react';
 import palette from '@/constants/colors';
+import { MALL_SLOT_IDS, type MallSlotId } from '@/constants/mall-layout';
+export { MALL_SLOT_IDS } from '@/constants/mall-layout';
+export type { MallSlotId } from '@/constants/mall-layout';
 
 export interface Habit {
   id: string;
@@ -25,12 +28,7 @@ export interface Habit {
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
 export type RewardTokens = Record<RewardCategory, number>;
-export type MallSlotId = `floor-${number}-${'left' | 'center' | 'right'}`;
 export const MALL_FLOOR_COUNT = 10;
-// Keep the original nine positions first so older purchases retain their locations.
-export const MALL_SLOT_IDS: MallSlotId[] = [3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap(
-  (floor) => (['left', 'center', 'right'] as const).map((column): MallSlotId => `floor-${floor}-${column}`),
-);
 
 export const REWARD_CATEGORY_LABELS: Record<RewardCategory, string> = {
   facility: '設施券',

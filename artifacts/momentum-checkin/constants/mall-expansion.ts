@@ -1,6 +1,8 @@
 import type { MallFloorTheme, MallItem } from './mall';
 import type { RewardCategory } from '@/context/HabitsContext';
 import palette from './colors';
+import { LOWER_COLLECTIONS } from './mall-additions-lower';
+import { UPPER_COLLECTIONS } from './mall-additions-upper';
 
 type Visual = NonNullable<MallItem['visual']>;
 const c = palette.light;
@@ -83,10 +85,11 @@ const SWATCHES = [c.candyPink, c.candyMint, c.candySky, c.candyLavender, c.candy
 const SHOP_ICONS = ['shopping-bag', 'gift', 'coffee', 'heart', 'package', 'feather', 'book-open', 'star'];
 const CATEGORIES: RewardCategory[] = ['shop', 'facility', 'decor'];
 
-export function createExpandedItems(themes: MallFloorTheme[]): MallItem[] {
-  return COLLECTIONS.flatMap((collection, floorIndex) => CATEGORIES.flatMap((category, categoryIndex) =>
-    collection[category].map((name, index) => {
-      const visual = category === 'facility' ? FACILITY_VISUALS[index] : category === 'decor' ? DECOR_VISUALS[index] : undefined;
+function buildCollections(collections: Record<RewardCategory, string[]>[], themes: MallFloorTheme[], offset: number): MallItem[] {
+  return collections.flatMap((collection, floorIndex) => CATEGORIES.flatMap((category, categoryIndex) =>
+    collection[category].map((name, entryIndex) => {
+      const index = entryIndex + offset;
+      const visual = category === 'facility' ? FACILITY_VISUALS[index % FACILITY_VISUALS.length] : category === 'decor' ? DECOR_VISUALS[index % DECOR_VISUALS.length] : undefined;
       const price = (category === 'shop' ? 45 : category === 'facility' ? 35 : 15) + floorIndex * 5 + (index % 5) * 10;
       return {
         id: `collection-${floorIndex + 1}-${category}-${index + 1}`,
@@ -104,4 +107,11 @@ export function createExpandedItems(themes: MallFloorTheme[]): MallItem[] {
       };
     }),
   ));
+}
+
+export function createExpandedItems(themes: MallFloorTheme[]): MallItem[] {
+  return [
+    ...buildCollections(COLLECTIONS, themes, 0),
+    ...buildCollections([...LOWER_COLLECTIONS, ...UPPER_COLLECTIONS], themes, 17),
+  ];
 }

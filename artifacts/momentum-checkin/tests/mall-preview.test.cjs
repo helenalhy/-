@@ -100,6 +100,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
       ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View'].map((key) => [key, key])),
     };
     if (name === '@expo/vector-icons') return { Feather: 'Feather' };
+    if (name === 'expo-router') return { router: { push() {}, navigate() {} } };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === '@/constants/colors') return { light: {} };
     if (name === '@/hooks/useColors') return { useColors: () => ({}) };

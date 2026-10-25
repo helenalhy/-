@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Alert,
   Platform,
   Pressable,
@@ -8,6 +9,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import palette from '@/constants/colors';
@@ -54,6 +57,50 @@ const CATEGORY_NAMES: Record<RewardCategory, string> = {
   decor: '裝潢',
 };
 
+function FloatingCloud({
+  style,
+  size,
+  duration,
+}: {
+  style: StyleProp<ViewStyle>;
+  size: number;
+  duration: number;
+}) {
+  const drift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, { toValue: 11, duration, useNativeDriver: false }),
+        Animated.timing(drift, { toValue: 0, duration, useNativeDriver: false }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [drift, duration]);
+
+  return (
+    <Animated.View style={[style, { transform: [{ translateX: drift }] }]}>
+      <Feather name="cloud" size={size} color={palette.light.card} />
+    </Animated.View>
+  );
+}
+
+function PulsingSun({ style }: { style: StyleProp<ViewStyle> }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.06, duration: 1800, useNativeDriver: false }),
+        Animated.timing(scale, { toValue: 1, duration: 1800, useNativeDriver: false }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [scale]);
+  return <Animated.View style={[style, { transform: [{ scale }] }]} />;
+}
+
 function BuildingTile({
   item,
   isLandmark = false,
@@ -64,9 +111,26 @@ function BuildingTile({
   onPress?: () => void;
 }) {
   const colors = useColors();
+  const popIn = useRef(new Animated.Value(0.78)).current;
+  const fadeIn = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!item) return;
+    const animation = Animated.parallel([
+      Animated.spring(popIn, { toValue: 1, friction: 5, tension: 135, useNativeDriver: false }),
+      Animated.timing(fadeIn, { toValue: 1, duration: 260, useNativeDriver: false }),
+    ]);
+    animation.start();
+    return () => animation.stop();
+  }, [item?.id, popIn, fadeIn]);
+
   if (item) {
     return (
-      <View style={[styles.buildingTile, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Animated.View style={[
+        styles.buildingTile,
+        { backgroundColor: colors.card, borderColor: colors.border },
+        { opacity: fadeIn, transform: [{ scale: popIn }] },
+      ]}>
         <View style={[styles.buildingRoof, { backgroundColor: item.color }]}>
           <Feather name={item.icon as keyof typeof Feather.glyphMap} size={25} color={colors.foreground} />
         </View>
@@ -77,7 +141,7 @@ function BuildingTile({
         </View>
         <Text numberOfLines={1} style={[styles.buildingName, { color: colors.foreground }]}>{item.name}</Text>
         <View style={[styles.builtMark, { backgroundColor: colors.primary }]}><Feather name="check" size={10} color={colors.primaryForeground} /></View>
-      </View>
+      </Animated.View>
     );
   }
   if (isLandmark) {
@@ -117,6 +181,8 @@ export default function MallScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const shopSectionY = useRef(0);
+  const sceneOpacity = useRef(new Animated.Value(0)).current;
+  const sceneOffset = useRef(new Animated.Value(14)).current;
   const { coins, purchasedItems, rewardTokens, purchaseMallItem, storageError } = useHabits();
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -132,6 +198,15 @@ export default function MallScreen() {
     const item = constructed[index - 1];
     return item ? { type: 'building' as const, item } : { type: 'empty' as const };
   });
+
+  useEffect(() => {
+    const entrance = Animated.parallel([
+      Animated.timing(sceneOpacity, { toValue: 1, duration: 420, useNativeDriver: false }),
+      Animated.spring(sceneOffset, { toValue: 0, friction: 8, tension: 70, useNativeDriver: false }),
+    ]);
+    entrance.start();
+    return () => entrance.stop();
+  }, [sceneOpacity, sceneOffset]);
 
   async function build(item: MallItem) {
     if (purchasedItems.includes(item.id) || purchasing) return;
@@ -149,6 +224,7 @@ export default function MallScreen() {
     setPurchasing(item.id);
     try {
       await purchaseMallItem(item.id, item.price, item.category, item.ticketCost);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       Alert.alert('建造完成！', `${item.name}已加入你的商場。`);
     } catch {
       Alert.alert('沒有建造成功', '請再試一次。');
@@ -221,11 +297,15 @@ export default function MallScreen() {
           </View>
         </View>
 
-        <View style={[styles.scene, { backgroundColor: colors.candyMint, borderColor: colors.border }]}>
+        <Animated.View style={[
+          styles.scene,
+          { backgroundColor: colors.candyMint, borderColor: colors.border },
+          { opacity: sceneOpacity, transform: [{ translateY: sceneOffset }] },
+        ]}>
           <View style={[styles.sky, { backgroundColor: colors.candySky }]}>
-            <View style={[styles.skySun, { backgroundColor: colors.candyLemon }]} />
-            <Feather name="cloud" size={27} color={colors.card} style={styles.cloudOne} />
-            <Feather name="cloud" size={21} color={colors.card} style={styles.cloudTwo} />
+            <PulsingSun style={[styles.skySun, { backgroundColor: colors.candyLemon }]} />
+            <FloatingCloud style={styles.cloudOne} size={27} duration={2200} />
+            <FloatingCloud style={styles.cloudTwo} size={21} duration={2700} />
             <View style={styles.skyCaption}>
               <Text style={[styles.skyTitle, { color: colors.foreground }]}>今天也有新的地方</Text>
               <Text style={[styles.skyText, { color: colors.mutedForeground }]}>等著你來慢慢打造</Text>
@@ -254,7 +334,7 @@ export default function MallScreen() {
             <Feather name="sun" size={14} color={colors.candyCaramelDark} />
             <Text style={[styles.mapFooterText, { color: colors.mutedForeground }]}>每個小小的努力，都會在這裡留下痕跡。</Text>
           </View>
-        </View>
+        </Animated.View>
 
         {storageError && (
           <View style={[styles.storageError, { backgroundColor: colors.candyPink }]}>

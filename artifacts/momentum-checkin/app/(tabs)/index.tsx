@@ -20,6 +20,7 @@ import {
   useHabits,
   type Habit,
 } from '@/context/HabitsContext';
+import MallScreen from './mall';
 
 const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -69,7 +70,7 @@ function HabitRow({ habit, done, onToggle, onEdit }: {
   );
 }
 
-export default function TodayScreen() {
+export function TodayScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { habits, isLoading, storageError, today, coins, toggleCheckIn } = useHabits();
@@ -231,6 +232,10 @@ export default function TodayScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+export default function IndexScreen() {
+  return <MallScreen />;
 }
 
 const styles = StyleSheet.create({

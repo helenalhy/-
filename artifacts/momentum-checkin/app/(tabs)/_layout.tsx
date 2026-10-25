@@ -9,7 +9,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { SymbolView } from 'expo-symbols';
 
 export const unstable_settings = {
-  initialRouteName: 'mall',
+  initialRouteName: 'index',
 };
 
 // IMPORTANT: iOS 26 uses NativeTabs for native tabs with liquid glass support.
@@ -19,13 +19,13 @@ export const unstable_settings = {
 function NativeTabLayout() {
   return (
     <NativeTabs>
-      <NativeTabs.Trigger name="mall">
+      <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon
           sf={{ default: 'building.2', selected: 'building.2.fill' }}
         />
         <NativeTabs.Trigger.Label>商場</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger name="today">
         <NativeTabs.Trigger.Icon
           sf={{ default: 'sun.max', selected: 'sun.max.fill' }}
         />
@@ -80,7 +80,7 @@ function ClassicTabLayout() {
       }}
     >
       <Tabs.Screen
-        name="mall"
+        name="index"
         options={{
           title: '商場',
           tabBarIcon: ({ color }) =>
@@ -92,7 +92,7 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="today"
         options={{
           title: '今天',
           tabBarIcon: ({ color }) =>
@@ -115,6 +115,7 @@ function ClassicTabLayout() {
             ),
         }}
       />
+      <Tabs.Screen name="mall" options={{ href: null }} />
     </Tabs>
   );
 }

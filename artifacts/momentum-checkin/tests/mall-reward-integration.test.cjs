@@ -495,7 +495,7 @@ test('mall to today and back preserves the filtered catalog, purchase preview an
   assert.equal(app.storage.get(storageKeys.mall), savedMallBeforeNavigation);
 });
 
-test('an owned shop exposes its interior from the mall scene and opens its own page', async () => {
+test('tapping a redeemed shop opens its interior, while long-press keeps shop movement available', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');
   assert.ok(shop);
@@ -520,14 +520,19 @@ test('an owned shop exposes its interior from the mall scene and opens its own p
     node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-1-left',
   )[0];
   assert.ok(shopSlot?.props.item, 'the redeemed shop is visible in its floor scene');
+  assert.equal(shopSlot.props.item.id, shop.id);
   shopSlot.props.onPress();
-  mallTree = app.renderMall();
-  assert.ok(findByTestId(mallTree, 'open-shop-interior'), 'the selected shop exposes its interior action');
-  await press(mallTree, 'open-shop-interior');
   assert.deepEqual(app.navigation.at(-1), [
     'push',
     { pathname: '/mall-shop/[itemId]', params: { itemId: shop.id } },
   ]);
+
+  mallTree = app.renderMall();
+  assert.equal(findNodes(mallTree, (node) => node.props?.testID === 'cancel-placement').length, 0);
+  shopSlot.props.onLongPress();
+  mallTree = app.renderMall();
+  assert.ok(findByTestId(mallTree, 'open-shop-interior'), 'the selected shop exposes its interior action');
+  assert.ok(findByTestId(mallTree, 'cancel-placement'), 'long-press still enters the move flow');
 });
 
 test('shop interior page shows its matching decor catalog and charges only goal-earned coins', async () => {

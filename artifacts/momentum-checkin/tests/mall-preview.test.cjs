@@ -1162,7 +1162,8 @@ for (const platformOS of ['ios', 'android']) {
     assert.equal(app.find('mall-slot-floor-1-left').props.focusAfterResult, true);
     assert.deepEqual(app.alerts, []);
 
-    const base = mallCatalog.MALL_ITEMS[0];
+    const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'facility');
+    assert.ok(base, 'the exchange fixture uses a facility so the test continues to cover tap-to-move behavior');
     const firstOwned = { ...base, id: 'owned', name: '已擁有花圃' };
     const secondOwned = { ...base, id: 'second-owned', name: '已擁有噴泉' };
     const exchange = mountWithPlacementMutation({

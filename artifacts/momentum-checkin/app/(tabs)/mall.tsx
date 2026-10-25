@@ -81,6 +81,7 @@ function MallSceneSlot({
   focusResultMessage,
   onFocusAfterResult,
   onPress,
+  onLongPress,
 }: {
   slotId: MallSlotId;
   item?: MallItem;
@@ -95,6 +96,7 @@ function MallSceneSlot({
   focusResultMessage?: string | null;
   onFocusAfterResult?: () => void;
   onPress?: () => void;
+  onLongPress?: () => void;
 }) {
   const colors = useColors();
   const popIn = useRef(new Animated.Value(0.78)).current;
@@ -135,10 +137,12 @@ function MallSceneSlot({
           isLocationHighlighted && { borderWidth: 2, borderColor: colors.primary, borderRadius: 10, backgroundColor: colors.secondary },
         ]}
         onPress={onPress}
+        onLongPress={onLongPress}
         ref={accessibilityRef}
         disabled={disabled}
         accessibilityRole="button"
-        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : isLocationHighlighted ? '目前查看位置，已擺放' : '已兌換，點選可搬動或存入倉庫'}${focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
+        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : isLocationHighlighted ? '目前查看位置，已擺放' : item.category === 'shop' ? '已兌換，點選進入店內佈置，長按可搬動或存入倉庫' : '已兌換，點選可搬動或存入倉庫'}${focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
+        accessibilityHint={!isPreview && item.category === 'shop' ? '點選商店動畫進入店內佈置；長按可選取搬動。' : undefined}
         accessibilityState={{ selected: isPreview || isLocationHighlighted, disabled, busy }}
         testID={`mall-slot-${slotId}`}
       >
@@ -540,6 +544,10 @@ export default function MallScreen() {
     }
     if (itemId) {
       const item = MALL_ITEM_BY_ID[itemId];
+      if (item?.category === 'shop') {
+        router.push({ pathname: '/mall-shop/[itemId]', params: { itemId: item.id } });
+        return;
+      }
       setPlacementIntent({ itemId, mode: 'move' });
       if (item) announcePlacement(`已選取${item.name}。選空位可免費搬動，選其他物件可交換位置，也可存入倉庫；按取消可保留原位置。`);
       return;
@@ -547,6 +555,15 @@ export default function MallScreen() {
     setShowCollection(false);
     setCatalogPage(1);
     scrollToCatalog();
+  }
+
+  function handleSceneSlotLongPress(slotId: MallSlotId) {
+    if (isLoading || purchasing || operationLock.current || placementIntent) return;
+    const itemId = mallPlacements[slotId];
+    const item = itemId ? MALL_ITEM_BY_ID[itemId] : undefined;
+    if (item?.category !== 'shop') return;
+    setPlacementIntent({ itemId: item.id, mode: 'move' });
+    announcePlacement(`已選取${item.name}。已進入搬動模式，可選空位、交換位置或存入倉庫；按取消可保留原位置。`);
   }
 
   function scrollToCatalog() {
@@ -790,6 +807,7 @@ export default function MallScreen() {
                     isPlacementMode={placementIntent !== null}
                     isPlacementTarget={placementIntent !== null && !itemId}
                     onPress={() => handleSceneSlotPress(slotId)}
+                    onLongPress={() => handleSceneSlotLongPress(slotId)}
                   />
                 );
               })}
@@ -799,7 +817,7 @@ export default function MallScreen() {
             <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
               <Feather name="move" size={13} color={colors.primary} />
               <Text style={[styles.mapFooterText, { color: colors.foreground }]}>
-                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑動切換區域 · 點物件可搬動或存倉'}
+                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑動切換區域 · 點店鋪動畫進入店內 · 長按店鋪搬動 · 點設施或裝潢搬動'}
               </Text>
             </View>
           </Animated.View>

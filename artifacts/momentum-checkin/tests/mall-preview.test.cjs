@@ -245,6 +245,71 @@ test('search combines affordability and category; complete-list entry clears eve
   assert.equal(app.calls.length, 0);
 });
 
+test('search filters keep original floor separate from the current mall placement and clear without mutations', async () => {
+  const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'shop');
+  const floorOneItem = { ...base, id: 'origin-floor-one', floor: 1, name: '花園甲' };
+  const floorTwoItem = { ...base, id: 'origin-floor-two', floor: 2, name: '花園乙' };
+  const unplacedItem = { ...base, id: 'unplaced-item', floor: 1, name: '花園丙' };
+  const items = [floorOneItem, floorTwoItem, unplacedItem];
+  const placements = {
+    'floor-2-extension3-1-left': floorOneItem.id,
+    'floor-1-annex-1-left': floorTwoItem.id,
+  };
+  const app = mount(
+    { coins: 120, purchasedItems: ['origin-floor-one', 'origin-floor-two'], mallPlacements: placements },
+    items,
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+  const coinsBefore = app.habits.coins;
+  const ownedBefore = [...app.habits.purchasedItems];
+  const placementsBefore = { ...app.habits.mallPlacements };
+
+  app.find('mall-search-input').props.onChangeText('花園');
+  app.render();
+  assert.equal(pager(app).props.total, 3);
+
+  await app.press('mall-search-floor-1');
+  assert.equal(pager(app).props.total, 2);
+  assert.ok(app.find('search-select-origin-floor-one'));
+  assert.ok(app.find('search-select-unplaced-item'));
+  assert.equal(app.find('search-select-origin-floor-two'), undefined);
+
+  await app.press('mall-search-floor-all');
+  await app.press('mall-search-wing-annex');
+  assert.equal(pager(app).props.total, 1);
+  assert.ok(app.find('search-select-origin-floor-two'), 'annex is determined from its current slot, not its original floor');
+  assert.equal(app.find('search-select-origin-floor-one'), undefined);
+
+  await app.press('mall-search-wing-extension3');
+  assert.equal(pager(app).props.total, 1);
+  assert.ok(app.find('search-select-origin-floor-one'), 'extension filter follows the placement on floor 2');
+  await app.press('mall-search-floor-1');
+  assert.equal(pager(app).props.total, 1, 'original floor and actual wing can be combined independently');
+
+  await app.press('mall-search-floor-all');
+  await app.press('mall-search-wing-unplaced');
+  assert.equal(pager(app).props.total, 1);
+  assert.ok(app.find('search-select-unplaced-item'));
+
+  await app.press('mall-search-clear-filters');
+  assert.equal(pager(app).props.total, 3, 'clearing both filters restores every name match');
+  assert.equal(app.find('mall-search-wing-all').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-floor-all').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-clear-filters'), undefined);
+
+  await app.press('mall-search-wing-extension3');
+  await app.press('mall-search-floor-2');
+  assert.equal(pager(app).props.total, 0, 'filters combine rather than conflating placement floor with original floor');
+  await app.press('mall-search-clear');
+  assert.equal(pager(app).props.total, 2, 'clearing the search restores the current-floor catalog');
+  assert.equal(app.find('mall-search-floor-1'), undefined, 'search filters are hidden after leaving search');
+  assert.deepEqual(app.habits.mallPlacements, placementsBefore);
+  assert.deepEqual(app.habits.purchasedItems, ownedBefore);
+  assert.equal(app.habits.coins, coinsBefore);
+  assert.equal(app.calls.length, 0, 'filtering never starts a move, restore, or redemption');
+});
+
 test('real 1500-item catalog is fully searchable by name with the correct original floor theme', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
   assert.equal(MALL_ITEMS.length, 1500);

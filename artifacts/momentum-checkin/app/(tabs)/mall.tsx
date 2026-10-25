@@ -55,6 +55,14 @@ const WING_NAMES: Record<MallWing, string> = {
   extension3: '延伸區三',
   extension4: '延伸區四',
 };
+const SEARCH_WING_FILTERS: { id: MallWing | 'unplaced'; label: string }[] = [
+  { id: 'main', label: WING_NAMES.main },
+  { id: 'annex', label: WING_NAMES.annex },
+  { id: 'extension', label: WING_NAMES.extension },
+  { id: 'extension3', label: WING_NAMES.extension3 },
+  { id: 'extension4', label: WING_NAMES.extension4 },
+  { id: 'unplaced', label: '尚未擺放' },
+];
 
 function MallSceneSlot({
   slotId,
@@ -194,6 +202,8 @@ export default function MallScreen() {
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFloor, setSearchFloor] = useState<number | null>(null);
+  const [searchWing, setSearchWing] = useState<MallWing | 'unplaced' | null>(null);
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [priceAscending, setPriceAscending] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -216,8 +226,15 @@ export default function MallScreen() {
   const searchTerm = searchQuery.trim().toLocaleLowerCase();
   const isSearching = searchTerm.length > 0;
   const searchItems = useMemo(
-    () => MALL_ITEMS.filter((item) => item.name.toLocaleLowerCase().includes(searchTerm)),
-    [searchTerm],
+    () => MALL_ITEMS.filter((item) => {
+      if (!item.name.toLocaleLowerCase().includes(searchTerm)) return false;
+      if (searchFloor !== null && item.floor !== searchFloor) return false;
+      if (searchWing === null) return true;
+      const slotId = placedSlotsByItem.get(item.id);
+      if (searchWing === 'unplaced') return !slotId;
+      return slotId !== undefined && getSlotPosition(slotId).wing === searchWing;
+    }),
+    [searchTerm, searchFloor, searchWing, placedSlotsByItem],
   );
   const catalogItems = isSearching ? searchItems : showCollection ? collectionItems : floorItems;
   // Warehouse items are already owned and always free to place.
@@ -715,7 +732,7 @@ export default function MallScreen() {
 
         <View style={styles.collectionTabs}>
           {([{ id: false, label: '本層兌換', icon: 'shopping-bag' }, { id: true, label: `倉庫 · ${collectionItems.length}`, icon: 'archive' }] as const).map((tab) => (
-            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setSearchQuery(''); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
+            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setSearchQuery(''); setSearchFloor(null); setSearchWing(null); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
               <Feather name={tab.icon} size={16} color={colors.primary} />
               <Text style={[styles.filterText, { color: colors.primary }]}>{tab.label}</Text>
             </Pressable>
@@ -740,7 +757,14 @@ export default function MallScreen() {
             placeholder="搜尋所有樓層的商店、設施、裝修"
             placeholderTextColor={colors.mutedForeground}
             value={searchQuery}
-            onChangeText={(text) => { setSearchQuery(text); setCatalogPage(1); }}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              if (!text.trim()) {
+                setSearchFloor(null);
+                setSearchWing(null);
+              }
+              setCatalogPage(1);
+            }}
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="search"
@@ -748,7 +772,7 @@ export default function MallScreen() {
             style={[styles.searchInput, { color: colors.foreground }]}
           />
           {searchQuery.length > 0 && <Pressable
-            onPress={() => { setSearchQuery(''); setCatalogPage(1); }}
+            onPress={() => { setSearchQuery(''); setSearchFloor(null); setSearchWing(null); setCatalogPage(1); }}
             accessibilityRole="button"
             accessibilityLabel="清除搜尋，返回原本清單"
             testID="mall-search-clear"
@@ -756,6 +780,70 @@ export default function MallScreen() {
           ><Feather name="x" size={18} color={colors.primary} /></Pressable>}
         </View>
         <Text style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋 · 可配合分類 · 搜尋及換層不扣金幣</Text>
+
+        {isSearching && (
+          <View style={styles.searchLocationFilters}>
+            <View>
+              <Text style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>原屬樓層</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-floor-filters">
+                {[null, ...MALL_FLOORS.map((_, index) => index + 1)].map((floor) => {
+                  const selected = searchFloor === floor;
+                  const label = floor === null ? '全部' : `${floor}F`;
+                  return (
+                    <Pressable
+                      key={label}
+                      testID={floor === null ? 'mall-search-floor-all' : `mall-search-floor-${floor}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={floor === null ? '篩選全部原屬樓層' : `篩選原屬樓層 ${floor}F`}
+                      accessibilityState={{ selected }}
+                      onPress={() => { setSearchFloor(floor); setCatalogPage(1); }}
+                      style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
+                    >
+                      <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            <View>
+              <Text style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放分區</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-wing-filters">
+                {[{ id: null, label: '全部' }, ...SEARCH_WING_FILTERS].map((filter) => {
+                  const selected = searchWing === filter.id;
+                  const accessibilityLabel = filter.id === null
+                    ? '篩選全部目前擺放分區'
+                    : filter.id === 'unplaced'
+                      ? '篩選尚未擺放的選物，包含倉庫與未兌換物件'
+                      : `篩選目前擺放於${filter.label}`;
+                  return (
+                    <Pressable
+                      key={filter.id ?? 'all'}
+                      testID={filter.id === null ? 'mall-search-wing-all' : `mall-search-wing-${filter.id}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={accessibilityLabel}
+                      accessibilityState={{ selected }}
+                      onPress={() => { setSearchWing(filter.id); setCatalogPage(1); }}
+                      style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
+                    >
+                      <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            {(searchFloor !== null || searchWing !== null) && (
+              <Pressable
+                testID="mall-search-clear-filters"
+                accessibilityRole="button"
+                accessibilityLabel="清除原屬樓層與目前擺放分區篩選"
+                onPress={() => { setSearchFloor(null); setSearchWing(null); setCatalogPage(1); }}
+                style={styles.searchFilterClear}
+              >
+                <Text style={[styles.filterText, { color: colors.primary }]}>清除樓層與分區篩選</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
 
         {showCollection && warehouseNotice && <Text testID="warehouse-notice" accessibilityRole="text" accessibilityLiveRegion="none" style={[styles.collectionEmpty, { color: colors.primary }]}>{warehouseNotice}</Text>}
 
@@ -789,7 +877,7 @@ export default function MallScreen() {
               testID="mall-full-catalog"
               accessibilityRole="button"
               accessibilityLabel="查看本層完整清單，清除搜尋、分類、金幣篩選及排序"
-              onPress={() => { setShowCollection(false); setSearchQuery(''); setCategory('all'); setAffordableOnly(false); setPriceAscending(false); setCatalogPage(1); }}
+              onPress={() => { setShowCollection(false); setSearchQuery(''); setSearchFloor(null); setSearchWing(null); setCategory('all'); setAffordableOnly(false); setPriceAscending(false); setCatalogPage(1); }}
               style={[styles.fullCatalogButton, { borderColor: colors.border }]}
             >
               <Text style={[styles.filterText, { color: colors.primary }]}>查看 {currentFloor}F 完整清單 · 20 商店／20 設施／20 裝修</Text>
@@ -990,6 +1078,10 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, minWidth: 0, fontSize: 12, paddingVertical: 12 },
   searchClear: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   searchHint: { fontSize: 11, marginTop: 7, marginBottom: 12 },
+  searchLocationFilters: { gap: 11, marginBottom: 14 },
+  searchFilterTitle: { fontSize: 11, fontWeight: '600', marginBottom: 6 },
+  searchFilterOptions: { flexDirection: 'row', gap: 7, paddingRight: 4 },
+  searchFilterClear: { minHeight: 36, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 4 },
   redemptionControls: { gap: 9, marginBottom: 12 },
   redemptionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   redemptionOption: { minHeight: 44, justifyContent: 'center' },

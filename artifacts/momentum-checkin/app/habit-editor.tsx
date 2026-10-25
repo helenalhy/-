@@ -12,15 +12,16 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import palette from '@/constants/colors';
 import { useHabits, type RewardCategory } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
 
 const options = [
-  { icon: 'activity', color: '#DCEAD8', label: '身體' },
-  { icon: 'book-open', color: '#F5E7C9', label: '學習' },
-  { icon: 'heart', color: '#F2DFD6', label: '心情' },
-  { icon: 'coffee', color: '#E8DFF0', label: '生活' },
-  { icon: 'target', color: '#DCE7F2', label: '目標' },
+  { icon: 'activity', color: palette.light.candyMint, label: '身體' },
+  { icon: 'book-open', color: palette.light.candyLavender, label: '學習' },
+  { icon: 'heart', color: palette.light.candyPink, label: '心情' },
+  { icon: 'coffee', color: palette.light.candyPeach, label: '生活' },
+  { icon: 'target', color: palette.light.candySky, label: '目標' },
 ] as const;
 
 export default function HabitEditorScreen() {
@@ -151,9 +152,9 @@ export default function HabitEditorScreen() {
         <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>完成後獲得的獎勵</Text>
         <View style={styles.rewardOptions}>
           {([
-            { id: 'facility' as const, label: '設施券', detail: '公園與設施', icon: 'map-pin', color: '#DCEAD8' },
-            { id: 'shop' as const, label: '店鋪券', detail: '新店開張', icon: 'shopping-bag', color: '#F5E7C9' },
-            { id: 'decor' as const, label: '裝飾星', detail: '布置街區', icon: 'star', color: '#F2DFD6' },
+            { id: 'facility' as const, label: '設施券', detail: '公園與設施', icon: 'map-pin', color: palette.light.candyMint },
+            { id: 'shop' as const, label: '店鋪券', detail: '新店開張', icon: 'shopping-bag', color: palette.light.candyLemon },
+            { id: 'decor' as const, label: '裝飾星', detail: '布置街區', icon: 'star', color: palette.light.candyPink },
           ]).map((reward) => {
             const active = rewardCategory === reward.id;
             return (
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   tip: { flexDirection: 'row', gap: 10, alignItems: 'center', padding: 13, borderRadius: 14, marginTop: 23 },
   tipText: { flex: 1, fontSize: 11, lineHeight: 17 },
   saveButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 9, minHeight: 51, borderRadius: 16, marginTop: 24 },
-  saveText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  saveText: { color: palette.light.primaryForeground, fontSize: 14, fontWeight: '700' },
   deleteButton: { flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', padding: 14, marginTop: 6 },
   deleteText: { fontSize: 12, fontWeight: '600' },
 });

@@ -14,6 +14,7 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { HabitsProvider } from '@/context/HabitsContext';
+import palette from '@/constants/colors';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -30,8 +31,8 @@ function RootLayoutNav() {
           title: '',
           headerShown: true,
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: '#F7F6F0' },
-          headerTintColor: '#20372F',
+          headerStyle: { backgroundColor: palette.light.background },
+          headerTintColor: palette.light.foreground,
           presentation: 'modal',
         }}
       />

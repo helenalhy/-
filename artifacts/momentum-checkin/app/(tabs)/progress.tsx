@@ -40,12 +40,12 @@ export default function ProgressScreen() {
 
         <View style={styles.metricGrid}>
           <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.metricIcon, { backgroundColor: '#F5E7C9' }]}><Feather name="zap" size={17} color="#9A6D2F" /></View>
+            <View style={[styles.metricIcon, { backgroundColor: colors.candyLemon }]}><Feather name="zap" size={17} color={colors.candyCaramelDark} /></View>
             <Text style={[styles.metricValue, { color: colors.foreground }]}>{longestStreak}<Text style={styles.metricUnit}> 天</Text></Text>
             <Text style={[styles.metricLabel, { color: colors.mutedForeground }]}>目前最長連續</Text>
           </View>
           <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.metricIcon, { backgroundColor: '#DCEAD8' }]}><Feather name="check-circle" size={17} color={colors.primary} /></View>
+            <View style={[styles.metricIcon, { backgroundColor: colors.candyMint }]}><Feather name="check-circle" size={17} color={colors.primary} /></View>
             <Text style={[styles.metricValue, { color: colors.foreground }]}>{totalCheckIns}<Text style={styles.metricUnit}> 次</Text></Text>
             <Text style={[styles.metricLabel, { color: colors.mutedForeground }]}>累積完成打卡</Text>
           </View>
@@ -69,7 +69,7 @@ export default function ProgressScreen() {
                 <View style={styles.barColumn} key={item.key}>
                   <Text style={[styles.barCount, { color: colors.mutedForeground }]}>{item.count > 0 ? item.count : ''}</Text>
                   <View style={styles.barTrack}>
-                    <View style={[styles.bar, { height, backgroundColor: isToday ? colors.primary : item.count > 0 ? '#B5D88A' : colors.muted }]} />
+                    <View style={[styles.bar, { height, backgroundColor: isToday ? colors.primary : item.count > 0 ? colors.candyMintDark : colors.muted }]} />
                   </View>
                   <Text style={[styles.barLabel, { color: isToday ? colors.primary : colors.mutedForeground }]}>{item.label}</Text>
                 </View>
@@ -101,8 +101,8 @@ export default function ProgressScreen() {
                     </View>
                     <Text style={[styles.statSubtitle, { color: colors.mutedForeground }]}>{habit.checkIns.length} 次完成</Text>
                   </View>
-                  <View style={styles.statStreak}>
-                    <Feather name="zap" size={13} color="#A07836" />
+                  <View style={[styles.statStreak, { backgroundColor: colors.candyLemon }]}>
+                    <Feather name="zap" size={13} color={colors.candyCaramelDark} />
                     <Text style={[styles.streakNumber, { color: colors.foreground }]}>{streak}</Text>
                   </View>
                 </View>
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   statTitle: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
   topTag: { overflow: 'hidden', fontSize: 9, fontWeight: '600', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
   statSubtitle: { fontSize: 10, marginTop: 4 },
-  statStreak: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 10, backgroundColor: '#F7F1E6' },
+  statStreak: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 10 },
   streakNumber: { fontSize: 12, fontWeight: '700' },
   emptyCard: { borderWidth: 1, borderRadius: 17, padding: 18, alignItems: 'center', gap: 8 },
   emptyText: { fontSize: 12, lineHeight: 19, textAlign: 'center' },

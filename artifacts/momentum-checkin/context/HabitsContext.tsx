@@ -10,6 +10,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import palette from '@/constants/colors';
 
 export interface Habit {
   id: string;
@@ -58,16 +59,21 @@ function inferRewardCategory(icon: string): RewardCategory {
 }
 
 function normalizeHabits(habits: Habit[]): Habit[] {
-  return habits.map((habit) => ({
-    ...habit,
-    rewardCategory: habit.rewardCategory ?? inferRewardCategory(habit.icon),
-  }));
+  return habits.map((habit) => {
+    const rewardCategory = habit.rewardCategory ?? inferRewardCategory(habit.icon);
+    const categoryColor = rewardCategory === 'facility'
+      ? palette.light.candyMint
+      : rewardCategory === 'shop'
+        ? palette.light.candyLavender
+        : palette.light.candyPink;
+    return { ...habit, rewardCategory, color: categoryColor };
+  });
 }
 
 const starterHabits: Habit[] = [
-  { id: 'starter-walk', title: '散步 20 分鐘', reason: '讓身體和心情都透透氣', icon: 'activity', color: '#DCEAD8', rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: [] },
-  { id: 'starter-read', title: '閱讀 10 頁', reason: '每天留一點時間給自己', icon: 'book-open', color: '#F5E7C9', rewardCategory: 'shop', createdAt: '2026-01-01', checkIns: [] },
-  { id: 'starter-water', title: '寫下今天的一件好事', reason: '看見已經擁有的進步', icon: 'edit-3', color: '#F2DFD6', rewardCategory: 'decor', createdAt: '2026-01-01', checkIns: [] },
+  { id: 'starter-walk', title: '散步 20 分鐘', reason: '讓身體和心情都透透氣', icon: 'activity', color: palette.light.candyMint, rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: [] },
+  { id: 'starter-read', title: '閱讀 10 頁', reason: '每天留一點時間給自己', icon: 'book-open', color: palette.light.candyLavender, rewardCategory: 'shop', createdAt: '2026-01-01', checkIns: [] },
+  { id: 'starter-water', title: '寫下今天的一件好事', reason: '看見已經擁有的進步', icon: 'edit-3', color: palette.light.candyPink, rewardCategory: 'decor', createdAt: '2026-01-01', checkIns: [] },
 ];
 
 export function getLocalDate(date = new Date()): string {

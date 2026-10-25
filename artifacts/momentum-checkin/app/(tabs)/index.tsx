@@ -132,7 +132,7 @@ export default function TodayScreen() {
           accessibilityRole="button"
           accessibilityLabel="前往商場"
         >
-          <View style={[styles.mallShortcutIcon, { backgroundColor: '#D4E2CC' }]}>
+          <View style={[styles.mallShortcutIcon, { backgroundColor: colors.candyLemon }]}>
             <Feather name="shopping-bag" size={18} color={colors.primary} />
           </View>
           <View style={styles.mallShortcutCopy}>
@@ -145,12 +145,12 @@ export default function TodayScreen() {
         <View style={[styles.weekCard, { backgroundColor: colors.primary }]}>
           <View style={styles.weekHeader}>
             <View>
-              <Text style={styles.weekEyebrow}>本週的你</Text>
-              <Text style={styles.weekScore}>{todayDone}<Text style={styles.weekTotal}> / {habits.length} 今日完成</Text></Text>
+              <Text style={[styles.weekEyebrow, { color: colors.primaryForeground, opacity: 0.78 }]}>本週的你</Text>
+              <Text style={[styles.weekScore, { color: colors.primaryForeground }]}>{todayDone}<Text style={[styles.weekTotal, { color: colors.primaryForeground, opacity: 0.8 }]}> / {habits.length} 今日完成</Text></Text>
             </View>
-            <View style={styles.streakBadge}>
-              <Feather name="zap" size={14} color="#2F644F" />
-              <Text style={styles.streakText}>{totalStreak} 天連續</Text>
+            <View style={[styles.streakBadge, { backgroundColor: colors.candyLemon }]}>
+              <Feather name="zap" size={14} color={colors.candyCaramelDark} />
+              <Text style={[styles.streakText, { color: colors.foreground }]}>{totalStreak} 天連續</Text>
             </View>
           </View>
           <View style={styles.weekDays}>
@@ -159,20 +159,24 @@ export default function TodayScreen() {
               const isToday = day.key === today;
               return (
                 <View key={day.key} style={styles.dayColumn}>
-                  <Text style={[styles.dayName, isToday && styles.todayDayText]}>{day.label}</Text>
-                  <View style={[styles.dayDot, isToday && styles.todayDot, doneCount > 0 && !isToday && styles.doneDot]}>
-                    {doneCount > 0 && <View style={styles.dayDotInner} />}
+                  <Text style={[styles.dayName, { color: colors.primaryForeground, opacity: 0.72 }, isToday && { opacity: 1, fontWeight: '700' }]}>{day.label}</Text>
+                  <View style={[
+                    styles.dayDot,
+                    { backgroundColor: doneCount > 0 ? colors.candyMint : colors.candyRoseDark },
+                    isToday && { width: 22, height: 22, borderRadius: 8, backgroundColor: colors.candyLemon },
+                  ]}>
+                    {doneCount > 0 && <View style={[styles.dayDotInner, { backgroundColor: colors.primary }]} />}
                   </View>
-                  <Text style={[styles.dayNumber, isToday && styles.todayDayText]}>{day.day}</Text>
+                  <Text style={[styles.dayNumber, { color: colors.primaryForeground, opacity: 0.72 }, isToday && { opacity: 1, fontWeight: '700' }]}>{day.day}</Text>
                 </View>
               );
             })}
           </View>
           <View style={styles.progressRow}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${percent}%` }]} />
+            <View style={[styles.progressTrack, { backgroundColor: colors.candyRoseDark }]}>
+              <View style={[styles.progressFill, { width: `${percent}%`, backgroundColor: colors.candyLemon }]} />
             </View>
-            <Text style={styles.progressLabel}>{percent}%</Text>
+            <Text style={[styles.progressLabel, { color: colors.primaryForeground }]}>{percent}%</Text>
           </View>
         </View>
 
@@ -185,7 +189,7 @@ export default function TodayScreen() {
         </View>
 
         {storageError && (
-          <View style={[styles.errorBox, { backgroundColor: '#FCE8E4' }]}>
+          <View style={[styles.errorBox, { backgroundColor: colors.candyPink }]}>
             <Feather name="alert-circle" size={16} color={colors.destructive} />
             <Text style={[styles.errorText, { color: colors.destructive }]}>{storageError}</Text>
           </View>
@@ -198,7 +202,7 @@ export default function TodayScreen() {
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>從一個小目標開始</Text>
             <Text style={[styles.emptyCopy, { color: colors.mutedForeground }]}>挑一件你想為自己做到的事，今天就可以開始。</Text>
             <Pressable style={[styles.emptyAction, { backgroundColor: colors.primary }]} onPress={() => router.push('/habit-editor')}>
-              <Text style={styles.emptyActionText}>新增第一個目標</Text>
+              <Text style={[styles.emptyActionText, { color: colors.primaryForeground }]}>新增第一個目標</Text>
             </Pressable>
           </View>
         ) : (
@@ -216,7 +220,7 @@ export default function TodayScreen() {
         )}
 
         <View style={[styles.quoteCard, { backgroundColor: colors.secondary }]}>
-          <View style={[styles.quoteMark, { backgroundColor: '#D4E2CC' }]}>
+          <View style={[styles.quoteMark, { backgroundColor: colors.candyMint }]}>
             <Feather name="heart" size={17} color={colors.primary} />
           </View>
           <View style={styles.quoteCopy}>
@@ -249,24 +253,21 @@ const styles = StyleSheet.create({
   mallShortcutSubtitle: { fontSize: 10, marginTop: 4 },
   weekCard: { borderRadius: 24, padding: 20, overflow: 'hidden' },
   weekHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  weekEyebrow: { color: '#D6E4D9', fontSize: 12, fontWeight: '500' },
-  weekScore: { color: '#FFFFFF', fontSize: 25, fontWeight: '700', marginTop: 5 },
-  weekTotal: { color: '#D6E4D9', fontSize: 13, fontWeight: '500' },
-  streakBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#D7E9BF', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 99 },
-  streakText: { color: '#2F644F', fontSize: 11, fontWeight: '700' },
+  weekEyebrow: { fontSize: 12, fontWeight: '500' },
+  weekScore: { fontSize: 25, fontWeight: '700', marginTop: 5 },
+  weekTotal: { fontSize: 13, fontWeight: '500' },
+  streakBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 99 },
+  streakText: { fontSize: 11, fontWeight: '700' },
   weekDays: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
   dayColumn: { alignItems: 'center', gap: 7, minWidth: 25 },
-  dayName: { fontSize: 10, color: '#C6D7C9' },
-  dayDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#6B8A78', alignItems: 'center', justifyContent: 'center' },
-  doneDot: { backgroundColor: '#CDE4AD' },
-  dayDotInner: { width: 3, height: 3, backgroundColor: '#2F644F', borderRadius: 2 },
-  todayDot: { width: 22, height: 22, borderRadius: 8, backgroundColor: '#D7E9BF' },
-  dayNumber: { fontSize: 11, color: '#C6D7C9' },
-  todayDayText: { color: '#FFFFFF', fontWeight: '700' },
+  dayName: { fontSize: 10 },
+  dayDot: { width: 7, height: 7, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  dayDotInner: { width: 3, height: 3, borderRadius: 2 },
+  dayNumber: { fontSize: 11 },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
-  progressTrack: { height: 5, flex: 1, backgroundColor: '#527562', borderRadius: 99, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#D7E9BF', borderRadius: 99 },
-  progressLabel: { color: '#E2EBDD', fontSize: 11, fontWeight: '600', width: 30, textAlign: 'right' },
+  progressTrack: { height: 5, flex: 1, borderRadius: 99, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 99 },
+  progressLabel: { fontSize: 11, fontWeight: '600', width: 30, textAlign: 'right' },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, marginBottom: 13 },
   sectionTitle: { fontSize: 18, fontWeight: '700' },
   sectionSubtitle: { fontSize: 12, marginTop: 4 },
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: '700', marginTop: 4 },
   emptyCopy: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
   emptyAction: { paddingHorizontal: 16, paddingVertical: 11, borderRadius: 12, marginTop: 8 },
-  emptyActionText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+  emptyActionText: { fontSize: 13, fontWeight: '600' },
   quoteCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, marginTop: 19, marginBottom: 2, padding: 15 },
   quoteMark: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   quoteCopy: { flex: 1 },

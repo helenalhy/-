@@ -1,6 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 import type { RewardCategory } from '@/context/HabitsContext';
 import palette from './colors';
+import { createExpandedItems } from './mall-expansion';
 
 const c = palette.light;
 
@@ -13,6 +14,7 @@ export interface MallItem {
   color: string;
   category: RewardCategory;
   price: number;
+  /** Legacy compatibility field; redemptions now use earned coins only. */
   ticketCost: number;
   visual?: 'cloud-walk' | 'central-fountain' | 'wooden-bench' | 'garden-lights' | 'colorful-planter' | 'rest-pavilion' | 'coral-aquarium' | 'rhythm-stage' | 'yoga-deck' | 'sculpture-plaza' | 'observatory-dome' | 'tasting-court' | 'cloud-swing' | 'shell-lantern' | 'neon-sign' | 'aroma-diffuser' | 'gallery-frames' | 'starlight-mobile' | 'spice-display' | 'rainbow-arch';
 }
@@ -38,8 +40,8 @@ export const MALL_FLOORS: MallFloorTheme[] = [
   { title: '天空花園', description: '來到雲端，在彩虹和城市風景中休息。', image: require('../assets/images/mall-floor-10.jpg'), accent: c.candySkyDark, surface: c.candySky },
 ];
 
-function item(floor: number, id: string, name: string, description: string, icon: string, category: RewardCategory, price: number, ticketCost: number, color: string, visual?: MallItem['visual']): MallItem {
-  return { floor, id, name, description, icon, category, price, ticketCost, color, visual };
+function item(floor: number, id: string, name: string, description: string, icon: string, category: RewardCategory, price: number, _legacyTicketCost: number, color: string, visual?: MallItem['visual']): MallItem {
+  return { floor, id, name, description, icon, category, price, ticketCost: 0, color, visual };
 }
 
 // Existing IDs and prices remain stable so previous purchases keep their identity.
@@ -134,6 +136,7 @@ export const MALL_ITEMS: MallItem[] = [
   item(10, 'rooftop-pavilion', '天台花園亭', '在雲和花之間，給自己一個擁抱', 'home', 'facility', 90, 2, c.candyMint, 'rest-pavilion'),
   item(10, 'rainbow-flower-bed', '彩虹花圃', '把一路的努力種成一片花海', 'sunrise', 'decor', 40, 2, c.candyCoral, 'colorful-planter'),
   item(10, 'sunset-wind-mobile', '晚霞風鈴', '讓風輕輕唱出今天的好心情', 'wind', 'decor', 45, 2, c.candyPeach, 'starlight-mobile'),
+  ...createExpandedItems(MALL_FLOORS),
 ];
 
 export const MALL_ITEM_BY_ID = Object.fromEntries(MALL_ITEMS.map((entry) => [entry.id, entry])) as Record<string, MallItem>;

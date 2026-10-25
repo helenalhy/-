@@ -132,7 +132,7 @@ const HabitsContext = createContext<HabitsContextValue | null>(null);
 
 export function HabitsProvider({ children }: { children: ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [coins, setCoins] = useState(50);
+  const [coins, setCoins] = useState(0);
   const [purchasedItems, setPurchasedItems] = useState<string[]>([]);
   const [mallPlacements, setMallPlacements] = useState<Record<string, string>>({});
   const [rewardTokens, setRewardTokens] = useState<RewardTokens>(EMPTY_TOKENS);
@@ -152,7 +152,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         ]);
         const initialHabits = saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]);
         const initialMall = savedMall === null
-          ? { coins: 50, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
+          ? { coins: 0, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
           : JSON.parse(savedMall) as { coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string> };
         const initialPurchasedItems = initialMall.purchasedItems ?? [];
         const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems);
@@ -162,7 +162,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         ]);
         if (active) {
           setHabits(initialHabits);
-          setCoins(initialMall.coins ?? 50);
+          setCoins(initialMall.coins ?? 0);
           setPurchasedItems(initialPurchasedItems);
           setMallPlacements(initialPlacements);
           setRewardedCheckIns(initialMall.rewardedCheckIns ?? []);
@@ -235,14 +235,12 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       }
       if (reward > 0) {
         const rewardKey = `${id}:${today}`;
-        const category = habit.rewardCategory ?? inferRewardCategory(habit.icon);
-        const nextRewardTokens = { ...rewardTokens, [category]: rewardTokens[category] + 1 };
         const nextMall = {
           coins: coins + reward,
           purchasedItems,
           placements: mallPlacements,
           rewardedCheckIns: [...rewardedCheckIns, rewardKey],
-          rewardTokens: nextRewardTokens,
+          rewardTokens,
         };
         await Promise.all([
           AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextHabits)),
@@ -266,11 +264,11 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [habits, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, rewardTokens, save]);
 
-  const purchaseMallItem = useCallback(async (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => {
+  // Legacy arguments remain compatible with saved/older clients; only earned coins are spent.
+  const purchaseMallItem = useCallback(async (itemId: string, price: number, _category: RewardCategory, _ticketCost: number, slotId: MallSlotId) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
     if (purchasedItems.includes(itemId)) throw new Error('這個項目已經建造完成');
     if (coins < price) throw new Error('金幣還不夠');
-    if (rewardTokens[category] < ticketCost) throw new Error(`還需要 ${REWARD_CATEGORY_LABELS[category]}`);
     if (!(MALL_SLOT_IDS as readonly string[]).includes(slotId)) throw new Error('這個商場位置不存在');
     if (mallPlacements[slotId]) throw new Error('這個位置已經有設施');
     actionLock.current = true;
@@ -280,7 +278,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         purchasedItems: [...purchasedItems, itemId],
         placements: { ...mallPlacements, [slotId]: itemId },
         rewardedCheckIns,
-        rewardTokens: { ...rewardTokens, [category]: rewardTokens[category] - ticketCost },
+        rewardTokens,
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } finally {

@@ -16,7 +16,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useColors } from '@/hooks/useColors';
 import {
   getStreak,
-  REWARD_CATEGORY_LABELS,
   useHabits,
   type Habit,
 } from '@/context/HabitsContext';
@@ -89,7 +88,7 @@ export function TodayScreen() {
       if (reward > 0) {
         Alert.alert(
           '太棒了，完成一小步！',
-          `獲得 ${reward} 金幣和 1 張${REWARD_CATEGORY_LABELS[habit.rewardCategory]}，商場又更近一步了。`,
+          `獲得 ${reward} 金幣！可以免費換取喜歡的商店、設施或裝修。`,
         );
       }
     } catch {

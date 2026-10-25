@@ -149,37 +149,9 @@ export default function HabitEditorScreen() {
           })}
         </View>
 
-        <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>完成後獲得的獎勵</Text>
-        <View style={styles.rewardOptions}>
-          {([
-            { id: 'facility' as const, label: '設施券', detail: '公園與設施', icon: 'map-pin', color: palette.light.candyMint },
-            { id: 'shop' as const, label: '店鋪券', detail: '新店開張', icon: 'shopping-bag', color: palette.light.candyLemon },
-            { id: 'decor' as const, label: '裝飾星', detail: '布置街區', icon: 'star', color: palette.light.candyPink },
-          ]).map((reward) => {
-            const active = rewardCategory === reward.id;
-            return (
-              <Pressable
-                key={reward.id}
-                onPress={() => setRewardCategory(reward.id)}
-                style={[
-                  styles.rewardOption,
-                  { backgroundColor: active ? reward.color : colors.card, borderColor: active ? colors.primary : colors.border },
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={reward.label}
-              >
-                <Feather name={reward.icon as keyof typeof Feather.glyphMap} size={16} color={colors.foreground} />
-                <Text style={[styles.rewardLabel, { color: colors.foreground }]}>{reward.label}</Text>
-                <Text style={[styles.rewardDetail, { color: colors.mutedForeground }]}>{reward.detail}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
         <View style={[styles.tip, { backgroundColor: colors.secondary }]}>
           <Feather name="gift" size={17} color={colors.primary} />
-          <Text style={[styles.tipText, { color: colors.foreground }]}>每個目標首次完成可得 20 金幣，並領取 1 個對應類型獎勵。</Text>
+          <Text style={[styles.tipText, { color: colors.foreground }]}>每個目標每日首次完成可得 20 金幣，只用這些金幣兌換商場項目，完全免費。</Text>
         </View>
 
         <Pressable

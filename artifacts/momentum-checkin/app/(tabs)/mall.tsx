@@ -16,7 +16,6 @@ import palette from '@/constants/colors';
 import {
   MALL_FLOOR_COUNT,
   MALL_SLOT_IDS,
-  REWARD_CATEGORY_LABELS,
   useHabits,
   type MallSlotId,
   type RewardCategory,
@@ -24,6 +23,9 @@ import {
 import { useColors } from '@/hooks/useColors';
 import { MallAmbience, MallObjectVisual } from '@/components/MallVisuals';
 import { MALL_FLOORS, MALL_ITEMS, MALL_ITEM_BY_ID, type MallItem } from '@/constants/mall';
+import { CatalogPager } from '@/components/CatalogPager';
+
+const CATALOG_PAGE_SIZE = 10;
 
 const CATEGORIES: { id: 'all' | RewardCategory; label: string }[] = [
   { id: 'all', label: '全部' },
@@ -129,9 +131,10 @@ export default function MallScreen() {
   const mallSceneY = useRef(0);
   const sceneOpacity = useRef(new Animated.Value(0)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
-  const { coins, purchasedItems, mallPlacements, rewardTokens, purchaseMallItem, moveMallItem, storageError } = useHabits();
+  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storageError } = useHabits();
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [currentFloor, setCurrentFloor] = useState(1);
+  const [catalogPage, setCatalogPage] = useState(1);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' } | null>(null);
   const constructed = useMemo(
@@ -141,6 +144,8 @@ export default function MallScreen() {
   const floorTheme = MALL_FLOORS[currentFloor - 1];
   const floorItems = MALL_ITEMS.filter((item) => item.floor === currentFloor);
   const visibleItems = floorItems.filter((item) => category === 'all' || item.category === category);
+  const catalogPages = Math.max(1, Math.ceil(visibleItems.length / CATALOG_PAGE_SIZE));
+  const pagedItems = visibleItems.slice((catalogPage - 1) * CATALOG_PAGE_SIZE, catalogPage * CATALOG_PAGE_SIZE);
   const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
   const floorSlots = MALL_SLOT_IDS.filter((slotId) => slotId.startsWith(`floor-${currentFloor}-`));
   const floorItemCount = floorSlots.filter((slotId) => mallPlacements[slotId]).length;
@@ -163,21 +168,20 @@ export default function MallScreen() {
     const nextFloor = Math.min(MALL_FLOOR_COUNT, Math.max(1, currentFloor + direction));
     if (nextFloor === currentFloor) return;
     setCurrentFloor(nextFloor);
+    setCatalogPage(1);
     sceneOpacity.setValue(0.45);
     Animated.timing(sceneOpacity, { toValue: 1, duration: 260, useNativeDriver: false }).start();
+  }
+
+  function changeCatalogPage(page: number) {
+    setCatalogPage(Math.max(1, Math.min(catalogPages, page)));
+    scrollRef.current?.scrollTo({ y: Math.max(0, shopSectionY.current - 8), animated: true });
   }
 
   function startPurchasePlacement(item: MallItem) {
     if (purchasedItems.includes(item.id) || purchasing || placementIntent) return;
     if (coins < item.price) {
       Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
-      return;
-    }
-    if (rewardTokens[item.category] < item.ticketCost) {
-      Alert.alert(
-        `${REWARD_CATEGORY_LABELS[item.category]}還不夠`,
-        `完成更多${item.category === 'shop' ? '閱讀或學習' : item.category === 'facility' ? '運動或行動' : '日記或心情照顧'}目標，就能取得需要的獎勵。`,
-      );
       return;
     }
     setPlacementIntent({ itemId: item.id, mode: 'purchase' });
@@ -254,27 +258,10 @@ export default function MallScreen() {
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>完成今天的小目標，讓喜歡的街區慢慢長大。</Text>
 
-        <View style={styles.ticketRow}>
-          {([
-            { id: 'facility' as const, icon: 'map-pin', color: colors.candyMint },
-            { id: 'shop' as const, icon: 'shopping-bag', color: colors.candyLemon },
-            { id: 'decor' as const, icon: 'star', color: colors.candyPink },
-          ]).map((ticket) => (
-            <View key={ticket.id} style={[styles.ticket, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.ticketIcon, { backgroundColor: ticket.color }]}>
-                <Feather name={ticket.icon as keyof typeof Feather.glyphMap} size={14} color={colors.foreground} />
-              </View>
-              <View>
-                <Text style={[styles.ticketCount, { color: colors.foreground }]}>{rewardTokens[ticket.id]}</Text>
-                <Text style={[styles.ticketName, { color: colors.mutedForeground }]}>{REWARD_CATEGORY_LABELS[ticket.id]}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
         <View style={[styles.rewardHint, { backgroundColor: colors.secondary }]}>
           <Feather name="gift" size={14} color={colors.primary} />
           <Text style={[styles.rewardHintText, { color: colors.foreground }]}>
-            首次完成目標 +20 金幣；運動得設施券、閱讀得店鋪券、日記得裝飾星。
+            完全免費 · 每個目標每日首次完成 +20 金幣 · 所有項目只用金幣兌換，沒有儲值或付費。
           </Text>
         </View>
 
@@ -389,7 +376,7 @@ export default function MallScreen() {
             return (
               <Pressable
                 key={filter.id}
-                onPress={() => setCategory(filter.id)}
+                onPress={() => { setCategory(filter.id); setCatalogPage(1); }}
                 style={[
                   styles.filterPill,
                   { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border },
@@ -403,11 +390,11 @@ export default function MallScreen() {
           })}
         </View>
 
+        <CatalogPager id="catalog-top" page={catalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
         <View style={styles.catalogList}>
-          {visibleItems.map((item) => {
+          {pagedItems.map((item) => {
             const owned = purchasedItems.includes(item.id);
             const enoughCoins = coins >= item.price;
-            const enoughTickets = rewardTokens[item.category] >= item.ticketCost;
             const disabled = owned || purchasing !== null || placementIntent !== null;
             return (
               <View key={item.id} style={[styles.catalogCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -422,8 +409,7 @@ export default function MallScreen() {
                   <Text numberOfLines={1} style={[styles.itemDescription, { color: colors.mutedForeground }]}>{item.description}</Text>
                   <View style={styles.costRow}>
                     <View style={styles.costPart}><Feather name="circle" size={11} color={colors.candyCaramelDark} /><Text style={[styles.costText, { color: colors.candyCaramelDark }]}>{item.price}</Text></View>
-                    <Text style={[styles.costDivider, { color: colors.mutedForeground }]}>+</Text>
-                    <View style={styles.costPart}><Feather name={item.category === 'facility' ? 'map-pin' : item.category === 'shop' ? 'shopping-bag' : 'star'} size={11} color={colors.primary} /><Text style={[styles.costText, { color: colors.primary }]}>{item.ticketCost}</Text></View>
+                    <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>
                   </View>
                 </View>
                 <Pressable
@@ -439,15 +425,16 @@ export default function MallScreen() {
                 >
                   <Feather name={owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
                 </Pressable>
-                {!owned && (!enoughCoins || !enoughTickets) && (
+                {!owned && !enoughCoins && (
                   <Text style={[styles.missingText, { color: colors.mutedForeground }]}>
-                    {!enoughCoins ? `還差 ${item.price - coins} 金幣` : `還差 ${item.ticketCost - rewardTokens[item.category]} ${REWARD_CATEGORY_LABELS[item.category]}`}
+                    {`還差 ${item.price - coins} 金幣`}
                   </Text>
                 )}
               </View>
             );
           })}
         </View>
+        <CatalogPager id="catalog-bottom" page={catalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
       </ScrollView>
     </SafeAreaView>
   );

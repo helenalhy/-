@@ -10,6 +10,11 @@ const source = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../app/(tabs)/mall.tsx'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
+const layoutModule = { exports: {} };
+new Function('exports', ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../constants/mall-layout.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+).outputText)(layoutModule.exports);
 
 function mount(overrides = {}) {
   const states = [];
@@ -17,7 +22,11 @@ function mount(overrides = {}) {
   let first = true;
   let tree;
   const calls = [];
-  const mallWingPager = ({ renderWing }) => renderWing('main', true);
+  const mallWingPager = ({ renderWing, ...props }) => ({
+    type: 'MallWingPager',
+    props: { ...props, children: renderWing('main', true) },
+  });
+  const announcements = [];
   const item = { id: 'test-planter', visual: 'colorful-planter', floor: 1, name: '彩色花圃', category: 'decor', price: 20, ticketCost: 0 };
   const owned = { ...item, id: 'owned', name: '已擁有花圃' };
   const habits = {
@@ -49,7 +58,8 @@ function mount(overrides = {}) {
   const mockRequire = (name) => {
     if (name === 'react') return react;
     if (name === 'react-native') return {
-      Animated: { Value: class { setValue() {} }, View: 'View', timing: animation, spring: animation, parallel: animation },
+      Animated: { Value: class { setValue() {} }, View: 'View', timing: animation, spring: animation, parallel: animation, multiply: () => 1 },
+      AccessibilityInfo: { announceForAccessibility: (message) => announcements.push(message) },
       Alert: { alert() {} }, StyleSheet: { create: (s) => s }, Platform: { OS: 'ios' },
       ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'View'].map((key) => [key, key])),
     };
@@ -61,14 +71,7 @@ function mount(overrides = {}) {
       useHabits: () => habits, MALL_FLOOR_COUNT: 10,
       MALL_SLOT_IDS: Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
     };
-    if (name === '@/constants/mall-layout') return {
-      MALL_POSITIONS_PER_FLOOR: 32,
-      getMallSlotPosition: (slotId) => ({
-        floor: `${slotId.split('-')[1]}F`,
-        wing: slotId.includes('-extension-') ? 'extension' : slotId.includes('-annex-') ? 'annex' : 'main',
-        label: '店面區左側', left: '12%', top: '39%', width: '24%', height: '18%', scale: 1, plaza: false,
-      }),
-    };
+    if (name === '@/constants/mall-layout') return layoutModule.exports;
     if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
     if (name === '@/constants/mall') return {
       MALL_ITEMS: [item, owned], MALL_ITEM_BY_ID: { [item.id]: item, owned },
@@ -88,14 +91,23 @@ function mount(overrides = {}) {
   function nodes(node) {
     if (!node || typeof node !== 'object') return [];
     if (Array.isArray(node)) return node.flatMap((child) => nodes(child));
-    return [node, ...(node.props?.children ? nodes(node.props.children) : [])];
+    return [node, ...(node.props?.children ? nodes(node.props.children) : []),
+      ...(node.props?.renderWing ? nodes(node.props.renderWing('main', true)) : [])];
   }
   function find(id) {
     return nodes(tree).find((node) => node.props.testID === id || (node.props.slotId && `mall-slot-${node.props.slotId}` === id));
   }
   render();
   return {
-    habits, calls, render, find, nodes: (node = tree) => nodes(node),
+    habits, calls, announcements, render, find, nodes: (node = tree) => nodes(node),
+    slot(id) {
+      const node = find(`mall-slot-${id}`);
+      cursor = states.length;
+      first = true;
+      const result = node.type(node.props);
+      first = false;
+      return result;
+    },
     async press(id) {
       const node = find(id);
       assert.ok(node, `Missing ${id}`);
@@ -110,6 +122,68 @@ async function preview(app) {
   await app.press('build-test-planter');
   await app.press('mall-slot-floor-1-left');
 }
+
+test('screen readers distinguish every location including plaza rows and annex', () => {
+  const labels = layoutModule.exports.MALL_SLOT_IDS.map((id) => {
+    const position = layoutModule.exports.getMallSlotPosition(id);
+    return `${position.floor} ${position.label}`;
+  });
+  assert.equal(new Set(labels).size, labels.length);
+  const app = mount();
+  for (const [column, label] of [['left', '左側'], ['center', '中央'], ['right', '右側']]) {
+    assert.match(app.slot(`floor-1-${column}`).props.accessibilityLabel, new RegExp(`1F 店面區${label}`));
+  }
+  assert.match(app.slot('floor-1-right').props.accessibilityLabel, /已兌換/);
+});
+
+test('preview announces position and unredeemed state; changing and cancelling update the status', async () => {
+  const app = mount();
+  await preview(app);
+  assert.match(app.announcements.at(-1), /1F 店面區左側.*尚未兌換或扣除金幣/);
+  assert.equal(app.slot('floor-1-left').props.accessibilityState.selected, true);
+  assert.match(app.find('confirm-purchase-preview').props.accessibilityLabel, /彩色花圃.*1F 店面區左側.*20 金幣/);
+  await app.press('mall-slot-floor-1-center');
+  assert.match(app.announcements.at(-1), /1F 店面區中央/);
+  assert.equal(app.slot('floor-1-center').props.accessibilityState.selected, true);
+  assert.match(textContent(app.find('mall-placement-status')), /中央.*尚未兌換/);
+  await app.press('floor-next');
+  assert.match(app.announcements.at(-1), /2F.*預覽已清除.*尚未兌換/);
+  await app.press('mall-slot-floor-2-left');
+  app.nodes().find((node) => node.type === 'MallWingPager').props.onWingChange();
+  app.render();
+  assert.equal(app.find('mall-purchase-preview'), undefined);
+  assert.match(app.announcements.at(-1), /分區.*預覽已清除.*尚未兌換/);
+  await app.press('mall-slot-floor-2-left');
+  await app.press('cancel-purchase-preview');
+  assert.match(app.announcements.at(-1), /已取消試擺.*尚未兌換或扣除金幣/);
+  assert.equal(app.calls.length, 0);
+});
+
+test('confirmation exposes busy and disabled states, then announces the actual outcome', async () => {
+  const app = mount();
+  let release;
+  app.habits.purchaseMallItem = () => new Promise((resolve) => { release = resolve; });
+  await preview(app);
+  await app.press('confirm-purchase-preview');
+  assert.match(app.announcements.at(-1), /正在兌換.*1F 店面區左側/);
+  assert.deepEqual(app.find('confirm-purchase-preview').props.accessibilityState, { disabled: true, busy: true });
+  assert.deepEqual(app.slot('floor-1-left').props.accessibilityState, { selected: true, disabled: true, busy: true });
+  assert.equal(app.find('cancel-purchase-preview').props.accessibilityState.disabled, true);
+  release();
+  await new Promise((resolve) => setImmediate(resolve));
+  app.render();
+  assert.match(app.announcements.at(-1), /已兌換.*1F 店面區左側.*扣除 20 金幣/);
+  assert.match(textContent(app.find('mall-placement-status')), /已兌換/);
+
+  const failed = mount({ purchaseMallItem: async () => { throw new Error('disk full'); } });
+  await preview(failed);
+  await failed.press('confirm-purchase-preview');
+  await new Promise((resolve) => setImmediate(resolve));
+  failed.render();
+  assert.match(failed.announcements.at(-1), /兌換未完成.*disk full.*1F 店面區左側.*重新確認/);
+  assert.deepEqual(failed.find('confirm-purchase-preview').props.accessibilityState, { disabled: false, busy: false });
+  assert.ok(failed.find('mall-purchase-preview'));
+});
 
 test('preview uses the real visual mapping without purchase, ownership or placement changes; cancel discards it', async () => {
   const app = mount();

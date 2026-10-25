@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Alert,
   ImageBackground,
@@ -50,6 +51,8 @@ function MallSceneSlot({
   isPlacementTarget,
   isPlacementMode,
   isPreview = false,
+  disabled = false,
+  busy = false,
   onPress,
 }: {
   slotId: MallSlotId;
@@ -57,6 +60,8 @@ function MallSceneSlot({
   isPlacementTarget: boolean;
   isPlacementMode: boolean;
   isPreview?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
   onPress?: () => void;
 }) {
   const colors = useColors();
@@ -81,8 +86,10 @@ function MallSceneSlot({
       <Pressable
         style={[styles.sceneSlot, { left: position.left, top: position.top, width: position.width, height: position.height }, isPreview && styles.sceneSlotTarget]}
         onPress={onPress}
+        disabled={disabled}
         accessibilityRole="button"
-        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : '點選可搬動或存入倉庫'}`}
+        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : '已兌換，點選可搬動或存入倉庫'}`}
+        accessibilityState={{ selected: isPreview, disabled, busy }}
         testID={`mall-slot-${slotId}`}
       >
         <Animated.View style={[
@@ -104,8 +111,10 @@ function MallSceneSlot({
         isPlacementTarget && styles.sceneSlotTarget,
       ]}
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={isPlacementMode ? `${position.floor} ${position.label}空位，放置選擇的項目` : `${position.floor} ${position.label}空位，選擇要建造的項目`}
+      accessibilityState={{ disabled, busy }}
       testID={`mall-slot-${slotId}`}
     >
       <View style={[
@@ -135,6 +144,7 @@ export default function MallScreen() {
   const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, storageError, isLoading } = useHabits();
   const [showCollection, setShowCollection] = useState(false);
   const [warehouseNotice, setWarehouseNotice] = useState<string | null>(null);
+  const [placementAnnouncement, setPlacementAnnouncement] = useState('');
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
@@ -180,11 +190,18 @@ export default function MallScreen() {
     scrollRef.current?.scrollTo({ y: Math.max(0, mallSceneY.current - 8), animated: true });
   }
 
+  function announcePlacement(message: string) {
+    setPlacementAnnouncement(message);
+    // Android and web announce the live region below; VoiceOver needs an explicit announcement.
+    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+  }
+
   function changeFloor(direction: number) {
     if (operationLock.current || purchasing) return;
     const nextFloor = Math.min(MALL_FLOOR_COUNT, Math.max(1, currentFloor + direction));
     if (nextFloor === currentFloor) return;
     setPreviewSlotId(null);
+    if (previewSlotId) announcePlacement(`已切換至 ${nextFloor}F，試擺預覽已清除，尚未兌換或扣除金幣。請重新選擇位置。`);
     setCurrentFloor(nextFloor);
     setCatalogPage(1);
     sceneOpacity.setValue(0.45);
@@ -205,11 +222,13 @@ export default function MallScreen() {
     setWarehouseNotice(null);
     setPlacementIntent({ itemId: item.id, mode: 'purchase' });
     setPreviewSlotId(null);
+    announcePlacement(`已選擇${item.name}，請選擇空位試擺，尚未兌換或扣除金幣。`);
     scrollToMallScene();
   }
 
   function cancelPlacement() {
     if (operationLock.current) return;
+    if (placementIntent?.mode === 'purchase') announcePlacement('已取消試擺，尚未兌換或扣除金幣。');
     setPreviewSlotId(null);
     setPlacementIntent(null);
   }
@@ -221,12 +240,17 @@ export default function MallScreen() {
     if (placementIntent.mode === 'purchase') {
       if (!confirmed) {
         setPreviewSlotId(slotId);
+        const position = getSlotPosition(slotId);
+        announcePlacement(`${currentPlacementItem.name}試擺於 ${position.floor} ${position.label}，尚未兌換或扣除金幣。需要 ${currentPlacementItem.price} 金幣，請按確認兌換，或改選其他空位。`);
         return;
       }
       if (previewSlotId !== slotId || !floorSlots.includes(slotId)) return;
     }
     operationLock.current = true;
     setPurchasing(currentPlacementItem.id);
+    const position = getSlotPosition(slotId);
+    const location = `${position.floor} ${position.label}`;
+    if (placementIntent.mode === 'purchase') announcePlacement(`正在兌換${currentPlacementItem.name}，位置為 ${location}，請稍候。`);
     try {
       if (placementIntent.mode === 'purchase') {
         await purchaseMallItem(
@@ -236,7 +260,8 @@ export default function MallScreen() {
           currentPlacementItem.ticketCost,
           slotId,
         );
-        Alert.alert('建造完成！', `${currentPlacementItem.name}已放在 ${getSlotPosition(slotId).floor}。`);
+        announcePlacement(`${currentPlacementItem.name}已兌換，已放在 ${location}，扣除 ${currentPlacementItem.price} 金幣。`);
+        Alert.alert('建造完成！', `${currentPlacementItem.name}已兌換，已放在 ${location}，扣除 ${currentPlacementItem.price} 金幣。`);
       } else {
         await moveMallItem(currentPlacementItem.id, slotId);
         Alert.alert('位置已更新', `${currentPlacementItem.name}已放到 ${getSlotPosition(slotId).floor}，沒有扣除金幣。`);
@@ -245,6 +270,7 @@ export default function MallScreen() {
       setPreviewSlotId(null);
       scrollToMallScene();
     } catch (error) {
+      if (placementIntent.mode === 'purchase') announcePlacement(`兌換未完成：${error instanceof Error ? error.message : '請再試一次。'} 試擺位置仍為 ${location}，可重新確認兌換或取消。`);
       Alert.alert('沒有更新成功', error instanceof Error ? error.message : '請再試一次。');
     } finally {
       operationLock.current = false;
@@ -274,6 +300,7 @@ export default function MallScreen() {
 
   function openWarehouse() {
     if (operationLock.current || purchasing) return;
+    if (previewSlotId) announcePlacement('已開啟倉庫，試擺預覽已取消，尚未兌換或扣除金幣。');
     setPlacementIntent(null);
     setPreviewSlotId(null);
     setWarehouseNotice(null);
@@ -447,7 +474,10 @@ export default function MallScreen() {
                 extension3: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'extension3' && mallPlacements[slotId]).length,
                 extension4: floorSlots.filter((slotId) => getSlotPosition(slotId).wing === 'extension4' && mallPlacements[slotId]).length,
               }}
-              onWingChange={() => setPreviewSlotId(null)}
+              onWingChange={() => {
+                if (previewSlotId) announcePlacement('已切換商場分區，試擺預覽已清除，尚未兌換或扣除金幣。請重新選擇位置。');
+                setPreviewSlotId(null);
+              }}
               renderWing={(wing, active) => <ImageBackground
               source={floorTheme.image}
               resizeMode="cover"
@@ -463,6 +493,8 @@ export default function MallScreen() {
                     slotId={slotId}
                     item={isPreview ? currentPlacementItem ?? undefined : itemId ? MALL_ITEM_BY_ID[itemId] : undefined}
                     isPreview={isPreview}
+                    disabled={isLoading || purchasing !== null}
+                    busy={purchasing !== null}
                     isPlacementMode={placementIntent !== null}
                     isPlacementTarget={placementIntent !== null && !itemId}
                     onPress={() => handleSceneSlotPress(slotId)}
@@ -490,15 +522,18 @@ export default function MallScreen() {
               </Text>
               <Text style={[styles.previewDetails, { color: colors.mutedForeground }]}>尚未扣除金幣或取得物件；喜歡這個效果再確認。</Text>
               <View style={styles.previewActions}>
-                <Pressable testID="cancel-purchase-preview" onPress={cancelPlacement} disabled={purchasing !== null} accessibilityRole="button" style={[styles.previewButton, { backgroundColor: colors.card }]}>
+                <Pressable testID="cancel-purchase-preview" onPress={cancelPlacement} disabled={purchasing !== null} accessibilityRole="button" accessibilityState={{ disabled: purchasing !== null }} style={[styles.previewButton, { backgroundColor: colors.card }]}>
                   <Text style={[styles.filterText, { color: colors.primary }]}>取消預覽</Text>
                 </Pressable>
-                <Pressable testID="confirm-purchase-preview" onPress={() => void placeItemInSlot(previewSlotId, true)} disabled={isLoading || purchasing !== null} accessibilityRole="button" accessibilityState={{ disabled: isLoading || purchasing !== null, busy: purchasing !== null }} style={[styles.previewButton, { backgroundColor: colors.primary, opacity: purchasing ? 0.5 : 1 }]}>
+                <Pressable testID="confirm-purchase-preview" onPress={() => void placeItemInSlot(previewSlotId, true)} disabled={isLoading || purchasing !== null} accessibilityRole="button" accessibilityLabel={`${purchasing ? '正在兌換' : '確認兌換'}${currentPlacementItem.name}，${getSlotPosition(previewSlotId).floor} ${getSlotPosition(previewSlotId).label}，${currentPlacementItem.price} 金幣`} accessibilityState={{ disabled: isLoading || purchasing !== null, busy: purchasing !== null }} style={[styles.previewButton, { backgroundColor: colors.primary, opacity: purchasing ? 0.5 : 1 }]}>
                   <Text style={[styles.filterText, { color: colors.primaryForeground }]}>{purchasing ? '兌換中…' : '確認兌換'}</Text>
                 </Pressable>
               </View>
             </View>
           )}
+          <Text testID="mall-placement-status" accessibilityLiveRegion="polite" style={[styles.previewDetails, { color: colors.mutedForeground }]}>
+            {placementAnnouncement}
+          </Text>
         </View>
 
         {storageError && (

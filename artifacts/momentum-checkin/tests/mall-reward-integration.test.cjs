@@ -18,6 +18,7 @@ function createHarness() {
   const effects = new Map();
   let activeFrame;
   const navigation = [];
+  const navigationStack = ['/'];
   const alerts = [];
   const palette = { light: new Proxy({}, { get: (_, key) => String(key) }) };
   const mallContext = { currentValue: null };
@@ -104,8 +105,18 @@ function createHarness() {
   };
   const expoRouter = {
     router: {
-      push: (route) => navigation.push(['push', route]),
-      navigate: (route) => navigation.push(['navigate', route]),
+      push: (route) => {
+        navigation.push(['push', route]);
+        navigationStack.push(route);
+      },
+      navigate: (route) => {
+        navigation.push(['navigate', route]);
+        navigationStack[navigationStack.length - 1] = route;
+      },
+      back: () => {
+        navigation.push(['back']);
+        if (navigationStack.length > 1) navigationStack.pop();
+      },
     },
   };
   const colorsHook = { useColors: () => palette.light };
@@ -193,7 +204,21 @@ function createHarness() {
   }
 
   function renderToday(key = 'today') {
-    return render(key, () => todayModule.TodayScreen());
+    return render(key, () => todayRouteModule.default());
+  }
+
+  function renderCurrentRoute() {
+    const route = navigationStack.at(-1);
+    if (route === '/today') return renderToday();
+    if (route === '/') {
+      const routeElement = todayModule.default();
+      return render('mall', () => routeElement.type(routeElement.props));
+    }
+    throw new Error(`Unexpected route in test harness: ${route}`);
+  }
+
+  function goBack() {
+    expoRouter.router.back();
   }
 
   async function runEffects(key) {
@@ -204,9 +229,8 @@ function createHarness() {
 
   const contextExports = loadTsModule(path.join(appRoot, 'context/HabitsContext.tsx'));
   const mallScreen = loadTsModule(path.join(appRoot, 'app/(tabs)/mall.tsx'));
-  const todayModule = loadTsModule(path.join(appRoot, 'app/(tabs)/index.tsx'), {
-    './mall': { __esModule: true, default: function MallScreenStub() {} },
-  });
+  const todayModule = loadTsModule(path.join(appRoot, 'app/(tabs)/index.tsx'));
+  const todayRouteModule = loadTsModule(path.join(appRoot, 'app/(tabs)/today.tsx'));
   const mallCatalog = loadTsModule(path.join(appRoot, 'constants/mall.ts'));
 
   return {
@@ -214,7 +238,10 @@ function createHarness() {
     contextExports,
     mallCatalog,
     navigation,
+    navigationStack,
+    goBack,
     render,
+    renderCurrentRoute,
     renderMall,
     renderProvider,
     renderToday,
@@ -358,6 +385,101 @@ test('goal reward updates an active affordable catalog and survives provider rel
   assert.ok(reopenedIds.has(exactPriceItem.id));
   assert.ok(!reopenedIds.has(ownedItem.id));
   assert.equal(reopenedIds.size, expectedAvailable.length);
+});
+
+test('mall to today and back preserves the filtered catalog, purchase preview and saved mall state', async () => {
+  const app = createHarness();
+  const ownedItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'welcome-flowers');
+  assert.ok(ownedItem, 'the seeded owned item exists in the real catalog');
+
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 2,
+    coins: 20,
+    purchasedItems: [ownedItem.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: { 'floor-1-left': ownedItem.id },
+  }));
+
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let mallTree = app.renderCurrentRoute();
+  await press(mallTree, 'mall-category-decor');
+  mallTree = app.renderCurrentRoute();
+  await press(mallTree, 'mall-price-sort');
+  mallTree = app.renderCurrentRoute();
+
+  const firstBuildButton = findNodes(mallTree, (node) =>
+    typeof node.props?.testID === 'string'
+    && node.props.testID.startsWith('build-')
+    && !node.props.disabled,
+  )[0];
+  assert.ok(firstBuildButton, 'sorting the selected decor category exposes a purchasable item');
+  const previewItemId = firstBuildButton.props.testID.slice('build-'.length);
+  const previewItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === previewItemId);
+  assert.equal(previewItem.category, 'decor');
+  assert.ok(previewItem.price <= 20, 'the seeded balance can start the preview');
+
+  await press(mallTree, firstBuildButton.props.testID);
+  mallTree = app.renderCurrentRoute();
+  const wingPager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
+  assert.ok(wingPager, 'the real mall route renders its wing pager');
+  const mainWing = wingPager.props.renderWing('main', true);
+  const emptySlot = findNodes(mainWing, (node) =>
+    node.type?.name === 'MallSceneSlot'
+    && node.props.slotId.startsWith('floor-1-')
+    && !node.props.item,
+  )[0];
+  assert.ok(emptySlot, 'the real mall scene contains an empty slot for the preview');
+  emptySlot.props.onPress();
+
+  mallTree = app.renderCurrentRoute();
+  assert.ok(findByTestId(mallTree, 'mall-purchase-preview'), 'the selected item is still only a preview');
+
+  await press(mallTree, 'mall-category-facility');
+  mallTree = app.renderCurrentRoute();
+  await press(mallTree, 'mall-affordable-toggle');
+  mallTree = app.renderCurrentRoute();
+  assert.equal(findCatalogPager(mallTree).props.total, 0, 'facilities cost more than the current balance');
+  assert.ok(findByTestId(mallTree, 'mall-affordable-empty'));
+
+  const beforeNavigation = app.contextExports.useHabits();
+  const savedMallBeforeNavigation = app.storage.get(storageKeys.mall);
+  assert.equal(beforeNavigation.coins, 20);
+  assert.deepEqual(beforeNavigation.purchasedItems, [ownedItem.id]);
+  assert.deepEqual(beforeNavigation.mallPlacements, { 'floor-1-left': ownedItem.id });
+  assert.equal(findByTestId(mallTree, 'mall-category-facility').props.accessibilityState.selected, true);
+  assert.equal(findByTestId(mallTree, 'mall-affordable-toggle').props.accessibilityState.selected, true);
+
+  await press(mallTree, 'mall-earn-coins');
+  assert.deepEqual(app.navigationStack, ['/', '/today']);
+  const todayTree = app.renderCurrentRoute();
+  assert.match(textContent(todayTree), /今天，先完成一小步。/, 'the pushed today route renders the real today screen');
+  assert.ok(findNodes(todayTree, (node) =>
+    node.type?.name === 'HabitRow' && node.props?.habit?.id === 'starter-walk',
+  )[0], 'the pushed today route renders its real goal list');
+
+  app.goBack();
+  assert.deepEqual(app.navigationStack, ['/']);
+  mallTree = app.renderCurrentRoute();
+
+  assert.equal(findByTestId(mallTree, 'mall-category-facility').props.accessibilityState.selected, true);
+  assert.equal(findByTestId(mallTree, 'mall-affordable-toggle').props.accessibilityState.selected, true);
+  assert.equal(findCatalogPager(mallTree).props.total, 0);
+  assert.ok(findByTestId(mallTree, 'mall-affordable-empty'));
+  assert.match(
+    textContent(findByTestId(mallTree, 'mall-purchase-preview')),
+    new RegExp(previewItem.name),
+    'the unconfirmed preview survives the route transition',
+  );
+
+  const afterNavigation = app.contextExports.useHabits();
+  assert.equal(afterNavigation.coins, beforeNavigation.coins);
+  assert.deepEqual(afterNavigation.purchasedItems, beforeNavigation.purchasedItems);
+  assert.deepEqual(afterNavigation.mallPlacements, beforeNavigation.mallPlacements);
+  assert.equal(app.storage.get(storageKeys.mall), savedMallBeforeNavigation);
 });
 
 test('long-pressing a goal opens edit and delete actions', async () => {

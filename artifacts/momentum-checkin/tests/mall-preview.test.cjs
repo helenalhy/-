@@ -42,7 +42,7 @@ const wingPagerSource = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
 
-function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes = mallCatalog.MALL_FLOORS) {
+function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes = mallCatalog.MALL_FLOORS, options = {}) {
   const states = [];
   let cursor = 0;
   let first = true;
@@ -55,6 +55,20 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
   const announcements = [];
   const announcementOptions = [];
   const alerts = [];
+  const keyboardDismissals = [];
+  const storage = new Map(Object.entries(options.initialStorage ?? {}));
+  const storageCalls = [];
+  const asyncStorage = {
+    async getItem(key) {
+      storageCalls.push(['get', key]);
+      return storage.get(key) ?? null;
+    },
+    async setItem(key, value) {
+      storageCalls.push(['set', key, value]);
+      if (options.failWrites) throw new Error('simulated storage failure');
+      storage.set(key, value);
+    },
+  };
   const item = { id: 'test-planter', visual: 'colorful-planter', floor: 1, name: '彩色花圃', category: 'decor', price: 20, ticketCost: 0 };
   const owned = { ...item, id: 'owned', name: '已擁有花圃' };
   const items = catalog ?? [item, owned];
@@ -73,7 +87,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     useState(initial) {
       const index = cursor++;
       if (first) states[index] = initial;
-      return [states[index], (next) => { states[index] = next; }];
+      return [states[index], (next) => { states[index] = typeof next === 'function' ? next(states[index]) : next; }];
     },
     useRef(initial) {
       const index = cursor++;
@@ -81,7 +95,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
       return states[index];
     },
     useCallback: (fn) => fn,
-    useEffect: () => {},
+    useEffect: (effect) => { if (options.runEffects) effect(); },
     useMemo: (fn) => fn(),
   };
   const animation = () => ({ start() {}, stop() {} });
@@ -98,11 +112,12 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
         setAccessibilityFocus() {},
       },
       findNodeHandle: () => 1,
-      Keyboard: { dismiss() {} },
+      Keyboard: { dismiss: () => keyboardDismissals.push(true) },
       Alert: { alert: (...args) => alerts.push(args) }, StyleSheet: { create: (s) => s }, Platform: { OS: platformOS },
       ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View'].map((key) => [key, key])),
     };
     if (name === '@expo/vector-icons') return { Feather: 'Feather' };
+    if (name === '@react-native-async-storage/async-storage') return { __esModule: true, default: asyncStorage };
     if (name === 'expo-router') return { router: { push() {}, navigate() {} } };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === '@/constants/colors') return { light: {} };
@@ -139,7 +154,11 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
   }
   render();
   return {
-    habits, calls, announcements, announcementOptions, alerts, render, find, nodes: (node = tree) => nodes(node),
+    habits, calls, announcements, announcementOptions, alerts, storage, storageCalls, keyboardDismissals, render, find, nodes: (node = tree) => nodes(node),
+    async settle() {
+      await new Promise((resolve) => setImmediate(resolve));
+      render();
+    },
     slot(id) {
       const node = find(`mall-slot-${id}`);
       cursor = states.length;
@@ -243,6 +262,98 @@ test('search combines affordability and category; complete-list entry clears eve
   await app.press('mall-full-catalog');
   assert.ok(app.find('build-other-floor'));
   assert.equal(app.calls.length, 0);
+});
+
+test('recent searches load, apply, deduplicate, remove and clear without changing mall items or rewards', async () => {
+  const storageKey = '@momentum/mall/recent-searches';
+  const app = mount(
+    { coins: 73, purchasedItems: ['owned'], mallPlacements: { 'floor-1-right': 'owned' } },
+    undefined,
+    'ios',
+    undefined,
+    mallCatalog.MALL_FLOORS,
+    {
+      runEffects: true,
+      initialStorage: { [storageKey]: JSON.stringify(['花圃', '彩色', '花圃', '  ']) },
+    },
+  );
+  await app.settle();
+
+  assert.ok(app.find('mall-recent-searches'));
+  assert.equal(textContent(app.find('mall-recent-search-0')), '花圃');
+  assert.equal(textContent(app.find('mall-recent-search-1')), '彩色');
+  assert.equal(app.find('mall-recent-search-2'), undefined, 'loaded history is normalized and deduplicated');
+
+  const coinsBefore = app.habits.coins;
+  const ownershipBefore = [...app.habits.purchasedItems];
+  const placementsBefore = { ...app.habits.mallPlacements };
+  await app.press('mall-recent-search-1');
+  assert.equal(app.find('mall-search-input').props.value, '彩色');
+  assert.ok(pager(app).props.total > 0, 'applying a recent keyword runs the regular search');
+
+  app.find('mall-search-input').props.onChangeText('彩色');
+  app.render();
+  await app.find('mall-search-input').props.onSubmitEditing();
+  await app.press('mall-search-clear');
+  app.render();
+  assert.equal(textContent(app.find('mall-recent-search-0')), '彩色');
+  assert.equal(textContent(app.find('mall-recent-search-1')), '花圃');
+  assert.equal(app.find('mall-recent-search-2'), undefined, 'searching an existing term moves it to the top');
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)), ['彩色', '花圃']);
+
+  await app.press('mall-recent-search-remove-1');
+  assert.equal(textContent(app.find('mall-recent-search-0')), '彩色');
+  assert.equal(app.find('mall-recent-search-1'), undefined);
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)), ['彩色']);
+
+  await app.press('mall-recent-searches-clear-all');
+  assert.equal(app.find('mall-recent-searches'), undefined);
+  assert.deepEqual(JSON.parse(app.storage.get(storageKey)), []);
+
+  const reopened = mount(
+    { coins: 73, purchasedItems: ['owned'], mallPlacements: { 'floor-1-right': 'owned' } },
+    undefined,
+    'ios',
+    undefined,
+    mallCatalog.MALL_FLOORS,
+    { runEffects: true, initialStorage: Object.fromEntries(app.storage) },
+  );
+  await reopened.settle();
+  assert.equal(reopened.find('mall-recent-searches'), undefined, 'cleared history stays cleared after reopening');
+
+  for (const instance of [app, reopened]) {
+    assert.equal(instance.habits.coins, coinsBefore);
+    assert.deepEqual(instance.habits.purchasedItems, ownershipBefore);
+    assert.deepEqual(instance.habits.mallPlacements, placementsBefore);
+    assert.equal(instance.calls.length, 0, 'search history actions never redeem, move, or store items');
+  }
+  assert.deepEqual(app.storageCalls.filter(([operation]) => operation === 'set').map(([, key]) => key), [
+    storageKey, storageKey, storageKey,
+  ]);
+});
+
+test('a local history write failure does not interrupt search and explains that the query was not saved', async () => {
+  const app = mount(
+    { coins: 25, purchasedItems: [], mallPlacements: {} },
+    undefined,
+    'ios',
+    undefined,
+    mallCatalog.MALL_FLOORS,
+    { runEffects: true, failWrites: true },
+  );
+  await app.settle();
+  app.find('mall-search-input').props.onChangeText('花圃');
+  app.render();
+
+  await app.find('mall-search-input').props.onSubmitEditing();
+  app.render();
+
+  assert.equal(app.find('mall-search-input').props.value, '花圃');
+  assert.ok(app.find('mall-recent-search-storage-error'));
+  assert.equal(app.keyboardDismissals.length, 1, 'the search keyboard still closes');
+  assert.ok(pager(app).props.total > 0, 'search results remain usable');
+  assert.equal(app.calls.length, 0);
+  assert.equal(app.habits.coins, 25);
 });
 
 test('search filters keep original floor separate from the current mall placement and clear without mutations', async () => {

@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -33,6 +34,8 @@ import { getMallSlotPosition, MALL_POSITIONS_PER_FLOOR, type MallWing } from '@/
 import { MallWingPager } from '@/components/MallWingPager';
 
 const CATALOG_PAGE_SIZE = 10;
+const RECENT_SEARCHES_STORAGE_KEY = '@momentum/mall/recent-searches';
+const RECENT_SEARCHES_LIMIT = 8;
 
 const CATEGORIES: { id: 'all' | RewardCategory; label: string }[] = [
   { id: 'all', label: '全部' },
@@ -212,6 +215,12 @@ export default function MallScreen() {
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearchStorageError, setRecentSearchStorageError] = useState(false);
+  const recentSearchesRef = useRef<string[]>([]);
+  const recentSearchLoadRef = useRef<Promise<string[]> | null>(null);
+  const recentSearchQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const recentSearchesChangedRef = useRef(false);
   const [searchFloor, setSearchFloor] = useState<number | null>(null);
   const [searchWing, setSearchWing] = useState<MallWing | 'unplaced' | null>(null);
   const [affordableOnly, setAffordableOnly] = useState(false);
@@ -268,6 +277,78 @@ export default function MallScreen() {
     ).length;
     return { floor, emptyCount };
   }).filter(({ emptyCount }) => emptyCount > 0);
+
+  useEffect(() => {
+    let active = true;
+    const load = AsyncStorage.getItem(RECENT_SEARCHES_STORAGE_KEY)
+      .then((raw) => {
+        if (!raw) return [];
+        const parsed: unknown = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return [...new Set(parsed
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter(Boolean))]
+          .slice(0, RECENT_SEARCHES_LIMIT);
+      })
+      .catch(() => []);
+    recentSearchLoadRef.current = load;
+    void load.then((saved) => {
+      if (!active || recentSearchesChangedRef.current) return;
+      recentSearchesRef.current = saved;
+      setRecentSearches(saved);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function updateRecentSearches(
+    update: (current: string[]) => string[],
+  ): Promise<void> {
+    const operation = recentSearchQueueRef.current.then(async () => {
+      if (!recentSearchesChangedRef.current && recentSearchLoadRef.current) {
+        const saved = await recentSearchLoadRef.current;
+        recentSearchesRef.current = saved;
+        setRecentSearches(saved);
+      }
+      const next = update(recentSearchesRef.current);
+      if (
+        next.length === recentSearchesRef.current.length &&
+        next.every((entry, index) => entry === recentSearchesRef.current[index])
+      ) return;
+      recentSearchesChangedRef.current = true;
+      recentSearchesRef.current = next;
+      setRecentSearches(next);
+      try {
+        await AsyncStorage.setItem(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(next));
+        setRecentSearchStorageError(false);
+      } catch {
+        setRecentSearchStorageError(true);
+      }
+    });
+    recentSearchQueueRef.current = operation.catch(() => {});
+    return operation;
+  }
+
+  function saveRecentSearch(query: string): Promise<void> {
+    const normalized = query.trim();
+    if (!normalized) return Promise.resolve();
+    return updateRecentSearches((current) => [
+      normalized,
+      ...current.filter((entry) => entry.toLocaleLowerCase() !== normalized.toLocaleLowerCase()),
+    ].slice(0, RECENT_SEARCHES_LIMIT));
+  }
+
+  function applyRecentSearch(query: string) {
+    setSearchQuery(query);
+    setSearchFloor(null);
+    setSearchWing(null);
+    setCategory('all');
+    setAffordableOnly(false);
+    setPriceAscending(false);
+    setCatalogPage(1);
+  }
 
   useEffect(() => {
     const entrance = Animated.parallel([
@@ -780,11 +861,15 @@ export default function MallScreen() {
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="search"
-            onSubmitEditing={() => Keyboard.dismiss()}
+            onSubmitEditing={async () => {
+              await saveRecentSearch(searchQuery);
+              Keyboard.dismiss();
+            }}
+            onEndEditing={() => { void saveRecentSearch(searchQuery); }}
             style={[styles.searchInput, { color: colors.foreground }]}
           />
           {searchQuery.length > 0 && <Pressable
-            onPress={() => { setSearchQuery(''); setSearchFloor(null); setSearchWing(null); setCatalogPage(1); }}
+            onPress={() => { void saveRecentSearch(searchQuery); setSearchQuery(''); setSearchFloor(null); setSearchWing(null); setCatalogPage(1); }}
             accessibilityRole="button"
             accessibilityLabel="清除搜尋，返回原本清單"
             testID="mall-search-clear"
@@ -792,6 +877,55 @@ export default function MallScreen() {
           ><Feather name="x" size={18} color={colors.primary} /></Pressable>}
         </View>
         <Text style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋名稱或描述關鍵字 · 可配合分類 · 搜尋及換層不扣金幣</Text>
+
+        {!isSearching && recentSearches.length > 0 && (
+          <View testID="mall-recent-searches" style={styles.recentSearches}>
+            <View style={styles.recentSearchesHeader}>
+              <Text style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>最近搜尋</Text>
+              <Pressable
+                testID="mall-recent-searches-clear-all"
+                accessibilityRole="button"
+                accessibilityLabel="清除全部最近搜尋"
+                onPress={() => updateRecentSearches(() => [])}
+                style={styles.recentSearchClearAll}
+              >
+                <Text style={[styles.filterText, { color: colors.primary }]}>全部清除</Text>
+              </Pressable>
+            </View>
+            {recentSearches.map((query, index) => (
+              <View key={`${query}-${index}`} style={[styles.recentSearchRow, { borderColor: colors.border }]}>
+                <Pressable
+                  testID={`mall-recent-search-${index}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`搜尋「${query}」`}
+                  onPress={() => applyRecentSearch(query)}
+                  style={styles.recentSearchApply}
+                >
+                  <Feather name="clock" size={15} color={colors.mutedForeground} />
+                  <Text numberOfLines={1} style={[styles.recentSearchText, { color: colors.foreground }]}>{query}</Text>
+                </Pressable>
+                <Pressable
+                  testID={`mall-recent-search-remove-${index}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`刪除最近搜尋「${query}」`}
+                  onPress={() => updateRecentSearches((current) => current.filter((entry) => entry !== query))}
+                  style={styles.recentSearchRemove}
+                >
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+        {recentSearchStorageError && (
+          <Text
+            testID="mall-recent-search-storage-error"
+            accessibilityRole="text"
+            style={[styles.recentSearchStorageError, { color: colors.destructive }]}
+          >
+            最近搜尋未能保存到這部裝置，關閉商場後可能會遺失。
+          </Text>
+        )}
 
         {isSearching && (
           <View style={styles.searchLocationFilters}>
@@ -1090,6 +1224,14 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, minWidth: 0, fontSize: 12, paddingVertical: 12 },
   searchClear: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   searchHint: { fontSize: 11, marginTop: 7, marginBottom: 12 },
+  recentSearches: { gap: 5, marginBottom: 14 },
+  recentSearchesHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 36 },
+  recentSearchClearAll: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 6 },
+  recentSearchRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
+  recentSearchApply: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  recentSearchText: { flex: 1, fontSize: 12 },
+  recentSearchRemove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  recentSearchStorageError: { fontSize: 11, lineHeight: 16, marginBottom: 10 },
   searchLocationFilters: { gap: 11, marginBottom: 14 },
   searchFilterTitle: { fontSize: 11, fontWeight: '600', marginBottom: 6 },
   searchFilterOptions: { flexDirection: 'row', gap: 7, paddingRight: 4 },

@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import palette from '@/constants/colors';
 import {
   MALL_FLOOR_COUNT,
@@ -763,7 +764,20 @@ export default function MallScreen() {
         <CatalogPager id="catalog-top" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
         <View style={styles.catalogList}>
           {filteringAffordable && visibleItems.length === 0 && (
-            <Text testID="mall-affordable-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>目前沒有符合條件、金幣足夠且未擁有的款式。完成目標賺取更多金幣，再來挑選吧！也可切換分類、清除搜尋或查看本層完整清單；已兌換的物件可到倉庫免費重擺。</Text>
+            <View style={styles.affordableEmpty}>
+              <Text testID="mall-affordable-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>目前沒有符合條件、金幣足夠且未擁有的款式。完成目標賺取更多金幣，再來挑選吧！也可切換分類、清除搜尋或查看本層完整清單；已兌換的物件可到倉庫免費重擺。</Text>
+              <Pressable
+                testID="mall-earn-coins"
+                accessibilityRole="button"
+                accessibilityLabel="前往今天頁完成目標賺取金幣"
+                onPress={() => router.push('/today')}
+                style={[styles.earnCoinsButton, { backgroundColor: colors.primary }]}
+              >
+                <Feather name="target" size={15} color={colors.primaryForeground} />
+                <Text style={[styles.earnCoinsButtonText, { color: colors.primaryForeground }]}>前往今日目標賺金幣</Text>
+                <Feather name="arrow-right" size={15} color={colors.primaryForeground} />
+              </Pressable>
+            </View>
           )}
           {!filteringAffordable && isSearching && visibleItems.length === 0 && (
             <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有符合「{searchQuery.trim()}」的選物，試試其他名稱、切換「全部」分類或清除搜尋。</Text>
@@ -855,7 +869,10 @@ const styles = StyleSheet.create({
   collectionTabs: { flexDirection: 'row', gap: 8, marginTop: 20 },
   collectionTab: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   collectionAction: { alignItems: 'center', gap: 4, padding: 6 },
+  affordableEmpty: { gap: 4 },
   collectionEmpty: { fontSize: 12, lineHeight: 20, paddingVertical: 16 },
+  earnCoinsButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14, borderRadius: 12 },
+  earnCoinsButtonText: { fontSize: 12, fontWeight: '700' },
   content: { paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   eyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },

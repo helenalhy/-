@@ -1,7 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { MallWing } from '@/constants/mall-layout';
 import { useColors } from '@/hooks/useColors';
+
+type WingTabKeyboardEvent = {
+  key: string;
+  preventDefault: () => void;
+};
+
+type WingTabPressableProps = React.ComponentProps<typeof Pressable> & {
+  onKeyDown?: (event: WingTabKeyboardEvent) => void;
+};
+
+const WingTabPressable = Pressable as React.ComponentType<WingTabPressableProps>;
 
 const WINGS: { id: MallWing; name: string; capacity: number }[] = [
   { id: 'main', name: '主商場', capacity: 12 },
@@ -21,6 +32,7 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   const colors = useColors();
   const pager = useRef<ScrollView>(null);
   const tabs = useRef<ScrollView>(null);
+  const tabRefs = useRef<Partial<Record<MallWing, React.ElementRef<typeof Pressable>>>>({});
   const [width, setWidth] = useState(360);
   const [activeWing, setActiveWing] = useState<MallWing>('main');
 
@@ -47,6 +59,32 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
     scrollTabsToWing(wing);
   }
 
+  function handleTabKeyDown(event: WingTabKeyboardEvent) {
+    const activeIndex = WINGS.findIndex((wing) => wing.id === activeWing);
+    let nextIndex: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        nextIndex = (activeIndex + 1) % WINGS.length;
+        break;
+      case 'ArrowLeft':
+        nextIndex = (activeIndex - 1 + WINGS.length) % WINGS.length;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = WINGS.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const nextWing = WINGS[nextIndex].id;
+    changeWing(nextWing);
+    tabRefs.current[nextWing]?.focus();
+  }
+
   return (
     <View onLayout={(event) => {
       const nextWidth = event.nativeEvent.layout.width;
@@ -56,13 +94,24 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
         requestAnimationFrame(() => scrollTabsToWing(activeWing));
       }
     }}>
-      <ScrollView ref={tabs} horizontal showsHorizontalScrollIndicator={false} style={[s.tabScroller, { backgroundColor: colors.candyCream }]} contentContainerStyle={s.tabs} testID="mall-wing-tabs">
+      <ScrollView ref={tabs} horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" style={[s.tabScroller, { backgroundColor: colors.candyCream }]} contentContainerStyle={s.tabs} testID="mall-wing-tabs">
         {WINGS.map((wing) => {
           const selected = activeWing === wing.id;
           return (
-            <Pressable key={wing.id} testID={`mall-wing-${wing.id}`} onPress={() => changeWing(wing.id)} accessibilityRole="button" accessibilityLabel={`${wing.name}分區，${counts[wing.id]} 個位置已使用，共 ${wing.capacity} 個位置`} accessibilityState={{ selected }} style={[s.tab, { backgroundColor: selected ? colors.secondary : colors.card, borderColor: selected ? colors.primary : colors.border }]}>
+            <WingTabPressable
+              key={wing.id}
+              ref={(node) => { tabRefs.current[wing.id] = node ?? undefined; }}
+              testID={`mall-wing-${wing.id}`}
+              onPress={() => changeWing(wing.id)}
+              onKeyDown={Platform.OS === 'web' ? handleTabKeyDown : undefined}
+              tabIndex={selected ? 0 : -1}
+              accessibilityRole="tab"
+              accessibilityLabel={`${wing.name}分區，${counts[wing.id]} 個位置已使用，共 ${wing.capacity} 個位置`}
+              accessibilityState={{ selected }}
+              style={[s.tab, { backgroundColor: selected ? colors.secondary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
+            >
               <Text style={[s.tabText, { color: selected ? colors.primary : colors.mutedForeground }]}>{wing.name} {counts[wing.id]} / {wing.capacity}</Text>
-            </Pressable>
+            </WingTabPressable>
           );
         })}
       </ScrollView>

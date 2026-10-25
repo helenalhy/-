@@ -517,6 +517,7 @@ test('mall wing controls announce their section name, capacity and selected stat
     (name) => {
       if (name === 'react') return react;
       if (name === 'react-native') return {
+        Platform: { OS: 'web' },
         Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles },
         Text: 'Text', View: 'View',
       };
@@ -529,26 +530,40 @@ test('mall wing controls announce their section name, capacity and selected stat
   let wingChanges = 0;
   let focusWing = null;
   let focusRequestId = null;
+  const focusedWings = [];
+  function wingNodes(node) {
+    return !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(wingNodes) : [
+      node,
+      ...wingNodes(node.props?.children),
+    ];
+  }
   const renderPager = () => {
     cursor = 0;
-    return module.exports.MallWingPager({
+    const tree = module.exports.MallWingPager({
       counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
       onWingChange() { wingChanges += 1; },
       focusWing,
       focusRequestId,
       renderWing: (wing) => ({ type: 'WingContent', props: { testID: `wing-content-${wing}` } }),
     });
+    for (const node of wingNodes(tree)) {
+      if (node.props.testID?.startsWith('mall-wing-') && node.props.testID !== 'mall-wing-tabs' && node.props.testID !== 'mall-wing-pager') {
+        const wing = node.props.testID.slice('mall-wing-'.length);
+        node.props.ref?.({ focus() { focusedWings.push(wing); } });
+      }
+    }
+    return tree;
   };
   let pager = renderPager();
-  const wingNodes = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(wingNodes) : [
-    node,
-    ...wingNodes(node.props?.children),
-  ];
   const findWing = (id) => wingNodes(pager).find((node) => node.props.testID === id);
+  assert.equal(findWing('mall-wing-tabs').props.accessibilityRole, 'tablist');
   const extension = findWing('mall-wing-extension');
   assert.equal(extension.props.accessibilityLabel, '延伸區二分區，0 個位置已使用，共 12 個位置');
+  assert.equal(findWing('mall-wing-main').props.accessibilityRole, 'tab');
   assert.equal(findWing('mall-wing-main').props.accessibilityState.selected, true);
+  assert.equal(findWing('mall-wing-main').props.tabIndex, 0);
   assert.equal(extension.props.accessibilityState.selected, false);
+  assert.equal(extension.props.tabIndex, -1);
 
   const assertOnlyWingIsAccessible = (activeWing) => {
     for (const wing of ['main', 'annex', 'extension', 'extension3', 'extension4']) {
@@ -566,13 +581,42 @@ test('mall wing controls announce their section name, capacity and selected stat
   pager = renderPager();
   assertOnlyWingIsAccessible('annex');
   assert.equal(findWing('mall-wing-annex').props.accessibilityState.selected, true);
+  assert.equal(findWing('mall-wing-annex').props.tabIndex, 0);
+  assert.equal(findWing('mall-wing-main').props.tabIndex, -1);
   assert.equal(wingChanges, 1);
+
+  let prevented = false;
+  findWing('mall-wing-annex').props.onKeyDown({ key: 'ArrowRight', preventDefault() { prevented = true; } });
+  pager = renderPager();
+  assert.equal(prevented, true);
+  assert.equal(findWing('mall-wing-extension').props.accessibilityState.selected, true);
+  assert.deepEqual(focusedWings.at(-1), 'extension');
+
+  findWing('mall-wing-extension').props.onKeyDown({ key: 'ArrowRight', preventDefault() {} });
+  pager = renderPager();
+  assert.equal(findWing('mall-wing-extension3').props.accessibilityState.selected, true);
+  findWing('mall-wing-extension3').props.onKeyDown({ key: 'ArrowLeft', preventDefault() {} });
+  pager = renderPager();
+  assert.equal(findWing('mall-wing-extension').props.accessibilityState.selected, true);
+
+  findWing('mall-wing-extension').props.onKeyDown({ key: 'Home', preventDefault() {} });
+  pager = renderPager();
+  assert.equal(findWing('mall-wing-main').props.accessibilityState.selected, true);
+  findWing('mall-wing-main').props.onKeyDown({ key: 'End', preventDefault() {} });
+  pager = renderPager();
+  assert.equal(findWing('mall-wing-extension4').props.accessibilityState.selected, true);
+  findWing('mall-wing-extension4').props.onKeyDown({ key: 'ArrowRight', preventDefault() {} });
+  pager = renderPager();
+  assert.equal(findWing('mall-wing-main').props.accessibilityState.selected, true, 'right arrow wraps to the first wing');
+  findWing('mall-wing-main').props.onKeyDown({ key: 'ArrowLeft', preventDefault() {} });
+  pager = renderPager();
+  assert.equal(findWing('mall-wing-extension4').props.accessibilityState.selected, true, 'left arrow wraps to the last wing');
 
   findWing('mall-wing-pager').props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 2 * 360 } } });
   pager = renderPager();
   assertOnlyWingIsAccessible('extension');
   assert.equal(findWing('mall-wing-extension').props.accessibilityState.selected, true);
-  assert.equal(wingChanges, 2);
+  assert.equal(wingChanges, 9);
   assert.deepEqual(findWing('mall-wing-content-extension').props.style, { width: 360, height: 360 });
 
   focusWing = 'extension4';
@@ -581,7 +625,7 @@ test('mall wing controls announce their section name, capacity and selected stat
   pager = renderPager();
   assertOnlyWingIsAccessible('extension4');
   assert.equal(findWing('mall-wing-extension4').props.accessibilityState.selected, true);
-  assert.equal(wingChanges, 2, 'programmatic location navigation does not trigger a placement change');
+  assert.equal(wingChanges, 9, 'programmatic location navigation does not trigger a placement change');
 });
 
 test('preview announces position and unredeemed state; changing and cancelling update the status', async () => {

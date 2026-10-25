@@ -5,6 +5,7 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 
 let metroProcess = null;
+let webExportProcess = null;
 
 const projectRoot = path.resolve(__dirname, '..');
 
@@ -34,6 +35,9 @@ function exitWithError(message) {
 
 function setupSignalHandlers() {
   const cleanup = () => {
+    if (webExportProcess) {
+      webExportProcess.kill();
+    }
     if (metroProcess) {
       console.log('Cleaning up Metro process...');
       metroProcess.kill();
@@ -127,6 +131,48 @@ async function checkMetroHealth() {
 
 function getExpoPublicReplId() {
   return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
+}
+
+function exportWebBuild(domain, expoPublicReplId) {
+  const outputDir = path.join(projectRoot, 'static-build', 'web');
+  const env = {
+    ...process.env,
+    EXPO_PUBLIC_DOMAIN: domain,
+    ...(expoPublicReplId ? { EXPO_PUBLIC_REPL_ID: expoPublicReplId } : {}),
+  };
+
+  console.log('Exporting browser app...');
+  return new Promise((resolve, reject) => {
+    webExportProcess = spawn(
+      'pnpm',
+      ['exec', 'expo', 'export', '--platform', 'web', '--output-dir', outputDir],
+      {
+        stdio: ['ignore', 'inherit', 'inherit'],
+        cwd: projectRoot,
+        env,
+      },
+    );
+
+    webExportProcess.once('error', (error) => {
+      webExportProcess = null;
+      reject(error);
+    });
+    webExportProcess.once('close', (code, signal) => {
+      webExportProcess = null;
+      if (code !== 0) {
+        reject(new Error(`Web export failed (exit ${code ?? signal})`));
+        return;
+      }
+
+      if (!fs.existsSync(path.join(outputDir, 'index.html'))) {
+        reject(new Error('Web export completed without producing index.html'));
+        return;
+      }
+
+      console.log('Browser app ready');
+      resolve();
+    });
+  });
 }
 
 async function startMetro(expoPublicDomain, expoPublicReplId) {
@@ -534,6 +580,7 @@ async function main() {
   prepareDirectories(timestamp);
   clearMetroCache();
 
+  await exportWebBuild(domain, expoPublicReplId);
   await startMetro(domain, expoPublicReplId);
 
   const downloadTimeout = 600000;

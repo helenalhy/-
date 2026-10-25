@@ -13,7 +13,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const STATIC_ROOT = path.resolve(__dirname, '..', 'static-build');
+const STATIC_ROOT = path.resolve(
+  process.env.STATIC_BUILD_DIR || path.resolve(__dirname, '..', 'static-build'),
+);
 const TEMPLATE_PATH = path.resolve(__dirname, 'templates', 'landing-page.html');
 const basePath = (process.env.BASE_PATH || '/').replace(/\/+$/, '');
 
@@ -25,6 +27,8 @@ const MIME_TYPES = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
   '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
@@ -63,8 +67,8 @@ function toScriptString(value) {
     .replaceAll('&', '\\u0026');
 }
 
-function serveManifest(platform, res) {
-  const manifestPath = path.join(STATIC_ROOT, platform, 'manifest.json');
+function serveManifest(platform, res, staticRoot) {
+  const manifestPath = path.join(staticRoot, platform, 'manifest.json');
 
   if (!fs.existsSync(manifestPath)) {
     res.writeHead(404, { 'content-type': 'application/json' });
@@ -83,7 +87,7 @@ function serveManifest(platform, res) {
   res.end(manifest);
 }
 
-function serveLandingPage(req, res, landingPageTemplate, appName) {
+function serveLandingPage(req, res, landingPageTemplate, appName, basePath) {
   const forwardedProto = req.headers['x-forwarded-proto'];
   const protocol = forwardedProto || 'https';
   const host = req.headers['x-forwarded-host'] || req.headers['host'];
@@ -100,20 +104,33 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
   res.end(html);
 }
 
-function serveStaticFile(urlPath, res) {
-  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, '');
-  const filePath = path.join(STATIC_ROOT, safePath);
-
-  if (!filePath.startsWith(STATIC_ROOT)) {
+function serveFileFromRoot(root, urlPath, res) {
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(urlPath);
+  } catch {
     res.writeHead(403);
     res.end('Forbidden');
-    return;
+    return true;
   }
 
-  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    res.writeHead(404);
-    res.end('Not Found');
-    return;
+  const relativePath = path.posix.normalize(`/${decodedPath}`).replace(/^\/+/, '');
+  const resolvedRoot = path.resolve(root);
+  let filePath = path.resolve(resolvedRoot, relativePath || 'index.html');
+  if (
+    filePath !== resolvedRoot &&
+    !filePath.startsWith(`${resolvedRoot}${path.sep}`)
+  ) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return true;
+  }
+
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+    filePath = path.join(filePath, 'index.html');
+  }
+  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    return false;
   }
 
   const ext = path.extname(filePath).toLowerCase();
@@ -121,34 +138,75 @@ function serveStaticFile(urlPath, res) {
   const content = fs.readFileSync(filePath);
   res.writeHead(200, { 'content-type': contentType });
   res.end(content);
+  return true;
 }
 
-const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
-const appName = getAppName();
+function serveStaticFile(urlPath, res, staticRoot) {
+  if (!serveFileFromRoot(staticRoot, urlPath, res)) {
+    res.writeHead(404);
+    res.end('Not Found');
+  }
+}
 
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url || '/', `http://${req.headers.host}`);
-  let pathname = url.pathname;
+function serveWebFile(urlPath, res, webRoot, staticRoot) {
+  if (serveFileFromRoot(webRoot, urlPath, res)) return;
 
-  if (basePath && pathname.startsWith(basePath)) {
-    pathname = pathname.slice(basePath.length) || '/';
+  if (!path.extname(urlPath)) {
+    const routePath = urlPath.replace(/\/+$/, '');
+    if (serveFileFromRoot(webRoot, `${routePath}.html`, res)) return;
+    if (serveFileFromRoot(webRoot, `${routePath}/index.html`, res)) return;
+    if (serveFileFromRoot(webRoot, '/index.html', res)) return;
   }
 
-  if (pathname === '/' || pathname === '/manifest') {
+  serveStaticFile(urlPath, res, staticRoot);
+}
+
+function createServer({
+  staticRoot = STATIC_ROOT,
+  serverBasePath = basePath,
+} = {}) {
+  const webRoot = path.join(staticRoot, 'web');
+  const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
+  const appName = getAppName();
+
+  return http.createServer((req, res) => {
+    const url = new URL(req.url || '/', `http://${req.headers.host}`);
+    let pathname = url.pathname;
+
+    if (serverBasePath && pathname.startsWith(serverBasePath)) {
+      pathname = pathname.slice(serverBasePath.length) || '/';
+    }
+
     const platform = req.headers['expo-platform'];
-    if (platform === 'ios' || platform === 'android') {
-      return serveManifest(platform, res);
+    if (pathname === '/' && (platform === 'ios' || platform === 'android')) {
+      return serveManifest(platform, res, staticRoot);
+    }
+    if (pathname === '/manifest') {
+      if (platform === 'ios' || platform === 'android') {
+        return serveManifest(platform, res, staticRoot);
+      }
+      return serveStaticFile(pathname, res, staticRoot);
+    }
+    if (pathname === '/install') {
+      return serveLandingPage(
+        req,
+        res,
+        landingPageTemplate,
+        appName,
+        serverBasePath,
+      );
     }
 
-    if (pathname === '/') {
-      return serveLandingPage(req, res, landingPageTemplate, appName);
-    }
-  }
+    serveWebFile(pathname, res, webRoot, staticRoot);
+  });
+}
 
-  serveStaticFile(pathname, res);
-});
+if (require.main === module) {
+  const port = parseInt(process.env.PORT || '3000', 10);
+  const server = createServer();
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`Serving web and static Expo builds on port ${port}`);
+  });
+}
 
-const port = parseInt(process.env.PORT || '3000', 10);
-server.listen(port, '0.0.0.0', () => {
-  console.log(`Serving static Expo build on port ${port}`);
-});
+module.exports = { createServer };

@@ -65,7 +65,21 @@ export function MallWingPager({ counts, onWingChange, renderWing }: {
             scrollTabsToWing(wing);
           }
         }}>
-        {WINGS.map((wing) => <View key={wing.id} style={{ width, height: width }}>{renderWing(wing.id, activeWing === wing.id)}</View>)}
+        {WINGS.map((wing) => {
+          const active = activeWing === wing.id;
+          return (
+            <View
+              key={wing.id}
+              testID={`mall-wing-content-${wing.id}`}
+              style={{ width, height: width }}
+              accessibilityElementsHidden={!active}
+              importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
+              aria-hidden={!active}
+            >
+              {renderWing(wing.id, active)}
+            </View>
+          );
+        })}
       </ScrollView>
     </View>
   );

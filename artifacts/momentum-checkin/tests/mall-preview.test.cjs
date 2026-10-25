@@ -271,10 +271,15 @@ test('screen readers distinguish every location including plaza rows and annex',
 });
 
 test('mall wing controls announce their section name, capacity and selected state', () => {
+  const state = [360, 'main'];
+  let cursor = 0;
   const react = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useRef: (current) => ({ current }),
-    useState: (initial) => [initial, () => {}],
+    useState: (initial) => {
+      const index = cursor++;
+      return [state[index] ?? initial, (next) => { state[index] = next; }];
+    },
   };
   const module = { exports: {} };
   new Function('require', 'module', 'exports', wingPagerSource)(
@@ -290,11 +295,16 @@ test('mall wing controls announce their section name, capacity and selected stat
     module,
     module.exports,
   );
-  const pager = module.exports.MallWingPager({
-    counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
-    onWingChange() {},
-    renderWing: () => null,
-  });
+  let wingChanges = 0;
+  const renderPager = () => {
+    cursor = 0;
+    return module.exports.MallWingPager({
+      counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
+      onWingChange() { wingChanges += 1; },
+      renderWing: (wing) => ({ type: 'WingContent', props: { testID: `wing-content-${wing}` } }),
+    });
+  };
+  let pager = renderPager();
   const wingNodes = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(wingNodes) : [
     node,
     ...wingNodes(node.props?.children),
@@ -304,6 +314,31 @@ test('mall wing controls announce their section name, capacity and selected stat
   assert.equal(extension.props.accessibilityLabel, '延伸區二分區，0 個位置已使用，共 12 個位置');
   assert.equal(findWing('mall-wing-main').props.accessibilityState.selected, true);
   assert.equal(extension.props.accessibilityState.selected, false);
+
+  const assertOnlyWingIsAccessible = (activeWing) => {
+    for (const wing of ['main', 'annex', 'extension', 'extension3', 'extension4']) {
+      const content = findWing(`mall-wing-content-${wing}`);
+      const active = wing === activeWing;
+      assert.equal(content.props.accessibilityElementsHidden, !active, `${wing} native iOS visibility`);
+      assert.equal(content.props.importantForAccessibility, active ? 'auto' : 'no-hide-descendants', `${wing} Android visibility`);
+      assert.equal(content.props['aria-hidden'], !active, `${wing} web visibility`);
+      assert.ok(findWing(`wing-content-${wing}`), `${wing} remains mounted and visually available`);
+    }
+  };
+  assertOnlyWingIsAccessible('main');
+
+  findWing('mall-wing-annex').props.onPress();
+  pager = renderPager();
+  assertOnlyWingIsAccessible('annex');
+  assert.equal(findWing('mall-wing-annex').props.accessibilityState.selected, true);
+  assert.equal(wingChanges, 1);
+
+  findWing('mall-wing-pager').props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 2 * 360 } } });
+  pager = renderPager();
+  assertOnlyWingIsAccessible('extension');
+  assert.equal(findWing('mall-wing-extension').props.accessibilityState.selected, true);
+  assert.equal(wingChanges, 2);
+  assert.deepEqual(findWing('mall-wing-content-extension').props.style, { width: 360, height: 360 });
 });
 
 test('preview announces position and unredeemed state; changing and cancelling update the status', async () => {

@@ -67,6 +67,7 @@ const SEARCH_WING_FILTERS: { id: MallWing | 'unplaced'; label: string }[] = [
 function MallSceneSlot({
   slotId,
   item,
+  isSceneActive = true,
   isPlacementTarget,
   isPlacementMode,
   isPreview = false,
@@ -80,6 +81,7 @@ function MallSceneSlot({
 }: {
   slotId: MallSlotId;
   item?: MallItem;
+  isSceneActive?: boolean;
   isPlacementTarget: boolean;
   isPlacementMode: boolean;
   isPreview?: boolean;
@@ -98,16 +100,17 @@ function MallSceneSlot({
   const position = getSlotPosition(slotId);
 
   useEffect(() => {
-    popIn.setValue(0.78);
-    fadeIn.setValue(0);
+    popIn.setValue(item && isSceneActive ? 0.78 : 1);
+    fadeIn.setValue(item && isSceneActive ? 0 : item ? 1 : 0);
     if (!item) return;
+    if (!isSceneActive) return;
     const animation = Animated.parallel([
-      Animated.spring(popIn, { toValue: 1, friction: 5, tension: 135, useNativeDriver: false }),
-      Animated.timing(fadeIn, { toValue: 1, duration: 260, useNativeDriver: false }),
+      Animated.spring(popIn, { toValue: 1, friction: 5, tension: 135, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(fadeIn, { toValue: 1, duration: 260, useNativeDriver: Platform.OS !== 'web' }),
     ]);
     animation.start();
     return () => animation.stop();
-  }, [item?.id, popIn, fadeIn]);
+  }, [item?.id, isSceneActive, popIn, fadeIn]);
 
   useEffect(() => {
     if (!focusAfterResult) return;
@@ -140,7 +143,14 @@ function MallSceneSlot({
           styles.sceneShopBadge,
           { opacity: fadeIn, height: position.plaza ? 30 : 47, transform: [{ scale: Animated.multiply(popIn, position.scale) }] },
         ]}>
-          <MallObjectVisual id={item.visual ?? item.id} color={item.color} icon={item.icon} category={item.category} />
+          <MallObjectVisual
+            id={item.visual ?? item.id}
+            itemId={item.id}
+            color={item.color}
+            icon={item.icon}
+            category={item.category}
+            isActive={isSceneActive}
+          />
         </Animated.View>
         <Text numberOfLines={1} style={[styles.sceneShopName, { color: palette.light.foreground, fontSize: position.plaza ? 7 : 8 }]}>{item.name}</Text>
         {isLocationHighlighted && <Text style={[styles.locationMarker, { color: colors.primary, backgroundColor: colors.secondary }]}>目前位置</Text>}
@@ -675,6 +685,7 @@ export default function MallScreen() {
                   <MallSceneSlot
                     key={slotId}
                     slotId={slotId}
+                     isSceneActive={active}
                     item={isPreview ? currentPlacementItem ?? undefined : itemId ? MALL_ITEM_BY_ID[itemId] : undefined}
                     isPreview={isPreview}
                     disabled={isLoading || purchasing !== null}

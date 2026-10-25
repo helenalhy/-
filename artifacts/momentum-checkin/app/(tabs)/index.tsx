@@ -1,10 +1,11 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -40,11 +41,12 @@ function getWeek(todayKey: string) {
   });
 }
 
-function HabitRow({ habit, done, onToggle, onEdit }: {
+function HabitRow({ habit, done, onToggle, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onManage: () => void;
 }) {
   const colors = useColors();
   return (
@@ -52,9 +54,27 @@ function HabitRow({ habit, done, onToggle, onEdit }: {
       <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
         <Feather name={habit.icon as keyof typeof Feather.glyphMap} size={20} color={colors.foreground} />
       </View>
-      <Pressable style={styles.habitInfo} onPress={onEdit} accessibilityRole="button" accessibilityLabel={`編輯${habit.title}`}>
+      <Pressable
+        style={styles.habitInfo}
+        onPress={onEdit}
+        onLongPress={onManage}
+        delayLongPress={450}
+        accessibilityRole="button"
+        accessibilityLabel={`編輯${habit.title}`}
+        accessibilityHint="長按可開啟修改或刪除選項"
+        testID={`habit-info-${habit.id}`}
+      >
         <Text style={[styles.habitTitle, { color: colors.foreground }, done && styles.doneText]}>{habit.title}</Text>
         <Text style={[styles.habitReason, { color: colors.mutedForeground }]} numberOfLines={1}>{habit.reason}</Text>
+      </Pressable>
+      <Pressable
+        style={styles.manageButton}
+        onPress={onManage}
+        accessibilityRole="button"
+        accessibilityLabel={`管理${habit.title}`}
+        testID={`manage-habit-${habit.id}`}
+      >
+        <Feather name="more-horizontal" size={18} color={colors.mutedForeground} />
       </Pressable>
       <Pressable
         style={[styles.checkButton, { backgroundColor: done ? colors.primary : colors.secondary }]}
@@ -72,7 +92,11 @@ function HabitRow({ habit, done, onToggle, onEdit }: {
 export function TodayScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { habits, isLoading, storageError, today, coins, toggleCheckIn } = useHabits();
+  const { habits, isLoading, storageError, today, coins, toggleCheckIn, deleteHabit } = useHabits();
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const week = getWeek(today);
   const todayDone = habits.filter((habit) => habit.checkIns.includes(today)).length;
   const percent = habits.length === 0 ? 0 : Math.round((todayDone / habits.length) * 100);
@@ -80,6 +104,42 @@ export function TodayScreen() {
   const weekday = dayNames[date.getDay()];
   const dateLabel = `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
   const totalStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today)));
+
+  function openHabitActions(habit: Habit) {
+    setSelectedHabit(habit);
+    setConfirmingDelete(false);
+    setDeleteError(null);
+  }
+
+  function closeHabitActions() {
+    if (isDeleting) return;
+    setSelectedHabit(null);
+    setConfirmingDelete(false);
+    setDeleteError(null);
+  }
+
+  function editSelectedHabit() {
+    if (!selectedHabit) return;
+    const id = selectedHabit.id;
+    setSelectedHabit(null);
+    setConfirmingDelete(false);
+    router.push({ pathname: '/habit-editor', params: { id } });
+  }
+
+  async function confirmDeleteHabit() {
+    if (!selectedHabit || isDeleting) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteHabit(selectedHabit.id);
+      setSelectedHabit(null);
+      setConfirmingDelete(false);
+    } catch {
+      setDeleteError('刪除失敗，目標仍保留，請再試一次。');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   async function handleToggle(habit: Habit) {
     try {
@@ -183,7 +243,7 @@ export function TodayScreen() {
         <View style={styles.sectionHeading}>
           <View>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>今天的練習</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>每一次打卡，都在累積改變</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>長按目標或點「⋯」即可修改或刪除</Text>
           </View>
           <Text style={[styles.counter, { color: colors.primary }]}>{todayDone}/{habits.length}</Text>
         </View>
@@ -214,6 +274,7 @@ export function TodayScreen() {
                 done={habit.checkIns.includes(today)}
                 onToggle={() => void handleToggle(habit)}
                 onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
+                onManage={() => openHabitActions(habit)}
               />
             ))}
           </View>
@@ -229,6 +290,104 @@ export function TodayScreen() {
           </View>
         </View>
       </ScrollView>
+      <Modal
+        testID="habit-action-modal"
+        visible={selectedHabit !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeHabitActions}
+      >
+        <View style={styles.actionBackdrop}>
+          <Pressable
+            style={styles.actionBackdropDismiss}
+            onPress={closeHabitActions}
+            accessibilityRole="button"
+            accessibilityLabel="關閉目標選單"
+            testID="dismiss-habit-actions"
+          />
+          <View
+            style={[styles.actionPanel, { backgroundColor: colors.card, borderColor: colors.border }]}
+            accessibilityViewIsModal
+          >
+            {confirmingDelete ? (
+              <>
+                <Text style={[styles.actionTitle, { color: colors.foreground }]} accessibilityRole="header">
+                  刪除「{selectedHabit?.title}」？
+                </Text>
+                <Text style={[styles.actionDescription, { color: colors.mutedForeground }]}>
+                  過去的打卡紀錄也會一併刪除，這個動作無法復原。已領取的金幣不會扣回。
+                </Text>
+                {deleteError && (
+                  <Text style={[styles.actionError, { color: colors.destructive }]} accessibilityRole="alert">
+                    {deleteError}
+                  </Text>
+                )}
+                <Pressable
+                  style={[styles.actionButton, { backgroundColor: colors.secondary }]}
+                  onPress={() => {
+                    setConfirmingDelete(false);
+                    setDeleteError(null);
+                  }}
+                  disabled={isDeleting}
+                  accessibilityRole="button"
+                  testID="cancel-delete-habit"
+                >
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>保留目標</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.actionButton, { backgroundColor: colors.destructive, opacity: isDeleting ? 0.7 : 1 }]}
+                  onPress={() => void confirmDeleteHabit()}
+                  disabled={isDeleting}
+                  accessibilityRole="button"
+                  testID="confirm-delete-habit"
+                >
+                  <Feather name="trash-2" size={17} color={colors.primaryForeground} />
+                  <Text style={[styles.actionButtonText, { color: colors.primaryForeground }]}>
+                    {isDeleting ? '刪除中…' : '確定刪除'}
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.actionTitle, { color: colors.foreground }]} accessibilityRole="header">
+                  管理目標
+                </Text>
+                <Text style={[styles.actionDescription, { color: colors.mutedForeground }]}>
+                  {selectedHabit?.title}
+                </Text>
+                <Pressable
+                  style={[styles.actionButton, { backgroundColor: colors.secondary }]}
+                  onPress={editSelectedHabit}
+                  accessibilityRole="button"
+                  testID={`edit-habit-${selectedHabit?.id ?? ''}`}
+                >
+                  <Feather name="edit-2" size={17} color={colors.primary} />
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>修改目標</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.actionButton, { backgroundColor: colors.candyPink }]}
+                  onPress={() => {
+                    setConfirmingDelete(true);
+                    setDeleteError(null);
+                  }}
+                  accessibilityRole="button"
+                  testID={`delete-habit-${selectedHabit?.id ?? ''}`}
+                >
+                  <Feather name="trash-2" size={17} color={colors.destructive} />
+                  <Text style={[styles.actionButtonText, { color: colors.destructive }]}>刪除目標</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.actionCancel}
+                  onPress={closeHabitActions}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.actionCancelText, { color: colors.mutedForeground }]}>取消</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -280,6 +439,7 @@ const styles = StyleSheet.create({
   habitCard: { minHeight: 75, borderRadius: 19, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
   habitIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   habitInfo: { flex: 1, justifyContent: 'center', minWidth: 0 },
+  manageButton: { width: 32, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   habitTitle: { fontSize: 15, fontWeight: '600' },
   doneText: { textDecorationLine: 'line-through', opacity: 0.62 },
   habitReason: { fontSize: 11, marginTop: 5 },
@@ -297,4 +457,14 @@ const styles = StyleSheet.create({
   quoteCopy: { flex: 1 },
   quoteTitle: { fontSize: 13, fontWeight: '600' },
   quoteText: { fontSize: 11, marginTop: 4 },
+  actionBackdrop: { flex: 1, justifyContent: 'flex-end', padding: 16, backgroundColor: 'rgba(38, 25, 42, 0.38)' },
+  actionBackdropDismiss: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  actionPanel: { width: '100%', maxWidth: 440, alignSelf: 'center', borderWidth: 1, borderRadius: 24, padding: 20, gap: 10 },
+  actionTitle: { fontSize: 18, fontWeight: '700' },
+  actionDescription: { fontSize: 13, lineHeight: 20, marginBottom: 3 },
+  actionError: { fontSize: 12, lineHeight: 18 },
+  actionButton: { minHeight: 48, borderRadius: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
+  actionButtonText: { fontSize: 14, fontWeight: '700' },
+  actionCancel: { minHeight: 42, alignItems: 'center', justifyContent: 'center', padding: 8 },
+  actionCancelText: { fontSize: 13, fontWeight: '600' },
 });

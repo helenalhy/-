@@ -82,6 +82,7 @@ function createHarness() {
     findNodeHandle: () => 1,
     ImageBackground: 'ImageBackground',
     Keyboard: { dismiss() {} },
+    Modal: 'Modal',
     Platform: { OS: 'ios' },
     Pressable: 'Pressable',
     ScrollView: 'ScrollView',
@@ -357,6 +358,89 @@ test('goal reward updates an active affordable catalog and survives provider rel
   assert.ok(reopenedIds.has(exactPriceItem.id));
   assert.ok(!reopenedIds.has(ownedItem.id));
   assert.equal(reopenedIds.size, expectedAvailable.length);
+});
+
+test('long-pressing a goal opens edit and delete actions', async () => {
+  const app = createHarness();
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  const todayTree = app.renderToday();
+  const habitRow = findNodes(todayTree, (node) =>
+    typeof node.type === 'function'
+    && node.type.name === 'HabitRow'
+    && node.props?.habit?.id === 'starter-walk',
+  )[0];
+  assert.ok(habitRow, 'the default goal appears in the today list');
+
+  const rowTree = renderHabitRow(app, habitRow);
+  const goalButton = findByTestId(rowTree, 'habit-info-starter-walk');
+  assert.equal(typeof goalButton.props.onLongPress, 'function');
+  const optionsButton = findByTestId(rowTree, 'manage-habit-starter-walk');
+  assert.ok(optionsButton, 'web and assistive users also have a visible options button');
+
+  await optionsButton.props.onPress();
+  let actionsTree = app.renderToday();
+  assert.equal(findByTestId(actionsTree, 'habit-action-modal').props.visible, true);
+  await press(actionsTree, 'dismiss-habit-actions');
+  actionsTree = app.renderToday();
+  assert.equal(findByTestId(actionsTree, 'habit-action-modal').props.visible, false);
+
+  goalButton.props.onLongPress();
+
+  actionsTree = app.renderToday();
+  assert.equal(findByTestId(actionsTree, 'habit-action-modal').props.visible, true);
+  assert.ok(findByTestId(actionsTree, 'edit-habit-starter-walk'));
+  assert.ok(findByTestId(actionsTree, 'delete-habit-starter-walk'));
+
+  await press(actionsTree, 'edit-habit-starter-walk');
+  assert.deepEqual(app.navigation.at(-1), [
+    'push',
+    { pathname: '/habit-editor', params: { id: 'starter-walk' } },
+  ]);
+});
+
+test('deleting a goal confirms lost check-in history and preserves earned coins after reload', async () => {
+  const app = createHarness();
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 2,
+    coins: 60,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let todayTree = app.renderToday();
+  const habitRow = findNodes(todayTree, (node) =>
+    typeof node.type === 'function'
+    && node.type.name === 'HabitRow'
+    && node.props?.habit?.id === 'starter-walk',
+  )[0];
+  const rowTree = renderHabitRow(app, habitRow);
+  findByTestId(rowTree, 'habit-info-starter-walk').props.onLongPress();
+
+  todayTree = app.renderToday();
+  await press(todayTree, 'delete-habit-starter-walk');
+  todayTree = app.renderToday();
+  assert.match(textContent(todayTree), /過去的打卡紀錄也會一併刪除/);
+  assert.match(textContent(todayTree), /已領取的金幣不會扣回/);
+
+  await press(todayTree, 'confirm-delete-habit');
+  app.renderProvider();
+  assert.equal(app.contextExports.useHabits().habits.some((habit) => habit.id === 'starter-walk'), false);
+  assert.equal(app.contextExports.useHabits().coins, 60);
+  assert.equal(JSON.parse(app.storage.get(storageKeys.mall)).coins, 60);
+
+  app.renderProvider('provider-reopened');
+  await app.runEffects('provider-reopened');
+  app.renderProvider('provider-reopened');
+  assert.equal(app.contextExports.useHabits().habits.length, 2);
+  assert.equal(app.contextExports.useHabits().coins, 60);
 });
 
 function renderHabitRow(app, habitRow) {

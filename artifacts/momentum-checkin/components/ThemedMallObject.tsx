@@ -1,15 +1,16 @@
 import { Feather } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 import palette from '@/constants/colors';
 
 const c = palette.light;
+const useNativeDriver = Platform.OS !== 'web';
 
-export function ThemedMallObject({ id, color }: { id: string; color: string }) {
+export function ThemedMallObject({ id, color, icon = 'gift' }: { id: string; color: string; icon?: string }) {
   let drawing: React.ReactNode;
   switch (id) {
     case 'coral-aquarium':
-      drawing = <><View style={[s.tank, { backgroundColor: c.candySky, borderColor: c.candySkyDark }]}>{[c.candyCoral, c.candyLemon, c.candyPink].map((fish, i) => <View key={i} style={[s.fish, { backgroundColor: fish, left: 5 + i * 13, top: 7 + (i % 2) * 10 }]} />)}<View style={[s.coral, { backgroundColor: c.candyCoral }]} /></View><View style={[s.base, { backgroundColor: c.candySkyDark }]} /></>;
+      drawing = <><View style={[s.tank, { backgroundColor: c.candySky, borderColor: c.candySkyDark }]}>{[c.candyCoral, c.candyLemon, c.candyPink].map((fish, i) => <SwimmingFish key={i} color={fish} left={5 + i * 13} top={7 + (i % 2) * 10} />)}<View style={[s.coral, { backgroundColor: c.candyCoral }]} /><View style={s.waterBubble} /></View><View style={[s.base, { backgroundColor: c.candySkyDark }]} /></>;
       break;
     case 'rhythm-stage':
       drawing = <><View style={s.row}><View style={[s.speaker, { backgroundColor: c.candyLavenderDark }]} /><Feather name="mic" size={27} color={c.candyRoseDark} /><View style={[s.speaker, { backgroundColor: c.candyLavenderDark }]} /></View><View style={[s.stage, { backgroundColor: color, borderColor: c.candyRoseDark }]} /></>;
@@ -27,7 +28,7 @@ export function ThemedMallObject({ id, color }: { id: string; color: string }) {
       drawing = <><View style={[s.tableTop, { backgroundColor: color, borderColor: c.candyCaramelDark }]} /><View style={[s.tableLeg, { backgroundColor: c.candyCaramelDark }]} /><View style={s.stoolRow}>{[0, 1, 2].map((i) => <View key={i} style={[s.stool, { backgroundColor: c.candyCoral }]} />)}</View></>;
       break;
     case 'cloud-swing':
-      drawing = <><View style={[s.swingBar, { backgroundColor: c.candySkyDark }]} /><View style={s.swingFrame}><View style={[s.swingPost, { backgroundColor: c.candySkyDark }]} /><View style={[s.swingRope, { backgroundColor: c.candyCaramelDark }]} /><View style={[s.swingRope, { backgroundColor: c.candyCaramelDark }]} /><View style={[s.swingPost, { backgroundColor: c.candySkyDark }]} /></View><View style={[s.swingSeat, { backgroundColor: c.candyPink }]} /></>;
+      drawing = <><View style={[s.swingBar, { backgroundColor: c.candySkyDark }]} /><View style={s.swingFrame}><View style={[s.swingPost, { backgroundColor: c.candySkyDark }]} /><SwingSeat color={color} /><View style={[s.swingPost, { backgroundColor: c.candySkyDark }]} /></View></>;
       break;
     case 'shell-lantern':
       drawing = <><View style={[s.shell, { backgroundColor: c.candyLemon, borderColor: c.candyCoral }]}><Feather name="sun" size={23} color={c.candyCaramelDark} /></View><View style={[s.base, { backgroundColor: c.candyPeach, width: 30 }]} /></>;
@@ -51,17 +52,56 @@ export function ThemedMallObject({ id, color }: { id: string; color: string }) {
       drawing = <View style={s.rainbow}>{[c.candyCoral, c.candyLemon, c.candyMint, c.candySky, c.candyLavender].map((rainbowColor, i) => <View key={i} style={[s.rainbowBand, { width: 60 - i * 9, height: 45 - i * 6, left: i * 4.5, bottom: 0, borderColor: rainbowColor }]} />)}</View>;
       break;
     default:
-      drawing = <Feather name="gift" size={30} color={c.candyRoseDark} />;
+      drawing = <><View style={[s.fallbackShowcase, { backgroundColor: color, borderColor: c.candyCaramelDark }]}><Feather name={icon as keyof typeof Feather.glyphMap} size={20} color={c.candyCaramelDark} /></View><View style={[s.base, { backgroundColor: c.candyCaramel }]} /></>;
   }
   return <View style={s.object}>{drawing}</View>;
+}
+
+function SwimmingFish({ color, left, top }: { color: string; left: number; top: number }) {
+  const swim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(swim, { toValue: 8, duration: 1300, useNativeDriver }),
+      Animated.timing(swim, { toValue: 0, duration: 1300, useNativeDriver }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [swim]);
+  return (
+    <Animated.View style={[s.fish, { backgroundColor: color, left, top, transform: [{ translateX: swim }] }]}>
+      <View style={s.fishEye} />
+    </Animated.View>
+  );
+}
+
+function SwingSeat({ color }: { color: string }) {
+  const sway = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(sway, { toValue: 1, duration: 1500, useNativeDriver }),
+      Animated.timing(sway, { toValue: 0, duration: 1500, useNativeDriver }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [sway]);
+  const rotation = sway.interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '4deg'] });
+  return (
+    <Animated.View style={[s.swingRig, { transform: [{ rotate: rotation }] }]}>
+      <View style={[s.swingRope, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={[s.swingRope, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={[s.swingSeat, { backgroundColor: color }]} />
+    </Animated.View>
+  );
 }
 
 const s = StyleSheet.create({
   object: { width: 62, height: 47, alignItems: 'center', justifyContent: 'flex-end' },
   row: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
   tank: { width: 56, height: 35, borderWidth: 3, borderRadius: 5, overflow: 'hidden' },
-  fish: { position: 'absolute', width: 10, height: 6, borderRadius: 6 },
+  fish: { position: 'absolute', width: 10, height: 6, borderRadius: 6, alignItems: 'flex-end', justifyContent: 'center' },
+  fishEye: { width: 1.5, height: 1.5, marginRight: 2, borderRadius: 1, backgroundColor: c.card },
   coral: { position: 'absolute', bottom: 0, right: 4, width: 5, height: 13, borderTopLeftRadius: 7 },
+  waterBubble: { position: 'absolute', width: 3, height: 3, right: 8, top: 5, borderRadius: 2, backgroundColor: c.card, opacity: 0.8 },
   base: { width: 60, height: 7, borderRadius: 3 },
   speaker: { width: 10, height: 24, borderRadius: 2 },
   stage: { width: 61, height: 12, borderRadius: 8, borderWidth: 2 },
@@ -77,10 +117,11 @@ const s = StyleSheet.create({
   stoolRow: { position: 'absolute', flexDirection: 'row', gap: 10, bottom: 0 },
   stool: { width: 13, height: 9, borderRadius: 5 },
   swingBar: { width: 61, height: 5, borderRadius: 3 },
-  swingFrame: { flexDirection: 'row', justifyContent: 'space-between', width: 55, height: 39 },
+  swingFrame: { flexDirection: 'row', justifyContent: 'space-between', width: 55, height: 39, position: 'relative' },
   swingPost: { width: 4, height: 39 },
-  swingRope: { width: 2, height: 27 },
-  swingSeat: { position: 'absolute', bottom: 8, width: 28, height: 7, borderRadius: 4 },
+  swingRig: { position: 'absolute', top: 0, left: 12, width: 30, height: 34, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  swingRope: { width: 2, height: 27, position: 'absolute', top: 0, left: 5 },
+  swingSeat: { position: 'absolute', bottom: 4, left: 0, width: 30, height: 7, borderRadius: 4 },
   shell: { width: 43, height: 35, borderTopLeftRadius: 25, borderTopRightRadius: 25, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   sign: { width: 47, height: 43, borderRadius: 10, borderWidth: 4, alignItems: 'center', justifyContent: 'center' },
   diffuser: { width: 36, height: 24, borderRadius: 18, borderWidth: 2 },
@@ -92,4 +133,5 @@ const s = StyleSheet.create({
   shelf: { width: 58, height: 4 },
   rainbow: { width: 60, height: 45 },
   rainbowBand: { position: 'absolute', borderWidth: 5, borderBottomWidth: 0, borderTopLeftRadius: 40, borderTopRightRadius: 40 },
+  fallbackShowcase: { width: 42, height: 33, borderWidth: 2, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 });

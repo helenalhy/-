@@ -385,7 +385,16 @@ export default function MallScreen() {
             <Text style={[styles.title, { color: colors.foreground }]}>你的慢慢商場</Text>
           </View>
           <View style={[styles.coinWallet, { backgroundColor: colors.primary }]}>
-            <Feather name="circle" size={16} color={colors.candyLemon} />
+            <View
+              testID="mall-wallet-coin-icon"
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+              style={[styles.coinIcon, { backgroundColor: colors.candyCaramelDark }]}
+            >
+              <View style={[styles.coinFace, { backgroundColor: colors.candyCaramel, borderColor: colors.candyLemon }]}>
+                <Feather name="star" size={10} color={colors.candyCaramelDark} />
+              </View>
+            </View>
             <View>
               <Text style={[styles.walletNumber, { color: colors.primaryForeground }]}>{coins}</Text>
               <Text style={[styles.walletLabel, { color: colors.primaryForeground, opacity: 0.8 }]}>金幣</Text>
@@ -772,6 +781,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 23, fontWeight: '700', marginTop: 6 },
   subtitle: { fontSize: 12, lineHeight: 19, marginTop: 6 },
   coinWallet: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14 },
+  coinIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  coinFace: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   walletNumber: { fontSize: 14, fontWeight: '700' },
   walletLabel: { fontSize: 9, marginTop: 1 },
   ticketRow: { flexDirection: 'row', gap: 8, marginTop: 17 },

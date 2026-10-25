@@ -6,6 +6,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 
+global.requestAnimationFrame ??= (callback) => setImmediate(callback);
+global.cancelAnimationFrame ??= (frame) => clearImmediate(frame);
+
 const source = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../app/(tabs)/mall.tsx'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
@@ -744,6 +747,147 @@ function textContent(node) {
   if (typeof node === 'string' || typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(textContent).join('');
   return node?.props ? textContent(node.props.children) : '';
+}
+
+function mountWithPlacementMutation(overrides = {}, catalog, platformOS = 'ios', failures = {}) {
+  let app;
+  let failMoveOnce = failures.moveOnce === true;
+  let failStoreOnce = failures.storeOnce === true;
+  const moveMallItem = async (itemId, slotId) => {
+    if (failMoveOnce) {
+      failMoveOnce = false;
+      throw new Error('暫時無法儲存');
+    }
+    app.calls.push(['move', itemId, slotId]);
+    const originalSlot = Object.entries(app.habits.mallPlacements).find(([, placedId]) => placedId === itemId)?.[0];
+    const displacedItem = app.habits.mallPlacements[slotId];
+    if (originalSlot) delete app.habits.mallPlacements[originalSlot];
+    app.habits.mallPlacements[slotId] = itemId;
+    if (originalSlot && displacedItem) app.habits.mallPlacements[originalSlot] = displacedItem;
+  };
+  const storeMallItem = async (itemId) => {
+    if (failStoreOnce) {
+      failStoreOnce = false;
+      throw new Error('暫時無法存倉');
+    }
+    app.calls.push(['store', itemId]);
+    for (const [slotId, placedId] of Object.entries(app.habits.mallPlacements)) {
+      if (placedId === itemId) delete app.habits.mallPlacements[slotId];
+    }
+  };
+  app = mount({ ...overrides, moveMallItem, storeMallItem }, catalog, platformOS);
+  return app;
+}
+
+async function settle(app) {
+  await new Promise((resolve) => setImmediate(resolve));
+  app.render();
+}
+
+for (const platformOS of ['ios', 'android']) {
+  test(`${platformOS}: move, exchange, warehouse storage and free restore each focus one clear success result`, async () => {
+    const app = mountWithPlacementMutation({}, undefined, platformOS);
+    const coinsBefore = app.habits.coins;
+    const ownershipBefore = [...app.habits.purchasedItems];
+
+    await app.press('mall-slot-floor-1-right');
+    await app.press('mall-slot-floor-1-left');
+    await settle(app);
+    assert.match(textContent(app.find('mall-placement-status')), /搬動完成.*已移至 1F 店面區左側.*沒有扣除金幣/);
+    assert.equal(app.find('mall-placement-status').props.accessibilityLiveRegion, 'none');
+    assert.match(app.slot('floor-1-left').props.accessibilityLabel, /操作結果：搬動完成/);
+    assert.equal(app.find('mall-slot-floor-1-left').props.focusAfterResult, true);
+    assert.deepEqual(app.alerts, []);
+
+    const base = mallCatalog.MALL_ITEMS[0];
+    const firstOwned = { ...base, id: 'owned', name: '已擁有花圃' };
+    const secondOwned = { ...base, id: 'second-owned', name: '已擁有噴泉' };
+    const exchange = mountWithPlacementMutation({
+      purchasedItems: ['owned', 'second-owned'],
+      mallPlacements: { 'floor-1-right': 'owned', 'floor-1-left': 'second-owned' },
+    }, [firstOwned, secondOwned], platformOS);
+    await exchange.press('mall-slot-floor-1-right');
+    await exchange.press('mall-slot-floor-1-left');
+    await settle(exchange);
+    assert.match(textContent(exchange.find('mall-placement-status')), /交換完成.*已擁有花圃與已擁有噴泉已交換位置/);
+    assert.match(exchange.slot('floor-1-left').props.accessibilityLabel, /操作結果：交換完成/);
+    assert.equal(exchange.find('mall-slot-floor-1-left').props.focusAfterResult, true);
+    assert.equal(exchange.habits.mallPlacements['floor-1-right'], 'second-owned');
+    assert.equal(exchange.habits.coins, 100);
+    assert.deepEqual(exchange.alerts, []);
+
+    const storage = mountWithPlacementMutation({}, undefined, platformOS);
+    await storage.press('mall-slot-floor-1-right');
+    await storage.press('store-selected-item');
+    await settle(storage);
+    assert.match(textContent(storage.find('warehouse-notice')), /存入倉庫完成.*所有權保留.*免費取出重擺.*沒有退款或扣除金幣/);
+    assert.equal(storage.find('warehouse-notice').props.accessibilityRole, 'text');
+    const restoreAction = storage.find('restore-owned');
+    assert.ok(restoreAction.props.ref, 'focus is attached to the next free restore action');
+    assert.match(restoreAction.props.accessibilityLabel, /操作結果：存入倉庫完成/);
+    assert.equal(storage.habits.mallPlacements['floor-1-right'], undefined);
+    assert.deepEqual(storage.habits.purchasedItems, ownershipBefore);
+    assert.equal(storage.habits.coins, coinsBefore);
+    assert.deepEqual(storage.alerts, []);
+
+    const restore = mountWithPlacementMutation({ mallPlacements: {} }, undefined, platformOS);
+    await restore.press('collection-tab');
+    await restore.press('restore-owned');
+    await restore.press('mall-slot-floor-1-center');
+    await settle(restore);
+    assert.match(textContent(restore.find('mall-placement-status')), /免費重擺完成.*已從倉庫放在 1F 店面區中央.*沒有扣除金幣/);
+    assert.equal(restore.find('mall-slot-floor-1-center').props.focusAfterResult, true);
+    assert.match(restore.slot('floor-1-center').props.accessibilityLabel, /操作結果：免費重擺完成/);
+    assert.deepEqual(restore.habits.purchasedItems, ownershipBefore);
+    assert.equal(restore.habits.coins, coinsBefore);
+    assert.deepEqual(restore.alerts, []);
+  });
+
+  test(`${platformOS}: failed move, storage and restore remain retryable or cancellable`, async () => {
+    const moving = mountWithPlacementMutation({}, undefined, platformOS, { moveOnce: true });
+    await moving.press('mall-slot-floor-1-right');
+    await moving.press('mall-slot-floor-1-left');
+    await settle(moving);
+    assert.match(textContent(moving.find('mall-placement-status')), /搬動或交換未成功.*可重試.*取消擺放/);
+    if (platformOS === 'ios') {
+      assert.match(moving.announcements.at(-1), /搬動或交換未成功/);
+    } else {
+      assert.equal(moving.find('mall-placement-status').props.accessibilityLiveRegion, 'polite');
+    }
+    assert.ok(moving.nodes().some((node) => node.props.accessibilityLabel === '取消擺放'));
+    assert.deepEqual(moving.alerts, []);
+    await moving.press('mall-slot-floor-1-left');
+    await settle(moving);
+    assert.match(textContent(moving.find('mall-placement-status')), /搬動完成/);
+    assert.equal(moving.habits.mallPlacements['floor-1-left'], 'owned');
+
+    const storage = mountWithPlacementMutation({}, undefined, platformOS, { storeOnce: true });
+    await storage.press('mall-slot-floor-1-right');
+    await storage.press('store-selected-item');
+    await settle(storage);
+    assert.match(textContent(storage.find('mall-placement-status')), /存入倉庫未成功.*可重試.*取消擺放/);
+    assert.ok(storage.find('store-selected-item'), 'the store action remains available for retry');
+    assert.ok(storage.nodes().some((node) => node.props.accessibilityLabel === '取消擺放'));
+    assert.equal(storage.habits.mallPlacements['floor-1-right'], 'owned');
+    assert.deepEqual(storage.alerts, []);
+    await storage.press('cancel-placement');
+    assert.match(textContent(storage.find('mall-placement-status')), /已取消搬動.*原位置未更改/);
+    assert.equal(storage.habits.mallPlacements['floor-1-right'], 'owned');
+
+    const restore = mountWithPlacementMutation({ mallPlacements: {} }, undefined, platformOS, { moveOnce: true });
+    await restore.press('collection-tab');
+    await restore.press('restore-owned');
+    await restore.press('mall-slot-floor-1-center');
+    await settle(restore);
+    assert.match(textContent(restore.find('mall-placement-status')), /免費重擺未成功.*仍留在倉庫.*可重試選空位或取消/);
+    assert.ok(restore.nodes().some((node) => node.props.accessibilityLabel === '取消擺放'));
+    assert.equal(restore.habits.mallPlacements['floor-1-center'], undefined);
+    assert.deepEqual(restore.alerts, []);
+    await restore.press('mall-slot-floor-1-center');
+    await settle(restore);
+    assert.match(textContent(restore.find('mall-placement-status')), /免費重擺完成/);
+    assert.equal(restore.habits.mallPlacements['floor-1-center'], 'owned');
+  });
 }
 
 test('a full floor lists actual vacancies and can jump floors without spending or losing purchase intent', async () => {

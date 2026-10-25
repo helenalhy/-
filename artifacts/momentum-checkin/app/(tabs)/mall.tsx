@@ -66,6 +66,7 @@ function MallSceneSlot({
   busy = false,
   isLocationHighlighted = false,
   focusAfterResult = false,
+  focusResultMessage,
   onFocusAfterResult,
   onPress,
 }: {
@@ -78,6 +79,7 @@ function MallSceneSlot({
   busy?: boolean;
   isLocationHighlighted?: boolean;
   focusAfterResult?: boolean;
+  focusResultMessage?: string | null;
   onFocusAfterResult?: () => void;
   onPress?: () => void;
 }) {
@@ -122,7 +124,7 @@ function MallSceneSlot({
         ref={accessibilityRef}
         disabled={disabled}
         accessibilityRole="button"
-        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : isLocationHighlighted ? '目前查看位置，已擺放' : '已兌換，點選可搬動或存入倉庫'}`}
+        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : isLocationHighlighted ? '目前查看位置，已擺放' : '已兌換，點選可搬動或存入倉庫'}${focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
         accessibilityState={{ selected: isPreview || isLocationHighlighted, disabled, busy }}
         testID={`mall-slot-${slotId}`}
       >
@@ -181,6 +183,9 @@ export default function MallScreen() {
   const [showCollection, setShowCollection] = useState(false);
   const [warehouseNotice, setWarehouseNotice] = useState<string | null>(null);
   const [placementAnnouncement, setPlacementAnnouncement] = useState('');
+  const [focusResultMessage, setFocusResultMessage] = useState<string | null>(null);
+  const [focusRestoreActionItemId, setFocusRestoreActionItemId] = useState<string | null>(null);
+  const focusRestoreActionRef = useRef<React.ElementRef<typeof Pressable>>(null);
   const [focusResultSlotId, setFocusResultSlotId] = useState<MallSlotId | null>(null);
   const clearFocusResultSlot = useCallback(() => setFocusResultSlotId(null), []);
   const [locationFocus, setLocationFocus] = useState<{ slotId: MallSlotId; requestId: number } | null>(null);
@@ -245,17 +250,34 @@ export default function MallScreen() {
     return () => entrance.stop();
   }, [sceneOpacity, sceneOffset]);
 
+  useEffect(() => {
+    if (!focusRestoreActionItemId) return;
+    const frame = requestAnimationFrame(() => {
+      const node = findNodeHandle(focusRestoreActionRef.current);
+      if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusRestoreActionItemId, showCollection]);
+
   function scrollToMallScene() {
     scrollRef.current?.scrollTo({ y: Math.max(0, mallSceneY.current - 8), animated: true });
   }
 
   function announcePlacement(message: string, queue = false) {
+    setFocusResultMessage(null);
+    setFocusRestoreActionItemId(null);
     setPlacementAnnouncement(message);
     // Android uses the live region below. Queue VoiceOver's result behind the
     // in-progress announcement so the final outcome is not cut off.
     if (Platform.OS === 'ios') {
       AccessibilityInfo.announceForAccessibilityWithOptions(message, { queue });
     }
+  }
+
+  function announceFocusedResult(message: string) {
+    setPlacementAnnouncement(message);
+    setFocusResultMessage(message);
+    setFocusRestoreActionItemId(null);
   }
 
   function changeFloor(direction: number) {
@@ -290,7 +312,13 @@ export default function MallScreen() {
 
   function cancelPlacement() {
     if (operationLock.current) return;
-    if (placementIntent?.mode === 'purchase') announcePlacement('已取消試擺，尚未兌換或扣除金幣。');
+    if (placementIntent?.mode === 'purchase') {
+      announcePlacement('已取消試擺，尚未兌換或扣除金幣。');
+    } else if (placementIntent?.mode === 'move' && currentPlacementItem) {
+      announcePlacement(`已取消搬動${currentPlacementItem.name}，原位置未更改，也沒有扣除金幣。`);
+    } else if (placementIntent?.mode === 'restore' && currentPlacementItem) {
+      announcePlacement(`已取消免費重擺${currentPlacementItem.name}，物件仍留在倉庫，沒有扣除金幣。`);
+    }
     setPreviewSlotId(null);
     setPlacementIntent(null);
   }
@@ -309,7 +337,7 @@ export default function MallScreen() {
       ? placedIds.has(item.id) ? 'move' : 'restore'
       : 'purchase';
     setPlacementIntent({ itemId: item.id, mode });
-    announcePlacement(`已前往 ${item.floor}F，選擇${item.name}。${mode === 'purchase' ? '請選擇空位試擺，確認兌換才扣金幣。' : '已兌換，可免費重新擺放。'}搜尋及換層沒有扣除金幣。`);
+    announcePlacement(`已前往 ${item.floor}F，選擇${item.name}。${mode === 'purchase' ? '請選擇空位試擺，確認兌換才扣金幣。' : mode === 'move' ? '已兌換，可免費重新擺放。可選空位搬動或選其他物件交換，也可存入倉庫；按取消可保留原位置。' : '請選空位免費重擺；按取消可讓物件留在倉庫。'}搜尋及換層沒有扣除金幣。`);
     scrollToMallScene();
   }
 
@@ -328,7 +356,13 @@ export default function MallScreen() {
 
   async function placeItemInSlot(slotId: MallSlotId, confirmed = false) {
     if (isLoading || !placementIntent || !currentPlacementItem || purchasing || operationLock.current) return;
-    if (placementIntent.mode !== 'move' && mallPlacements[slotId]) return;
+    if (placementIntent.mode !== 'move' && mallPlacements[slotId]) {
+      if (placementIntent.mode === 'restore') {
+        const position = getSlotPosition(slotId);
+        announcePlacement(`${position.floor} ${position.label}已有物件，請選空位；${currentPlacementItem.name}仍保留在倉庫，沒有扣除金幣。`);
+      }
+      return;
+    }
     if (mallPlacements[slotId] === currentPlacementItem.id) return;
     if (placementIntent.mode === 'purchase') {
       if (!confirmed) {
@@ -343,6 +377,11 @@ export default function MallScreen() {
     setPurchasing(currentPlacementItem.id);
     const position = getSlotPosition(slotId);
     const location = `${position.floor} ${position.label}`;
+    const displacedItem = placementIntent.mode === 'move' && mallPlacements[slotId]
+      ? MALL_ITEM_BY_ID[mallPlacements[slotId]]
+      : null;
+    const originalSlotId = placedSlotsByItem.get(currentPlacementItem.id);
+    const originalLocation = originalSlotId ? getSlotPosition(originalSlotId) : null;
     if (placementIntent.mode === 'purchase') announcePlacement(`正在兌換${currentPlacementItem.name}，位置為 ${location}，請稍候。`);
     try {
       if (placementIntent.mode === 'purchase') {
@@ -357,7 +396,13 @@ export default function MallScreen() {
         announcePlacement(`${currentPlacementItem.name}已兌換，已放在 ${location}，扣除 ${currentPlacementItem.price} 金幣。`, true);
       } else {
         await moveMallItem(currentPlacementItem.id, slotId);
-        Alert.alert('位置已更新', `${currentPlacementItem.name}已放到 ${getSlotPosition(slotId).floor}，沒有扣除金幣。`);
+        setFocusResultSlotId(slotId);
+        const resultMessage = placementIntent.mode === 'restore'
+          ? `免費重擺完成：${currentPlacementItem.name}已從倉庫放在 ${location}，沒有扣除金幣。`
+          : displacedItem
+            ? `交換完成：${currentPlacementItem.name}與${displacedItem.name}已交換位置，${currentPlacementItem.name}現在位於 ${location}，沒有扣除金幣。`
+            : `搬動完成：${currentPlacementItem.name}已移至 ${location}，沒有扣除金幣。`;
+        announceFocusedResult(resultMessage);
       }
       setPlacementIntent(null);
       setPreviewSlotId(null);
@@ -366,7 +411,10 @@ export default function MallScreen() {
       if (placementIntent.mode === 'purchase') {
         announcePlacement(`兌換未完成：${error instanceof Error ? error.message : '請再試一次。'} 試擺位置仍為 ${location}，可重新確認兌換或取消。`, true);
       } else {
-        Alert.alert('沒有更新成功', error instanceof Error ? error.message : '請再試一次。');
+        const retryMessage = placementIntent.mode === 'restore'
+          ? `免費重擺未成功：${error instanceof Error ? error.message : '請再試一次。'} ${currentPlacementItem.name}仍留在倉庫；可重試選空位或取消。`
+          : `搬動或交換未成功：${error instanceof Error ? error.message : '請再試一次。'} ${currentPlacementItem.name}${originalLocation ? `仍在 ${originalLocation.floor} ${originalLocation.label}` : '仍保留在原位置'}；可重試，或按「取消擺放」。`;
+        announcePlacement(retryMessage, true);
       }
     } finally {
       operationLock.current = false;
@@ -382,7 +430,9 @@ export default function MallScreen() {
       return;
     }
     if (itemId) {
+      const item = MALL_ITEM_BY_ID[itemId];
       setPlacementIntent({ itemId, mode: 'move' });
+      if (item) announcePlacement(`已選取${item.name}。選空位可免費搬動，選其他物件可交換位置，也可存入倉庫；按取消可保留原位置。`);
       return;
     }
     setShowCollection(false);
@@ -413,7 +463,11 @@ export default function MallScreen() {
     setPurchasing(currentPlacementItem.id);
     try {
       await storeMallItem(currentPlacementItem.id);
-      setWarehouseNotice(`${currentPlacementItem.name}已存入倉庫，保留所有權，可免費取出重擺。`);
+      const resultMessage = `存入倉庫完成：${currentPlacementItem.name}已存入倉庫，所有權保留，可免費取出重擺，沒有退款或扣除金幣。`;
+      setWarehouseNotice(resultMessage);
+      setPlacementAnnouncement('');
+      setFocusResultMessage(resultMessage);
+      setFocusRestoreActionItemId(currentPlacementItem.id);
       setPlacementIntent(null);
       setPreviewSlotId(null);
       setShowCollection(true);
@@ -422,7 +476,9 @@ export default function MallScreen() {
       setCatalogPage(1);
       requestAnimationFrame(scrollToCatalog);
     } catch (error) {
-      Alert.alert('沒有存入倉庫', error instanceof Error ? error.message : '請再試一次。');
+      const originalSlotId = placedSlotsByItem.get(currentPlacementItem.id);
+      const originalPosition = originalSlotId ? getSlotPosition(originalSlotId) : null;
+      announcePlacement(`存入倉庫未成功：${error instanceof Error ? error.message : '請再試一次。'} ${currentPlacementItem.name}${originalPosition ? `仍在 ${originalPosition.floor} ${originalPosition.label}` : '仍保留在原位置'}；可重試，或按「取消擺放」。`, true);
     } finally {
       operationLock.current = false;
       setPurchasing(null);
@@ -498,7 +554,7 @@ export default function MallScreen() {
                   <Text style={[styles.filterText, { color: colors.primary }]}>存入倉庫</Text>
                 </Pressable>
               )}
-              <Pressable onPress={cancelPlacement} disabled={purchasing !== null} accessibilityRole="button" accessibilityLabel="取消擺放" hitSlop={10}>
+              <Pressable onPress={cancelPlacement} disabled={purchasing !== null} accessibilityRole="button" accessibilityLabel="取消擺放" testID="cancel-placement" hitSlop={10}>
                 <Feather name="x-circle" size={21} color={colors.primary} />
               </Pressable>
             </View>
@@ -607,6 +663,7 @@ export default function MallScreen() {
                     busy={purchasing !== null}
                     isLocationHighlighted={locationFocus?.slotId === slotId}
                     focusAfterResult={focusResultSlotId === slotId}
+                    focusResultMessage={focusResultSlotId === slotId ? focusResultMessage : null}
                     onFocusAfterResult={clearFocusResultSlot}
                     isPlacementMode={placementIntent !== null}
                     isPlacementTarget={placementIntent !== null && !itemId}
@@ -644,7 +701,7 @@ export default function MallScreen() {
               </View>
             </View>
           )}
-          <Text testID="mall-placement-status" accessibilityRole="text" accessibilityLiveRegion="polite" style={[styles.previewDetails, { color: colors.mutedForeground }]}>
+          <Text testID="mall-placement-status" accessibilityRole="text" accessibilityLiveRegion={focusResultMessage ? 'none' : 'polite'} style={[styles.previewDetails, { color: colors.mutedForeground }]}>
             {placementAnnouncement}
           </Text>
         </View>
@@ -700,7 +757,7 @@ export default function MallScreen() {
         </View>
         <Text style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋 · 可配合分類 · 搜尋及換層不扣金幣</Text>
 
-        {showCollection && warehouseNotice && <Text testID="warehouse-notice" accessibilityRole="alert" style={[styles.collectionEmpty, { color: colors.primary }]}>{warehouseNotice}</Text>}
+        {showCollection && warehouseNotice && <Text testID="warehouse-notice" accessibilityRole="text" accessibilityLiveRegion="none" style={[styles.collectionEmpty, { color: colors.primary }]}>{warehouseNotice}</Text>}
 
         {showRedemptionControls && (
           <View style={styles.redemptionControls}>
@@ -827,18 +884,20 @@ export default function MallScreen() {
                       } else if (showCollection) {
                         setWarehouseNotice(null);
                         setPlacementIntent({ itemId: item.id, mode: 'restore' });
+                        announcePlacement(`已從倉庫選取${item.name}。請選空位免費重擺；按取消可讓物件留在倉庫，沒有扣除金幣。`);
                         scrollToMallScene();
                       } else {
                         startPurchasePlacement(item);
                       }
                     }}
+                    ref={showCollection && !isSearching && focusRestoreActionItemId === item.id ? focusRestoreActionRef : undefined}
                     disabled={disabled}
                     style={[
                       styles.buildButton,
                       { backgroundColor: owned ? colors.secondary : colors.primary, opacity: disabled && !owned ? 0.55 : 1 },
                     ]}
                     accessibilityRole="button"
-                    accessibilityLabel={isSearching ? `選擇${item.name}，前往 ${item.floor}F，${CATEGORY_NAMES[item.category]}，${item.price} 金幣，${owned ? '已兌換，可免費重擺' : '未兌換，先試擺再確認'}` : showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}
+                    accessibilityLabel={`${isSearching ? `選擇${item.name}，前往 ${item.floor}F，${CATEGORY_NAMES[item.category]}，${item.price} 金幣，${owned ? '已兌換，可免費重擺' : '未兌換，先試擺再確認'}` : showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}${showCollection && focusRestoreActionItemId === item.id && focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
                     accessibilityState={{ disabled }}
                     testID={`${isSearching ? 'search-select' : showCollection ? 'restore' : 'build'}-${item.id}`}
                   >

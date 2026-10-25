@@ -30,6 +30,7 @@ function ShopInteriorAnimatedObject({
   color,
   icon,
   category,
+  visual,
   testID,
 }: {
   id: string;
@@ -37,6 +38,7 @@ function ShopInteriorAnimatedObject({
   color: string;
   icon: string;
   category: MallVisualCategory;
+  visual?: string;
   testID?: string;
 }) {
   const entranceScale = useRef(new Animated.Value(0.76)).current;
@@ -69,7 +71,7 @@ function ShopInteriorAnimatedObject({
       pointerEvents="none"
       style={[styles.objectEntrance, { opacity: entranceOpacity, transform: [{ scale: entranceScale }] }]}
     >
-      <MallObjectVisual id={id} itemId={itemId} color={color} icon={icon} category={category} isActive />
+      <MallObjectVisual id={visual ?? id} itemId={itemId} color={color} icon={icon} category={category} isActive />
     </Animated.View>
   );
 }
@@ -91,6 +93,7 @@ export default function MallShopInteriorScreen() {
   const [selectedSlot, setSelectedSlot] = useState<ShopInteriorSlotId>(SHOP_INTERIOR_SLOTS[0].id);
   const [workingDecoration, setWorkingDecoration] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [catalogPage, setCatalogPage] = useState(1);
   const interior = shop ? shopInteriors[shop.id] : undefined;
   const decorations = useMemo(
     () => getShopInteriorDecorations(shop?.shopType),
@@ -102,6 +105,9 @@ export default function MallShopInteriorScreen() {
   const selectedDecoration = decorations.find(({ id }) => id === selectedDecorationId);
   const floor = shop ? MALL_FLOORS[shop.floor - 1] : MALL_FLOORS[0];
   const hasAccess = !!shop && shop.category === 'shop' && purchasedItems.includes(shop.id);
+  const catalogPageSize = 10;
+  const catalogPageCount = Math.max(1, Math.ceil(decorations.length / catalogPageSize));
+  const visibleDecorations = decorations.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
 
   async function placeDecoration(decorationId: string, price: number) {
     if (!shop || !hasAccess || workingDecoration) return;
@@ -278,6 +284,7 @@ export default function MallShopInteriorScreen() {
                               color={decoration.color}
                               icon={decoration.icon}
                               category="decor"
+                              visual={decoration.visual}
                             />
                           ) : (
                             <View style={[styles.emptyDecorBadge, { backgroundColor: colors.card }]}>
@@ -320,6 +327,36 @@ export default function MallShopInteriorScreen() {
               </View>
             </View>
 
+            <View style={[styles.decorationPager, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text testID="shop-decoration-page-count" style={[styles.pageCount, { color: colors.mutedForeground }]}>
+                第 {catalogPage} / {catalogPageCount} 頁 · 共 {decorations.length} 款
+              </Text>
+              <View style={styles.pageActions}>
+                <Pressable
+                  testID="shop-decoration-page-prev"
+                  accessibilityRole="button"
+                  accessibilityLabel="上一頁裝飾選擇"
+                  accessibilityState={{ disabled: catalogPage <= 1 }}
+                  disabled={catalogPage <= 1}
+                  onPress={() => setCatalogPage((page) => Math.max(1, page - 1))}
+                  style={[styles.pageButton, { backgroundColor: colors.secondary, opacity: catalogPage <= 1 ? 0.45 : 1 }]}
+                >
+                  <Feather name="chevron-left" size={18} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  testID="shop-decoration-page-next"
+                  accessibilityRole="button"
+                  accessibilityLabel="下一頁裝飾選擇"
+                  accessibilityState={{ disabled: catalogPage >= catalogPageCount }}
+                  disabled={catalogPage >= catalogPageCount}
+                  onPress={() => setCatalogPage((page) => Math.min(catalogPageCount, page + 1))}
+                  style={[styles.pageButton, { backgroundColor: colors.secondary, opacity: catalogPage >= catalogPageCount ? 0.45 : 1 }]}
+                >
+                  <Feather name="chevron-right" size={18} color={colors.primary} />
+                </Pressable>
+              </View>
+            </View>
+
             {selectedDecoration && (
               <Pressable
                 testID="shop-interior-store-decoration"
@@ -341,7 +378,7 @@ export default function MallShopInteriorScreen() {
             ) : null}
 
             <View style={styles.decorationList}>
-              {decorations.map((decoration) => {
+              {visibleDecorations.map((decoration) => {
                 const isOwned = owned.has(decoration.id);
                 const currentSlot = Object.entries(placements).find(([, id]) => id === decoration.id)?.[0];
                 const alreadyHere = currentSlot === selectedSlot;
@@ -361,10 +398,21 @@ export default function MallShopInteriorScreen() {
                         color={decoration.color}
                         icon={decoration.icon}
                         category="decor"
+                        visual={decoration.visual}
                       />
                     </View>
                     <View style={styles.decorationCopy}>
-                      <Text style={[styles.decorationName, { color: colors.foreground }]}>{decoration.name}</Text>
+                      <View style={styles.decorationTitleRow}>
+                        <Text style={[styles.decorationName, { color: colors.foreground }]}>{decoration.name}</Text>
+                        {decoration.limitedEdition && (
+                          <View
+                            testID={`shop-decoration-limited-${decoration.id}`}
+                            style={[styles.limitedBadge, { backgroundColor: colors.candyRose }]}
+                          >
+                            <Text style={[styles.limitedBadgeText, { color: colors.foreground }]}>限定</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={[styles.decorationDescription, { color: colors.mutedForeground }]}>{decoration.description}</Text>
                       <Text style={[styles.decorationCost, { color: colors.candyCaramelDark }]}>
                         {isOwned
@@ -444,6 +492,10 @@ const styles = StyleSheet.create({
   sectionCopy: { fontSize: 11, lineHeight: 16, marginTop: 3, maxWidth: 250 },
   selectedSlotPill: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 5 },
   selectedSlotText: { fontSize: 11, fontWeight: '700' },
+  decorationPager: { minHeight: 48, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pageCount: { fontSize: 11, fontWeight: '700' },
+  pageActions: { flexDirection: 'row', gap: 8 },
+  pageButton: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   storeButton: { minHeight: 42, borderWidth: 1, borderRadius: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   storeButtonText: { fontSize: 12, fontWeight: '700' },
   notice: { fontSize: 12, lineHeight: 17 },
@@ -451,7 +503,10 @@ const styles = StyleSheet.create({
   decorationCard: { minHeight: 81, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
   decorationShowcase: { width: 70, height: 56, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   decorationCopy: { flex: 1, gap: 2 },
-  decorationName: { fontSize: 13, fontWeight: '800' },
+  decorationTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  decorationName: { flexShrink: 1, fontSize: 13, fontWeight: '800' },
+  limitedBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  limitedBadgeText: { fontSize: 8, fontWeight: '800' },
   decorationDescription: { fontSize: 10, lineHeight: 14 },
   decorationCost: { fontSize: 10, fontWeight: '700', marginTop: 2 },
   placeButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

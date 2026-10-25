@@ -19,7 +19,13 @@ export type MallObjectArchetype =
   | 'gallery-frames'
   | 'starlight-mobile'
   | 'spice-display'
-  | 'rainbow-arch';
+  | 'rainbow-arch'
+  | 'clothing-rack'
+  | 'clothing-wardrobe'
+  | 'blouse-display'
+  | 'skirt-display'
+  | 'dress-display'
+  | 'kimono-display';
 
 const ARCHETYPES = new Set<MallObjectArchetype>([
   'cloud-walk',
@@ -42,6 +48,12 @@ const ARCHETYPES = new Set<MallObjectArchetype>([
   'starlight-mobile',
   'spice-display',
   'rainbow-arch',
+  'clothing-rack',
+  'clothing-wardrobe',
+  'blouse-display',
+  'skirt-display',
+  'dress-display',
+  'kimono-display',
 ]);
 
 const ICON_ARCHETYPES: Record<string, MallObjectArchetype> = {

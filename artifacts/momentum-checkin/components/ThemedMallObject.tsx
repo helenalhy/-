@@ -51,10 +51,113 @@ export function ThemedMallObject({ id, color, icon = 'gift' }: { id: string; col
     case 'rainbow-arch':
       drawing = <View style={s.rainbow}>{[c.candyCoral, c.candyLemon, c.candyMint, c.candySky, c.candyLavender].map((rainbowColor, i) => <View key={i} style={[s.rainbowBand, { width: 60 - i * 9, height: 45 - i * 6, left: i * 4.5, bottom: 0, borderColor: rainbowColor }]} />)}</View>;
       break;
+    case 'clothing-rack':
+      drawing = <ClothingRack color={color} />;
+      break;
+    case 'clothing-wardrobe':
+      drawing = <ClothingWardrobe color={color} />;
+      break;
+    case 'blouse-display':
+      drawing = <ClothingStand color={color} kind="blouse" />;
+      break;
+    case 'skirt-display':
+      drawing = <ClothingStand color={color} kind="skirt" />;
+      break;
+    case 'dress-display':
+      drawing = <ClothingStand color={color} kind="dress" />;
+      break;
+    case 'kimono-display':
+      drawing = <KimonoStand color={color} />;
+      break;
     default:
       drawing = <><View style={[s.fallbackShowcase, { backgroundColor: color, borderColor: c.candyCaramelDark }]}><Feather name={icon as keyof typeof Feather.glyphMap} size={20} color={c.candyCaramelDark} /></View><View style={[s.base, { backgroundColor: c.candyCaramel }]} /></>;
   }
   return <View style={s.object}>{drawing}</View>;
+}
+
+function ClothingRack({ color }: { color: string }) {
+  return (
+    <View style={s.rackScene}>
+      <View style={[s.rackTop, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={s.rackGarments}>
+        {[c.candyPink, color, c.candyLavender, c.candySky].map((garment, index) => (
+          <View key={index} style={s.hangingPiece}>
+            <View style={[s.hanger, { borderColor: c.candyCaramelDark }]} />
+            <View style={[s.hangingGarment, { backgroundColor: garment, height: 22 + (index % 2) * 4 }]} />
+          </View>
+        ))}
+      </View>
+      <View style={[s.rackBase, { backgroundColor: c.candyCaramelDark }]} />
+    </View>
+  );
+}
+
+function ClothingWardrobe({ color }: { color: string }) {
+  return (
+    <View style={s.wardrobeScene}>
+      <View style={[s.wardrobeCrown, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={[s.wardrobeBody, { backgroundColor: c.candyCream, borderColor: c.candyCaramelDark }]}>
+        <View style={[s.wardrobeRail, { backgroundColor: c.candyCaramelDark }]} />
+        <View style={s.wardrobeGarments}>
+          {[c.candyPink, color, c.candyLavender].map((garment, index) => (
+            <View key={index} style={[s.wardrobeGarment, { backgroundColor: garment, height: 17 + (index % 2) * 3 }]} />
+          ))}
+        </View>
+        <View style={s.wardrobeCenterLine} />
+        <View style={[s.wardrobeDrawer, { backgroundColor: c.candyPeach, borderColor: c.candyCaramel }]} />
+        <View style={[s.wardrobeKnob, { backgroundColor: c.candyCaramelDark }]} />
+      </View>
+      <View style={[s.wardrobeFoot, { backgroundColor: c.candyCaramelDark }]} />
+    </View>
+  );
+}
+
+function ClothingStand({ color, kind }: { color: string; kind: 'blouse' | 'skirt' | 'dress' }) {
+  return (
+    <View style={s.clothingStand}>
+      <View style={[s.clothingHanger, { borderColor: c.candyCaramelDark }]} />
+      {kind === 'blouse' ? (
+        <View style={s.blouseShape}>
+          <View style={[s.blouseSleeve, { backgroundColor: color, left: 2, transform: [{ rotate: '-22deg' }] }]} />
+          <View style={[s.blouseSleeve, { backgroundColor: color, right: 2, transform: [{ rotate: '22deg' }] }]} />
+          <View style={[s.blouseBody, { backgroundColor: color }]} />
+          <View style={s.blouseCollar} />
+        </View>
+      ) : kind === 'skirt' ? (
+        <View style={s.skirtShape}>
+          <View style={[s.skirtWaist, { backgroundColor: c.candyCaramelDark }]} />
+          <View style={[s.skirtHem, { borderTopColor: color }]} />
+        </View>
+      ) : (
+        <View style={s.dressShape}>
+          <View style={[s.dressBodice, { backgroundColor: color }]} />
+          <View style={[s.dressHem, { borderTopColor: color }]} />
+          <View style={s.dressSash} />
+        </View>
+      )}
+      <View style={[s.clothingStandStem, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={[s.clothingStandBase, { backgroundColor: c.candyCaramel }]} />
+    </View>
+  );
+}
+
+function KimonoStand({ color }: { color: string }) {
+  return (
+    <View style={s.kimonoStand}>
+      <View style={[s.clothingHanger, { borderColor: c.candyCaramelDark }]} />
+      <View style={s.kimonoSleeves}>
+        <View style={[s.kimonoSleeve, { backgroundColor: color, left: 0, transform: [{ rotate: '-18deg' }] }]} />
+        <View style={[s.kimonoSleeve, { backgroundColor: color, right: 0, transform: [{ rotate: '18deg' }] }]} />
+      </View>
+      <View style={[s.kimonoBody, { backgroundColor: color }]}>
+        <View style={[s.kimonoLapels, { borderLeftColor: c.card, borderRightColor: c.card }]} />
+        <View style={[s.kimonoObi, { backgroundColor: c.candyLemon }]} />
+        <Feather name="star" size={7} color={c.card} />
+      </View>
+      <View style={[s.clothingStandStem, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={[s.clothingStandBase, { backgroundColor: c.candyCaramel }]} />
+    </View>
+  );
 }
 
 function SwimmingFish({ color, left, top }: { color: string; left: number; top: number }) {
@@ -133,5 +236,43 @@ const s = StyleSheet.create({
   shelf: { width: 58, height: 4 },
   rainbow: { width: 60, height: 45 },
   rainbowBand: { position: 'absolute', borderWidth: 5, borderBottomWidth: 0, borderTopLeftRadius: 40, borderTopRightRadius: 40 },
+  rackScene: { width: 57, height: 46, alignItems: 'center', justifyContent: 'flex-end' },
+  rackTop: { width: 48, height: 3, borderRadius: 2 },
+  rackGarments: { height: 37, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: 3 },
+  hangingPiece: { alignItems: 'center', width: 11 },
+  hanger: { width: 8, height: 5, borderTopWidth: 1.5, borderLeftWidth: 1, borderRightWidth: 1, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
+  hangingGarment: { width: 10, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 },
+  rackBase: { width: 58, height: 3, borderRadius: 2 },
+  wardrobeScene: { width: 56, height: 47, alignItems: 'center', justifyContent: 'flex-end' },
+  wardrobeCrown: { width: 50, height: 5, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  wardrobeBody: { width: 46, height: 37, borderWidth: 2, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'center', overflow: 'hidden' },
+  wardrobeRail: { position: 'absolute', top: 7, left: 4, right: 4, height: 2, borderRadius: 1 },
+  wardrobeGarments: { height: 22, marginTop: 9, flexDirection: 'row', alignItems: 'flex-start', gap: 3 },
+  wardrobeGarment: { width: 7, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
+  wardrobeCenterLine: { position: 'absolute', top: 0, bottom: 11, width: 1, backgroundColor: c.candyCaramel },
+  wardrobeDrawer: { position: 'absolute', bottom: 3, left: 4, right: 4, height: 8, borderWidth: 1, borderRadius: 2 },
+  wardrobeKnob: { position: 'absolute', bottom: 6, width: 3, height: 3, borderRadius: 2 },
+  wardrobeFoot: { width: 51, height: 3, borderRadius: 2 },
+  clothingStand: { width: 58, height: 47, alignItems: 'center', justifyContent: 'flex-end' },
+  clothingHanger: { position: 'absolute', top: 0, width: 14, height: 7, borderTopWidth: 1.5, borderLeftWidth: 1, borderRightWidth: 1, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
+  blouseShape: { width: 34, height: 29, marginBottom: 4, alignItems: 'center', justifyContent: 'center' },
+  blouseSleeve: { position: 'absolute', top: 4, width: 12, height: 17, borderRadius: 4 },
+  blouseBody: { width: 21, height: 25, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 },
+  blouseCollar: { position: 'absolute', top: 0, width: 9, height: 6, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, backgroundColor: c.card },
+  skirtShape: { width: 34, height: 30, marginBottom: 4, alignItems: 'center' },
+  skirtWaist: { width: 17, height: 5, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  skirtHem: { width: 0, height: 0, borderLeftWidth: 14, borderRightWidth: 14, borderTopWidth: 23, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
+  dressShape: { width: 38, height: 32, marginBottom: 3, alignItems: 'center' },
+  dressBodice: { width: 17, height: 12, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
+  dressHem: { width: 0, height: 0, borderLeftWidth: 15, borderRightWidth: 15, borderTopWidth: 20, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
+  dressSash: { position: 'absolute', top: 10, width: 18, height: 3, backgroundColor: c.candyLemon },
+  clothingStandStem: { width: 3, height: 8 },
+  clothingStandBase: { width: 24, height: 4, borderRadius: 2 },
+  kimonoStand: { width: 58, height: 47, alignItems: 'center', justifyContent: 'flex-end' },
+  kimonoSleeves: { position: 'absolute', top: 8, width: 48, height: 21 },
+  kimonoSleeve: { position: 'absolute', top: 3, width: 18, height: 16, borderRadius: 3 },
+  kimonoBody: { width: 23, height: 29, alignItems: 'center', justifyContent: 'center', borderTopLeftRadius: 7, borderTopRightRadius: 7, overflow: 'hidden' },
+  kimonoLapels: { position: 'absolute', top: -1, width: 8, height: 22, borderLeftWidth: 2, borderRightWidth: 2, transform: [{ rotate: '20deg' }] },
+  kimonoObi: { position: 'absolute', top: 14, left: 0, right: 0, height: 5 },
   fallbackShowcase: { width: 42, height: 33, borderWidth: 2, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 });

@@ -556,6 +556,10 @@ test('shop interior page shows its matching decor catalog and charges only goal-
   let interiorTree = app.renderShopInterior();
   assert.equal(textContent(findByTestId(interiorTree, 'shop-interior-name')), '女裝店');
   assert.ok(findByTestId(interiorTree, 'shop-interior-scene'));
+  assert.equal(
+    textContent(findByTestId(interiorTree, 'shop-decoration-page-count')),
+    '第 1 / 5 頁 · 共 50 款',
+  );
   const animatedVisuals = findNodes(
     interiorTree,
     (node) => node.type?.name === 'ShopInteriorAnimatedObject',
@@ -566,6 +570,25 @@ test('shop interior page shows its matching decor catalog and charges only goal-
   assert.ok(animatedVisuals.some((node) =>
     node.props.testID === 'shop-decoration-visual-womenswear-clothing-rack' && node.props.category === 'decor',
   ), 'decoration choices preview with the shared animated mall visual');
+  const catalogVisuals = (tree) => findNodes(
+    tree,
+    (node) => node.type?.name === 'ShopInteriorAnimatedObject' && node.props.testID?.startsWith('shop-decoration-visual-'),
+  );
+  assert.equal(catalogVisuals(interiorTree).length, 10, 'only one page of animated choices is mounted at a time');
+  for (let page = 2; page <= 5; page += 1) {
+    await press(interiorTree, 'shop-decoration-page-next');
+    interiorTree = app.renderShopInterior();
+  }
+  assert.equal(
+    textContent(findByTestId(interiorTree, 'shop-decoration-page-count')),
+    '第 5 / 5 頁 · 共 50 款',
+  );
+  assert.ok(findByTestId(interiorTree, 'shop-decoration-limited-womenswear-limited-starlight-top'));
+  for (let page = 5; page > 1; page -= 1) {
+    await press(interiorTree, 'shop-decoration-page-prev');
+    interiorTree = app.renderShopInterior();
+  }
+  assert.equal(catalogVisuals(interiorTree).length, 10);
   for (const slot of ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter']) {
     assert.ok(findByTestId(interiorTree, `shop-interior-slot-${slot}`), `${slot} can be selected`);
   }

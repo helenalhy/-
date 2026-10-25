@@ -32,6 +32,7 @@ function loadTsModule(filename) {
   return loadedModule.exports;
 }
 const mallCatalog = loadTsModule(path.join(__dirname, '../constants/mall.ts'));
+const shopInteriorCatalog = loadTsModule(path.join(__dirname, '../constants/mall-shop-interior.ts'));
 const layoutModule = { exports: {} };
 new Function('exports', ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-layout.ts'), 'utf8'),
@@ -182,6 +183,28 @@ const filterCatalog = Array.from({ length: 60 }, (_, i) => ({
   category: ['shop', 'facility', 'decor'][i % 3], price: 60 - i, ticketCost: 0,
 }));
 filterCatalog.push({ ...filterCatalog[0], id: 'other-floor', name: '外層款式', floor: 2, price: 10 });
+
+test('every shop type has 50 unique interior choices and clothing shops include garment wardrobes and limited editions', () => {
+  const optionsByType = shopInteriorCatalog.SHOP_INTERIOR_DECORATIONS;
+  for (const [type, options] of Object.entries(optionsByType)) {
+    assert.equal(options.length, 50, `${type} should offer exactly 50 choices`);
+    assert.equal(new Set(options.map((option) => option.id)).size, 50, `${type} choices should have unique IDs`);
+  }
+
+  const womenswear = optionsByType.womenswear;
+  assert.ok(womenswear.some((option) => option.name.includes('上衣與外套衣櫃')));
+  assert.ok(womenswear.some((option) => option.name.includes('百褶裙與長裙衣櫃')));
+  assert.ok(womenswear.some((option) => option.limitedEdition && option.name.includes('上衣')));
+  assert.ok(womenswear.some((option) => option.limitedEdition && option.name.includes('長裙')));
+
+  const kimonoLimitedEditions = optionsByType.kimono.filter((option) => option.limitedEdition);
+  assert.equal(kimonoLimitedEditions.length, 4);
+  assert.ok(kimonoLimitedEditions.every((option) =>
+    option.name.includes('限定版') && /和服|浴衣|振袖/.test(option.name),
+  ));
+
+  assert.ok(womenswear.some((option) => option.id === 'womenswear-clothing-rack'), 'existing decoration IDs remain stable');
+});
 
 function pager(app) {
   return app.nodes().find((node) => node.type === 'CatalogPager');

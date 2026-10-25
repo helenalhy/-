@@ -10,6 +10,25 @@ const source = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../app/(tabs)/mall.tsx'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
+const tsModuleCache = new Map();
+function loadTsModule(filename) {
+  const resolved = path.resolve(filename.endsWith('.ts') ? filename : `${filename}.ts`);
+  if (tsModuleCache.has(resolved)) return tsModuleCache.get(resolved).exports;
+  const loadedModule = { exports: {} };
+  tsModuleCache.set(resolved, loadedModule);
+  const output = ts.transpileModule(fs.readFileSync(resolved, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
+  }).outputText;
+  const mockRequire = (request) => {
+    const dependency = path.resolve(path.dirname(resolved), request);
+    if (fs.existsSync(`${dependency}.ts`)) return loadTsModule(`${dependency}.ts`);
+    if (fs.existsSync(dependency)) return dependency;
+    return `asset:${request}`;
+  };
+  new Function('require', 'module', 'exports', output)(mockRequire, loadedModule, loadedModule.exports);
+  return loadedModule.exports;
+}
+const mallCatalog = loadTsModule(path.join(__dirname, '../constants/mall.ts'));
 const layoutModule = { exports: {} };
 new Function('exports', ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-layout.ts'), 'utf8'),
@@ -20,7 +39,7 @@ const wingPagerSource = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
 
-function mount(overrides = {}, catalog, platformOS = 'ios', slotIds) {
+function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes = mallCatalog.MALL_FLOORS) {
   const states = [];
   let cursor = 0;
   let first = true;
@@ -92,7 +111,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds) {
     if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
     if (name === '@/constants/mall') return {
       MALL_ITEMS: items, MALL_ITEM_BY_ID: Object.fromEntries(items.map((entry) => [entry.id, entry])),
-      MALL_FLOORS: Array.from({ length: 10 }, () => ({ title: '測試樓層' })),
+      MALL_FLOORS: floorThemes,
     };
     if (name === '@/components/MallVisuals') return { MallObjectVisual: 'MallObjectVisual', MallAmbience: 'MallAmbience' };
     if (name === '@/components/CatalogPager') return { CatalogPager: 'CatalogPager' };
@@ -219,6 +238,163 @@ test('search combines affordability and category; complete-list entry clears eve
   assert.equal(pager(app).props.page, 1);
   await app.press('mall-full-catalog');
   assert.ok(app.find('build-other-floor'));
+  assert.equal(app.calls.length, 0);
+});
+
+test('real 1500-item catalog is fully searchable by name with the correct original floor theme', () => {
+  const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
+  assert.equal(MALL_ITEMS.length, 1500);
+  assert.equal(MALL_FLOORS.length, 10);
+  assert.deepEqual(
+    MALL_FLOORS.map((floor) => floor.title),
+    ['糖果迎賓街', '森林花園', '慢讀書廊', '海洋奇遇', '像素遊樂城', '雲朵療癒館', '彩虹藝術廊', '星際觀測站', '世界美食集', '天空花園'],
+  );
+  assert.deepEqual(
+    Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
+      category, MALL_ITEMS.filter((item) => item.category === category).length,
+    ])),
+    { shop: 500, facility: 500, decor: 500 },
+  );
+  assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
+
+  const app = mount({ purchasedItems: [], mallPlacements: {} }, MALL_ITEMS);
+  for (const item of MALL_ITEMS) {
+    app.find('mall-search-input').props.onChangeText(item.name);
+    app.render();
+
+    const matchingItems = MALL_ITEMS.filter((candidate) => candidate.name.toLocaleLowerCase().includes(item.name.toLocaleLowerCase()));
+    assert.equal(pager(app).props.total, matchingItems.length, `${item.id} (${item.name}) search count`);
+    const result = app.find(`search-select-${item.id}`);
+    assert.ok(result, `${item.id} appears in the search results`);
+    assert.match(result.props.accessibilityLabel, new RegExp(`前往 ${item.floor}F`));
+    assert.ok(
+      app.nodes().some((node) => textContent(node) === `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.price} 金幣`),
+      `${item.id} shows its original floor and floor name`,
+    );
+  }
+});
+
+test('search whitespace, empty results, category counts, pagination and clear restore the current floor list', async () => {
+  const app = mount({ purchasedItems: [], mallPlacements: {} }, mallCatalog.MALL_ITEMS);
+  const floorOneItems = mallCatalog.MALL_ITEMS.filter((item) => item.floor === 1);
+  assert.equal(floorOneItems.length, 150);
+
+  app.find('mall-search-input').props.onChangeText('   ');
+  app.render();
+  assert.equal(pager(app).props.total, 150, 'whitespace is treated as an empty search');
+  assert.equal(app.find('mall-search-empty'), undefined);
+  for (const [category, expected] of [['shop', 50], ['facility', 50], ['decor', 50]]) {
+    assert.match(textContent(app.find(`mall-category-${category}`)), new RegExp(`${expected}$`));
+  }
+
+  app.find('mall-search-input').props.onChangeText('不存在的商場款式');
+  app.render();
+  assert.equal(pager(app).props.total, 0);
+  assert.ok(app.find('mall-search-empty'));
+
+  const pageQuery = '店';
+  const expectedResults = mallCatalog.MALL_ITEMS.filter((item) => item.name.includes(pageQuery));
+  app.find('mall-search-input').props.onChangeText(pageQuery);
+  app.render();
+  assert.equal(pager(app).props.total, expectedResults.length);
+  for (const category of ['shop', 'facility', 'decor']) {
+    const categoryCount = expectedResults.filter((item) => item.category === category).length;
+    assert.match(textContent(app.find(`mall-category-${category}`)), new RegExp(`${categoryCount}$`));
+  }
+
+  const renderedIds = [];
+  for (let page = 1; page <= pager(app).props.pages; page += 1) {
+    pager(app).props.onChange(page);
+    app.render();
+    renderedIds.push(...selectionIds(app));
+  }
+  assert.deepEqual(
+    renderedIds,
+    expectedResults.map((item) => `search-select-${item.id}`),
+    'every matching catalog result appears once across the pages',
+  );
+
+  app.find('mall-search-input').props.onChangeText('');
+  app.render();
+  assert.equal(pager(app).props.total, 150);
+  assert.equal(pager(app).props.page, 1);
+  assert.ok(app.find(`build-${floorOneItems[0].id}`), 'clearing search returns to the original floor list');
+});
+
+test('search selection and cancellation preserve coins, ownership and placements', async () => {
+  const target = mallCatalog.MALL_ITEMS.find((item) => item.floor === 10 && item.category === 'shop');
+  const startingCoins = 400;
+  const app = mount(
+    { coins: startingCoins, purchasedItems: [], mallPlacements: {} },
+    mallCatalog.MALL_ITEMS,
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+  const ownedBefore = [...app.habits.purchasedItems];
+  const placementsBefore = { ...app.habits.mallPlacements };
+  app.find('mall-search-input').props.onChangeText(target.name);
+  app.render();
+  assert.ok(app.find(`search-select-${target.id}`));
+  assert.equal(app.habits.coins, startingCoins);
+  assert.deepEqual(app.habits.purchasedItems, ownedBefore);
+  assert.deepEqual(app.habits.mallPlacements, placementsBefore);
+  assert.equal(app.calls.length, 0);
+
+  await app.press(`search-select-${target.id}`);
+  assert.match(textContent(app.find('floor-current')), /^10F/);
+  assert.match(app.announcements.at(-1), /尚未兌換或扣除金幣|試擺，確認兌換才扣金幣/);
+  assert.equal(app.habits.coins, startingCoins);
+  assert.deepEqual(app.habits.purchasedItems, ownedBefore);
+  assert.deepEqual(app.habits.mallPlacements, placementsBefore);
+  assert.equal(app.calls.length, 0);
+
+  const cancelButton = app.nodes().find((node) => node.props.accessibilityLabel === '取消擺放');
+  assert.ok(cancelButton, 'selected search result can be cancelled');
+  await cancelButton.props.onPress();
+  app.render();
+  assert.match(textContent(app.find('mall-placement-status')), /已取消試擺.*尚未兌換或扣除金幣/);
+  assert.equal(app.nodes().some((node) => node.props.accessibilityLabel === '取消擺放'), false, 'placement intent is cleared');
+  assert.equal(app.habits.coins, startingCoins);
+  assert.deepEqual(app.habits.purchasedItems, ownedBefore);
+  assert.deepEqual(app.habits.mallPlacements, placementsBefore);
+  assert.equal(app.calls.length, 0);
+});
+
+test('search shows redeemed state and selecting an owned result remains free', async () => {
+  const ownedItem = mallCatalog.MALL_ITEMS.find((item) => item.floor === 8 && item.category === 'facility');
+  const storedItem = mallCatalog.MALL_ITEMS.find((item) => item.floor === 6 && item.category === 'decor');
+  const placedSlot = 'floor-8-left';
+  const app = mount(
+    { coins: 0, purchasedItems: [ownedItem.id, storedItem.id], mallPlacements: { [placedSlot]: ownedItem.id } },
+    mallCatalog.MALL_ITEMS,
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+  const ownedBefore = [...app.habits.purchasedItems];
+  const placementsBefore = { ...app.habits.mallPlacements };
+
+  app.find('mall-search-input').props.onChangeText(ownedItem.name);
+  app.render();
+  assert.ok(app.nodes().some((node) => textContent(node) === '已兌換 · 已擺放 · 免費搬動'));
+  assert.match(app.find(`search-select-${ownedItem.id}`).props.accessibilityLabel, /已兌換，可免費重擺/);
+  await app.press(`search-select-${ownedItem.id}`);
+  assert.match(textContent(app.find('floor-current')), /^8F/);
+  assert.equal(app.habits.coins, 0);
+  assert.deepEqual(app.habits.purchasedItems, ownedBefore);
+  assert.deepEqual(app.habits.mallPlacements, placementsBefore);
+  assert.equal(app.calls.length, 0);
+
+  const cancelButton = app.nodes().find((node) => node.props.accessibilityLabel === '取消擺放');
+  assert.ok(cancelButton);
+  await cancelButton.props.onPress();
+  app.render();
+
+  app.find('mall-search-input').props.onChangeText(storedItem.name);
+  app.render();
+  assert.ok(app.nodes().some((node) => textContent(node) === '已兌換 · 倉庫保存中 · 免費擺放'));
+  assert.equal(app.habits.coins, 0);
+  assert.deepEqual(app.habits.purchasedItems, ownedBefore);
+  assert.deepEqual(app.habits.mallPlacements, placementsBefore);
   assert.equal(app.calls.length, 0);
 });
 

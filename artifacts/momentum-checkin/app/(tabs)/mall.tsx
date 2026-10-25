@@ -5,11 +5,13 @@ import {
   Animated,
   Alert,
   ImageBackground,
+  Keyboard,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -148,6 +150,7 @@ export default function MallScreen() {
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [currentFloor, setCurrentFloor] = useState(1);
   const [catalogPage, setCatalogPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const operationLock = useRef(false);
   const [previewSlotId, setPreviewSlotId] = useState<MallSlotId | null>(null);
@@ -161,7 +164,14 @@ export default function MallScreen() {
   );
   const floorTheme = MALL_FLOORS[currentFloor - 1];
   const floorItems = MALL_ITEMS.filter((item) => item.floor === currentFloor);
-  const visibleItems = (showCollection ? collectionItems : floorItems).filter((item) => category === 'all' || item.category === category);
+  const searchTerm = searchQuery.trim().toLocaleLowerCase();
+  const isSearching = searchTerm.length > 0;
+  const searchItems = useMemo(
+    () => MALL_ITEMS.filter((item) => item.name.toLocaleLowerCase().includes(searchTerm)),
+    [searchTerm],
+  );
+  const catalogItems = isSearching ? searchItems : showCollection ? collectionItems : floorItems;
+  const visibleItems = catalogItems.filter((item) => category === 'all' || item.category === category);
   const catalogPages = Math.max(1, Math.ceil(visibleItems.length / CATALOG_PAGE_SIZE));
   const currentCatalogPage = Math.min(catalogPage, catalogPages);
   const pagedItems = visibleItems.slice((currentCatalogPage - 1) * CATALOG_PAGE_SIZE, currentCatalogPage * CATALOG_PAGE_SIZE);
@@ -231,6 +241,24 @@ export default function MallScreen() {
     if (placementIntent?.mode === 'purchase') announcePlacement('已取消試擺，尚未兌換或扣除金幣。');
     setPreviewSlotId(null);
     setPlacementIntent(null);
+  }
+
+  function selectSearchItem(item: MallItem) {
+    if (isLoading || purchasing || operationLock.current || placementIntent) return;
+    if (!ownedIds.has(item.id) && coins < item.price) {
+      Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
+      return;
+    }
+    Keyboard.dismiss();
+    changeFloor(item.floor - currentFloor);
+    setWarehouseNotice(null);
+    setPreviewSlotId(null);
+    const mode = ownedIds.has(item.id)
+      ? placedIds.has(item.id) ? 'move' : 'restore'
+      : 'purchase';
+    setPlacementIntent({ itemId: item.id, mode });
+    announcePlacement(`已前往 ${item.floor}F，選擇${item.name}。${mode === 'purchase' ? '請選擇空位試擺，確認兌換才扣金幣。' : '已兌換，可免費重新擺放。'}搜尋及換層沒有扣除金幣。`);
+    scrollToMallScene();
   }
 
   async function placeItemInSlot(slotId: MallSlotId, confirmed = false) {
@@ -305,6 +333,7 @@ export default function MallScreen() {
     setPreviewSlotId(null);
     setWarehouseNotice(null);
     setShowCollection(true);
+    setSearchQuery('');
     setCategory('all');
     setCatalogPage(1);
     requestAnimationFrame(scrollToCatalog);
@@ -320,6 +349,7 @@ export default function MallScreen() {
       setPlacementIntent(null);
       setPreviewSlotId(null);
       setShowCollection(true);
+      setSearchQuery('');
       setCategory('all');
       setCatalogPage(1);
       requestAnimationFrame(scrollToCatalog);
@@ -340,6 +370,7 @@ export default function MallScreen() {
           { paddingTop: Platform.OS === 'web' ? 67 : 12, paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 28 },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
           <View>
@@ -545,7 +576,7 @@ export default function MallScreen() {
 
         <View style={styles.collectionTabs}>
           {([{ id: false, label: '本層兌換', icon: 'shopping-bag' }, { id: true, label: `倉庫 · ${collectionItems.length}`, icon: 'archive' }] as const).map((tab) => (
-            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
+            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setSearchQuery(''); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
               <Feather name={tab.icon} size={16} color={colors.primary} />
               <Text style={[styles.filterText, { color: colors.primary }]}>{tab.label}</Text>
             </Pressable>
@@ -556,11 +587,36 @@ export default function MallScreen() {
           onLayout={(event) => { shopSectionY.current = event.nativeEvent.layout.y; }}
         >
           <View>
-            <Text testID="floor-catalog-title" style={[styles.sceneTitle, { color: colors.foreground }]}>{showCollection ? '倉庫 · 所有樓層' : `${currentFloor}F 專屬兌換 · ${floorTheme.title}`}</Text>
-            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>{showCollection ? '商店、設施、裝修都可保存 · 不設件數上限 · 免費取出重擺' : `本層 ${floorItems.length} 款選物 · ${MALL_POSITIONS_PER_FLOOR} 個展示位，可存倉輪替`}</Text>
+            <Text testID="floor-catalog-title" style={[styles.sceneTitle, { color: colors.foreground }]}>{isSearching ? '搜尋結果 · 所有樓層' : showCollection ? '倉庫 · 所有樓層' : `${currentFloor}F 專屬兌換 · ${floorTheme.title}`}</Text>
+            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>{isSearching ? `全 ${MALL_ITEMS.length} 款名稱搜尋 · 本分類 ${visibleItems.length} 款結果` : showCollection ? '商店、設施、裝修都可保存 · 不設件數上限 · 免費取出重擺' : `本層 ${floorItems.length} 款選物 · ${MALL_POSITIONS_PER_FLOOR} 個展示位，可存倉輪替`}</Text>
           </View>
           <Feather name="arrow-down" size={17} color={colors.primary} />
         </View>
+
+        <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="search" size={18} color={colors.primary} />
+          <TextInput
+            testID="mall-search-input"
+            accessibilityLabel={`搜尋全部 ${MALL_ITEMS.length} 款選物名稱`}
+            placeholder="搜尋所有樓層的商店、設施、裝修"
+            placeholderTextColor={colors.mutedForeground}
+            value={searchQuery}
+            onChangeText={(text) => { setSearchQuery(text); setCatalogPage(1); }}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+            onSubmitEditing={() => Keyboard.dismiss()}
+            style={[styles.searchInput, { color: colors.foreground }]}
+          />
+          {searchQuery.length > 0 && <Pressable
+            onPress={() => { setSearchQuery(''); setCatalogPage(1); }}
+            accessibilityRole="button"
+            accessibilityLabel="清除搜尋，返回原本清單"
+            testID="mall-search-clear"
+            style={styles.searchClear}
+          ><Feather name="x" size={18} color={colors.primary} /></Pressable>}
+        </View>
+        <Text style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋 · 可配合分類 · 搜尋及換層不扣金幣</Text>
 
         {showCollection && warehouseNotice && <Text testID="warehouse-notice" accessibilityRole="alert" style={[styles.collectionEmpty, { color: colors.primary }]}>{warehouseNotice}</Text>}
 
@@ -578,7 +634,7 @@ export default function MallScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label} {(showCollection ? collectionItems : floorItems).filter((item) => filter.id === 'all' || item.category === filter.id).length}</Text>
+                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label} {catalogItems.filter((item) => filter.id === 'all' || item.category === filter.id).length}</Text>
               </Pressable>
             );
           })}
@@ -586,13 +642,16 @@ export default function MallScreen() {
 
         <CatalogPager id="catalog-top" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
         <View style={styles.catalogList}>
-          {showCollection && visibleItems.length === 0 && (
+          {isSearching && visibleItems.length === 0 && (
+            <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有符合「{searchQuery.trim()}」的選物，試試其他名稱、切換「全部」分類或清除搜尋。</Text>
+          )}
+          {!isSearching && showCollection && visibleItems.length === 0 && (
             <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>{collectionItems.length === 0 ? '倉庫暫時沒有物件。點選商場中的舊商店、設施或裝修，再按「存入倉庫」，就能騰出位置換新；之後可免費取出。' : '這個分類暫時沒有存倉物件，試試其他分類。'}</Text>
           )}
           {pagedItems.map((item) => {
             const owned = ownedIds.has(item.id);
             const enoughCoins = coins >= item.price;
-            const disabled = isLoading || (owned && !showCollection) || purchasing !== null || placementIntent !== null;
+            const disabled = isLoading || (owned && !showCollection && !isSearching) || purchasing !== null || placementIntent !== null;
             return (
               <View key={item.id} style={[styles.catalogCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={[styles.catalogIcon, { backgroundColor: item.color }]}>
@@ -603,15 +662,17 @@ export default function MallScreen() {
                     <Text style={[styles.itemName, { color: colors.foreground }]}>{item.name}</Text>
                     <Text style={[styles.itemType, { color: colors.primary, backgroundColor: colors.secondary }]}>{CATEGORY_NAMES[item.category]}</Text>
                   </View>
-                  <Text numberOfLines={1} style={[styles.itemDescription, { color: colors.mutedForeground }]}>{showCollection ? `${item.floor}F 原屬選物 · ${item.description}` : item.description}</Text>
-                  {showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : <View style={styles.costRow}>
+                  <Text numberOfLines={1} style={[styles.itemDescription, { color: colors.mutedForeground }]}>{isSearching ? `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.price} 金幣` : showCollection ? `${item.floor}F 原屬選物 · ${item.description}` : item.description}</Text>
+                  {isSearching ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{owned ? placedIds.has(item.id) ? '已兌換 · 已擺放 · 免費搬動' : '已兌換 · 倉庫保存中 · 免費擺放' : '未兌換 · 選取後前往所屬樓層試擺'}</Text> : showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : <View style={styles.costRow}>
                     <View style={styles.costPart}><Feather name="circle" size={11} color={colors.candyCaramelDark} /><Text style={[styles.costText, { color: colors.candyCaramelDark }]}>{item.price}</Text></View>
                     <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>
                   </View>}
                 </View>
                 <Pressable
                   onPress={() => {
-                    if (showCollection) {
+                    if (isSearching) {
+                      selectSearchItem(item);
+                    } else if (showCollection) {
                       setWarehouseNotice(null);
                       setPlacementIntent({ itemId: item.id, mode: 'restore' });
                       scrollToMallScene();
@@ -625,10 +686,11 @@ export default function MallScreen() {
                     { backgroundColor: owned ? colors.secondary : colors.primary, opacity: disabled && !owned ? 0.55 : 1 },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}
-                  testID={`${showCollection ? 'restore' : 'build'}-${item.id}`}
+                  accessibilityLabel={isSearching ? `選擇${item.name}，前往 ${item.floor}F，${CATEGORY_NAMES[item.category]}，${item.price} 金幣，${owned ? '已兌換，可免費重擺' : '未兌換，先試擺再確認'}` : showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}
+                  accessibilityState={{ disabled }}
+                  testID={`${isSearching ? 'search-select' : showCollection ? 'restore' : 'build'}-${item.id}`}
                 >
-                  <Feather name={showCollection ? 'map-pin' : owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
+                  <Feather name={isSearching ? 'arrow-up-right' : showCollection ? 'map-pin' : owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
                 </Pressable>
                 {!owned && !enoughCoins && (
                   <Text style={[styles.missingText, { color: colors.mutedForeground }]}>
@@ -704,6 +766,10 @@ const styles = StyleSheet.create({
   storageErrorText: { fontSize: 11, flex: 1 },
   catalogHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 26, marginBottom: 12 },
   categoryFilters: { flexDirection: 'row', gap: 7, marginBottom: 11 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, paddingLeft: 12, gap: 8, minHeight: 48 },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 12, paddingVertical: 12 },
+  searchClear: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  searchHint: { fontSize: 11, marginTop: 7, marginBottom: 12 },
   filterPill: { paddingHorizontal: 13, paddingVertical: 8, borderWidth: 1, borderRadius: 99 },
   filterText: { fontSize: 11, fontWeight: '600' },
   catalogList: { gap: 9 },

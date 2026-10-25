@@ -846,6 +846,8 @@ export default function MallScreen() {
             const owned = ownedIds.has(item.id);
             const enoughCoins = coins >= item.price;
             const disabled = isLoading || (owned && !showCollection && !isSearching) || purchasing !== null || placementIntent !== null;
+            const placedSlotId = placedSlotsByItem.get(item.id);
+            const placedPosition = placedSlotId ? getSlotPosition(placedSlotId) : null;
             return (
               <View key={item.id} style={[styles.catalogCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={[styles.catalogIcon, { backgroundColor: item.color }]}>
@@ -856,7 +858,7 @@ export default function MallScreen() {
                     <Text style={[styles.itemName, { color: colors.foreground }]}>{item.name}</Text>
                     <Text style={[styles.itemType, { color: colors.primary, backgroundColor: colors.secondary }]}>{CATEGORY_NAMES[item.category]}</Text>
                   </View>
-                  <Text numberOfLines={1} style={[styles.itemDescription, { color: colors.mutedForeground }]}>{isSearching ? `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.price} 金幣` : showCollection ? `${item.floor}F 原屬選物 · ${item.description}` : item.description}</Text>
+                  <Text numberOfLines={2} style={[styles.itemDescription, { color: colors.mutedForeground }]}>{isSearching ? placedPosition ? `${placedPosition.floor} · ${placedPosition.label} · ${item.price} 金幣` : `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.price} 金幣` : showCollection ? `${item.floor}F 原屬選物 · ${item.description}` : item.description}</Text>
                   {isSearching ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{owned ? placedIds.has(item.id) ? '已兌換 · 已擺放 · 免費搬動' : '已兌換 · 倉庫保存中 · 免費擺放' : '未兌換 · 選取後前往所屬樓層試擺'}</Text> : showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : <View style={styles.costRow}>
                     <View style={styles.costPart}><Feather name="circle" size={11} color={colors.candyCaramelDark} /><Text style={[styles.costText, { color: colors.candyCaramelDark }]}>{item.price}</Text></View>
                     <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>

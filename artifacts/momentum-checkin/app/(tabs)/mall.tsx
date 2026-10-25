@@ -657,6 +657,18 @@ export default function MallScreen() {
                 </Text>
                 <Text style={[styles.placementSubtitle, { color: colors.mutedForeground }]}>{currentPlacementItem.name} · 可用箭頭換層，{placementIntent.mode === 'move' ? '可搬動、交換或存倉；存倉不退金幣' : placementIntent.mode === 'restore' ? '選任一空位，不扣金幣' : '先試擺預覽，確認兌換才扣金幣'}</Text>
               </View>
+              {placementIntent.mode === 'move' && currentPlacementItem.category === 'shop' && (
+                <Pressable
+                  testID="open-shop-interior"
+                  onPress={() => router.push({ pathname: '/mall-shop/[itemId]', params: { itemId: currentPlacementItem.id } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`進入${currentPlacementItem.name}店內佈置`}
+                  style={styles.collectionAction}
+                >
+                  <Feather name="home" size={20} color={colors.primary} />
+                  <Text style={[styles.filterText, { color: colors.primary }]}>店內佈置</Text>
+                </Pressable>
+              )}
               {placementIntent.mode === 'move' && (
                 <Pressable onPress={() => void storeSelectedItem()} disabled={purchasing !== null} accessibilityRole="button" accessibilityLabel={`將${currentPlacementItem.name}存入倉庫`} testID="store-selected-item" style={styles.collectionAction}>
                   <Feather name="archive" size={20} color={colors.primary} />
@@ -1026,7 +1038,7 @@ export default function MallScreen() {
               onPress={() => { setShowCollection(false); setSearchQuery(''); setSearchFloor(null); setSearchWing(null); setCategory('all'); setAffordableOnly(false); setPriceAscending(false); setCatalogPage(1); }}
               style={[styles.fullCatalogButton, { borderColor: colors.border }]}
             >
-              <Text style={[styles.filterText, { color: colors.primary }]}>查看 {currentFloor}F 完整清單 · 20 商店／20 設施／20 裝修</Text>
+              <Text style={[styles.filterText, { color: colors.primary }]}>查看 {currentFloor}F 完整選物清單</Text>
             </Pressable>
           </View>
         )}
@@ -1099,6 +1111,19 @@ export default function MallScreen() {
                   </View>}
                 </View>
                 <View style={styles.catalogActions}>
+                  {owned && item.category === 'shop' && (
+                    <Pressable
+                      testID={`shop-interior-open-${item.id}`}
+                      onPress={() => router.push({ pathname: '/mall-shop/[itemId]', params: { itemId: item.id } })}
+                      disabled={isLoading || purchasing !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel={`進入${item.name}店內佈置`}
+                      accessibilityState={{ disabled: isLoading || purchasing !== null }}
+                      style={[styles.buildButton, { backgroundColor: colors.candyPink }]}
+                    >
+                      <Feather name="home" size={16} color={colors.primary} />
+                    </Pressable>
+                  )}
                   {isSearching && placedIds.has(item.id) && (
                     <Pressable
                       onPress={() => viewPlacedItemLocation(item)}

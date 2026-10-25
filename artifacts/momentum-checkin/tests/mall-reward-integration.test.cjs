@@ -19,6 +19,7 @@ function createHarness() {
   let activeFrame;
   const navigation = [];
   const navigationStack = ['/'];
+  let localSearchParams = {};
   const alerts = [];
   const palette = { light: new Proxy({}, { get: (_, key) => String(key) }) };
   const mallContext = { currentValue: null };
@@ -117,7 +118,12 @@ function createHarness() {
         navigation.push(['back']);
         if (navigationStack.length > 1) navigationStack.pop();
       },
+      replace: (route) => {
+        navigation.push(['replace', route]);
+        navigationStack[navigationStack.length - 1] = route;
+      },
     },
+    useLocalSearchParams: () => localSearchParams,
   };
   const colorsHook = { useColors: () => palette.light };
   const componentStubs = {
@@ -203,6 +209,10 @@ function createHarness() {
     return render(key, () => mallScreen.default());
   }
 
+  function renderShopInterior(key = 'shop-interior') {
+    return render(key, () => shopInteriorScreen.default());
+  }
+
   function renderToday(key = 'today') {
     return render(key, () => todayRouteModule.default());
   }
@@ -229,6 +239,7 @@ function createHarness() {
 
   const contextExports = loadTsModule(path.join(appRoot, 'context/HabitsContext.tsx'));
   const mallScreen = loadTsModule(path.join(appRoot, 'app/(tabs)/mall.tsx'));
+  const shopInteriorScreen = loadTsModule(path.join(appRoot, 'app/mall-shop/[itemId].tsx'));
   const todayModule = loadTsModule(path.join(appRoot, 'app/(tabs)/index.tsx'));
   const todayRouteModule = loadTsModule(path.join(appRoot, 'app/(tabs)/today.tsx'));
   const mallCatalog = loadTsModule(path.join(appRoot, 'constants/mall.ts'));
@@ -243,10 +254,12 @@ function createHarness() {
     render,
     renderCurrentRoute,
     renderMall,
+    renderShopInterior,
     renderProvider,
     renderToday,
     runEffects,
     storage,
+    setLocalSearchParams: (params) => { localSearchParams = params; },
   };
 }
 
@@ -289,7 +302,7 @@ test('goal reward updates an active affordable catalog and survives provider rel
   assert.ok(ownedItem, 'the current floor includes a pre-owned item to exclude');
 
   app.storage.set(storageKeys.mall, JSON.stringify({
-    schemaVersion: 2,
+    schemaVersion: 3,
     coins: 0,
     purchasedItems: [ownedItem.id],
     rewardedCheckIns: [],
@@ -302,7 +315,7 @@ test('goal reward updates an active affordable catalog and survives provider rel
   app.renderProvider();
 
   let mallTree = app.renderMall();
-  assert.equal(findCatalogPager(mallTree).props.total, 150);
+  assert.equal(findCatalogPager(mallTree).props.total, 151);
   await press(mallTree, 'mall-affordable-toggle');
   mallTree = app.renderMall();
   assert.equal(findCatalogPager(mallTree).props.total, 0);
@@ -393,7 +406,7 @@ test('mall to today and back preserves the filtered catalog, purchase preview an
   assert.ok(ownedItem, 'the seeded owned item exists in the real catalog');
 
   app.storage.set(storageKeys.mall, JSON.stringify({
-    schemaVersion: 2,
+    schemaVersion: 3,
     coins: 20,
     purchasedItems: [ownedItem.id],
     rewardedCheckIns: [],
@@ -482,6 +495,81 @@ test('mall to today and back preserves the filtered catalog, purchase preview an
   assert.equal(app.storage.get(storageKeys.mall), savedMallBeforeNavigation);
 });
 
+test('an owned shop exposes its interior from the mall scene and opens its own page', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 120,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: { 'floor-1-left': shop.id },
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let mallTree = app.renderMall();
+  const wingPager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
+  assert.ok(wingPager, 'the mall renders its floor section pager');
+  const mainWing = wingPager.props.renderWing('main', true);
+  const shopSlot = findNodes(mainWing, (node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-1-left',
+  )[0];
+  assert.ok(shopSlot?.props.item, 'the redeemed shop is visible in its floor scene');
+  shopSlot.props.onPress();
+  mallTree = app.renderMall();
+  assert.ok(findByTestId(mallTree, 'open-shop-interior'), 'the selected shop exposes its interior action');
+  await press(mallTree, 'open-shop-interior');
+  assert.deepEqual(app.navigation.at(-1), [
+    'push',
+    { pathname: '/mall-shop/[itemId]', params: { itemId: shop.id } },
+  ]);
+});
+
+test('shop interior page shows its matching decor catalog and charges only goal-earned coins', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 120,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  assert.equal(textContent(findByTestId(interiorTree, 'shop-interior-name')), '女裝店');
+  assert.ok(findByTestId(interiorTree, 'shop-interior-scene'));
+  for (const slot of ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter']) {
+    assert.ok(findByTestId(interiorTree, `shop-interior-slot-${slot}`), `${slot} can be selected`);
+  }
+  assert.ok(findByTestId(interiorTree, 'shop-decoration-womenswear-clothing-rack'));
+
+  await press(interiorTree, 'shop-decoration-place-womenswear-clothing-rack');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  assert.equal(app.contextExports.useHabits().coins, 90);
+  assert.deepEqual(app.contextExports.useHabits().shopInteriors[shop.id], {
+    ownedDecorations: ['womenswear-clothing-rack'],
+    placements: { 'front-window': 'womenswear-clothing-rack' },
+  });
+  assert.match(
+    textContent(findByTestId(interiorTree, 'shop-decoration-womenswear-clothing-rack')),
+    /已佈置於櫥窗/,
+  );
+});
+
 test('long-pressing a goal opens edit and delete actions', async () => {
   const app = createHarness();
   app.renderProvider();
@@ -526,7 +614,7 @@ test('long-pressing a goal opens edit and delete actions', async () => {
 test('deleting a goal confirms lost check-in history and preserves earned coins after reload', async () => {
   const app = createHarness();
   app.storage.set(storageKeys.mall, JSON.stringify({
-    schemaVersion: 2,
+    schemaVersion: 3,
     coins: 60,
     purchasedItems: [],
     rewardedCheckIns: [],

@@ -12,6 +12,12 @@ import React, {
 } from 'react';
 import palette from '@/constants/colors';
 import { MALL_SLOT_IDS, type MallSlotId } from '@/constants/mall-layout';
+import {
+  SHOP_INTERIOR_DECORATION_IDS,
+  SHOP_INTERIOR_SLOT_IDS,
+  SHOP_INTERIOR_DECORATION_BY_ID,
+  type ShopInteriorSlotId,
+} from '@/constants/mall-shop-interior';
 export { MALL_SLOT_IDS } from '@/constants/mall-layout';
 export type { MallSlotId } from '@/constants/mall-layout';
 
@@ -30,6 +36,13 @@ export type RewardCategory = 'facility' | 'shop' | 'decor';
 export type RewardTokens = Record<RewardCategory, number>;
 export const MALL_FLOOR_COUNT = 10;
 
+export interface ShopInteriorState {
+  ownedDecorations: string[];
+  placements: Partial<Record<ShopInteriorSlotId, string>>;
+}
+
+export type ShopInteriorCollection = Record<string, ShopInteriorState>;
+
 export const REWARD_CATEGORY_LABELS: Record<RewardCategory, string> = {
   facility: '設施券',
   shop: '店鋪券',
@@ -44,6 +57,7 @@ interface HabitsContextValue {
   coins: number;
   purchasedItems: string[];
   mallPlacements: Record<string, string>;
+  shopInteriors: ShopInteriorCollection;
   rewardTokens: RewardTokens;
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns'>) => Promise<void>;
   updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory'>) => Promise<void>;
@@ -52,12 +66,14 @@ interface HabitsContextValue {
   purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
   moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
   storeMallItem: (itemId: string) => Promise<void>;
+  placeShopInteriorDecoration: (shopId: string, decorationId: string, slotId: ShopInteriorSlotId) => Promise<void>;
+  storeShopInteriorDecoration: (shopId: string, slotId: ShopInteriorSlotId) => Promise<void>;
 }
 
 const STORAGE_KEY = 'momentum.habits.v1';
 const MALL_STORAGE_KEY = 'momentum.mall.v1';
-// Version 2 makes an owned item without a placement an intentional collection item.
-const MALL_SCHEMA_VERSION = 2;
+// Version 2 made unplaced items intentional collection items; v3 adds per-shop interiors.
+const MALL_SCHEMA_VERSION = 3;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
 
@@ -96,7 +112,7 @@ function normalizeMallPlacements(
       assignedItems.add(itemId);
     }
   }
-  for (const itemId of schemaVersion < MALL_SCHEMA_VERSION ? purchasedItems : []) {
+  for (const itemId of schemaVersion < 2 ? purchasedItems : []) {
     if (assignedItems.has(itemId)) continue;
     const openSlot = MALL_SLOT_IDS.find((slotId) => !placements[slotId]);
     if (!openSlot) break;
@@ -104,6 +120,39 @@ function normalizeMallPlacements(
     assignedItems.add(itemId);
   }
   return placements;
+}
+
+function normalizeShopInteriors(
+  savedInteriors: ShopInteriorCollection | undefined,
+  purchasedItems: string[],
+): ShopInteriorCollection {
+  const decorationIds = new Set(SHOP_INTERIOR_DECORATION_IDS);
+  const slotIds = new Set<string>(SHOP_INTERIOR_SLOT_IDS);
+  const interiors: ShopInteriorCollection = {};
+  for (const [shopId, saved] of Object.entries(savedInteriors ?? {})) {
+    if (!purchasedItems.includes(shopId) || !saved || typeof saved !== 'object') continue;
+    const ownedDecorations = [...new Set((saved.ownedDecorations ?? []).filter(
+      (id): id is string => typeof id === 'string' && decorationIds.has(id),
+    ))];
+    const owned = new Set(ownedDecorations);
+    const assigned = new Set<string>();
+    const placements: Partial<Record<ShopInteriorSlotId, string>> = {};
+    for (const [slotId, decorationId] of Object.entries(saved.placements ?? {})) {
+      if (
+        slotIds.has(slotId)
+        && typeof decorationId === 'string'
+        && owned.has(decorationId)
+        && !assigned.has(decorationId)
+      ) {
+        placements[slotId as ShopInteriorSlotId] = decorationId;
+        assigned.add(decorationId);
+      }
+    }
+    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0) {
+      interiors[shopId] = { ownedDecorations, placements };
+    }
+  }
+  return interiors;
 }
 
 const starterHabits: Habit[] = [
@@ -137,6 +186,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [coins, setCoins] = useState(0);
   const [purchasedItems, setPurchasedItems] = useState<string[]>([]);
   const [mallPlacements, setMallPlacements] = useState<Record<string, string>>({});
+  const [shopInteriors, setShopInteriors] = useState<ShopInteriorCollection>({});
   const [rewardTokens, setRewardTokens] = useState<RewardTokens>(EMPTY_TOKENS);
   const [rewardedCheckIns, setRewardedCheckIns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,14 +205,16 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         const initialHabits = saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]);
         const initialMall = savedMall === null
           ? { coins: 0, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
-          : JSON.parse(savedMall) as { schemaVersion?: number; coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string> };
+          : JSON.parse(savedMall) as { schemaVersion?: number; coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string>; shopInteriors?: ShopInteriorCollection };
         const initialPurchasedItems = initialMall.purchasedItems ?? [];
         const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems, initialMall.schemaVersion);
+        const initialShopInteriors = normalizeShopInteriors(initialMall.shopInteriors, initialPurchasedItems);
         if (active) {
           setHabits(initialHabits);
           setCoins(initialMall.coins ?? 0);
           setPurchasedItems(initialPurchasedItems);
           setMallPlacements(initialPlacements);
+          setShopInteriors(initialShopInteriors);
           setRewardedCheckIns(initialMall.rewardedCheckIns ?? []);
           setRewardTokens({ ...EMPTY_TOKENS, ...initialMall.rewardTokens });
         }
@@ -170,11 +222,12 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         try {
           await Promise.all([
             ...(saved === null ? [AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initialHabits))] : []),
-            ...((initialMall.schemaVersion ?? 1) < MALL_SCHEMA_VERSION ? [
+          ...((initialMall.schemaVersion ?? 1) < MALL_SCHEMA_VERSION ? [
               AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify({
                 ...initialMall,
                 schemaVersion: MALL_SCHEMA_VERSION,
                 placements: initialPlacements,
+              shopInteriors: initialShopInteriors,
               })),
             ] : []),
           ]);
@@ -202,12 +255,13 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens; placements: Record<string, string> }) => {
+  const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens; placements: Record<string, string>; shopInteriors: ShopInteriorCollection }) => {
     try {
       await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify({ ...next, schemaVersion: MALL_SCHEMA_VERSION }));
       setCoins(next.coins);
       setPurchasedItems(next.purchasedItems);
       setMallPlacements(next.placements);
+      setShopInteriors(next.shopInteriors);
       setRewardedCheckIns(next.rewardedCheckIns);
       setRewardTokens(next.rewardTokens);
       setStorageError(null);
@@ -253,6 +307,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           coins: coins + reward,
           purchasedItems,
           placements: mallPlacements,
+          shopInteriors,
           rewardedCheckIns: [...rewardedCheckIns, rewardKey],
           rewardTokens,
         };
@@ -276,7 +331,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     } finally {
       actionLock.current = false;
     }
-  }, [habits, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, rewardTokens, save]);
+  }, [habits, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, save]);
 
   // Legacy arguments remain compatible with saved/older clients; only earned coins are spent.
   const purchaseMallItem = useCallback(async (itemId: string, price: number, _category: RewardCategory, _ticketCost: number, slotId: MallSlotId) => {
@@ -291,6 +346,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         coins: coins - price,
         purchasedItems: [...purchasedItems, itemId],
         placements: { ...mallPlacements, [slotId]: itemId },
+        shopInteriors,
         rewardedCheckIns,
         rewardTokens,
       });
@@ -298,7 +354,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     } finally {
       actionLock.current = false;
     }
-  }, [coins, purchasedItems, mallPlacements, rewardedCheckIns, rewardTokens, saveMall]);
+  }, [coins, purchasedItems, mallPlacements, shopInteriors, rewardedCheckIns, rewardTokens, saveMall]);
 
   const moveMallItem = useCallback(async (itemId: string, slotId: MallSlotId) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
@@ -314,12 +370,12 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       );
       placements[slotId] = itemId;
       if (originalSlot && targetItem && targetItem !== itemId) placements[originalSlot] = targetItem;
-      await saveMall({ coins, purchasedItems, rewardedCheckIns, rewardTokens, placements });
+      await saveMall({ coins, purchasedItems, rewardedCheckIns, rewardTokens, placements, shopInteriors });
       await Haptics.selectionAsync();
     } finally {
       actionLock.current = false;
     }
-  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, saveMall]);
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, shopInteriors, mallPlacements, saveMall]);
 
   const storeMallItem = useCallback(async (itemId: string) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
@@ -329,15 +385,72 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       const placements = Object.fromEntries(
         Object.entries(mallPlacements).filter(([, placedItemId]) => placedItemId !== itemId),
       );
-      await saveMall({ coins, purchasedItems, rewardedCheckIns, rewardTokens, placements });
+      await saveMall({ coins, purchasedItems, rewardedCheckIns, rewardTokens, placements, shopInteriors });
     } finally {
       actionLock.current = false;
     }
-  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, saveMall]);
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, shopInteriors, mallPlacements, saveMall]);
+
+  const placeShopInteriorDecoration = useCallback(async (shopId: string, decorationId: string, slotId: ShopInteriorSlotId) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    const decoration = SHOP_INTERIOR_DECORATION_BY_ID[decorationId];
+    if (!decoration) throw new Error('找不到這款店內裝飾');
+    if (!(SHOP_INTERIOR_SLOT_IDS as readonly string[]).includes(slotId)) throw new Error('這個店內位置不存在');
+    const current = shopInteriors[shopId] ?? { ownedDecorations: [], placements: {} };
+    const alreadyOwned = current.ownedDecorations.includes(decorationId);
+    if (!alreadyOwned && coins < decoration.price) throw new Error(`金幣還差 ${decoration.price - coins} 枚`);
+    actionLock.current = true;
+    try {
+      const placements = Object.fromEntries(
+        Object.entries(current.placements).filter(([, id]) => id !== decorationId && id !== current.placements[slotId]),
+      ) as Partial<Record<ShopInteriorSlotId, string>>;
+      placements[slotId] = decorationId;
+      const nextInterior = {
+        ownedDecorations: alreadyOwned ? current.ownedDecorations : [...current.ownedDecorations, decorationId],
+        placements,
+      };
+      await saveMall({
+        coins: alreadyOwned ? coins : coins - decoration.price,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: { ...shopInteriors, [shopId]: nextInterior },
+      });
+      if (alreadyOwned) await Haptics.selectionAsync();
+      else await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
+  const storeShopInteriorDecoration = useCallback(async (shopId: string, slotId: ShopInteriorSlotId) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    const current = shopInteriors[shopId];
+    if (!current?.placements[slotId]) return;
+    actionLock.current = true;
+    try {
+      const placements = Object.fromEntries(
+        Object.entries(current.placements).filter(([id]) => id !== slotId),
+      ) as Partial<Record<ShopInteriorSlotId, string>>;
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: { ...shopInteriors, [shopId]: { ...current, placements } },
+      });
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

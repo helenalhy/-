@@ -16,8 +16,11 @@ export interface MallItem {
   price: number;
   /** Legacy compatibility field; redemptions now use earned coins only. */
   ticketCost: number;
+  shopType?: MallShopType;
   visual?: 'cloud-walk' | 'central-fountain' | 'wooden-bench' | 'garden-lights' | 'colorful-planter' | 'rest-pavilion' | 'coral-aquarium' | 'rhythm-stage' | 'yoga-deck' | 'sculpture-plaza' | 'observatory-dome' | 'tasting-court' | 'cloud-swing' | 'shell-lantern' | 'neon-sign' | 'aroma-diffuser' | 'gallery-frames' | 'starlight-mobile' | 'spice-display' | 'rainbow-arch';
 }
+
+export type MallShopType = 'general' | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen';
 
 export interface MallFloorTheme {
   title: string;
@@ -40,8 +43,8 @@ export const MALL_FLOORS: MallFloorTheme[] = [
   { title: '天空花園', description: '來到雲端，在彩虹和城市風景中休息。', image: require('../assets/images/mall-floor-10.jpg'), accent: c.candySkyDark, surface: c.candySky },
 ];
 
-function item(floor: number, id: string, name: string, description: string, icon: string, category: RewardCategory, price: number, _legacyTicketCost: number, color: string, visual?: MallItem['visual']): MallItem {
-  return { floor, id, name, description, icon, category, price, ticketCost: 0, color, visual };
+function item(floor: number, id: string, name: string, description: string, icon: string, category: RewardCategory, price: number, _legacyTicketCost: number, color: string, visual?: MallItem['visual'], shopType?: MallShopType): MallItem {
+  return { floor, id, name, description, icon, category, price, ticketCost: 0, color, visual, shopType };
 }
 
 // Existing IDs and prices remain stable so previous purchases keep their identity.
@@ -136,6 +139,12 @@ export const MALL_ITEMS: MallItem[] = [
   item(10, 'rooftop-pavilion', '天台花園亭', '在雲和花之間，給自己一個擁抱', 'home', 'facility', 90, 2, c.candyMint, 'rest-pavilion'),
   item(10, 'rainbow-flower-bed', '彩虹花圃', '把一路的努力種成一片花海', 'sunrise', 'decor', 40, 2, c.candyCoral, 'colorful-planter'),
   item(10, 'sunset-wind-mobile', '晚霞風鈴', '讓風輕輕唱出今天的好心情', 'wind', 'decor', 45, 2, c.candyPeach, 'starlight-mobile'),
+  item(1, 'ladies-fashion-boutique', '女裝店', '挑選適合今天心情的服飾搭配', 'shopping-bag', 'shop', 65, 0, c.candyPink, undefined, 'womenswear'),
+  item(2, 'japanese-hyakuen-store', '日本百元店', '逛逛日系生活小物與實用選品', 'grid', 'shop', 70, 0, c.candyLemon, undefined, 'hyakuen'),
+  item(3, 'kimono-house', '和服店', '欣賞細緻花色與傳統和服配件', 'feather', 'shop', 85, 0, c.candyCoral, undefined, 'kimono'),
+  item(7, 'evening-gown-salon', '晚禮服店', '為特別的日子挑一套優雅禮服', 'star', 'shop', 115, 0, c.candyLavender, undefined, 'eveningwear'),
+  item(9, 'sunny-supermarket', '陽光超市', '把日常所需和新鮮食材一次買齊', 'shopping-cart', 'shop', 130, 0, c.candyMint, undefined, 'supermarket'),
+  item(10, 'bridal-gown-house', '婚紗店', '在柔光之中挑選夢想中的婚紗', 'heart', 'shop', 160, 0, c.candyPeach, undefined, 'bridal'),
   ...createExpandedItems(MALL_FLOORS),
 ];
 

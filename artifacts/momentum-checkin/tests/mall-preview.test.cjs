@@ -421,9 +421,9 @@ test('search filters keep original floor separate from the current mall placemen
   assert.equal(app.calls.length, 0, 'filtering never starts a move, restore, or redemption');
 });
 
-test('real 1500-item catalog is fully searchable by name with the correct original floor theme', () => {
+test('real catalog is fully searchable and includes six new shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 1500);
+  assert.equal(MALL_ITEMS.length, 1506);
   assert.equal(MALL_FLOORS.length, 10);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -433,9 +433,20 @@ test('real 1500-item catalog is fully searchable by name with the correct origin
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 500, facility: 500, decor: 500 },
+    { shop: 506, facility: 500, decor: 500 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
+  assert.deepEqual(
+    MALL_ITEMS.filter((item) => item.shopType && item.shopType !== 'general').map(({ id, floor, shopType }) => [id, floor, shopType]),
+    [
+      ['ladies-fashion-boutique', 1, 'womenswear'],
+      ['japanese-hyakuen-store', 2, 'hyakuen'],
+      ['kimono-house', 3, 'kimono'],
+      ['evening-gown-salon', 7, 'eveningwear'],
+      ['sunny-supermarket', 9, 'supermarket'],
+      ['bridal-gown-house', 10, 'bridal'],
+    ],
+  );
 
   const app = mount({ purchasedItems: [], mallPlacements: {} }, MALL_ITEMS);
   for (const item of MALL_ITEMS) {
@@ -460,13 +471,13 @@ test('real 1500-item catalog is fully searchable by name with the correct origin
 test('search whitespace, empty results, category counts, pagination and clear restore the current floor list', async () => {
   const app = mount({ purchasedItems: [], mallPlacements: {} }, mallCatalog.MALL_ITEMS);
   const floorOneItems = mallCatalog.MALL_ITEMS.filter((item) => item.floor === 1);
-  assert.equal(floorOneItems.length, 150);
+  assert.equal(floorOneItems.length, 151);
 
   app.find('mall-search-input').props.onChangeText('   ');
   app.render();
-  assert.equal(pager(app).props.total, 150, 'whitespace is treated as an empty search');
+  assert.equal(pager(app).props.total, 151, 'whitespace is treated as an empty search');
   assert.equal(app.find('mall-search-empty'), undefined);
-  for (const [category, expected] of [['shop', 50], ['facility', 50], ['decor', 50]]) {
+  for (const [category, expected] of [['shop', 51], ['facility', 50], ['decor', 50]]) {
     assert.match(textContent(app.find(`mall-category-${category}`)), new RegExp(`${expected}$`));
   }
 
@@ -499,7 +510,7 @@ test('search whitespace, empty results, category counts, pagination and clear re
 
   app.find('mall-search-input').props.onChangeText('');
   app.render();
-  assert.equal(pager(app).props.total, 150);
+  assert.equal(pager(app).props.total, 151);
   assert.equal(pager(app).props.page, 1);
   assert.ok(app.find(`build-${floorOneItems[0].id}`), 'clearing search returns to the original floor list');
 });

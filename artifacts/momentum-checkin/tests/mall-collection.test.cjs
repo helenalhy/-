@@ -57,6 +57,14 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
           [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension4-${row}-${column}`))),
       ],
     };
+    if (name === '@/constants/mall-shop-interior') return {
+      SHOP_INTERIOR_DECORATION_IDS: ['general-display-shelf', 'general-warm-lamp'],
+      SHOP_INTERIOR_SLOT_IDS: ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter'],
+      SHOP_INTERIOR_DECORATION_BY_ID: {
+        'general-display-shelf': { id: 'general-display-shelf', price: 20 },
+        'general-warm-lamp': { id: 'general-warm-lamp', price: 25 },
+      },
+    };
     if (name === 'expo-haptics') return {
       selectionAsync: async () => {},
       notificationAsync: async () => {},
@@ -110,7 +118,7 @@ test('legacy migration preserves positions and assigns only missing legacy purch
   assert.deepEqual(app.value.mallPlacements, {
     'floor-1-left': 'a', 'floor-3-right': 'b', 'floor-3-left': 'c',
   });
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 2);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 3);
   const noPositions = await mount(seed({ placements: undefined }));
   assert.deepEqual(noPositions.value.mallPlacements, { 'floor-3-left': 'a', 'floor-3-center': 'b' });
 });
@@ -127,7 +135,7 @@ test('store, reload, reward, restore on another floor, swap and reload preserve 
   app = await mount(storage);
   assert.deepEqual(app.value.mallPlacements, { 'floor-3-right': 'b' });
   await app.value.toggleCheckIn('starter-walk');
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 2);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 3);
   app = await mount(storage);
   assert.equal(Object.values(app.value.mallPlacements).includes('a'), false);
   const before = { coins: app.value.coins, tokens: { ...app.value.rewardTokens } };
@@ -207,8 +215,46 @@ test('new purchase still charges once and persists alongside a stored item', asy
   assert.equal(app.value.rewardTokens.decor, 5);
 });
 
+test('shop interior decorations spend earned coins once, can move for free, and persist per shop', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    purchasedItems: ['a', 'b'],
+    shopInteriors: {},
+  });
+  let app = await mount(storage);
+  await app.value.placeShopInteriorDecoration('a', 'general-display-shelf', 'front-window');
+  assert.equal(app.value.coins, 80);
+  assert.deepEqual(app.value.shopInteriors.a, {
+    ownedDecorations: ['general-display-shelf'],
+    placements: { 'front-window': 'general-display-shelf' },
+  });
+
+  await app.value.placeShopInteriorDecoration('a', 'general-display-shelf', 'left-wall');
+  assert.equal(app.value.coins, 80, 'moving an owned decoration is free');
+  assert.deepEqual(app.value.shopInteriors.a.placements, { 'left-wall': 'general-display-shelf' });
+
+  await app.value.placeShopInteriorDecoration('a', 'general-warm-lamp', 'front-window');
+  assert.equal(app.value.coins, 55);
+  assert.deepEqual(app.value.shopInteriors.a.ownedDecorations, ['general-display-shelf', 'general-warm-lamp']);
+  app = await mount(storage);
+  assert.deepEqual(app.value.shopInteriors.a, {
+    ownedDecorations: ['general-display-shelf', 'general-warm-lamp'],
+    placements: { 'left-wall': 'general-display-shelf', 'front-window': 'general-warm-lamp' },
+  });
+
+  await app.value.storeShopInteriorDecoration('a', 'left-wall');
+  assert.equal(app.value.coins, 55, 'storing interior decor does not refund coins');
+  assert.deepEqual(app.value.shopInteriors.a.ownedDecorations, ['general-display-shelf', 'general-warm-lamp']);
+  assert.deepEqual(app.value.shopInteriors.a.placements, { 'front-window': 'general-warm-lamp' });
+  const reopened = await mount(storage);
+  assert.deepEqual(reopened.value.shopInteriors.a.placements, { 'front-window': 'general-warm-lamp' });
+
+  await assert.rejects(reopened.value.placeShopInteriorDecoration('not-owned', 'general-display-shelf', 'left-wall'), /先兌換/);
+  await assert.rejects(reopened.value.placeShopInteriorDecoration('a', 'unknown-decoration', 'left-wall'), /找不到/);
+});
+
 test('existing versioned habits and mall hydrate without any startup writes on a full device', async () => {
-  const storage = seed({ schemaVersion: 2, placements: { 'floor-1-left': 'a' } });
+  const storage = seed({ schemaVersion: 3, placements: { 'floor-1-left': 'a' } });
   const habits = [{
     id: 'saved-habit', title: '已儲存目標', reason: '保留我的紀錄',
     icon: 'activity', rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: ['2026-10-20'],

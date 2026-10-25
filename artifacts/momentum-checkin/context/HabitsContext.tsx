@@ -25,19 +25,12 @@ export interface Habit {
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
 export type RewardTokens = Record<RewardCategory, number>;
-export type MallSlotId = (typeof MALL_SLOT_IDS)[number];
-
-export const MALL_SLOT_IDS = [
-  'floor-3-left',
-  'floor-3-center',
-  'floor-3-right',
-  'floor-2-left',
-  'floor-2-center',
-  'floor-2-right',
-  'floor-1-left',
-  'floor-1-center',
-  'floor-1-right',
-] as const;
+export type MallSlotId = `floor-${number}-${'left' | 'center' | 'right'}`;
+export const MALL_FLOOR_COUNT = 10;
+// Keep the original nine positions first so older purchases retain their locations.
+export const MALL_SLOT_IDS: MallSlotId[] = [3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap(
+  (floor) => (['left', 'center', 'right'] as const).map((column): MallSlotId => `floor-${floor}-${column}`),
+);
 
 export const REWARD_CATEGORY_LABELS: Record<RewardCategory, string> = {
   facility: '設施券',
@@ -299,13 +292,16 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (actionLock.current) throw new Error('正在處理上一個操作');
     if (!purchasedItems.includes(itemId)) throw new Error('這個項目尚未建造');
     if (!(MALL_SLOT_IDS as readonly string[]).includes(slotId)) throw new Error('這個商場位置不存在');
-    if (mallPlacements[slotId] && mallPlacements[slotId] !== itemId) throw new Error('這個位置已經有設施');
     actionLock.current = true;
     try {
+      const originalSlot = Object.entries(mallPlacements).find(([, placedItemId]) => placedItemId === itemId)?.[0];
+      const targetItem = mallPlacements[slotId];
+      if (!originalSlot && targetItem) throw new Error('目前不能交換這兩個項目');
       const placements = Object.fromEntries(
         Object.entries(mallPlacements).filter(([, placedItemId]) => placedItemId !== itemId),
       );
       placements[slotId] = itemId;
+      if (originalSlot && targetItem && targetItem !== itemId) placements[originalSlot] = targetItem;
       await saveMall({ coins, purchasedItems, rewardedCheckIns, rewardTokens, placements });
       await Haptics.selectionAsync();
     } finally {

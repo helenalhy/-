@@ -112,7 +112,7 @@ export function TodayScreen() {
             <Text style={[styles.date, { color: colors.mutedForeground }]}>{dateLabel} · 星期{weekday}</Text>
           </View>
           <View style={styles.headerActions}>
-            <Pressable style={[styles.coinPill, { backgroundColor: colors.secondary }]} onPress={() => router.navigate('/(tabs)/mall')} accessibilityRole="button" accessibilityLabel={`${coins} 金幣，前往商場`}>
+            <Pressable style={[styles.coinPill, { backgroundColor: colors.secondary }]} onPress={() => router.navigate('/')} accessibilityRole="button" accessibilityLabel={`${coins} 金幣，前往商場`}>
               <Feather name="shopping-bag" size={14} color={colors.primary} />
               <Text style={[styles.coinText, { color: colors.primary }]}>商場 {coins}</Text>
             </Pressable>
@@ -129,7 +129,7 @@ export function TodayScreen() {
 
         <Pressable
           style={[styles.mallShortcut, { backgroundColor: colors.secondary }]}
-          onPress={() => router.navigate('/(tabs)/mall')}
+          onPress={() => router.navigate('/')}
           accessibilityRole="button"
           accessibilityLabel="前往商場"
         >

@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import palette from '@/constants/colors';
 import {
+  MALL_FLOOR_COUNT,
   MALL_SLOT_IDS,
   REWARD_CATEGORY_LABELS,
   useHabits,
@@ -21,17 +22,8 @@ import {
   type RewardCategory,
 } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
-
-type MallItem = {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
-  category: RewardCategory;
-  price: number;
-  ticketCost: number;
-};
+import { MallAmbience, MallObjectVisual } from '@/components/MallVisuals';
+import { MALL_FLOORS, MALL_ITEMS, MALL_ITEM_BY_ID, type MallItem } from '@/constants/mall';
 
 const CATEGORIES: { id: 'all' | RewardCategory; label: string }[] = [
   { id: 'all', label: '全部' },
@@ -40,42 +32,17 @@ const CATEGORIES: { id: 'all' | RewardCategory; label: string }[] = [
   { id: 'decor', label: '裝潢' },
 ];
 
-const MALL_ITEMS: MallItem[] = [
-  { id: 'sunny-cafe', name: '暖陽咖啡館', description: '讓散步的人有地方歇歇腳', icon: 'coffee', color: palette.light.candyPeach, category: 'shop', price: 45, ticketCost: 1 },
-  { id: 'little-bookshop', name: '慢讀書屋', description: '一間可以待上一整個下午的店', icon: 'book-open', color: palette.light.candySky, category: 'shop', price: 70, ticketCost: 2 },
-  { id: 'flower-shop', name: '花花日常', description: '把街角變成一束花的樣子', icon: 'feather', color: palette.light.candyPink, category: 'shop', price: 55, ticketCost: 1 },
-  { id: 'cloud-walk', name: '雲朵步道', description: '一條讓心情放晴的小路', icon: 'activity', color: palette.light.candyMint, category: 'facility', price: 30, ticketCost: 1 },
-  { id: 'central-fountain', name: '中央噴泉', description: '商場中間最熱鬧的集合點', icon: 'droplet', color: palette.light.candySky, category: 'facility', price: 55, ticketCost: 2 },
-  { id: 'rest-pavilion', name: '林間休息亭', description: '給認真生活的自己一個座位', icon: 'home', color: palette.light.candyLavender, category: 'facility', price: 80, ticketCost: 3 },
-  { id: 'garden-lights', name: '花園路燈', description: '天黑後也有溫柔的光', icon: 'sun', color: palette.light.candyLemon, category: 'decor', price: 20, ticketCost: 1 },
-  { id: 'wooden-bench', name: '木製長椅', description: '坐下來，看看今天的風景', icon: 'minus', color: palette.light.candyPeach, category: 'decor', price: 25, ticketCost: 1 },
-  { id: 'colorful-planter', name: '彩色花圃', description: '每天多一點新芽和顏色', icon: 'sunrise', color: palette.light.candyCoral, category: 'decor', price: 35, ticketCost: 2 },
-];
-
-const MALL_ITEM_BY_ID = Object.fromEntries(MALL_ITEMS.map((item) => [item.id, item])) as Record<string, MallItem>;
-
 const CATEGORY_NAMES: Record<RewardCategory, string> = {
   facility: '設施',
   shop: '店鋪',
   decor: '裝潢',
 };
 
-const MALL_SLOT_POSITIONS: Record<MallSlotId, {
-  left: `${number}%`;
-  top: `${number}%`;
-  width: `${number}%`;
-  floor: string;
-}> = {
-  'floor-3-left': { left: '8%', top: '16%', width: '25%', floor: '3F' },
-  'floor-3-center': { left: '37.5%', top: '16%', width: '25%', floor: '3F' },
-  'floor-3-right': { left: '67%', top: '16%', width: '25%', floor: '3F' },
-  'floor-2-left': { left: '8%', top: '43%', width: '25%', floor: '2F' },
-  'floor-2-center': { left: '37.5%', top: '43%', width: '25%', floor: '2F' },
-  'floor-2-right': { left: '67%', top: '43%', width: '25%', floor: '2F' },
-  'floor-1-left': { left: '8%', top: '70%', width: '25%', floor: '1F' },
-  'floor-1-center': { left: '37.5%', top: '70%', width: '25%', floor: '1F' },
-  'floor-1-right': { left: '67%', top: '70%', width: '25%', floor: '1F' },
-};
+function getSlotPosition(slotId: MallSlotId) {
+  const [, floor, column] = slotId.split('-');
+  const left: `${number}%` = column === 'left' ? '12%' : column === 'center' ? '38%' : '64%';
+  return { left, top: '39%' as const, width: '24%' as const, floor: `${floor}F` };
+}
 
 function MallSceneSlot({
   slotId,
@@ -93,9 +60,11 @@ function MallSceneSlot({
   const colors = useColors();
   const popIn = useRef(new Animated.Value(0.78)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
-  const position = MALL_SLOT_POSITIONS[slotId];
+  const position = getSlotPosition(slotId);
 
   useEffect(() => {
+    popIn.setValue(0.78);
+    fadeIn.setValue(0);
     if (!item) return;
     const animation = Animated.parallel([
       Animated.spring(popIn, { toValue: 1, friction: 5, tension: 135, useNativeDriver: false }),
@@ -112,14 +81,15 @@ function MallSceneSlot({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={`${position.floor} ${item.name}，點選可移動`}
+        testID={`mall-slot-${slotId}`}
       >
         <Animated.View style={[
           styles.sceneShopBadge,
-          { backgroundColor: item.color, opacity: fadeIn, transform: [{ scale: popIn }] },
+          { opacity: fadeIn, transform: [{ scale: popIn }] },
         ]}>
-          <Feather name={item.icon as keyof typeof Feather.glyphMap} size={17} color={colors.foreground} />
+          <MallObjectVisual id={item.visual ?? item.id} color={item.color} icon={item.icon} category={item.category} />
         </Animated.View>
-        <Text numberOfLines={1} style={[styles.sceneShopName, { color: colors.foreground }]}>{item.name}</Text>
+        <Text numberOfLines={1} style={[styles.sceneShopName, { color: palette.light.foreground }]}>{item.name}</Text>
       </Pressable>
     );
   }
@@ -133,6 +103,7 @@ function MallSceneSlot({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={isPlacementMode ? `${position.floor} 空位，放置選擇的項目` : `${position.floor} 空位，選擇要建造的項目`}
+      testID={`mall-slot-${slotId}`}
     >
       <View style={[
         styles.sceneEmptyBadge,
@@ -160,16 +131,19 @@ export default function MallScreen() {
   const sceneOffset = useRef(new Animated.Value(14)).current;
   const { coins, purchasedItems, mallPlacements, rewardTokens, purchaseMallItem, moveMallItem, storageError } = useHabits();
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
+  const [currentFloor, setCurrentFloor] = useState(1);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' } | null>(null);
   const constructed = useMemo(
     () => MALL_ITEMS.filter((item) => purchasedItems.includes(item.id)),
     [purchasedItems],
   );
-  const visibleItems = category === 'all'
-    ? MALL_ITEMS
-    : MALL_ITEMS.filter((item) => item.category === category);
+  const floorTheme = MALL_FLOORS[currentFloor - 1];
+  const floorItems = MALL_ITEMS.filter((item) => item.floor === currentFloor);
+  const visibleItems = floorItems.filter((item) => category === 'all' || item.category === category);
   const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
+  const floorSlots = MALL_SLOT_IDS.filter((slotId) => slotId.startsWith(`floor-${currentFloor}-`));
+  const floorItemCount = floorSlots.filter((slotId) => mallPlacements[slotId]).length;
 
   useEffect(() => {
     const entrance = Animated.parallel([
@@ -180,8 +154,21 @@ export default function MallScreen() {
     return () => entrance.stop();
   }, [sceneOpacity, sceneOffset]);
 
-  async function build(item: MallItem) {
-    if (purchasedItems.includes(item.id) || purchasing) return;
+  function scrollToMallScene() {
+    scrollRef.current?.scrollTo({ y: Math.max(0, mallSceneY.current - 8), animated: true });
+  }
+
+  function changeFloor(direction: -1 | 1) {
+    if (purchasing) return;
+    const nextFloor = Math.min(MALL_FLOOR_COUNT, Math.max(1, currentFloor + direction));
+    if (nextFloor === currentFloor) return;
+    setCurrentFloor(nextFloor);
+    sceneOpacity.setValue(0.45);
+    Animated.timing(sceneOpacity, { toValue: 1, duration: 260, useNativeDriver: false }).start();
+  }
+
+  function startPurchasePlacement(item: MallItem) {
+    if (purchasedItems.includes(item.id) || purchasing || placementIntent) return;
     if (coins < item.price) {
       Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
       return;
@@ -193,16 +180,49 @@ export default function MallScreen() {
       );
       return;
     }
-    setPurchasing(item.id);
+    setPlacementIntent({ itemId: item.id, mode: 'purchase' });
+    scrollToMallScene();
+  }
+
+  async function placeItemInSlot(slotId: MallSlotId) {
+    if (!placementIntent || !currentPlacementItem || purchasing) return;
+    if (placementIntent.mode === 'purchase' && mallPlacements[slotId]) return;
+    if (mallPlacements[slotId] === currentPlacementItem.id) return;
+    setPurchasing(currentPlacementItem.id);
     try {
-      await purchaseMallItem(item.id, item.price, item.category, item.ticketCost);
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-      Alert.alert('建造完成！', `${item.name}已加入你的商場。`);
+      if (placementIntent.mode === 'purchase') {
+        await purchaseMallItem(
+          currentPlacementItem.id,
+          currentPlacementItem.price,
+          currentPlacementItem.category,
+          currentPlacementItem.ticketCost,
+          slotId,
+        );
+        Alert.alert('建造完成！', `${currentPlacementItem.name}已放在 ${getSlotPosition(slotId).floor}。`);
+      } else {
+        await moveMallItem(currentPlacementItem.id, slotId);
+        Alert.alert('位置已更新', `${currentPlacementItem.name}已搬到 ${getSlotPosition(slotId).floor}。`);
+      }
+      setPlacementIntent(null);
+      scrollToMallScene();
     } catch {
-      Alert.alert('沒有建造成功', '請再試一次。');
+      Alert.alert('沒有更新成功', '請再試一次。');
     } finally {
       setPurchasing(null);
     }
+  }
+
+  function handleSceneSlotPress(slotId: MallSlotId) {
+    const itemId = mallPlacements[slotId];
+    if (placementIntent) {
+      if (!itemId || placementIntent.mode === 'move') void placeItemInSlot(slotId);
+      return;
+    }
+    if (itemId) {
+      setPlacementIntent({ itemId, mode: 'move' });
+      return;
+    }
+    scrollToCatalog();
   }
 
   function scrollToCatalog() {
@@ -260,53 +280,90 @@ export default function MallScreen() {
 
         <View style={styles.sceneHeading}>
           <View>
-            <Text style={[styles.sceneTitle, { color: colors.foreground }]}>街區地圖</Text>
-            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>已建造 {constructed.length} 間店鋪與設施</Text>
+            <Text style={[styles.sceneTitle, { color: colors.foreground }]}>十層慢慢商場</Text>
+            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>已放置 {constructed.length} / {MALL_SLOT_IDS.length} 個店鋪與設施</Text>
           </View>
           <View style={[styles.buildCount, { backgroundColor: colors.secondary }]}>
             <Feather name="home" size={13} color={colors.primary} />
-            <Text style={[styles.buildCountText, { color: colors.primary }]}>{constructed.length + 1}</Text>
+            <Text style={[styles.buildCountText, { color: colors.primary }]}>{constructed.length}</Text>
           </View>
         </View>
 
-        <Animated.View style={[
-          styles.scene,
-          { backgroundColor: colors.candyMint, borderColor: colors.border },
-          { opacity: sceneOpacity, transform: [{ translateY: sceneOffset }] },
-        ]}>
-          <View style={[styles.sky, { backgroundColor: colors.candySky }]}>
-            <PulsingSun style={[styles.skySun, { backgroundColor: colors.candyLemon }]} />
-            <FloatingCloud style={styles.cloudOne} size={27} duration={2200} />
-            <FloatingCloud style={styles.cloudTwo} size={21} duration={2700} />
-            <View style={styles.skyCaption}>
-              <Text style={[styles.skyTitle, { color: colors.foreground }]}>今天也有新的地方</Text>
-              <Text style={[styles.skyText, { color: colors.mutedForeground }]}>等著你來慢慢打造</Text>
+        <View onLayout={(event) => { mallSceneY.current = event.nativeEvent.layout.y; }}>
+          {placementIntent && currentPlacementItem && (
+            <View style={[styles.placementBanner, { backgroundColor: colors.secondary }]}>
+              <Feather name="map-pin" size={19} color={colors.primary} />
+              <View style={styles.placementCopy}>
+                <Text style={[styles.placementTitle, { color: colors.foreground }]}>
+                  {placementIntent.mode === 'purchase' ? '選擇擺放位置' : '選擇新的位置'}
+                </Text>
+                <Text style={[styles.placementSubtitle, { color: colors.mutedForeground }]}>{currentPlacementItem.name} · 可用箭頭換層，{placementIntent.mode === 'move' ? '選位置搬動或交換' : '選好位置才扣款'}</Text>
+              </View>
+              <Pressable onPress={() => setPlacementIntent(null)} disabled={purchasing !== null} accessibilityRole="button" accessibilityLabel="取消擺放" hitSlop={10}>
+                <Feather name="x-circle" size={21} color={colors.primary} />
+              </Pressable>
             </View>
-            <Feather name="wind" size={16} color={colors.candyMintDark} style={styles.skyWind} />
-          </View>
-          <View style={[styles.mapBody, { backgroundColor: colors.candyMint }]}>
-            <View style={styles.mapGrid}>
-              {slots.map((slot, index) => (
-                <View key={slot.type === 'building' ? slot.item.id : `${slot.type}-${index}`} style={styles.mapCell}>
-                  {slot.type === 'landmark'
-                    ? <BuildingTile isLandmark />
-                    : slot.type === 'building'
-                      ? <BuildingTile item={slot.item} />
-                      : <BuildingTile onPress={scrollToCatalog} />}
-                </View>
-              ))}
+          )}
+          <View style={[styles.floorNavigation, { backgroundColor: floorTheme.surface }]}>
+            <Pressable
+              onPress={() => changeFloor(-1)}
+              disabled={currentFloor === 1 || purchasing !== null}
+              style={[styles.floorArrow, { opacity: currentFloor === 1 || purchasing !== null ? 0.3 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel="上一層"
+              testID="floor-previous"
+            >
+              <Feather name="chevron-left" size={25} color={floorTheme.accent} />
+            </Pressable>
+            <View style={styles.floorInformation}>
+              <Text testID="floor-current" style={[styles.floorNumber, { color: floorTheme.accent }]}>{currentFloor}F · {floorTheme.title}</Text>
+              <Text style={[styles.floorCaption, { color: colors.mutedForeground }]}>共 {MALL_FLOOR_COUNT} 層 · 本層 {floorItemCount} / 3 個項目</Text>
             </View>
-            <View style={styles.street}>
-              <Feather name="move" size={13} color={colors.candyMintDark} />
-              <Text style={[styles.roadLabelText, { color: colors.candyMintDark }]}>慢慢街</Text>
-              <Feather name="move" size={13} color={colors.candyMintDark} />
+            <Pressable
+              onPress={() => changeFloor(1)}
+              disabled={currentFloor === MALL_FLOOR_COUNT || purchasing !== null}
+              style={[styles.floorArrow, { opacity: currentFloor === MALL_FLOOR_COUNT || purchasing !== null ? 0.3 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel="下一層"
+              testID="floor-next"
+            >
+              <Feather name="chevron-right" size={25} color={floorTheme.accent} />
+            </Pressable>
+          </View>
+          <Text testID="floor-description" style={[styles.floorDescription, { color: colors.mutedForeground }]}>{floorTheme.description}</Text>
+          <Animated.View style={[
+            styles.scene,
+            { borderColor: colors.border, opacity: sceneOpacity, transform: [{ translateY: sceneOffset }] },
+          ]}>
+            <ImageBackground
+              source={floorTheme.image}
+              resizeMode="cover"
+              style={styles.mallArtwork}
+              imageStyle={styles.mallArtworkImage}
+            >
+              {floorSlots.map((slotId) => {
+                const itemId = mallPlacements[slotId];
+                return (
+                  <MallSceneSlot
+                    key={slotId}
+                    slotId={slotId}
+                    item={itemId ? MALL_ITEM_BY_ID[itemId] : undefined}
+                    isPlacementMode={placementIntent !== null}
+                    isPlacementTarget={placementIntent !== null && !itemId}
+                    onPress={() => handleSceneSlotPress(slotId)}
+                  />
+                );
+              })}
+              <MallAmbience />
+            </ImageBackground>
+            <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
+              <Feather name="move" size={13} color={colors.primary} />
+              <Text style={[styles.mapFooterText, { color: colors.foreground }]}>
+                {placementIntent ? '點選「放這裡」完成擺放，確認後才扣款' : '點選空位新增 · 點選已建設施可搬動'}
+              </Text>
             </View>
-          </View>
-          <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
-            <Feather name="sun" size={14} color={colors.candyCaramelDark} />
-            <Text style={[styles.mapFooterText, { color: colors.mutedForeground }]}>每個小小的努力，都會在這裡留下痕跡。</Text>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </View>
 
         {storageError && (
           <View style={[styles.storageError, { backgroundColor: colors.candyPink }]}>
@@ -320,8 +377,8 @@ export default function MallScreen() {
           onLayout={(event) => { shopSectionY.current = event.nativeEvent.layout.y; }}
         >
           <View>
-            <Text style={[styles.sceneTitle, { color: colors.foreground }]}>下一個想蓋什麼？</Text>
-            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>完成目標領取專屬券，再用金幣建造。</Text>
+            <Text testID="floor-catalog-title" style={[styles.sceneTitle, { color: colors.foreground }]}>{currentFloor}F 專屬兌換 · {floorTheme.title}</Text>
+            <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>本層 {floorItems.length} 款限定選物 · 選好款式，再決定擺放位置</Text>
           </View>
           <Feather name="arrow-down" size={17} color={colors.primary} />
         </View>
@@ -340,7 +397,7 @@ export default function MallScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label}</Text>
+                <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label} {floorItems.filter((item) => filter.id === 'all' || item.category === filter.id).length}</Text>
               </Pressable>
             );
           })}
@@ -351,7 +408,7 @@ export default function MallScreen() {
             const owned = purchasedItems.includes(item.id);
             const enoughCoins = coins >= item.price;
             const enoughTickets = rewardTokens[item.category] >= item.ticketCost;
-            const disabled = owned || purchasing !== null;
+            const disabled = owned || purchasing !== null || placementIntent !== null;
             return (
               <View key={item.id} style={[styles.catalogCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={[styles.catalogIcon, { backgroundColor: item.color }]}>
@@ -370,14 +427,15 @@ export default function MallScreen() {
                   </View>
                 </View>
                 <Pressable
-                  onPress={() => void build(item)}
+                  onPress={() => startPurchasePlacement(item)}
                   disabled={disabled}
                   style={[
                     styles.buildButton,
                     { backgroundColor: owned ? colors.secondary : colors.primary, opacity: disabled && !owned ? 0.55 : 1 },
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={owned ? `${item.name}已建造` : `建造${item.name}`}
+                  accessibilityLabel={owned ? `${item.name}已建造` : `選擇位置建造${item.name}`}
+                  testID={`build-${item.id}`}
                 >
                   <Feather name={owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
                 </Pressable>
@@ -418,30 +476,24 @@ const styles = StyleSheet.create({
   buildCount: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 11 },
   buildCountText: { fontSize: 11, fontWeight: '700' },
   scene: { overflow: 'hidden', borderRadius: 22, borderWidth: 1 },
-  sky: { height: 96, overflow: 'hidden', justifyContent: 'center', paddingHorizontal: 16 },
-  skySun: { position: 'absolute', right: 31, top: 14, width: 46, height: 46, borderRadius: 23 },
-  cloudOne: { position: 'absolute', right: 93, top: 21 },
-  cloudTwo: { position: 'absolute', right: 20, top: 60 },
-  skyCaption: { zIndex: 1 },
-  skyTitle: { fontSize: 14, fontWeight: '700' },
-  skyText: { fontSize: 10, marginTop: 4 },
-  skyWind: { position: 'absolute', left: 174, top: 58 },
-  mapBody: { paddingHorizontal: 11, paddingVertical: 12 },
-  mapGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
-  mapCell: { width: '48%', minHeight: 103, zIndex: 1 },
-  buildingTile: { flex: 1, minHeight: 103, borderWidth: 1, borderRadius: 15, padding: 9, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
-  buildingRoof: { width: 51, height: 45, borderRadius: 14, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 5 },
-  buildingDoorRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4, height: 15 },
-  buildingWindow: { width: 12, height: 11, borderRadius: 3 },
-  buildingDoor: { width: 9, height: 14, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  buildingName: { fontSize: 10, fontWeight: '700', marginTop: 5 },
-  builtMark: { position: 'absolute', right: 7, top: 7, width: 17, height: 17, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  emptyLot: { flex: 1, minHeight: 103, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  emptyLotIcon: { width: 27, height: 27, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  emptyLotTitle: { fontSize: 10, fontWeight: '600', marginTop: 5 },
-  emptyLotCopy: { fontSize: 8, marginTop: 2 },
-  street: { alignSelf: 'center', backgroundColor: palette.light.candyPeach, borderRadius: 99, paddingHorizontal: 13, paddingVertical: 6, marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
-  roadLabelText: { fontSize: 9, fontWeight: '600' },
+  floorNavigation: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 8, borderRadius: 16, marginBottom: 10 },
+  floorArrow: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  floorInformation: { alignItems: 'center' },
+  floorNumber: { fontSize: 17, fontWeight: '700' },
+  floorCaption: { fontSize: 10, marginTop: 2 },
+  floorDescription: { fontSize: 11, lineHeight: 17, marginBottom: 10 },
+  mallArtwork: { width: '100%', aspectRatio: 1 },
+  mallArtworkImage: { width: '100%', height: '100%' },
+  sceneSlot: { position: 'absolute', height: '18%', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  sceneSlotTarget: { borderWidth: 1, borderColor: palette.light.primary, borderStyle: 'dashed', borderRadius: 10, backgroundColor: palette.light.candyCream },
+  sceneShopBadge: { alignItems: 'center', justifyContent: 'center' },
+  sceneShopName: { fontSize: 8, fontWeight: '700', backgroundColor: palette.light.candyCream, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, maxWidth: '100%' },
+  sceneEmptyBadge: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', opacity: 0.75 },
+  sceneEmptyBadgeActive: { width: 30, height: 30, borderRadius: 15, opacity: 1 },
+  placementBanner: { flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, padding: 12, marginBottom: 10 },
+  placementCopy: { flex: 1 },
+  placementTitle: { fontSize: 12, fontWeight: '700' },
+  placementSubtitle: { fontSize: 10, marginTop: 3 },
   mapFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 11 },
   mapFooterText: { fontSize: 10 },
   storageError: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 10, borderRadius: 12, marginTop: 12 },

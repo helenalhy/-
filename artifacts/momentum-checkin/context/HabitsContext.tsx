@@ -36,6 +36,20 @@ export type RewardCategory = 'facility' | 'shop' | 'decor';
 export type RewardTokens = Record<RewardCategory, number>;
 export const MALL_FLOOR_COUNT = 10;
 
+interface CheckInTransaction {
+  version: 1;
+  habits: Habit[];
+  mall: {
+    schemaVersion: number;
+    coins: number;
+    purchasedItems: string[];
+    rewardedCheckIns: string[];
+    rewardTokens: RewardTokens;
+    placements: Record<string, string>;
+    shopInteriors: ShopInteriorCollection;
+  };
+}
+
 export interface ShopInteriorState {
   ownedDecorations: string[];
   placements: Partial<Record<ShopInteriorSlotId, string>>;
@@ -73,10 +87,38 @@ interface HabitsContextValue {
 
 const STORAGE_KEY = 'momentum.habits.v1';
 const MALL_STORAGE_KEY = 'momentum.mall.v1';
+const CHECK_IN_TRANSACTION_KEY = 'momentum.checkin-transaction.v1';
 // Version 2 made unplaced items intentional collection items; v3 adds per-shop interiors.
 const MALL_SCHEMA_VERSION = 3;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
+
+function parseCheckInTransaction(value: string | null): CheckInTransaction | null {
+  if (value === null) return null;
+  const transaction = JSON.parse(value) as CheckInTransaction;
+  if (
+    transaction.version !== 1
+    || !Array.isArray(transaction.habits)
+    || !transaction.mall
+    || typeof transaction.mall.coins !== 'number'
+    || !Array.isArray(transaction.mall.purchasedItems)
+    || !Array.isArray(transaction.mall.rewardedCheckIns)
+  ) {
+    throw new Error('打卡交易紀錄格式無效');
+  }
+  return transaction;
+}
+
+async function synchronizeCheckInTransaction(transaction: CheckInTransaction): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(transaction.habits));
+  await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify(transaction.mall));
+  await AsyncStorage.removeItem(CHECK_IN_TRANSACTION_KEY);
+}
+
+async function recoverPendingCheckInTransaction(): Promise<void> {
+  const transaction = parseCheckInTransaction(await AsyncStorage.getItem(CHECK_IN_TRANSACTION_KEY));
+  if (transaction) await synchronizeCheckInTransaction(transaction);
+}
 
 function inferRewardCategory(icon: string): RewardCategory {
   if (icon === 'activity' || icon === 'target') return 'facility';
@@ -202,14 +244,17 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     let active = true;
     async function load() {
       try {
-        const [saved, savedMall] = await Promise.all([
+        const [saved, savedMall, savedCheckInTransaction] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(MALL_STORAGE_KEY),
+          AsyncStorage.getItem(CHECK_IN_TRANSACTION_KEY),
         ]);
-        const initialHabits = saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]);
-        const initialMall = savedMall === null
+        const checkInTransaction = parseCheckInTransaction(savedCheckInTransaction);
+        const initialHabits = checkInTransaction?.habits
+          ?? (saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]));
+        const initialMall = checkInTransaction?.mall ?? (savedMall === null
           ? { coins: 0, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
-          : JSON.parse(savedMall) as { schemaVersion?: number; coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string>; shopInteriors?: ShopInteriorCollection };
+          : JSON.parse(savedMall) as { schemaVersion?: number; coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string>; shopInteriors?: ShopInteriorCollection });
         const initialPurchasedItems = initialMall.purchasedItems ?? [];
         const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems, initialMall.schemaVersion);
         const initialShopInteriors = normalizeShopInteriors(initialMall.shopInteriors, initialPurchasedItems);
@@ -224,6 +269,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         }
         // Reading existing data must not depend on being able to write a migration.
         try {
+          if (checkInTransaction) {
+            await synchronizeCheckInTransaction(checkInTransaction);
+            return;
+          }
           await Promise.all([
             ...(saved === null ? [AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initialHabits))] : []),
           ...((initialMall.schemaVersion ?? 1) < MALL_SCHEMA_VERSION ? [
@@ -236,7 +285,11 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
             ] : []),
           ]);
         } catch {
-          if (active) setStorageError('紀錄已載入，但初始化儲存失敗，請檢查裝置空間後重新開啟 App。');
+          if (active) {
+            setStorageError(checkInTransaction
+              ? '打卡與金幣已一致記錄；部分同步暫時失敗，重新開啟 App 會自動修復。'
+              : '紀錄已載入，但初始化儲存失敗，請檢查裝置空間後重新開啟 App。');
+          }
         }
       } catch {
         if (active) setStorageError('目前無法讀取已儲存的紀錄，請重新開啟 App。');
@@ -250,6 +303,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const save = useCallback(async (next: Habit[]) => {
     try {
+      await recoverPendingCheckInTransaction();
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setHabits(next);
       setStorageError(null);
@@ -261,6 +315,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens; placements: Record<string, string>; shopInteriors: ShopInteriorCollection }) => {
     try {
+      await recoverPendingCheckInTransaction();
       await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify({ ...next, schemaVersion: MALL_SCHEMA_VERSION }));
       setCoins(next.coins);
       setPurchasedItems(next.purchasedItems);
@@ -292,6 +347,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (actionLock.current) return 0;
     actionLock.current = true;
     try {
+      await recoverPendingCheckInTransaction();
       const habit = habits.find((item) => item.id === id);
       if (!habit) return 0;
       const alreadyDone = habit.checkIns.includes(today);
@@ -306,28 +362,40 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       }
       if (reward > 0) {
         const rewardKey = `${id}:${today}`;
-        const nextMall = {
-          schemaVersion: MALL_SCHEMA_VERSION,
-          coins: coins + reward,
-          purchasedItems,
-          placements: mallPlacements,
-          shopInteriors,
-          rewardedCheckIns: [...rewardedCheckIns, rewardKey],
-          rewardTokens,
+        const transaction: CheckInTransaction = {
+          version: 1,
+          habits: nextHabits,
+          mall: {
+            schemaVersion: MALL_SCHEMA_VERSION,
+            coins: coins + reward,
+            purchasedItems,
+            placements: mallPlacements,
+            shopInteriors,
+            rewardedCheckIns: [...rewardedCheckIns, rewardKey],
+            rewardTokens,
+          },
         };
-        await Promise.all([
-          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextHabits)),
-          AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify(nextMall)),
-        ]);
+        // The one-key journal is the commit point. If either legacy mirror write
+        // fails, hydration can still restore both halves from this transaction.
+        await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
         setHabits(nextHabits);
-        setCoins(nextMall.coins);
-        setRewardedCheckIns(nextMall.rewardedCheckIns);
-        setRewardTokens(nextMall.rewardTokens);
-        setStorageError(null);
+        setCoins(transaction.mall.coins);
+        setRewardedCheckIns(transaction.mall.rewardedCheckIns);
+        setRewardTokens(transaction.mall.rewardTokens);
+        try {
+          await synchronizeCheckInTransaction(transaction);
+          setStorageError(null);
+        } catch {
+          setStorageError('打卡與金幣已一致記錄；部分同步暫時失敗，重新開啟 App 會自動修復。');
+        }
       } else {
         await save(nextHabits);
       }
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // Feedback failure must not make a durably saved check-in look unsaved.
+      }
       return reward;
     } catch {
       setStorageError('打卡沒有儲存成功，請再試一次。');

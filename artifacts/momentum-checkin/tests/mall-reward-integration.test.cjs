@@ -96,6 +96,7 @@ function createHarness() {
   const asyncStorage = {
     async getItem(key) { return storage.get(key) ?? null; },
     async setItem(key, value) { storage.set(key, value); },
+    async removeItem(key) { storage.delete(key); },
   };
   const haptics = {
     ImpactFeedbackStyle: { Light: 'light' },

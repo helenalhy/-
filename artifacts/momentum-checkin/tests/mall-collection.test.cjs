@@ -11,6 +11,8 @@ const source = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
 const key = 'momentum.mall.v1';
+const habitsKey = 'momentum.habits.v1';
+const checkInTransactionKey = 'momentum.checkin-transaction.v1';
 
 async function mount(storage, { failWritesOnLoad = false, expectedStorageError = null } = {}) {
   const states = [];
@@ -19,6 +21,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
   let firstRender = true;
   let value;
   let failWrites = failWritesOnLoad;
+  let failWriteKey = null;
   let writeCount = 0;
   const react = {
     createContext: () => ({ Provider: 'Provider' }),
@@ -76,8 +79,12 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       getItem: async (name) => storage[name] ?? null,
       setItem: async (name, data) => {
         writeCount += 1;
-        if (failWrites) throw new Error('disk full');
+        if (failWrites || name === failWriteKey) throw new Error('disk full');
         storage[name] = data;
+      },
+      removeItem: async (name) => {
+        if (failWrites || name === failWriteKey) throw new Error('disk full');
+        delete storage[name];
       },
     };
     throw new Error(`Unexpected dependency: ${name}`);
@@ -100,6 +107,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
     get value() { return render(); },
     get writeCount() { return writeCount; },
     setFailWrites(next) { failWrites = next; },
+    setFailWriteKey(next) { failWriteKey = next; },
   };
 }
 
@@ -247,6 +255,63 @@ test('checking out and completing the same goal again today only awards coins on
   assert.equal(app.value.coins, 20);
   assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
 });
+
+test('a failed write-ahead record leaves both the completion and coin balance unchanged', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  const originalHabits = storage[habitsKey];
+  const originalMall = storage[key];
+  const app = await mount(storage);
+  const today = app.value.today;
+
+  app.setFailWrites(true);
+  await assert.rejects(app.value.toggleCheckIn('starter-walk'), /無法儲存打卡紀錄/);
+
+  assert.ok(!app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(app.value.coins, 0);
+  assert.equal(storage[habitsKey], originalHabits);
+  assert.equal(storage[key], originalMall);
+  assert.equal(storage[checkInTransactionKey], undefined);
+});
+
+for (const failingMirrorKey of [habitsKey, key]) {
+  test(`partial ${failingMirrorKey} write keeps the check-in and coin balance together and recovers after reload`, async () => {
+    const storage = seed({
+      schemaVersion: 3,
+      coins: 0,
+      purchasedItems: [],
+      rewardedCheckIns: [],
+      placements: {},
+    });
+    let app = await mount(storage);
+    const today = app.value.today;
+    const rewardKey = `starter-walk:${today}`;
+
+    app.setFailWriteKey(failingMirrorKey);
+    assert.equal(await app.value.toggleCheckIn('starter-walk'), 20);
+    assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+    assert.equal(app.value.coins, 20);
+    assert.match(app.value.storageError, /打卡與金幣已一致記錄/);
+    assert.ok(storage[checkInTransactionKey], 'the recovery record remains until both mirrors sync');
+
+    app.setFailWriteKey(null);
+    app = await mount(storage);
+    assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+    assert.equal(app.value.coins, 20);
+    assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+    assert.equal(storage[checkInTransactionKey], undefined);
+
+    assert.equal(await app.value.toggleCheckIn('starter-walk'), 0);
+    assert.equal(await app.value.toggleCheckIn('starter-walk'), 0);
+    assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+    assert.equal(app.value.coins, 20);
+  });
+}
 
 test('shop interior decorations spend earned coins once, can move for free, and persist per shop', async () => {
   const storage = seed({

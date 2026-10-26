@@ -42,7 +42,7 @@ export interface MallFloorTheme {
 }
 
 export const MALL_FLOORS: MallFloorTheme[] = [
-  { title: '糖果迎賓街', description: '暖陽、咖啡與柔和燈光，從這裡開始一天。', image: require('../assets/images/mall-floor.png'), accent: c.primary, surface: c.candyPink },
+  { title: '糖果迎賓街', description: '暖陽、咖啡與柔和燈光，從這裡開始一天。', image: require('../assets/images/mall-floor-scene.jpg'), accent: c.primary, surface: c.candyPink },
   { title: '森林花園', description: '走進綠意與花香，讓每個小目標開花。', image: require('../assets/images/mall-floor-2.jpg'), accent: c.candyMintDark, surface: c.candyMint },
   { title: '慢讀書廊', description: '書香、流水和安靜座位，留一點時間給自己。', image: require('../assets/images/mall-floor-3.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },
   { title: '海洋奇遇', description: '在水光與珊瑚之間，收集今天的新發現。', image: require('../assets/images/mall-floor-4.jpg'), accent: c.candySkyDark, surface: c.candySky },

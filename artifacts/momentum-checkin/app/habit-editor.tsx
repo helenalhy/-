@@ -13,16 +13,11 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import palette from '@/constants/colors';
+import { HABIT_ICON_OPTIONS } from '@/constants/habit-icons';
 import { useHabits, type RewardCategory } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
 
-const options = [
-  { icon: 'activity', color: palette.light.candyMint, label: '身體' },
-  { icon: 'book-open', color: palette.light.candyLavender, label: '學習' },
-  { icon: 'heart', color: palette.light.candyPink, label: '心情' },
-  { icon: 'coffee', color: palette.light.candyPeach, label: '生活' },
-  { icon: 'target', color: palette.light.candySky, label: '目標' },
-] as const;
+const options = HABIT_ICON_OPTIONS;
 
 export default function HabitEditorScreen() {
   const colors = useColors();
@@ -37,7 +32,7 @@ export default function HabitEditorScreen() {
     return found?.icon ?? options[0].icon;
   });
   const [rewardCategory, setRewardCategory] = useState<RewardCategory>(
-    existing?.rewardCategory ?? (existing?.icon === 'activity' || existing?.icon === 'target' ? 'facility' : existing?.icon === 'book-open' || existing?.icon === 'coffee' ? 'shop' : existing ? 'decor' : 'facility'),
+    existing?.rewardCategory ?? options.find((option) => option.icon === existing?.icon)?.rewardCategory ?? options[0].rewardCategory,
   );
   const [saving, setSaving] = useState(false);
   const selectedOption = options.find((option) => option.icon === selected) ?? options[0];
@@ -126,25 +121,25 @@ export default function HabitEditorScreen() {
           {options.map((option) => {
             const active = option.icon === selected;
             return (
-              <Pressable
-                key={option.icon}
-                onPress={() => {
-                  setSelected(option.icon);
-                  if (option.icon === 'activity' || option.icon === 'target') setRewardCategory('facility');
-                  else if (option.icon === 'book-open' || option.icon === 'coffee') setRewardCategory('shop');
-                  else setRewardCategory('decor');
-                }}
-                style={[
-                  styles.option,
-                  { backgroundColor: option.color, borderColor: active ? colors.primary : 'transparent' },
-                  active && styles.optionActive,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={option.label}
-                accessibilityState={{ selected: active }}
-              >
-                <Feather name={option.icon} size={20} color={colors.foreground} />
-              </Pressable>
+              <View key={option.icon} style={styles.optionCell}>
+                <Pressable
+                  onPress={() => {
+                    setSelected(option.icon);
+                    setRewardCategory(option.rewardCategory);
+                  }}
+                  style={[
+                    styles.option,
+                    { backgroundColor: option.color, borderColor: active ? colors.primary : 'transparent' },
+                    active && styles.optionActive,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${option.label}圖示`}
+                  accessibilityState={{ selected: active }}
+                >
+                  <Feather name={option.icon as keyof typeof Feather.glyphMap} size={20} color={palette.light.foreground} />
+                </Pressable>
+                <Text style={[styles.optionLabel, { color: colors.mutedForeground }]}>{option.label}</Text>
+              </View>
             );
           })}
         </View>
@@ -186,9 +181,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', marginBottom: 9 },
   input: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14 },
   reasonInput: { minHeight: 84 },
-  options: { flexDirection: 'row', gap: 11 },
-  option: { width: 48, height: 48, borderWidth: 2, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  options: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+  optionCell: { width: 58, alignItems: 'center' },
+  option: { width: 44, height: 44, borderWidth: 2, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   optionActive: { transform: [{ scale: 1.04 }] },
+  optionLabel: { fontSize: 9, marginTop: 4, textAlign: 'center' },
   rewardOptions: { flexDirection: 'row', gap: 8 },
   rewardOption: { flex: 1, borderWidth: 1.5, borderRadius: 14, minHeight: 76, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8 },
   rewardLabel: { fontSize: 11, fontWeight: '700' },

@@ -888,7 +888,7 @@ test('fluffy cafe dog staff can be redeemed with earned coins and placed inside 
   );
 });
 
-test('long-pressing a goal opens edit and delete actions', async () => {
+test('long-pressing a goal only opens management actions; the plus button only checks in', async () => {
   const app = createHarness();
   app.renderProvider();
   await app.runEffects('provider');
@@ -911,22 +911,43 @@ test('long-pressing a goal opens edit and delete actions', async () => {
   await optionsButton.props.onPress();
   let actionsTree = app.renderToday();
   assert.equal(findByTestId(actionsTree, 'habit-action-modal').props.visible, true);
+  assert.ok(findByTestId(actionsTree, 'edit-habit-starter-walk'));
+  assert.ok(findByTestId(actionsTree, 'delete-habit-starter-walk'));
   await press(actionsTree, 'dismiss-habit-actions');
   actionsTree = app.renderToday();
   assert.equal(findByTestId(actionsTree, 'habit-action-modal').props.visible, false);
 
+  const checkInsBeforeLongPress = [...app.contextExports.useHabits().habits.find((habit) => habit.id === 'starter-walk').checkIns];
+  const coinsBeforeLongPress = app.contextExports.useHabits().coins;
   goalButton.props.onLongPress();
 
   actionsTree = app.renderToday();
   assert.equal(findByTestId(actionsTree, 'habit-action-modal').props.visible, true);
   assert.ok(findByTestId(actionsTree, 'edit-habit-starter-walk'));
   assert.ok(findByTestId(actionsTree, 'delete-habit-starter-walk'));
+  assert.deepEqual(app.navigation, [], 'opening management does not navigate to the editor');
+  assert.deepEqual(
+    app.contextExports.useHabits().habits.find((habit) => habit.id === 'starter-walk').checkIns,
+    checkInsBeforeLongPress,
+    'opening management does not create a check-in',
+  );
+  assert.equal(app.contextExports.useHabits().coins, coinsBeforeLongPress, 'opening management does not award coins');
 
-  await press(actionsTree, 'edit-habit-starter-walk');
-  assert.deepEqual(app.navigation.at(-1), [
-    'push',
-    { pathname: '/habit-editor', params: { id: 'starter-walk' } },
-  ]);
+  goalButton.props.onPress();
+  assert.deepEqual(app.navigation, [], 'the release after a long press must not trigger the normal edit tap');
+  await press(actionsTree, 'dismiss-habit-actions');
+
+  await press(rowTree, 'checkin-starter-walk');
+  app.renderProvider();
+  assert.deepEqual(app.navigation, [], 'checking in does not open the editor');
+  assert.ok(app.contextExports.useHabits().habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(app.contextExports.getLocalDate()));
+  assert.equal(app.contextExports.useHabits().coins, 20, 'the plus button earns only the expected check-in reward');
+
+  goalButton.props.onPressIn();
+  goalButton.props.onPress();
+  assert.deepEqual(app.navigation, [
+    ['push', { pathname: '/habit-editor', params: { id: 'starter-walk' } }],
+  ], 'a new ordinary tap still opens the editor');
 });
 
 test('today shows only an unclaimed first-check-in reward and hides it after earning', async () => {

@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -50,6 +50,7 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
   onManage: () => void;
 }) {
   const colors = useColors();
+  const longPressTriggered = useRef(false);
   return (
     <View style={[styles.habitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
@@ -57,8 +58,17 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
       </View>
       <Pressable
         style={styles.habitInfo}
-        onPress={onEdit}
-        onLongPress={onManage}
+        onPressIn={() => {
+          longPressTriggered.current = false;
+        }}
+        onPress={() => {
+          if (longPressTriggered.current) return;
+          onEdit();
+        }}
+        onLongPress={() => {
+          longPressTriggered.current = true;
+          onManage();
+        }}
         delayLongPress={450}
         accessibilityRole="button"
         accessibilityLabel={`編輯${habit.title}`}

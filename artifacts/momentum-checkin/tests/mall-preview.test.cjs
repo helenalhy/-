@@ -343,6 +343,60 @@ test('search combines affordability and category; complete-list entry clears eve
   assert.equal(app.calls.length, 0);
 });
 
+test('multi-keyword search requires every term across names and descriptions and composes with counts, filters and pages', async () => {
+  const catalog = Array.from({ length: 21 }, (_, index) => ({
+    id: `multi-match-${index}`,
+    floor: index % 3 === 0 ? 2 : 1,
+    name: `花園展示 ${index}`,
+    description: '適合露台使用',
+    category: index < 11 ? 'shop' : 'decor',
+    price: 10,
+    ticketCost: 0,
+  }));
+  catalog.push(
+    { id: 'only-name-term', floor: 1, name: '花園展示單詞', description: '沒有第二個詞', category: 'shop', price: 10, ticketCost: 0 },
+    { id: 'only-description-term', floor: 1, name: '無關款式', description: '適合露台使用', category: 'facility', price: 10, ticketCost: 0 },
+  );
+
+  const app = mount({ coins: 100, purchasedItems: [], mallPlacements: {} }, catalog);
+  app.find('mall-search-input').props.onChangeText('  花園   露台  ');
+  app.render();
+
+  assert.equal(pager(app).props.total, 21, 'all terms must match; a match in either the name or description counts');
+  assert.match(textContent(app.find('mall-category-shop')), /店鋪 11/);
+  assert.match(textContent(app.find('mall-category-decor')), /裝潢 10/);
+  assert.match(textContent(app.find('mall-category-facility')), /設施 0/);
+  assert.ok(app.find('search-select-multi-match-0'));
+  assert.equal(app.find('search-select-only-name-term'), undefined);
+  assert.equal(app.find('search-select-only-description-term'), undefined);
+  assert.match(textContent(app.find('mall-search-hint')), /每個詞都需符合/);
+
+  pager(app).props.onChange(3);
+  app.render();
+  assert.equal(pager(app).props.page, 3);
+  assert.ok(app.find('search-select-multi-match-20'));
+
+  await app.press('mall-search-floor-2');
+  assert.equal(pager(app).props.total, 7);
+  assert.equal(pager(app).props.page, 1, 'changing a floor filter resets pagination');
+  assert.match(textContent(app.find('mall-category-shop')), /店鋪 4/);
+  assert.match(textContent(app.find('mall-category-decor')), /裝潢 3/);
+
+  await app.press('mall-category-decor');
+  assert.equal(pager(app).props.total, 3, 'category and floor filters combine with every keyword');
+  await app.press('mall-search-clear-filters');
+  assert.equal(pager(app).props.total, 10, 'clearing location filters preserves the multi-keyword search and category');
+  await app.press('mall-category-all');
+  assert.equal(pager(app).props.total, 21);
+  assert.equal(pager(app).props.page, 1);
+
+  await app.press('mall-search-clear');
+  assert.equal(app.find('mall-search-input').props.value, '');
+  assert.equal(pager(app).props.total, 16, 'clearing search returns to the current-floor catalog');
+  assert.equal(pager(app).props.page, 1);
+  assert.equal(app.find('mall-search-floor-2'), undefined);
+});
+
 test('recent searches load, apply, deduplicate, remove and clear without changing mall items or rewards', async () => {
   const storageKey = '@momentum/mall/recent-searches';
   const app = mount(

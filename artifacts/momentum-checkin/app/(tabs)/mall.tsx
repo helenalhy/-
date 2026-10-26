@@ -57,6 +57,11 @@ const CATEGORY_NAMES: Record<RewardCategory, string> = {
   decor: '裝潢',
 };
 
+function matchesMallSearch(item: MallItem, searchTerms: string[]) {
+  const searchableText = `${item.name} ${item.description}`.toLocaleLowerCase();
+  return searchTerms.every((term) => searchableText.includes(term));
+}
+
 const getSlotPosition = getMallSlotPosition;
 const WING_NAMES: Record<MallWing, string> = {
   main: '主商場',
@@ -269,11 +274,11 @@ export default function MallScreen() {
   const floorTheme = MALL_FLOORS[currentFloor - 1];
   const floorItems = MALL_ITEMS.filter((item) => item.floor === currentFloor);
   const searchTerm = searchQuery.trim().toLocaleLowerCase();
-  const isSearching = searchTerm.length > 0;
+  const searchTerms = searchTerm.split(/\s+/).filter(Boolean);
+  const isSearching = searchTerms.length > 0;
   const searchItems = useMemo(
     () => MALL_ITEMS.filter((item) => {
-      const searchableText = `${item.name} ${item.description}`.toLocaleLowerCase();
-      if (!searchableText.includes(searchTerm)) return false;
+      if (!matchesMallSearch(item, searchTerms)) return false;
       if (searchFloor !== null && item.floor !== searchFloor) return false;
       const slotId = placedSlotsByItem.get(item.id);
       if (searchPlacementFloor !== null
@@ -296,7 +301,7 @@ export default function MallScreen() {
   const pagedItems = visibleItems.slice((currentCatalogPage - 1) * CATALOG_PAGE_SIZE, currentCatalogPage * CATALOG_PAGE_SIZE);
   const getSearchResultCount = (floorFilter: number | null, placementFloorFilter: number | null, wingFilter: MallWing | 'unplaced' | null) =>
     MALL_ITEMS.filter((item) => {
-      if (!`${item.name} ${item.description}`.toLocaleLowerCase().includes(searchTerm)) return false;
+      if (!matchesMallSearch(item, searchTerms)) return false;
       if (floorFilter !== null && item.floor !== floorFilter) return false;
       if (category !== 'all' && item.category !== category) return false;
       if (showRedemptionControls && affordableOnly && (ownedIds.has(item.id) || item.price > coins)) return false;
@@ -987,7 +992,7 @@ export default function MallScreen() {
             style={styles.searchClear}
           ><Feather name="x" size={18} color={colors.primary} /></Pressable>}
         </View>
-        <Text style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋名稱或描述關鍵字 · 可配合分類 · 搜尋及換層不扣金幣</Text>
+        <Text testID="mall-search-hint" style={[styles.searchHint, { color: colors.mutedForeground }]}>跨十層搜尋名稱或描述；以空格分隔多個關鍵字，每個詞都需符合 · 可配合分類 · 搜尋及換層不扣金幣</Text>
 
         {!isSearching && recentSearches.length > 0 && (
           <View testID="mall-recent-searches" style={styles.recentSearches}>
@@ -1214,7 +1219,7 @@ export default function MallScreen() {
             </View>
           )}
           {!filteringAffordable && isSearching && visibleItems.length === 0 && (
-            <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有符合「{searchQuery.trim()}」的選物，試試其他名稱或描述關鍵字、切換「全部」分類或清除搜尋。</Text>
+            <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有同時符合「{searchQuery.trim()}」所有關鍵字的選物，試試其他名稱或描述關鍵字、切換「全部」分類或清除搜尋。</Text>
           )}
           {!isSearching && showCollection && visibleItems.length === 0 && (
             <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>{collectionItems.length === 0 ? '倉庫暫時沒有物件。點選商場中的舊商店、設施或裝修，再按「存入倉庫」，就能騰出位置換新；之後可免費取出。' : '這個分類暫時沒有存倉物件，試試其他分類。'}</Text>

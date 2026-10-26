@@ -36,6 +36,19 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   const [width, setWidth] = useState(360);
   const [activeWing, setActiveWing] = useState<MallWing>('main');
   const [wingAnnouncement, setWingAnnouncement] = useState('');
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (active) setReduceMotion(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
 
   function announceWing(wing: MallWing) {
     const message = `目前所在區域：${WINGS.find((page) => page.id === wing)?.name ?? ''}`;
@@ -45,9 +58,9 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
     }
   }
 
-  function scrollTabsToWing(wing: MallWing) {
+  function scrollTabsToWing(wing: MallWing, animated = true) {
     const index = WINGS.findIndex((page) => page.id === wing);
-    tabs.current?.scrollTo({ x: Math.max(0, index * 112 - 224), animated: true });
+    tabs.current?.scrollTo({ x: Math.max(0, index * 112 - 224), animated });
   }
 
   useEffect(() => {
@@ -59,14 +72,14 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
     scrollTabsToWing(focusWing);
   }, [focusWing, focusRequestId, width]);
 
-  function changeWing(wing: MallWing) {
+  function changeWing(wing: MallWing, animated = true) {
     if (wing !== activeWing) {
       onWingChange();
       setActiveWing(wing);
       announceWing(wing);
     }
-    pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === wing) * width, animated: true });
-    scrollTabsToWing(wing);
+    pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === wing) * width, animated });
+    scrollTabsToWing(wing, animated);
   }
 
   function handleTabKeyDown(event: WingTabKeyboardEvent) {
@@ -91,7 +104,7 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
 
     event.preventDefault();
     const nextWing = WINGS[nextIndex].id;
-    changeWing(nextWing);
+    changeWing(nextWing, !reduceMotion);
     tabRefs.current[nextWing]?.focus();
   }
 

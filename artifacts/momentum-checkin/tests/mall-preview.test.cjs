@@ -830,7 +830,7 @@ test('screen readers distinguish every location including plaza rows and annex',
 });
 
 test('mall wing controls announce their section name, capacity and selected state', () => {
-  const state = [360, 'main', ''];
+  const state = [360, 'main', '', false];
   let cursor = 0;
   const react = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
@@ -846,6 +846,10 @@ test('mall wing controls announce their section name, capacity and selected stat
     (name) => {
       if (name === 'react') return react;
       if (name === 'react-native') return {
+        AccessibilityInfo: {
+          isReduceMotionEnabled: async () => false,
+          addEventListener: () => ({ remove() {} }),
+        },
         Platform: { OS: 'web' },
         Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles },
         Text: 'Text', View: 'View',
@@ -969,6 +973,99 @@ test('mall wing controls announce their section name, capacity and selected stat
   assert.equal(findWing('mall-wing-extension4').props.accessibilityState.selected, true);
   assert.deepEqual(findWing('mall-wing-announcement').props.children, ['目前所在區域：延伸區二']);
   assert.equal(wingChanges, 9, 'programmatic location navigation does not trigger a placement change');
+});
+
+test('mall wing keyboard changes respect reduced motion while touch changes keep their animation', async () => {
+  const state = [360, 'main', '', false];
+  let cursor = 0;
+  let reducedMotionListener;
+  const scrolls = [];
+  const react = {
+    createElement: (type, props, ...children) => {
+      if (type === 'ScrollView' && props?.ref) {
+        props.ref.current = { scrollTo: (options) => scrolls.push({ testID: props.testID, ...options }) };
+      }
+      return { type, props: { ...props, children } };
+    },
+    useRef: (current) => ({ current }),
+    useEffect: (effect) => { effect(); },
+    useState: (initial) => {
+      const index = cursor++;
+      return [state[index] ?? initial, (next) => { state[index] = typeof next === 'function' ? next(state[index]) : next; }];
+    },
+  };
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', wingPagerSource)(
+    (name) => {
+      if (name === 'react') return react;
+      if (name === 'react-native') return {
+        AccessibilityInfo: {
+          isReduceMotionEnabled: async () => true,
+          addEventListener: (event, listener) => {
+            assert.equal(event, 'reduceMotionChanged');
+            reducedMotionListener = listener;
+            return { remove() {} };
+          },
+        },
+        Platform: { OS: 'web' },
+        Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles },
+        Text: 'Text', View: 'View',
+      };
+      if (name === '@/hooks/useColors') return { useColors: () => ({}) };
+      throw new Error(`Unexpected dependency: ${name}`);
+    },
+    module,
+    module.exports,
+  );
+  const renderPager = () => {
+    cursor = 0;
+    return module.exports.MallWingPager({
+      counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
+      onWingChange() {},
+      renderWing: () => null,
+    });
+  };
+  function wingNodes(node) {
+    return !node || typeof node !== 'object' ? [] : Array.isArray(node)
+      ? node.flatMap(wingNodes)
+      : [node, ...wingNodes(node.props?.children)];
+  }
+  let pager = renderPager();
+  const findWing = (id) => wingNodes(pager).find((node) => node.props.testID === id);
+
+  findWing('mall-wing-main').props.onKeyDown({ key: 'ArrowRight', preventDefault() {} });
+  assert.deepEqual(
+    scrolls.slice(-2).map(({ testID, animated }) => [testID, animated]),
+    [['mall-wing-pager', true], ['mall-wing-tabs', true]],
+    'keyboard navigation keeps its existing animation before the preference is loaded',
+  );
+
+  await Promise.resolve();
+  pager = renderPager();
+  findWing('mall-wing-annex').props.onKeyDown({ key: 'ArrowRight', preventDefault() {} });
+  assert.deepEqual(
+    scrolls.slice(-2).map(({ testID, animated }) => [testID, animated]),
+    [['mall-wing-pager', false], ['mall-wing-tabs', false]],
+    'keyboard navigation does not animate either scroller when reduced motion is enabled',
+  );
+
+  pager = renderPager();
+  findWing('mall-wing-main').props.onPress();
+  assert.deepEqual(
+    scrolls.slice(-2).map(({ testID, animated }) => [testID, animated]),
+    [['mall-wing-pager', true], ['mall-wing-tabs', true]],
+    'touch tab presses retain their existing animation',
+  );
+
+  reducedMotionListener(false);
+  pager = renderPager();
+  findWing('mall-wing-main').props.onKeyDown({ key: 'ArrowRight', preventDefault() {} });
+  assert.deepEqual(
+    scrolls.slice(-2).map(({ testID, animated }) => [testID, animated]),
+    [['mall-wing-pager', true], ['mall-wing-tabs', true]],
+    'keyboard navigation retains animation when the system preference changes back',
+  );
+  assert.equal(findWing('mall-wing-pager').props.pagingEnabled, true, 'native swipe paging remains enabled');
 });
 
 test('native mall wing changes use one platform-appropriate polite announcement', () => {

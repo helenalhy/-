@@ -523,6 +523,93 @@ test('search filters keep original floor separate from the current mall placemen
   assert.equal(app.calls.length, 0, 'filtering never starts a move, restore, or redemption');
 });
 
+test('search floor filters expose headings, selected options, horizontal controls, and one platform result update', async () => {
+  const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'shop');
+  const items = [
+    { ...base, id: 'origin-floor-one', floor: 1, name: '花園甲' },
+    { ...base, id: 'origin-floor-two', floor: 2, name: '花園乙' },
+    { ...base, id: 'unplaced-item', floor: 1, name: '花園丙' },
+  ];
+  const placements = {
+    'floor-2-extension3-1-left': 'origin-floor-one',
+    'floor-1-annex-1-left': 'origin-floor-two',
+  };
+  const app = mount(
+    { coins: 120, purchasedItems: ['origin-floor-one', 'origin-floor-two'], mallPlacements: placements },
+    items,
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+  app.find('mall-search-input').props.onChangeText('花園');
+  app.render();
+
+  for (const [id, title] of [
+    ['mall-search-floor-heading', '原屬樓層'],
+    ['mall-search-placement-floor-heading', '目前擺放樓層'],
+    ['mall-search-wing-heading', '目前擺放分區'],
+  ]) {
+    assert.equal(app.find(id).props.accessibilityRole, 'header');
+    assert.equal(textContent(app.find(id)), title);
+  }
+  for (const id of [
+    'mall-search-floor-filters',
+    'mall-search-placement-floor-filters',
+    'mall-search-wing-filters',
+  ]) {
+    assert.equal(app.find(id).props.horizontal, true, `${id} must support horizontal scrolling on narrow screens`);
+  }
+  assert.equal(app.find('mall-search-floor-all').props.accessibilityLabel, '篩選全部原屬樓層');
+  assert.equal(app.find('mall-search-placement-floor-all').props.accessibilityLabel, '篩選全部目前擺放樓層');
+  assert.equal(app.find('mall-search-wing-all').props.accessibilityLabel, '篩選全部目前擺放分區');
+  assert.equal(app.find('mall-search-floor-all').props.accessibilityState.selected, true);
+  assert.deepEqual(app.announcements, [], 'typing a query does not announce every changing result');
+
+  await app.press('mall-search-floor-1');
+  assert.equal(app.find('mall-search-floor-1').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-floor-all').props.accessibilityState.selected, false);
+  assert.equal(textContent(app.find('mall-search-filter-result')), '篩選結果已更新，共 2 款。');
+  assert.deepEqual(app.announcements, ['篩選結果已更新，共 2 款。']);
+  assert.equal(app.find('mall-search-filter-result').props.accessibilityLiveRegion, 'none');
+
+  await app.press('mall-search-placement-floor-2');
+  assert.equal(textContent(app.find('mall-search-filter-result')), '篩選結果已更新，共 1 款。');
+  assert.deepEqual(app.announcements, [
+    '篩選結果已更新，共 2 款。',
+    '篩選結果已更新，共 1 款。',
+  ]);
+
+  await app.press('mall-search-wing-extension3');
+  assert.equal(app.find('mall-search-wing-extension3').props.accessibilityState.selected, true);
+  assert.equal(textContent(app.find('mall-search-filter-result')), '篩選結果已更新，共 1 款。');
+
+  await app.press('mall-search-clear-filters');
+  assert.equal(textContent(app.find('mall-search-filter-result')), '篩選結果已更新，共 3 款。');
+  assert.equal(app.find('mall-search-floor-all').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-placement-floor-all').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-wing-all').props.accessibilityState.selected, true);
+  assert.equal(app.announcements.length, 4, 'each filter action has exactly one iOS result announcement');
+
+  const android = mount(
+    { coins: 120, purchasedItems: ['origin-floor-one', 'origin-floor-two'], mallPlacements: placements },
+    items,
+    'android',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+  android.find('mall-search-input').props.onChangeText('花園');
+  android.render();
+  await android.press('mall-search-floor-1');
+  assert.equal(textContent(android.find('mall-search-filter-result')), '篩選結果已更新，共 2 款。');
+  assert.equal(android.find('mall-search-filter-result').props.accessibilityLiveRegion, 'polite');
+  await android.press('mall-search-wing-extension3');
+  assert.equal(android.find('mall-search-wing-extension3').props.accessibilityState.selected, true);
+  assert.equal(textContent(android.find('mall-search-filter-result')), '篩選結果已更新，共 1 款。');
+  await android.press('mall-search-clear-filters');
+  assert.equal(textContent(android.find('mall-search-filter-result')), '篩選結果已更新，共 3 款。');
+  assert.equal(android.find('mall-search-floor-all').props.accessibilityState.selected, true);
+  assert.equal(android.find('mall-search-wing-all').props.accessibilityState.selected, true);
+  assert.deepEqual(android.announcements, [], 'Android uses the polite live region instead of a second announcement');
+});
+
 test('real catalog is fully searchable and includes ten specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
   assert.equal(MALL_ITEMS.length, 1511);

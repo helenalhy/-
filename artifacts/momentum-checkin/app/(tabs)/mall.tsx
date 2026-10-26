@@ -235,6 +235,7 @@ export default function MallScreen() {
   const [searchFloor, setSearchFloor] = useState<number | null>(null);
   const [searchPlacementFloor, setSearchPlacementFloor] = useState<number | null>(null);
   const [searchWing, setSearchWing] = useState<MallWing | 'unplaced' | null>(null);
+  const [searchFilterResultMessage, setSearchFilterResultMessage] = useState('');
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [priceAscending, setPriceAscending] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -293,6 +294,19 @@ export default function MallScreen() {
   const catalogPages = Math.max(1, Math.ceil(visibleItems.length / CATALOG_PAGE_SIZE));
   const currentCatalogPage = Math.min(catalogPage, catalogPages);
   const pagedItems = visibleItems.slice((currentCatalogPage - 1) * CATALOG_PAGE_SIZE, currentCatalogPage * CATALOG_PAGE_SIZE);
+  const getSearchResultCount = (floorFilter: number | null, placementFloorFilter: number | null, wingFilter: MallWing | 'unplaced' | null) =>
+    MALL_ITEMS.filter((item) => {
+      if (!`${item.name} ${item.description}`.toLocaleLowerCase().includes(searchTerm)) return false;
+      if (floorFilter !== null && item.floor !== floorFilter) return false;
+      if (category !== 'all' && item.category !== category) return false;
+      if (showRedemptionControls && affordableOnly && (ownedIds.has(item.id) || item.price > coins)) return false;
+      const slotId = placedSlotsByItem.get(item.id);
+      if (placementFloorFilter !== null
+        && (slotId === undefined || getMallSlotFloor(slotId) !== placementFloorFilter)) return false;
+      if (wingFilter === null) return true;
+      if (wingFilter === 'unplaced') return !slotId;
+      return slotId !== undefined && getSlotPosition(slotId).wing === wingFilter;
+    }).length;
   const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
   const floorSlots = MALL_SLOT_IDS.filter((slotId) => slotId.startsWith(`floor-${currentFloor}-`));
   const floorItemCount = floorSlots.filter((slotId) => mallPlacements[slotId]).length;
@@ -372,10 +386,27 @@ export default function MallScreen() {
     setSearchFloor(null);
     setSearchPlacementFloor(null);
     setSearchWing(null);
+    setSearchFilterResultMessage('');
     setCategory('all');
     setAffordableOnly(false);
     setPriceAscending(false);
     setCatalogPage(1);
+  }
+
+  function applySearchLocationFilters(
+    floorFilter: number | null,
+    placementFloorFilter: number | null,
+    wingFilter: MallWing | 'unplaced' | null,
+  ) {
+    setSearchFloor(floorFilter);
+    setSearchPlacementFloor(placementFloorFilter);
+    setSearchWing(wingFilter);
+    setCatalogPage(1);
+    const resultMessage = `篩選結果已更新，共 ${getSearchResultCount(floorFilter, placementFloorFilter, wingFilter)} 款。`;
+    setSearchFilterResultMessage(resultMessage);
+    if (Platform.OS === 'ios') {
+      AccessibilityInfo.announceForAccessibilityWithOptions(resultMessage, { queue: true });
+    }
   }
 
   useEffect(() => {
@@ -930,6 +961,7 @@ export default function MallScreen() {
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
+              setSearchFilterResultMessage('');
               if (!text.trim()) {
                 setSearchFloor(null);
                 setSearchPlacementFloor(null);
@@ -1009,7 +1041,7 @@ export default function MallScreen() {
         {isSearching && (
           <View style={styles.searchLocationFilters}>
             <View>
-              <Text style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>原屬樓層</Text>
+              <Text testID="mall-search-floor-heading" accessibilityRole="header" style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>原屬樓層</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-floor-filters">
                 {[null, ...MALL_FLOORS.map((_, index) => index + 1)].map((floor) => {
                   const selected = searchFloor === floor;
@@ -1021,7 +1053,7 @@ export default function MallScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={floor === null ? '篩選全部原屬樓層' : `篩選原屬樓層 ${floor}F`}
                       accessibilityState={{ selected }}
-                      onPress={() => { setSearchFloor(floor); setCatalogPage(1); }}
+                      onPress={() => applySearchLocationFilters(floor, searchPlacementFloor, searchWing)}
                       style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
                     >
                       <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
@@ -1031,7 +1063,7 @@ export default function MallScreen() {
               </ScrollView>
             </View>
             <View>
-              <Text style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放樓層</Text>
+              <Text testID="mall-search-placement-floor-heading" accessibilityRole="header" style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放樓層</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-placement-floor-filters">
                 {[null, ...MALL_FLOORS.map((_, index) => index + 1)].map((floor) => {
                   const selected = searchPlacementFloor === floor;
@@ -1043,7 +1075,7 @@ export default function MallScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={floor === null ? '篩選全部目前擺放樓層' : `篩選目前擺放於 ${floor}F`}
                       accessibilityState={{ selected }}
-                      onPress={() => { setSearchPlacementFloor(floor); setCatalogPage(1); }}
+                      onPress={() => applySearchLocationFilters(searchFloor, floor, searchWing)}
                       style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
                     >
                       <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
@@ -1053,7 +1085,7 @@ export default function MallScreen() {
               </ScrollView>
             </View>
             <View>
-              <Text style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放分區</Text>
+              <Text testID="mall-search-wing-heading" accessibilityRole="header" style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放分區</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-wing-filters">
                 {[{ id: null, label: '全部' }, ...SEARCH_WING_FILTERS].map((filter) => {
                   const selected = searchWing === filter.id;
@@ -1069,7 +1101,7 @@ export default function MallScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={accessibilityLabel}
                       accessibilityState={{ selected }}
-                      onPress={() => { setSearchWing(filter.id); setCatalogPage(1); }}
+                      onPress={() => applySearchLocationFilters(searchFloor, searchPlacementFloor, filter.id)}
                       style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
                     >
                       <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label}</Text>
@@ -1083,11 +1115,21 @@ export default function MallScreen() {
                 testID="mall-search-clear-filters"
                 accessibilityRole="button"
                 accessibilityLabel="清除原屬樓層、目前擺放樓層與分區篩選"
-                onPress={() => { setSearchFloor(null); setSearchPlacementFloor(null); setSearchWing(null); setCatalogPage(1); }}
+                onPress={() => applySearchLocationFilters(null, null, null)}
                 style={styles.searchFilterClear}
               >
                 <Text style={[styles.filterText, { color: colors.primary }]}>清除樓層與分區篩選</Text>
               </Pressable>
+            )}
+            {searchFilterResultMessage.length > 0 && (
+              <Text
+                testID="mall-search-filter-result"
+                accessibilityRole="text"
+                accessibilityLiveRegion={Platform.OS === 'ios' ? 'none' : 'polite'}
+                style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}
+              >
+                {searchFilterResultMessage}
+              </Text>
             )}
           </View>
         )}
@@ -1101,7 +1143,7 @@ export default function MallScreen() {
                 testID="mall-affordable-toggle"
                 accessibilityRole="button"
                 accessibilityState={{ selected: affordableOnly }}
-                onPress={() => { setAffordableOnly(!affordableOnly); setCatalogPage(1); }}
+                onPress={() => { setAffordableOnly(!affordableOnly); if (isSearching) setSearchFilterResultMessage(''); setCatalogPage(1); }}
                 style={[styles.filterPill, styles.redemptionOption, { backgroundColor: affordableOnly ? colors.primary : colors.card, borderColor: affordableOnly ? colors.primary : colors.border }]}
               >
                 <Text style={[styles.filterText, { color: affordableOnly ? colors.primaryForeground : colors.mutedForeground }]}>目前換得到</Text>
@@ -1138,7 +1180,7 @@ export default function MallScreen() {
             return (
               <Pressable
                 key={filter.id}
-                onPress={() => { setCategory(filter.id); setCatalogPage(1); }}
+                onPress={() => { if (isSearching) setSearchFilterResultMessage(''); setCategory(filter.id); setCatalogPage(1); }}
                 style={[
                   styles.filterPill,
                   { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border },

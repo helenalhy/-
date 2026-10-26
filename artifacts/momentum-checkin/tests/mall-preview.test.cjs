@@ -791,6 +791,11 @@ test('description keywords return catalog items with correct category counts, pa
   assert.match(textContent(app.find('mall-category-facility')), /設施 7$/);
   assert.match(textContent(app.find('mall-category-decor')), /裝潢 7$/);
   assert.ok(app.find('search-select-description-match-0'), 'description-only keyword match is included');
+  assert.equal(
+    textContent(app.find('search-item-match-description-match-0')),
+    '描述符合「雨天」',
+    'description matches explain the matched description keyword',
+  );
   assert.match(
     app.find('search-select-description-match-0').props.accessibilityLabel,
     /前往 2F.*已兌換，可免費重擺/,
@@ -802,6 +807,11 @@ test('description keywords return catalog items with correct category counts, pa
   assert.ok(app.nodes().some((node) =>
     textContent(node) === '已兌換 · 倉庫保存中 · 免費擺放',
   ), 'description-only result keeps its warehouse status');
+  assert.equal(
+    app.find('search-select-description-match-0').props.accessibilityLabel,
+    '選擇獨特選物 0，前往 2F，店鋪，20 金幣，已兌換，可免費重擺',
+    'adding match context does not change the existing selection accessibility label',
+  );
 
   const renderedIds = [];
   for (let page = 1; page <= pager(app).props.pages; page += 1) {
@@ -810,6 +820,11 @@ test('description keywords return catalog items with correct category counts, pa
     renderedIds.push(...selectionIds(app));
   }
   assert.ok(renderedIds.includes('search-select-name-only-match'), 'name-only keyword match remains included');
+  assert.equal(
+    textContent(app.find('search-item-match-name-only-match')),
+    '名稱符合「雨天」',
+    'name-only matches clearly identify the matched field',
+  );
   assert.deepEqual(renderedIds, [
     ...descriptionCatalog.map((item) => `search-select-${item.id}`),
   ], 'all description and name matches appear once across pages');
@@ -819,6 +834,28 @@ test('description keywords return catalog items with correct category counts, pa
   assert.equal(pager(app).props.total, 21, 'clearing search restores the current-floor catalog');
   assert.equal(pager(app).props.page, 1);
   assert.ok(app.find('build-description-match-1'));
+});
+
+test('search result explains matches split across the name and description', () => {
+  const catalog = [{
+    id: 'split-match',
+    floor: 1,
+    name: '雨天花園',
+    description: '適合露台使用',
+    category: 'decor',
+    price: 20,
+    ticketCost: 0,
+  }];
+  const app = mount({ purchasedItems: [], mallPlacements: {} }, catalog);
+
+  app.find('mall-search-input').props.onChangeText('雨天 露台');
+  app.render();
+
+  assert.equal(pager(app).props.total, 1, 'terms can still match across name and description');
+  assert.equal(
+    textContent(app.find('search-item-match-split-match')),
+    '名稱符合「雨天」 · 描述符合「露台」',
+  );
 });
 
 test('search selection and cancellation preserve coins, ownership and placements', async () => {

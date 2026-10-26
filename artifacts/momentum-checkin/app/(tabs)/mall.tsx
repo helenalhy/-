@@ -62,6 +62,19 @@ function matchesMallSearch(item: MallItem, searchTerms: string[]) {
   return searchTerms.every((term) => searchableText.includes(term));
 }
 
+function getMallSearchMatchReason(item: MallItem, searchTerms: string[]) {
+  const uniqueTerms = [...new Set(searchTerms)];
+  const normalizedName = item.name.toLocaleLowerCase();
+  const normalizedDescription = (item.description ?? '').toLocaleLowerCase();
+  const nameMatches = uniqueTerms.filter((term) => normalizedName.includes(term));
+  const descriptionMatches = uniqueTerms.filter((term) => normalizedDescription.includes(term));
+  const reasons = [
+    nameMatches.length > 0 ? `名稱符合「${nameMatches.join('、')}」` : '',
+    descriptionMatches.length > 0 ? `描述符合「${descriptionMatches.join('、')}」` : '',
+  ].filter(Boolean);
+  return reasons.join(' · ');
+}
+
 const getSlotPosition = getMallSlotPosition;
 const WING_NAMES: Record<MallWing, string> = {
   main: '主商場',
@@ -1255,6 +1268,14 @@ export default function MallScreen() {
                         ? `${item.floor}F 原屬選物 · ${item.description}`
                         : item.description}
                   </Text>
+                  {isSearching && (
+                    <Text
+                      testID={`search-item-match-${item.id}`}
+                      style={[styles.searchMatchReason, { color: colors.primary }]}
+                    >
+                      {getMallSearchMatchReason(item, searchTerms)}
+                    </Text>
+                  )}
                   {isSearching ? <Text testID={`search-item-status-${item.id}`} style={[styles.sceneSub, { color: colors.primary }]}>{owned ? placedIds.has(item.id) ? '已兌換 · 已擺放 · 免費搬動' : '已兌換 · 倉庫保存中 · 免費擺放' : '未兌換 · 選取後前往所屬樓層試擺'}</Text> : showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : <View style={styles.costRow}>
                     <View style={styles.costPart}><Feather name="circle" size={11} color={colors.candyCaramelDark} /><Text style={[styles.costText, { color: colors.candyCaramelDark }]}>{item.price}</Text></View>
                     <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>
@@ -1434,6 +1455,7 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   itemType: { overflow: 'hidden', borderRadius: 7, paddingHorizontal: 6, paddingVertical: 3, fontSize: 8, fontWeight: '600' },
   itemDescription: { fontSize: 9, marginTop: 4 },
+  searchMatchReason: { fontSize: 9, fontWeight: '600', marginTop: 3 },
   costRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
   costPart: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   costText: { fontSize: 10, fontWeight: '700' },

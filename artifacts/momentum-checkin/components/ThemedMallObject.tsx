@@ -124,6 +124,36 @@ export function ThemedMallObject({ id, color, icon = 'gift' }: { id: string; col
     case 'dog-staff-pudding':
       drawing = <DogAttendant kind="pudding" />;
       break;
+    case 'dog-staff-tangtang':
+      drawing = <DogAttendant kind="tangtang" />;
+      break;
+    case 'dog-staff-pipi':
+      drawing = <DogAttendant kind="pipi" />;
+      break;
+    case 'dog-staff-amber':
+      drawing = <DogAttendant kind="amber" />;
+      break;
+    case 'dog-staff-cloud':
+      drawing = <DogAttendant kind="cloud" />;
+      break;
+    case 'dog-staff-wonton':
+      drawing = <DogAttendant kind="wonton" />;
+      break;
+    case 'dog-staff-butter':
+      drawing = <DogAttendant kind="butter" />;
+      break;
+    case 'dog-staff-sesame':
+      drawing = <DogAttendant kind="sesame" />;
+      break;
+    case 'dog-staff-snowball':
+      drawing = <DogAttendant kind="snowball" />;
+      break;
+    case 'dog-staff-maomao':
+      drawing = <DogAttendant kind="maomao" />;
+      break;
+    case 'dog-staff-poppy':
+      drawing = <DogAttendant kind="poppy" />;
+      break;
     default:
       drawing = <><View style={[s.fallbackShowcase, { backgroundColor: color, borderColor: c.candyCaramelDark }]}><Feather name={icon as keyof typeof Feather.glyphMap} size={20} color={c.candyCaramelDark} /></View><View style={[s.base, { backgroundColor: c.candyCaramel }]} /></>;
   }

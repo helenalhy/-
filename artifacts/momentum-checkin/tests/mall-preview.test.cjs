@@ -1556,7 +1556,7 @@ test('full-floor move retains exchanges and storage, while restore can use anoth
   assert.equal(app.habits.coins, 100);
 });
 
-test('6F 毛茸茸棉花糖cafe keeps 50 choices and adds four redeemable dog attendants', () => {
+test('6F 毛茸茸棉花糖cafe keeps 50 choices and adds fourteen redeemable dog attendants', () => {
   const shop = mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
   assert.ok(shop);
   assert.equal(shop.floor, 6);
@@ -1574,7 +1574,18 @@ test('6F 毛茸茸棉花糖cafe keeps 50 choices and adds four redeemable dog at
       ['奶昔・白色博美店員', 'dog-staff-milkshake'],
       ['小牛・黑白色邊牧店員', 'dog-staff-xiaoniu'],
       ['布丁・黃金獵犬寶寶店員', 'dog-staff-pudding'],
+      ['糖糖・白色比熊店員', 'dog-staff-tangtang'],
+      ['皮皮・黃白柯基店員', 'dog-staff-pipi'],
+      ['琥珀・淺啡色比熊店員', 'dog-staff-amber'],
+      ['雲朵・白色博美店員', 'dog-staff-cloud'],
+      ['雲吞・白色馬爾濟斯店員', 'dog-staff-wonton'],
+      ['奶油・奶油色貴賓店員', 'dog-staff-butter'],
+      ['芝麻・黑白西施店員', 'dog-staff-sesame'],
+      ['雪球・白色迷你雪納瑞店員', 'dog-staff-snowball'],
+      ['毛毛・白色薩摩耶店員', 'dog-staff-maomao'],
+      ['波比・淺啡臘腸店員', 'dog-staff-poppy'],
     ],
   );
+  assert.equal(dogStaff.length, 14);
   assert.ok(dogStaff.every((option) => option.price > 0 && option.itemKind === 'decoration'));
 });

@@ -1,6 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 
-// Each floor has a separately illustrated cast. Frames are 4 columns × 2 rows.
+// Each floor has a separately illustrated cast. The original eight guests keep
+// their 4×2 frame positions; two new guests occupy the fifth column.
 export const GUEST_SHEETS: ImageSourcePropType[] = [
   require('../assets/images/guests-floor-1.png'),
   require('../assets/images/guests-floor-2.png'),
@@ -14,6 +15,33 @@ export const GUEST_SHEETS: ImageSourcePropType[] = [
   require('../assets/images/guests-floor-10.png'),
 ];
 
-export const GUESTS_PER_FLOOR = 8;
+export const GUESTS_PER_FLOOR = 10;
+export const GUEST_COLUMNS = 5;
 export const GUEST_FRAME_WIDTH = 32;
 export const GUEST_FRAME_HEIGHT = 64;
+
+export const GUEST_FRAME_CELLS: ReadonlyArray<{ column: number; row: number }> = [
+  { column: 0, row: 0 },
+  { column: 1, row: 0 },
+  { column: 2, row: 0 },
+  { column: 3, row: 0 },
+  { column: 0, row: 1 },
+  { column: 1, row: 1 },
+  { column: 2, row: 1 },
+  { column: 3, row: 1 },
+  { column: 4, row: 0 },
+  { column: 4, row: 1 },
+];
+
+export const GUEST_ROUTES: ReadonlyArray<{ from: number; to: number; top: number; duration: number }> = [
+  { from: 8, to: 65, top: 62, duration: 14500 },
+  { from: 77, to: 31, top: 64, duration: 12000 },
+  { from: 22, to: 73, top: 73, duration: 17500 },
+  { from: 70, to: 12, top: 82, duration: 16000 },
+  { from: 45, to: 5, top: 82, duration: 13000 },
+  { from: 12, to: 52, top: 74, duration: 18000 },
+  { from: 54, to: 85, top: 63, duration: 11000 },
+  { from: 85, to: 46, top: 76, duration: 19000 },
+  { from: 28, to: 78, top: 69, duration: 15500 },
+  { from: 91, to: 38, top: 86, duration: 13500 },
+];

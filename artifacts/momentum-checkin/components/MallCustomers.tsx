@@ -1,22 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Image, Platform, StyleSheet, View } from 'react-native';
 import palette from '@/constants/colors';
-import { GUEST_SHEETS, GUEST_FRAME_WIDTH, GUEST_FRAME_HEIGHT } from '@/constants/mall-guests';
+import {
+  GUEST_FRAME_CELLS,
+  GUEST_FRAME_HEIGHT,
+  GUEST_FRAME_WIDTH,
+  GUEST_ROUTES,
+  GUEST_SHEETS,
+  GUEST_COLUMNS,
+  GUESTS_PER_FLOOR,
+} from '@/constants/mall-guests';
 
 const c = palette.light;
-const ROUTES = [
-  { from: 8, to: 65, top: 62, duration: 14500 },
-  { from: 77, to: 31, top: 64, duration: 12000 },
-  { from: 22, to: 73, top: 73, duration: 17500 },
-  { from: 70, to: 12, top: 82, duration: 16000 },
-  { from: 45, to: 5, top: 82, duration: 13000 },
-  { from: 12, to: 52, top: 74, duration: 18000 },
-  { from: 54, to: 85, top: 63, duration: 11000 },
-  { from: 85, to: 46, top: 76, duration: 19000 },
-];
 
 function Shopper({ index, floor, width, reducedMotion }: { index: number; floor: number; width: number; reducedMotion: boolean }) {
-  const route = ROUTES[index];
+  const route = GUEST_ROUTES[index];
   const progress = useRef(new Animated.Value(0)).current;
   const stride = useRef(new Animated.Value(0)).current;
   const facing = useRef(new Animated.Value(route.to > route.from ? 1 : -1)).current;
@@ -49,6 +47,7 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
   }, [index, route, native, reducedMotion, progress, stride, facing]);
   const bob = stride.interpolate({ inputRange: [-1, 0, 1], outputRange: [-1.3, 0, -1.3] });
   const sheet = GUEST_SHEETS[floor - 1];
+  const frameCell = GUEST_FRAME_CELLS[index];
   return (
     <Animated.View testID={`mall-guest-${floor}-${index}`} style={[
       s.guest,
@@ -69,8 +68,8 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
             resizeMode="stretch"
             fadeDuration={0}
             style={[s.spriteSheet, {
-              left: -(index % 4) * GUEST_FRAME_WIDTH,
-              top: -Math.floor(index / 4) * GUEST_FRAME_HEIGHT,
+              left: -frameCell.column * GUEST_FRAME_WIDTH,
+              top: -frameCell.row * GUEST_FRAME_HEIGHT,
             }]}
           />
         </View>
@@ -90,7 +89,7 @@ export function MallCustomers({ floor }: { floor: number }) {
   }, []);
   return (
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="mall-customers" style={StyleSheet.absoluteFill} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      {ROUTES.map((_, index) => <Shopper key={`${floor}-${index}`} index={index} floor={floor} width={width} reducedMotion={reducedMotion} />)}
+      {GUEST_ROUTES.slice(0, GUESTS_PER_FLOOR).map((_, index) => <Shopper key={`${floor}-${index}`} index={index} floor={floor} width={width} reducedMotion={reducedMotion} />)}
     </View>
   );
 }
@@ -99,5 +98,5 @@ const s = StyleSheet.create({
   guest: { position: 'absolute', width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT },
   shadow: { position: 'absolute', bottom: 7, left: 5, width: 22, height: 4, borderRadius: 12, opacity: 0.15 },
   spriteWindow: { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT, overflow: 'hidden' },
-  spriteSheet: { position: 'absolute', width: GUEST_FRAME_WIDTH * 4, height: GUEST_FRAME_HEIGHT * 2 },
+  spriteSheet: { position: 'absolute', width: GUEST_FRAME_WIDTH * GUEST_COLUMNS, height: GUEST_FRAME_HEIGHT * 2 },
 });

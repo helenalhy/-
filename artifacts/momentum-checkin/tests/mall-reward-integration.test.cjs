@@ -611,6 +611,49 @@ test('shop interior page shows its matching decor catalog and charges only goal-
   );
 });
 
+test('cafe equipment is clearly labeled, illustrated, and purchased with earned coins', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'sunny-cafe');
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 120,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  for (let page = 1; page < 5; page += 1) {
+    await press(interiorTree, 'shop-decoration-page-next');
+    interiorTree = app.renderShopInterior();
+  }
+  const coffeeMachine = findByTestId(interiorTree, 'shop-decoration-general-equipment-cafe-espresso-machine');
+  assert.equal(textContent(coffeeMachine).includes('雙頭咖啡機'), true);
+  assert.ok(findByTestId(interiorTree, 'shop-decoration-equipment-general-equipment-cafe-espresso-machine'));
+  const machineVisual = findByTestId(interiorTree, 'shop-decoration-visual-general-equipment-cafe-espresso-machine');
+  assert.equal(machineVisual.props.visual, 'coffee-machine');
+
+  await press(interiorTree, 'shop-decoration-place-general-equipment-cafe-espresso-machine');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  assert.equal(app.contextExports.useHabits().coins, 58);
+  assert.equal(
+    app.contextExports.useHabits().shopInteriors[shop.id].placements['front-window'],
+    'general-equipment-cafe-espresso-machine',
+  );
+  assert.equal(
+    findByTestId(interiorTree, 'shop-interior-placed-front-window').props.visual,
+    'coffee-machine',
+  );
+});
+
 test('long-pressing a goal opens edit and delete actions', async () => {
   const app = createHarness();
   app.renderProvider();

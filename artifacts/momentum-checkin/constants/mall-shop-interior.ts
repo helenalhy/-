@@ -16,6 +16,7 @@ export interface ShopInteriorDecoration {
   icon: string;
   price: number;
   color: string;
+  itemKind?: 'equipment' | 'decoration';
   visual?: string;
   limitedEdition?: boolean;
 }
@@ -41,6 +42,7 @@ const option = (
   color: string,
   visual?: string,
   limitedEdition = false,
+  itemKind: ShopInteriorDecoration['itemKind'] = 'decoration',
 ): ShopInteriorDecoration => ({
   id: `${type}-${key}`,
   name,
@@ -48,6 +50,7 @@ const option = (
   icon,
   price,
   color,
+  itemKind,
   visual,
   limitedEdition,
 });
@@ -440,8 +443,189 @@ const signatureDecorations: Partial<Record<MallShopType, DecorationSeed[]>> = {
   ],
 };
 
-const variantDecorations = (type: MallShopType): ShopInteriorDecoration[] => {
-  const fixtures = type === 'general' ? generalFixtures : shopFixtures[type];
+type GeneralShopSpecialty =
+  | 'cafe'
+  | 'candy'
+  | 'icecream'
+  | 'bakery'
+  | 'tea'
+  | 'food'
+  | 'flower'
+  | 'book'
+  | 'toy'
+  | 'craft';
+
+const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
+  cafe: [
+    { key: 'espresso-machine', name: '雙頭咖啡機', description: '現磨咖啡豆，沖出一杯香濃咖啡。', icon: 'coffee', price: 62, color: c.candyPeach, visual: 'coffee-machine' },
+    { key: 'soft-serve-machine', name: '綿滑雪糕機', description: '為咖啡店準備香甜的雪糕甜品。', icon: 'droplet', price: 66, color: c.candySky, visual: 'ice-cream-machine' },
+    { key: 'cotton-candy-machine', name: '雲朵棉花糖機', description: '把糖絲轉成蓬鬆的彩色棉花糖。', icon: 'sun', price: 58, color: c.candyPink, visual: 'cotton-candy-machine' },
+    { key: 'coffee-grinder', name: '透明咖啡豆研磨機', description: '現場研磨咖啡豆，讓香氣留在店裡。', icon: 'settings', price: 48, color: c.candyLavender, visual: 'coffee-machine' },
+  ],
+  candy: [
+    { key: 'candy-display-case', name: '彩糖分格展示櫃', description: '把軟糖、硬糖和水果糖分格陳列。', icon: 'grid', price: 48, color: c.candyPink, visual: 'candy-display' },
+    { key: 'lollipop-carousel', name: '棒棒糖旋轉展示架', description: '讓一圈繽紛棒棒糖成為店內焦點。', icon: 'star', price: 42, color: c.candyLemon, visual: 'candy-display' },
+    { key: 'gumball-dispenser', name: '彩珠糖果販賣機', description: '轉動旋鈕就能取出一顆彩色糖果。', icon: 'circle', price: 55, color: c.candySky, visual: 'candy-display' },
+    { key: 'cotton-candy-machine', name: '夢幻棉花糖機', description: '現做蓬鬆棉花糖，帶來甜甜香氣。', icon: 'sun', price: 60, color: c.candyLavender, visual: 'cotton-candy-machine' },
+  ],
+  icecream: [
+    { key: 'gelato-machine', name: '繽紛雪糕機', description: '製作不同口味的雪糕與霜淇淋。', icon: 'droplet', price: 66, color: c.candySky, visual: 'ice-cream-machine' },
+    { key: 'ice-cream-freezer', name: '玻璃雪糕冷凍櫃', description: '展示多種口味的雪糕球和冰棒。', icon: 'grid', price: 58, color: c.candyMint, visual: 'ice-cream-machine' },
+    { key: 'cone-waffle-maker', name: '脆皮甜筒烘烤機', description: '烘出香脆甜筒，搭配新鮮雪糕。', icon: 'sun', price: 54, color: c.candyPeach, visual: 'bakery-oven' },
+    { key: 'topping-bar', name: '雪糕配料自選台', description: '準備水果粒、糖針和巧克力醬。', icon: 'package', price: 44, color: c.candyPink, visual: 'candy-display' },
+  ],
+  bakery: [
+    { key: 'bakery-oven', name: '奶油色旋風烤爐', description: '烘焙麵包、曲奇和每日新鮮甜點。', icon: 'sun', price: 68, color: c.candyPeach, visual: 'bakery-oven' },
+    { key: 'dough-mixer', name: '桌上型攪拌機', description: '將麵粉和奶油攪拌成柔軟麵糰。', icon: 'settings', price: 52, color: c.candyMint, visual: 'bakery-oven' },
+    { key: 'pastry-display-case', name: '玻璃甜點保鮮櫃', description: '整齊展示剛出爐的蛋糕和麵包。', icon: 'grid', price: 58, color: c.candyPink, visual: 'candy-display' },
+    { key: 'cotton-candy-machine', name: '棉花糖甜點機', description: '為烘焙甜點加上一朵現做糖雲。', icon: 'cloud', price: 55, color: c.candyLavender, visual: 'cotton-candy-machine' },
+  ],
+  tea: [
+    { key: 'tea-brewer', name: '透明茶葉沖泡機', description: '把茶葉沖泡成清香熱茶或冰茶。', icon: 'coffee', price: 56, color: c.candyMint, visual: 'tea-brewer' },
+    { key: 'milk-tea-shaker', name: '珍珠奶茶搖搖機', description: '搖出冰涼奶茶，配上香Q珍珠。', icon: 'droplet', price: 52, color: c.candyPeach, visual: 'tea-brewer' },
+    { key: 'syrup-dispenser', name: '風味糖漿按壓台', description: '提供花果茶和汽水的多種風味。', icon: 'package', price: 42, color: c.candyPink, visual: 'candy-display' },
+    { key: 'cup-sealing-machine', name: '飲品封膜機', description: '替外帶飲品封好杯口，方便帶走。', icon: 'square', price: 48, color: c.candySky, visual: 'tea-brewer' },
+  ],
+  food: [
+    { key: 'warm-food-counter', name: '暖心保溫餐檯', description: '讓剛完成的餐點保持溫暖可口。', icon: 'sun', price: 58, color: c.candyPeach, visual: 'food-prep' },
+    { key: 'noodle-cooker', name: '迷你麵食煮鍋', description: '為麵食小店準備快速煮麵設備。', icon: 'coffee', price: 62, color: c.candyLemon, visual: 'food-prep' },
+    { key: 'prep-counter', name: '食材備料工作台', description: '把新鮮配料分類放好，方便料理。', icon: 'grid', price: 48, color: c.candyMint, visual: 'food-prep' },
+    { key: 'dessert-machine', name: '餐後甜點製作機', description: '為每一餐加上一份迷你甜點。', icon: 'heart', price: 54, color: c.candyPink, visual: 'ice-cream-machine' },
+  ],
+  flower: [
+    { key: 'flower-cooler', name: '鮮花保鮮展示櫃', description: '讓花束在清涼明亮的櫃內保持新鮮。', icon: 'feather', price: 56, color: c.candySky, visual: 'flower-station' },
+    { key: 'bouquet-workbench', name: '花束包裝工作台', description: '準備花剪、緞帶和包裝紙。', icon: 'gift', price: 48, color: c.candyPink, visual: 'flower-station' },
+    { key: 'potting-station', name: '盆栽換土工作站', description: '整理花盆、泥土和小型園藝工具。', icon: 'sunrise', price: 44, color: c.candyMint, visual: 'flower-station' },
+    { key: 'flower-vase-rack', name: '花瓶與花器展示架', description: '依形狀和顏色展示各式花器。', icon: 'grid', price: 40, color: c.candyLavender, visual: 'colorful-planter' },
+  ],
+  book: [
+    { key: 'book-carousel', name: '新書旋轉展示架', description: '讓本週推薦的新書更容易被看見。', icon: 'book-open', price: 42, color: c.candyPeach, visual: 'book-carousel' },
+    { key: 'book-sorting-desk', name: '書籍分類整理台', description: '把新書和歸還書籍分區整理。', icon: 'grid', price: 40, color: c.candyLavender, visual: 'book-carousel' },
+    { key: 'stationery-display', name: '文具選物展示台', description: '陳列筆記本、書籤和閱讀小物。', icon: 'edit-3', price: 38, color: c.candySky, visual: 'gallery-frames' },
+    { key: 'book-press', name: '書本修復小工具台', description: '整理書角、封面和保護書套。', icon: 'tool', price: 44, color: c.candyMint, visual: 'craft-station' },
+  ],
+  toy: [
+    { key: 'capsule-machine', name: '彩色扭蛋機', description: '轉動扭蛋機，帶走一個小驚喜。', icon: 'box', price: 58, color: c.candyLemon, visual: 'capsule-machine' },
+    { key: 'prize-display', name: '玩偶與模型展示櫃', description: '把可愛玩偶和迷你模型排好展示。', icon: 'gift', price: 46, color: c.candyPink, visual: 'candy-display' },
+    { key: 'toy-repair-table', name: '玩具整理工作台', description: '整理積木、模型零件和小玩具。', icon: 'tool', price: 40, color: c.candySky, visual: 'craft-station' },
+    { key: 'game-card-display', name: '卡牌收藏展示架', description: '把熱門卡牌放進透明收藏格。', icon: 'grid', price: 44, color: c.candyLavender, visual: 'book-carousel' },
+  ],
+  craft: [
+    { key: 'craft-workbench', name: '手作材料工作台', description: '準備剪刀、布料和各種創作材料。', icon: 'tool', price: 50, color: c.candyPeach, visual: 'craft-station' },
+    { key: 'mini-kiln', name: '糖果色迷你窯爐', description: '為陶作和小型工藝提供燒製空間。', icon: 'sun', price: 62, color: c.candyCoral, visual: 'bakery-oven' },
+    { key: 'sewing-machine', name: '桌上型縫紉機', description: '縫製布藝、玩偶衣服和小型手作。', icon: 'settings', price: 54, color: c.candyMint, visual: 'sewing-machine' },
+    { key: 'display-turntable', name: '手作品旋轉展示台', description: '轉動展示剛完成的獨一無二作品。', icon: 'star', price: 42, color: c.candyLavender, visual: 'sculpture-plaza' },
+  ],
+};
+
+const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> = {
+  womenswear: [
+    { key: 'garment-steamer', name: '直立式服裝蒸氣機', description: '整理上衣和裙裝的布料皺褶。', icon: 'sun', price: 54, color: c.candyPink, visual: 'sewing-machine' },
+    { key: 'sewing-machine', name: '蝴蝶結縫紉工作台', description: '為衣物修改尺寸或縫上精緻裝飾。', icon: 'settings', price: 58, color: c.candyLavender, visual: 'sewing-machine' },
+    { key: 'fabric-swatch-wall', name: '布料色卡選擇牆', description: '依顏色挑選服飾布料和搭配色。', icon: 'grid', price: 42, color: c.candySky, visual: 'clothing-wardrobe' },
+    { key: 'style-matching-mirror', name: '穿搭配色鏡台', description: '把上衣、裙裝和配件放在一起搭配。', icon: 'square', price: 46, color: c.candyPeach, visual: 'dress-display' },
+  ],
+  bridal: [
+    { key: 'bridal-steamer', name: '婚紗蒸氣護理櫃', description: '為蕾絲婚紗和長裙整理柔順裙襬。', icon: 'sun', price: 64, color: c.candyCream, visual: 'sewing-machine' },
+    { key: 'lace-sewing-station', name: '蕾絲縫製工作台', description: '整理頭紗、蕾絲和婚紗細節。', icon: 'settings', price: 60, color: c.candyPink, visual: 'sewing-machine' },
+    { key: 'bridal-accessory-case', name: '頭紗飾品玻璃櫃', description: '展示頭紗、髮飾和珍珠配件。', icon: 'gift', price: 52, color: c.candyLavender, visual: 'jewelry-case' },
+    { key: 'gown-measuring-stand', name: '婚紗量身調整台', description: '預留量身和裙襬整理的空間。', icon: 'user', price: 56, color: c.candySky, visual: 'dress-display' },
+  ],
+  eveningwear: [
+    { key: 'eveningwear-steamer', name: '晚禮服蒸氣護理機', description: '整理絲絨、薄紗和亮片禮服。', icon: 'sun', price: 62, color: c.candyLavender, visual: 'sewing-machine' },
+    { key: 'tailoring-station', name: '晚裝修改縫紉台', description: '為禮服裙襬和西裝作細節調整。', icon: 'settings', price: 60, color: c.candyRose, visual: 'sewing-machine' },
+    { key: 'runway-spotlight-console', name: '伸展台燈光控制台', description: '調整主打禮服展示時的柔和燈光。', icon: 'zap', price: 48, color: c.candyLemon, visual: 'garden-lights' },
+    { key: 'formal-accessory-case', name: '晚宴配件玻璃櫃', description: '集中展示手拿包、領結和珠寶。', icon: 'gift', price: 52, color: c.candySky, visual: 'jewelry-case' },
+  ],
+  kimono: [
+    { key: 'kimono-steamer', name: '和服蒸氣整理櫃', description: '整理和服長袖、腰帶和布料摺線。', icon: 'sun', price: 64, color: c.candyCoral, visual: 'sewing-machine' },
+    { key: 'obi-shaping-table', name: '腰帶造型整理台', description: '協助整理腰帶、結飾和配件。', icon: 'grid', price: 48, color: c.candyPeach, visual: 'kimono-display' },
+    { key: 'yukata-care-rack', name: '浴衣晾掛衣架', description: '展示並整理浴衣與夏祭配件。', icon: 'shopping-bag', price: 44, color: c.candySky, visual: 'kimono-display' },
+    { key: 'kimono-sewing-station', name: '和服修補工作台', description: '收納針線與布料，整理細緻縫線。', icon: 'settings', price: 56, color: c.candyPink, visual: 'sewing-machine' },
+  ],
+  supermarket: [
+    { key: 'supermarket-freezer', name: '雙門冰品冷凍櫃', description: '冷藏雪糕、冰棒和冷凍甜點。', icon: 'droplet', price: 58, color: c.candySky, visual: 'ice-cream-machine' },
+    { key: 'supermarket-candy-shelf', name: '糖果自選分格櫃', description: '把糖果和小零食按種類分格展示。', icon: 'grid', price: 42, color: c.candyPink, visual: 'candy-display' },
+    { key: 'supermarket-bakery-warmer', name: '麵包保溫展示櫃', description: '讓烘焙區的麵包保持溫熱。', icon: 'sun', price: 52, color: c.candyPeach, visual: 'bakery-oven' },
+    { key: 'supermarket-self-checkout', name: '迷你自助結帳機', description: '為超市增設方便的自助結帳位置。', icon: 'credit-card', price: 60, color: c.candyMint, visual: 'electronics-bench' },
+  ],
+  hyakuen: [
+    { key: 'hyakuen-capsule-machine', name: '驚喜扭蛋販賣機', description: '放入迷你玩具和小飾物扭蛋。', icon: 'box', price: 54, color: c.candyLemon, visual: 'capsule-machine' },
+    { key: 'label-printer', name: '商品標籤印字機', description: '替生活用品和文具整理分類標籤。', icon: 'edit-3', price: 42, color: c.candySky, visual: 'electronics-bench' },
+    { key: 'hyakuen-gift-wrap', name: '小物包裝工作台', description: '為挑選好的小物加上紙袋和緞帶。', icon: 'gift', price: 40, color: c.candyPink, visual: 'craft-station' },
+    { key: 'hyakuen-candy-rack', name: '迷你糖果展示架', description: '陳列包裝糖果和季節限定零食。', icon: 'grid', price: 38, color: c.candyPeach, visual: 'candy-display' },
+  ],
+  swimwear: [
+    { key: 'swimwear-steamer', name: '泳裝護理蒸氣機', description: '整理泳裝和薄紗罩衫的展示造型。', icon: 'sun', price: 52, color: c.candySky, visual: 'sewing-machine' },
+    { key: 'beach-accessory-case', name: '海灘配件展示櫃', description: '收納泳鏡、泳帽和防水小物。', icon: 'grid', price: 40, color: c.candyMint, visual: 'jewelry-case' },
+    { key: 'swimwear-fitting-mirror', name: '泳裝穿搭全身鏡', description: '方便比較泳衣和沙灘裙裝搭配。', icon: 'square', price: 44, color: c.candyPink, visual: 'dress-display' },
+    { key: 'towel-warmer', name: '柔暖浴巾收納櫃', description: '把柔軟毛巾整齊收在店內一角。', icon: 'heart', price: 46, color: c.candyPeach, visual: 'clothing-wardrobe' },
+  ],
+  cosplay: [
+    { key: 'cosplay-sewing-machine', name: '角色服裝縫紉機', description: '修改制服、披風和舞台服裝細節。', icon: 'settings', price: 60, color: c.candyLavender, visual: 'sewing-machine' },
+    { key: 'wig-styling-station', name: '假髮造型整理台', description: '整理假髮、髮夾和角色造型配件。', icon: 'user', price: 50, color: c.candyPink, visual: 'craft-station' },
+    { key: 'cosplay-prop-workbench', name: '角色道具製作工作台', description: '收納泡棉、顏料和安全造型道具。', icon: 'tool', price: 54, color: c.candySky, visual: 'craft-station' },
+    { key: 'costume-steamer', name: '舞台服裝蒸氣整理機', description: '讓角色服裝上台前保持整潔。', icon: 'sun', price: 48, color: c.candyPeach, visual: 'sewing-machine' },
+  ],
+  electronics: [
+    { key: 'electronics-demo-bench', name: '小家電體驗工作台', description: '讓客人試用桌上型電器和生活科技。', icon: 'cpu', price: 60, color: c.candyMint, visual: 'electronics-bench' },
+    { key: 'device-repair-station', name: '迷你電器檢修台', description: '展示安全的維修工具和檢測設備。', icon: 'settings', price: 58, color: c.candySky, visual: 'electronics-bench' },
+    { key: 'electronics-charging-wall', name: '多裝置充電體驗牆', description: '展示手機、耳機和穿戴裝置充電配件。', icon: 'zap', price: 48, color: c.candyLavender, visual: 'electronics-bench' },
+    { key: 'electronics-cable-organizer', name: '線材分類收納櫃', description: '將充電線和轉接配件分格收好。', icon: 'grid', price: 40, color: c.candyPeach, visual: 'gallery-frames' },
+  ],
+  boutique: [
+    { key: 'boutique-jewelry-case', name: '珍藏珠寶柔光櫃', description: '在柔和燈光下展示首飾和腕錶。', icon: 'gift', price: 62, color: c.candyLemon, visual: 'jewelry-case' },
+    { key: 'boutique-polishing-station', name: '首飾保養整理台', description: '收納擦拭布和小型首飾整理工具。', icon: 'sun', price: 50, color: c.candyPink, visual: 'jewelry-case' },
+    { key: 'boutique-handbag-stand', name: '手袋輪替展示台', description: '把當季手袋放在專屬展示位置。', icon: 'shopping-bag', price: 54, color: c.candyPeach, visual: 'gallery-frames' },
+    { key: 'boutique-gift-wrap', name: '精品禮盒包裝台', description: '以緞帶和包裝紙整理收藏小禮物。', icon: 'gift', price: 48, color: c.candyLavender, visual: 'craft-station' },
+  ],
+};
+
+const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
+  ['cafe', /咖啡|coffee|cafe|烘豆/i],
+  ['candy', /糖果|軟糖|棉花糖|彩糖|糖藝|糖霜/i],
+  ['icecream', /雪糕|冰淇淋|冰棒|冰沙|gelato/i],
+  ['bakery', /烘焙|麵包|曲奇|餅乾|甜甜圈|鬆餅|布丁|馬卡龍|巧克力|甜點|甜品|果塔/i],
+  ['tea', /奶茶|茶|汽水|飲品|飲料|smoothie|冰飲/i],
+  ['food', /食堂|食館|小食|飯糰|咖喱|咖哩|披薩|意粉|可麗餅|捲餅|起司|香料|料理|餐/i],
+  ['flower', /花|植物|園藝|苗圃|盆栽|花藝/i],
+  ['book', /書|文具|手帳|紙品|明信片|繪本|漫畫|雜誌/i],
+  ['toy', /扭蛋|玩偶|玩具|遊戲|模型|積木|卡牌|街機/i],
+  ['craft', /工房|工藝|陶|畫室|畫作|手作|編織|刺繡|玻璃|皮革/i],
+];
+
+function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpecialty | undefined {
+  const text = `${shopId} ${shopName}`;
+  return generalSpecialtyPatterns.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+function seedDecorations(type: MallShopType, seeds: DecorationSeed[], idPrefix: string): ShopInteriorDecoration[] {
+  return seeds.map((seed) => option(
+    type,
+    `${idPrefix}-${seed.key}`,
+    seed.name,
+    seed.description,
+    seed.icon,
+    seed.price,
+    seed.color,
+    seed.visual,
+    seed.limitedEdition,
+    'equipment',
+  ));
+}
+
+const specialtyEquipment = (type: MallShopType, specialty?: GeneralShopSpecialty) => {
+  if (type === 'general') {
+    return specialty
+      ? seedDecorations(type, generalShopEquipment[specialty], `equipment-${specialty}`)
+      : [];
+  }
+  return seedDecorations(type, shopEquipment[type], 'equipment');
+};
+
+const variantDecorations = (type: MallShopType, fixtureLimit?: number): ShopInteriorDecoration[] => {
+  const allFixtures = type === 'general' ? generalFixtures : shopFixtures[type];
+  const fixtures = fixtureLimit === undefined ? allFixtures : allFixtures.slice(0, fixtureLimit);
   return fixtures.flatMap((fixture) =>
     finishes[type].map((finish) =>
       option(
@@ -473,7 +657,7 @@ const featureDecorations = (type: MallShopType): ShopInteriorDecoration[] =>
     ),
   );
 
-export const SHOP_INTERIOR_DECORATIONS: Record<MallShopType, ShopInteriorDecoration[]> = {
+const previousShopInteriorDecorations: Record<MallShopType, ShopInteriorDecoration[]> = {
   general: [...legacyDecorations.general, ...variantDecorations('general')],
   womenswear: [...legacyDecorations.womenswear, ...variantDecorations('womenswear'), ...featureDecorations('womenswear')],
   bridal: [...legacyDecorations.bridal, ...variantDecorations('bridal'), ...featureDecorations('bridal')],
@@ -487,15 +671,54 @@ export const SHOP_INTERIOR_DECORATIONS: Record<MallShopType, ShopInteriorDecorat
   boutique: [...legacyDecorations.boutique, ...variantDecorations('boutique'), ...featureDecorations('boutique')],
 };
 
+export const SHOP_INTERIOR_DECORATIONS: Record<MallShopType, ShopInteriorDecoration[]> = {
+  general: previousShopInteriorDecorations.general,
+  womenswear: [...legacyDecorations.womenswear, ...variantDecorations('womenswear', 9), ...featureDecorations('womenswear'), ...specialtyEquipment('womenswear')],
+  bridal: [...legacyDecorations.bridal, ...variantDecorations('bridal', 9), ...featureDecorations('bridal'), ...specialtyEquipment('bridal')],
+  eveningwear: [...legacyDecorations.eveningwear, ...variantDecorations('eveningwear', 9), ...featureDecorations('eveningwear'), ...specialtyEquipment('eveningwear')],
+  kimono: [...legacyDecorations.kimono, ...variantDecorations('kimono', 9), ...featureDecorations('kimono'), ...specialtyEquipment('kimono')],
+  supermarket: [...legacyDecorations.supermarket, ...variantDecorations('supermarket', 9), ...featureDecorations('supermarket'), ...specialtyEquipment('supermarket')],
+  hyakuen: [...legacyDecorations.hyakuen, ...variantDecorations('hyakuen', 9), ...featureDecorations('hyakuen'), ...specialtyEquipment('hyakuen')],
+  swimwear: [...legacyDecorations.swimwear, ...variantDecorations('swimwear', 9), ...featureDecorations('swimwear'), ...specialtyEquipment('swimwear')],
+  cosplay: [...legacyDecorations.cosplay, ...variantDecorations('cosplay', 9), ...featureDecorations('cosplay'), ...specialtyEquipment('cosplay')],
+  electronics: [...legacyDecorations.electronics, ...variantDecorations('electronics', 9), ...featureDecorations('electronics'), ...specialtyEquipment('electronics')],
+  boutique: [...legacyDecorations.boutique, ...variantDecorations('boutique', 9), ...featureDecorations('boutique'), ...specialtyEquipment('boutique')],
+};
+
 export const SHOP_INTERIOR_DECORATION_BY_ID = Object.fromEntries(
-  Object.values(SHOP_INTERIOR_DECORATIONS).flat().map((decoration) => [decoration.id, decoration]),
+  [
+    ...Object.values(previousShopInteriorDecorations).flat(),
+    ...Object.values(SHOP_INTERIOR_DECORATIONS).flat(),
+    ...Object.entries(generalShopEquipment).flatMap(([specialty, seeds]) =>
+      seedDecorations('general', seeds, `equipment-${specialty}`),
+    ),
+  ].map((decoration) => [decoration.id, decoration]),
 ) as Record<string, ShopInteriorDecoration>;
 
 export const SHOP_INTERIOR_DECORATION_IDS = Object.keys(SHOP_INTERIOR_DECORATION_BY_ID);
 export const SHOP_INTERIOR_SLOT_IDS = SHOP_INTERIOR_SLOTS.map(({ id }) => id);
 
-export function getShopInteriorDecorations(shopType?: MallShopType): ShopInteriorDecoration[] {
-  return SHOP_INTERIOR_DECORATIONS[shopType ?? 'general'];
+export function getShopInteriorDecorations(
+  shopType?: MallShopType,
+  shopId?: string,
+  shopName?: string,
+  ownedDecorationIds: string[] = [],
+): ShopInteriorDecoration[] {
+  const type = shopType ?? 'general';
+  const specialty = type === 'general' ? inferGeneralShopSpecialty(shopId, shopName) : undefined;
+  const active = type === 'general' && specialty
+    ? [
+      ...legacyDecorations.general,
+      ...variantDecorations('general', 10),
+      ...specialtyEquipment('general', specialty),
+    ]
+    : SHOP_INTERIOR_DECORATIONS[type];
+  const activeIds = new Set(active.map(({ id }) => id));
+  const ownedLegacy = ownedDecorationIds
+    .filter((id) => !activeIds.has(id))
+    .map((id) => SHOP_INTERIOR_DECORATION_BY_ID[id])
+    .filter((decoration): decoration is ShopInteriorDecoration => !!decoration);
+  return [...active, ...ownedLegacy];
 }
 
 export function getShopTypeLabel(shopType?: MallShopType): string {

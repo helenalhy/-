@@ -1,4 +1,4 @@
-- [商場場景要求](mall-scene-requirements.md) — 每店 50 款；泳衣／Cosplay 有上衣裙裝衣櫃和動漫限定款，四新店分配第 4／5／6／8 層。
+- [商場場景要求](mall-scene-requirements.md) — 每店 50 款；店內設備依店型配對並保留舊收藏；泳衣／Cosplay 有專屬衣櫃與限定款。
 - [完全免費的金幣制度](free-economy.md) — 不課金、不儲值；只用完成目標獲得的金幣兌換，不能再要求獎勵券。
 - [Expo 預覽快取](expo-preview-cache.md) — 長時間開啟的測試頁可能仍載入舊版；資料操作前先確認新版介面已載入。
 - [商場讀屏結果回饋](mall-accessibility-results.md) — 操作結果保持單一回饋；分區切換依平台使用一種禮貌公告機制。

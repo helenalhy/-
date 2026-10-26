@@ -218,6 +218,46 @@ test('every shop type has 50 unique interior choices and clothing shops include 
   assert.ok(womenswear.some((option) => option.id === 'womenswear-clothing-rack'), 'existing decoration IDs remain stable');
 });
 
+test('shop interiors offer shop-specific equipment while keeping each default catalog at 50 choices', () => {
+  for (const shopType of Object.keys(shopInteriorCatalog.SHOP_INTERIOR_DECORATIONS)) {
+    const options = shopInteriorCatalog.getShopInteriorDecorations(shopType, `fixture-${shopType}`, '測試商店');
+    assert.equal(options.length, 50, `${shopType} catalog should remain at 50 choices`);
+    assert.equal(
+      options.filter((option) => option.id.startsWith(`${shopType}-equipment-`)).length,
+      shopType === 'general' ? 0 : 4,
+      `${shopType} should have its own equipment choices`,
+    );
+  }
+
+  const cafe = shopInteriorCatalog.getShopInteriorDecorations('general', 'sunny-cafe', '暖陽咖啡館');
+  assert.equal(cafe.length, 50);
+  assert.ok(cafe.some((option) => option.name === '雙頭咖啡機'));
+  assert.ok(cafe.some((option) => option.name === '綿滑雪糕機'));
+  assert.ok(cafe.some((option) => option.name === '雲朵棉花糖機'));
+  assert.ok(cafe.some((option) => option.visual === 'coffee-machine'));
+
+  const candyShop = shopInteriorCatalog.getShopInteriorDecorations('general', 'candy-gift-shop', '糖果禮物店');
+  assert.equal(candyShop.length, 50);
+  assert.ok(candyShop.some((option) => option.name === '彩糖分格展示櫃'));
+  assert.ok(candyShop.some((option) => option.name === '棒棒糖旋轉展示架'));
+  assert.ok(candyShop.some((option) => option.name === '夢幻棉花糖機'));
+
+  const seasonalBakery = shopInteriorCatalog.getShopInteriorDecorations('general', 'strawberry-bakery', '草莓烘焙屋');
+  assert.ok(seasonalBakery.some((option) => option.name === '奶油色旋風烤爐'));
+
+  const archivedDecorationId = 'kimono-tatami-fitting-sakura';
+  const kimonoWithOwnedArchive = shopInteriorCatalog.getShopInteriorDecorations(
+    'kimono',
+    'kimono-house',
+    '和服店',
+    [archivedDecorationId],
+  );
+  assert.ok(
+    kimonoWithOwnedArchive.some((option) => option.id === archivedDecorationId),
+    'previously owned decorations remain available even when the refreshed catalog makes room for equipment',
+  );
+});
+
 function pager(app) {
   return app.nodes().find((node) => node.type === 'CatalogPager');
 }

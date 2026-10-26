@@ -95,9 +95,11 @@ export default function MallShopInteriorScreen() {
   const [notice, setNotice] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
   const interior = shop ? shopInteriors[shop.id] : undefined;
+  const ownedDecorationIds = interior?.ownedDecorations ?? [];
+  const ownedDecorationKey = ownedDecorationIds.slice().sort().join('|');
   const decorations = useMemo(
-    () => getShopInteriorDecorations(shop?.shopType),
-    [shop?.shopType],
+    () => getShopInteriorDecorations(shop?.shopType, shop?.id, shop?.name, ownedDecorationIds),
+    [shop?.shopType, shop?.id, shop?.name, ownedDecorationKey],
   );
   const owned = new Set(interior?.ownedDecorations ?? []);
   const placements = interior?.placements ?? {};
@@ -118,10 +120,10 @@ export default function MallShopInteriorScreen() {
       await placeShopInteriorDecoration(shop.id, decorationId, selectedSlot);
       const location = SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label ?? '店內';
       setNotice(alreadyOwned
-        ? `已免費將裝飾移至${location}。舊裝飾仍保留在店內收藏。`
+        ? `已免費將項目移至${location}。舊項目仍保留在店內收藏。`
         : `已兌換並放在${location}，扣除 ${price} 金幣。`);
     } catch (error) {
-      Alert.alert('裝飾未能放置', error instanceof Error ? error.message : '請稍後再試。');
+      Alert.alert('項目未能放置', error instanceof Error ? error.message : '請稍後再試。');
     } finally {
       setWorkingDecoration(null);
     }
@@ -133,7 +135,7 @@ export default function MallShopInteriorScreen() {
     setNotice('');
     try {
       await storeShopInteriorDecoration(shop.id, selectedSlot);
-      setNotice(`已將${selectedDecoration.name}收進這間店的裝飾收藏，沒有退款或扣除金幣。`);
+      setNotice(`已將${selectedDecoration.name}收進這間店的收藏，沒有退款或扣除金幣。`);
     } catch (error) {
       Alert.alert('收納未完成', error instanceof Error ? error.message : '請稍後再試。');
     } finally {
@@ -314,9 +316,9 @@ export default function MallShopInteriorScreen() {
 
             <View style={styles.sectionHeading}>
               <View>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>挑選店內裝飾</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>挑選店內設備與佈置</Text>
                 <Text style={[styles.sectionCopy, { color: colors.mutedForeground }]}>
-                  先選上方位置；已兌換的裝飾可免費換位，舊裝飾會保留。
+                  不同店型有專屬設備；先選上方位置，已兌換項目可免費換位或收納。
                 </Text>
               </View>
               <View style={[styles.selectedSlotPill, { backgroundColor: colors.secondary }]}>
@@ -361,13 +363,13 @@ export default function MallShopInteriorScreen() {
               <Pressable
                 testID="shop-interior-store-decoration"
                 accessibilityRole="button"
-                accessibilityLabel={`收起${selectedDecoration.name}，保留在收藏，不退款`}
+                accessibilityLabel={`收起${selectedDecoration.name}，保留在店內收藏，不退款`}
                 disabled={workingDecoration !== null}
                 onPress={() => void storeSelectedDecoration()}
                 style={[styles.storeButton, { borderColor: colors.border, backgroundColor: colors.card }]}
               >
                 <Feather name="archive" size={15} color={colors.primary} />
-                <Text style={[styles.storeButtonText, { color: colors.primary }]}>收起目前裝飾 · 收藏保留</Text>
+                <Text style={[styles.storeButtonText, { color: colors.primary }]}>收起目前項目 · 收藏保留</Text>
               </Pressable>
             )}
 
@@ -412,6 +414,14 @@ export default function MallShopInteriorScreen() {
                             <Text style={[styles.limitedBadgeText, { color: colors.foreground }]}>限定</Text>
                           </View>
                         )}
+                        {decoration.itemKind === 'equipment' && (
+                          <View
+                            testID={`shop-decoration-equipment-${decoration.id}`}
+                            style={[styles.equipmentBadge, { backgroundColor: colors.candyMint }]}
+                          >
+                            <Text style={[styles.equipmentBadgeText, { color: colors.foreground }]}>設備</Text>
+                          </View>
+                        )}
                       </View>
                       <Text style={[styles.decorationDescription, { color: colors.mutedForeground }]}>{decoration.description}</Text>
                       <Text style={[styles.decorationCost, { color: colors.candyCaramelDark }]}>
@@ -445,7 +455,7 @@ export default function MallShopInteriorScreen() {
               })}
             </View>
             <Text style={[styles.freeNote, { color: colors.mutedForeground }]}>
-              金幣只來自已完成的目標；裝飾不設付費、儲值或現金購買。
+              金幣只來自已完成的目標；店內設備與佈置不設付費、儲值或現金購買。
             </Text>
           </>
         ) : null}
@@ -507,6 +517,8 @@ const styles = StyleSheet.create({
   decorationName: { flexShrink: 1, fontSize: 13, fontWeight: '800' },
   limitedBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   limitedBadgeText: { fontSize: 8, fontWeight: '800' },
+  equipmentBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  equipmentBadgeText: { fontSize: 8, fontWeight: '800' },
   decorationDescription: { fontSize: 10, lineHeight: 14 },
   decorationCost: { fontSize: 10, fontWeight: '700', marginTop: 2 },
   placeButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { getStreak, useHabits } from '@/context/HabitsContext';
+import { getLocalDate, getStreak, useHabits } from '@/context/HabitsContext';
+import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -11,6 +12,17 @@ export default function ProgressScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { habits, today } = useHabits();
+  const [quoteDate, setQuoteDate] = useState(today);
+  useEffect(() => {
+    const refreshQuoteDate = () => {
+      const currentDate = getLocalDate();
+      setQuoteDate((previousDate) => previousDate === currentDate ? previousDate : currentDate);
+    };
+    refreshQuoteDate();
+    const interval = setInterval(refreshQuoteDate, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+  const dailyQuote = getDailyMotivationalQuote(quoteDate);
   const [year, month, day] = today.split('-').map(Number);
   const todayDate = new Date(year, month - 1, day);
   const monday = new Date(todayDate);
@@ -113,7 +125,7 @@ export default function ProgressScreen() {
 
         <View style={[styles.noteCard, { backgroundColor: colors.secondary }]}>
           <Feather name="sun" size={17} color={colors.primary} />
-          <Text style={[styles.noteText, { color: colors.foreground }]}>不需要和別人比較。你只要比昨天更靠近自己一點。</Text>
+          <Text style={[styles.noteText, { color: colors.foreground }]}>{dailyQuote}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

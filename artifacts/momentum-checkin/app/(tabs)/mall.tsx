@@ -29,13 +29,20 @@ import {
 import { useColors } from '@/hooks/useColors';
 import { MallAmbience, MallObjectVisual } from '@/components/MallVisuals';
 import { MALL_FLOORS, MALL_ITEMS, MALL_ITEM_BY_ID, type MallItem } from '@/constants/mall';
+import { SHOP_INTERIOR_DECORATIONS } from '@/constants/mall-shop-interior';
 import { CatalogPager } from '@/components/CatalogPager';
 import { getMallSlotPosition, MALL_POSITIONS_PER_FLOOR, type MallWing } from '@/constants/mall-layout';
 import { MallWingPager } from '@/components/MallWingPager';
 
 const CATALOG_PAGE_SIZE = 10;
+const IS_DEVELOPMENT_PREVIEW = typeof __DEV__ !== 'undefined' && __DEV__;
 const RECENT_SEARCHES_STORAGE_KEY = '@momentum/mall/recent-searches';
 const RECENT_SEARCHES_LIMIT = 8;
+const MAX_INTERIOR_CATALOG_COST = Math.max(
+  ...Object.values(SHOP_INTERIOR_DECORATIONS).map((catalog) => catalog.reduce((total, item) => total + item.price, 0)),
+);
+const PREVIEW_TEST_COIN_BALANCE = MALL_ITEMS.reduce((total, item) => total + item.price, 0)
+  + MALL_ITEMS.filter((item) => item.category === 'shop').length * MAX_INTERIOR_CATALOG_COST;
 
 const CATEGORIES: { id: 'all' | RewardCategory; label: string }[] = [
   { id: 'all', label: '全部' },
@@ -141,8 +148,8 @@ function MallSceneSlot({
         ref={accessibilityRef}
         disabled={disabled}
         accessibilityRole="button"
-        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : isLocationHighlighted ? '目前查看位置，已擺放' : item.category === 'shop' ? '已兌換，點選進入店內佈置，長按可搬動或存入倉庫' : '已兌換，點選可搬動或存入倉庫'}${focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
-        accessibilityHint={!isPreview && item.category === 'shop' ? '點選商店動畫進入店內佈置；長按可選取搬動。' : undefined}
+        accessibilityLabel={`${position.floor} ${position.label} ${item.name}，${isPreview ? '預覽中，尚未兌換' : isLocationHighlighted ? '目前查看位置，已擺放' : item.category === 'shop' ? '已兌換，點選進入店內佈置，長按可選擇搬動或存入倉庫' : '已兌換，點選可搬動，長按可選擇搬動或存入倉庫'}${focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
+        accessibilityHint={!isPreview ? item.category === 'shop' ? '點選商店動畫進入店內佈置；長按後可選擇搬動到其他位置或存入倉庫。' : '長按後可選擇搬動到其他位置或存入倉庫。' : undefined}
         accessibilityState={{ selected: isPreview || isLocationHighlighted, disabled, busy }}
         testID={`mall-slot-${slotId}`}
       >
@@ -204,7 +211,7 @@ export default function MallScreen() {
   const mallSceneY = useRef(0);
   const sceneOpacity = useRef(new Animated.Value(0)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
-  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, storageError, isLoading } = useHabits();
+  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, isLoading } = useHabits();
   const [showCollection, setShowCollection] = useState(false);
   const [warehouseNotice, setWarehouseNotice] = useState<string | null>(null);
   const [placementAnnouncement, setPlacementAnnouncement] = useState('');
@@ -230,9 +237,22 @@ export default function MallScreen() {
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [priceAscending, setPriceAscending] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [testCoinLoading, setTestCoinLoading] = useState(false);
   const operationLock = useRef(false);
   const [previewSlotId, setPreviewSlotId] = useState<MallSlotId | null>(null);
   const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' | 'restore' } | null>(null);
+  const fillPreviewCoins = useCallback(async () => {
+    if (!IS_DEVELOPMENT_PREVIEW || testCoinLoading) return;
+    setTestCoinLoading(true);
+    try {
+      await grantTestCoins(PREVIEW_TEST_COIN_BALANCE);
+      Alert.alert('測試金幣已補足', '已準備足夠金幣，可測試全部樓層物件及每間商店的店內佈置。');
+    } catch (error) {
+      Alert.alert('補足測試金幣失敗', error instanceof Error ? error.message : '請稍後再試。');
+    } finally {
+      setTestCoinLoading(false);
+    }
+  }, [grantTestCoins, testCoinLoading]);
   const ownedIds = useMemo(() => new Set(purchasedItems), [purchasedItems]);
   const placedIds = useMemo(() => new Set(Object.values(mallPlacements)), [mallPlacements]);
   const placedSlotsByItem = useMemo(
@@ -561,7 +581,7 @@ export default function MallScreen() {
     if (isLoading || purchasing || operationLock.current || placementIntent) return;
     const itemId = mallPlacements[slotId];
     const item = itemId ? MALL_ITEM_BY_ID[itemId] : undefined;
-    if (item?.category !== 'shop') return;
+    if (!item) return;
     setPlacementIntent({ itemId: item.id, mode: 'move' });
     announcePlacement(`已選取${item.name}。已進入搬動模式，可選空位、交換位置或存入倉庫；按取消可保留原位置。`);
   }
@@ -652,6 +672,30 @@ export default function MallScreen() {
             完全免費 · 每個目標每日首次完成 +20 金幣 · 所有項目只用金幣兌換，沒有儲值或付費。
           </Text>
         </View>
+
+        {IS_DEVELOPMENT_PREVIEW && (
+          <View style={[styles.testCoinPanel, { backgroundColor: colors.candyCream, borderColor: colors.secondary }]}>
+            <View style={styles.testCoinCopy}>
+              <Text style={[styles.testCoinTitle, { color: colors.foreground }]}>預覽測試金幣</Text>
+              <Text style={[styles.testCoinDescription, { color: colors.mutedForeground }]}>
+                開發預覽限定 · 補足至 {PREVIEW_TEST_COIN_BALANCE.toLocaleString()} 金幣，可測試全商場物件與店內佈置。
+              </Text>
+            </View>
+            <Pressable
+              testID="dev-fill-mall-coins"
+              onPress={fillPreviewCoins}
+              disabled={isLoading || purchasing !== null || testCoinLoading}
+              accessibilityRole="button"
+              accessibilityLabel={`預覽測試補足金幣至至少 ${PREVIEW_TEST_COIN_BALANCE} 枚，正式版不提供`}
+              accessibilityState={{ disabled: isLoading || purchasing !== null || testCoinLoading, busy: testCoinLoading }}
+              style={[styles.testCoinButton, { backgroundColor: colors.primary, opacity: testCoinLoading ? 0.6 : 1 }]}
+            >
+              <Text style={[styles.testCoinButtonText, { color: colors.primaryForeground }]}>
+                {testCoinLoading ? '補足中' : '補足金幣'}
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         <View style={styles.sceneHeading}>
           <View>
@@ -817,7 +861,7 @@ export default function MallScreen() {
             <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
               <Feather name="move" size={13} color={colors.primary} />
               <Text style={[styles.mapFooterText, { color: colors.foreground }]}>
-                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑動切換區域 · 點店鋪動畫進入店內 · 長按店鋪搬動 · 點設施或裝潢搬動'}
+                {placementIntent ? (placementIntent.mode === 'purchase' ? '點選空位預覽 · 可改選位置 · 確認兌換後才扣金幣' : placementIntent.mode === 'restore' ? '可換層或換區，選空位免費擺放' : '選位置免費搬動或交換，也可存入倉庫') : '左右滑動切換區域 · 點店鋪動畫進入店內 · 長按店鋪、設施或裝修可搬動或存入倉庫'}
               </Text>
             </View>
           </Animated.View>
@@ -1228,6 +1272,12 @@ const styles = StyleSheet.create({
   ticketName: { fontSize: 9, marginTop: 1 },
   rewardHint: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 12, marginTop: 9 },
   rewardHintText: { flex: 1, fontSize: 10, lineHeight: 15 },
+  testCoinPanel: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, borderWidth: 1, marginTop: 8 },
+  testCoinCopy: { flex: 1, gap: 3 },
+  testCoinTitle: { fontSize: 11, fontWeight: '700' },
+  testCoinDescription: { fontSize: 9, lineHeight: 13 },
+  testCoinButton: { minHeight: 40, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  testCoinButtonText: { fontSize: 10, fontWeight: '700' },
   sceneHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 11 },
   sceneTitle: { fontSize: 17, fontWeight: '700' },
   sceneSub: { fontSize: 10, marginTop: 4 },

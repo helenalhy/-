@@ -124,10 +124,11 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     if (name === '@/constants/colors') return { light: {} };
     if (name === '@/hooks/useColors') return { useColors: () => ({}) };
     if (name === '@/context/HabitsContext') return {
-      useHabits: () => habits, MALL_FLOOR_COUNT: 10,
+      useHabits: () => ({ ...habits, grantTestCoins: habits.grantTestCoins ?? (async () => {}) }), MALL_FLOOR_COUNT: 10,
       MALL_SLOT_IDS: slotIds ?? Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
     };
     if (name === '@/constants/mall-layout') return layoutModule.exports;
+    if (name === '@/constants/mall-shop-interior') return shopInteriorCatalog;
     if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
     if (name === '@/constants/mall') return {
       MALL_ITEMS: items, MALL_ITEM_BY_ID: Object.fromEntries(items.map((entry) => [entry.id, entry])),

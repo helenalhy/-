@@ -259,6 +259,7 @@ function createHarness() {
     renderProvider,
     renderToday,
     runEffects,
+    shopInteriorCatalog: loadTsModule(path.join(appRoot, 'constants/mall-shop-interior.ts')),
     storage,
     setLocalSearchParams: (params) => { localSearchParams = params; },
   };
@@ -287,6 +288,50 @@ function textContent(node) {
   if (Array.isArray(node)) return node.map(textContent).join('');
   return textContent(node.props?.children);
 }
+
+test('development preview can top up enough coins for every mall item and shop-interior catalog', async () => {
+  const previousDev = global.__DEV__;
+  global.__DEV__ = true;
+  try {
+    const app = createHarness();
+    app.renderProvider();
+    await app.runEffects('provider');
+    app.renderProvider();
+
+    const mallTree = app.renderMall();
+    assert.ok(findByTestId(mallTree, 'dev-fill-mall-coins'), 'the test-only coin control is visible in development preview');
+    await press(mallTree, 'dev-fill-mall-coins');
+
+    const savedMall = JSON.parse(app.storage.get(storageKeys.mall));
+    const mallCost = app.mallCatalog.MALL_ITEMS.reduce((total, item) => total + item.price, 0);
+    const shopCount = app.mallCatalog.MALL_ITEMS.filter((item) => item.category === 'shop').length;
+    const maxInteriorCost = Math.max(...Object.values(app.shopInteriorCatalog.SHOP_INTERIOR_DECORATIONS)
+      .map((catalog) => catalog.reduce((total, item) => total + item.price, 0)));
+    assert.equal(savedMall.coins, mallCost + shopCount * maxInteriorCost);
+  } finally {
+    if (previousDev === undefined) delete global.__DEV__;
+    else global.__DEV__ = previousDev;
+  }
+});
+
+test('production build hides and rejects the development-only coin control', async () => {
+  const previousDev = global.__DEV__;
+  global.__DEV__ = false;
+  try {
+    const app = createHarness();
+    app.renderProvider();
+    await app.runEffects('provider');
+    app.renderProvider();
+
+    const mallTree = app.renderMall();
+    assert.equal(findByTestId(mallTree, 'dev-fill-mall-coins'), undefined);
+    const { grantTestCoins } = app.contextExports.useHabits();
+    await assert.rejects(grantTestCoins(100), /測試金幣只供開發預覽使用/);
+  } finally {
+    if (previousDev === undefined) delete global.__DEV__;
+    else global.__DEV__ = previousDev;
+  }
+});
 
 async function press(tree, testID) {
   const button = findByTestId(tree, testID);
@@ -536,6 +581,61 @@ test('tapping a redeemed shop opens its interior, while long-press keeps shop mo
   mallTree = app.renderMall();
   assert.ok(findByTestId(mallTree, 'open-shop-interior'), 'the selected shop exposes its interior action');
   assert.ok(findByTestId(mallTree, 'cancel-placement'), 'long-press still enters the move flow');
+});
+
+test('long-pressing facilities and decor allows free movement or warehouse storage', async () => {
+  const app = createHarness();
+  const facility = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'cloud-walk');
+  const decor = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'garden-lights');
+  assert.equal(facility?.category, 'facility');
+  assert.equal(decor?.category, 'decor');
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 27,
+    purchasedItems: [facility.id, decor.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: { 'floor-1-left': facility.id, 'floor-1-center': decor.id },
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  const findSceneSlot = (tree, slotId) => {
+    const wingPager = findNodes(tree, (node) => node.type?.name === 'MallWingPager')[0];
+    assert.ok(wingPager, 'the floor scene is rendered');
+    const mainWing = wingPager.props.renderWing('main', true);
+    return findNodes(mainWing, (node) =>
+      node.type?.name === 'MallSceneSlot' && node.props.slotId === slotId,
+    )[0];
+  };
+
+  let mallTree = app.renderMall();
+  const facilitySlot = findSceneSlot(mallTree, 'floor-1-left');
+  facilitySlot.props.onLongPress();
+  mallTree = app.renderMall();
+  assert.ok(findByTestId(mallTree, 'store-selected-item'), 'a long-pressed facility can be stored');
+
+  const openSlot = findSceneSlot(mallTree, 'floor-1-right');
+  openSlot.props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  app.renderProvider();
+  mallTree = app.renderMall();
+  assert.equal(app.contextExports.useHabits().mallPlacements['floor-1-right'], facility.id);
+  assert.equal(app.contextExports.useHabits().coins, 27, 'moving does not spend coins');
+
+  const decorSlot = findSceneSlot(mallTree, 'floor-1-center');
+  decorSlot.props.onLongPress();
+  mallTree = app.renderMall();
+  assert.ok(findByTestId(mallTree, 'store-selected-item'), 'a long-pressed decoration can be stored');
+  await press(mallTree, 'store-selected-item');
+  app.renderProvider();
+
+  const savedMall = app.contextExports.useHabits();
+  assert.equal(savedMall.mallPlacements['floor-1-center'], undefined);
+  assert.ok(savedMall.purchasedItems.includes(decor.id), 'storing keeps the decoration owned');
+  assert.equal(savedMall.coins, 27, 'storing does not refund or spend coins');
 });
 
 test('shop interior page shows its matching decor catalog and charges only goal-earned coins', async () => {

@@ -1,13 +1,63 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Platform, StyleSheet, View } from 'react-native';
+import { Animated, Image, Platform, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import palette from '@/constants/colors';
-import { getShopFacadeVariant, resolveMallObjectArchetype, type MallVisualCategory } from '@/constants/mall-visual-profile';
+import { getShopFacadeVariant, resolveMallObjectArchetype, type MallObjectArchetype, type MallVisualCategory } from '@/constants/mall-visual-profile';
 import { ThemedMallObject } from './ThemedMallObject';
 import { MallCustomers } from './MallCustomers';
 
 const c = palette.light;
 const useNativeDriver = Platform.OS !== 'web';
+
+const SHOP_FACADE_ARTWORK: readonly ImageSourcePropType[] = [
+  require('../assets/images/mall-shop-classic.png'),
+  require('../assets/images/mall-shop-arched.png'),
+  require('../assets/images/mall-shop-wide.png'),
+  require('../assets/images/mall-shop-corner.png'),
+];
+
+const OBJECT_ARTWORK: Partial<Record<MallObjectArchetype, ImageSourcePropType>> = {
+  'cloud-walk': require('../assets/images/mall-cloud-walk.png'),
+  'central-fountain': require('../assets/images/mall-central-fountain.png'),
+  'wooden-bench': require('../assets/images/mall-wooden-bench.png'),
+  'garden-lights': require('../assets/images/mall-garden-lights.png'),
+  'colorful-planter': require('../assets/images/mall-colorful-planter.png'),
+  'rest-pavilion': require('../assets/images/mall-rest-pavilion.png'),
+  'coral-aquarium': require('../assets/images/mall-coral-aquarium.png'),
+  'rhythm-stage': require('../assets/images/mall-rhythm-stage.png'),
+  'yoga-deck': require('../assets/images/mall-yoga-deck.png'),
+  'sculpture-plaza': require('../assets/images/mall-sculpture-plaza.png'),
+  'observatory-dome': require('../assets/images/mall-observatory-dome.png'),
+  'tasting-court': require('../assets/images/mall-tasting-court.png'),
+  'cloud-swing': require('../assets/images/mall-cloud-swing.png'),
+  'shell-lantern': require('../assets/images/mall-shell-lantern.png'),
+  'neon-sign': require('../assets/images/mall-neon-sign.png'),
+  'aroma-diffuser': require('../assets/images/mall-aroma-diffuser.png'),
+  'gallery-frames': require('../assets/images/mall-gallery-frames.png'),
+  'starlight-mobile': require('../assets/images/mall-starlight-mobile.png'),
+  'spice-display': require('../assets/images/mall-spice-display.png'),
+  'rainbow-arch': require('../assets/images/mall-rainbow-arch.png'),
+  'clothing-rack': require('../assets/images/mall-clothing-rack.png'),
+  'clothing-wardrobe': require('../assets/images/mall-clothing-wardrobe.png'),
+  'blouse-display': require('../assets/images/mall-blouse-display.png'),
+  'skirt-display': require('../assets/images/mall-skirt-display.png'),
+  'dress-display': require('../assets/images/mall-dress-display.png'),
+  'kimono-display': require('../assets/images/mall-kimono-display.png'),
+  'coffee-machine': require('../assets/images/mall-coffee-machine.png'),
+  'ice-cream-machine': require('../assets/images/mall-ice-cream-machine.png'),
+  'cotton-candy-machine': require('../assets/images/mall-cotton-candy-machine.png'),
+  'candy-display': require('../assets/images/mall-candy-display.png'),
+  'bakery-oven': require('../assets/images/mall-bakery-oven.png'),
+  'tea-brewer': require('../assets/images/mall-tea-brewer.png'),
+  'food-prep': require('../assets/images/mall-food-prep.png'),
+  'flower-station': require('../assets/images/mall-flower-station.png'),
+  'book-carousel': require('../assets/images/mall-book-carousel.png'),
+  'capsule-machine': require('../assets/images/mall-capsule-machine.png'),
+  'craft-station': require('../assets/images/mall-craft-station.png'),
+  'sewing-machine': require('../assets/images/mall-sewing-machine.png'),
+  'electronics-bench': require('../assets/images/mall-electronics-bench.png'),
+  'jewelry-case': require('../assets/images/mall-jewelry-case.png'),
+};
 
 export function MallObjectVisual({ id, itemId, color, icon, category, isActive = true }: {
   id: string;
@@ -50,24 +100,12 @@ export function MallObjectVisual({ id, itemId, color, icon, category, isActive =
   }, [animationSeed, isActive, motion, shimmer]);
 
   const archetype = resolveMallObjectArchetype(id, icon, category);
-  let drawing: React.ReactNode;
-  if (category === 'shop') {
-    drawing = <IllustratedShop id={animationSeed} color={color} icon={icon} />;
-  } else if (archetype === 'central-fountain') {
-    drawing = <MiniFountain color={color} />;
-  } else if (archetype === 'wooden-bench') {
-    drawing = <View style={s.object}><View style={[s.benchBack, { backgroundColor: c.candyCaramelDark }]} /><View style={[s.benchSeat, { backgroundColor: color }]} /><View style={s.legs}><View style={[s.leg, { backgroundColor: c.candyInk }]} /><View style={[s.leg, { backgroundColor: c.candyInk }]} /></View></View>;
-  } else if (archetype === 'garden-lights') {
-    drawing = <View style={s.object}><View style={[s.lampGlow, { backgroundColor: color }]} /><View style={[s.lampStem, { backgroundColor: c.candyCaramelDark }]} /><View style={[s.lampBase, { backgroundColor: c.candyCaramelDark }]} /></View>;
-  } else if (archetype === 'colorful-planter') {
-    drawing = <View style={s.object}><View style={s.flowers}>{[c.candyRose, c.candyLemon, c.candyLavender].map((flower, i) => <View key={i} style={s.flower}><View style={[s.flowerHead, { backgroundColor: flower, borderColor: c.candyRoseDark }]} /><View style={[s.flowerStem, { backgroundColor: c.candyMintDark }]} /></View>)}</View><View style={[s.planter, { backgroundColor: color }]} /></View>;
-  } else if (archetype === 'rest-pavilion') {
-    drawing = <View style={s.object}><View style={[s.pavilionRoof, { borderBottomColor: color }]} /><View style={s.pavilionColumns}><View style={[s.column, { backgroundColor: c.candyPeach }]} /><View style={[s.column, { backgroundColor: c.candyPeach }]} /></View><View style={[s.pavilionBase, { backgroundColor: color }]} /></View>;
-  } else if (archetype === 'cloud-walk') {
-    drawing = <View style={s.object}><View style={s.walkway}>{[0, 1, 2, 3].map((n) => <View key={n} style={[s.paving, { backgroundColor: n % 2 ? c.candyPeach : c.candyCream }]} />)}</View><View style={[s.pathPlant, { backgroundColor: c.candyMintDark }]} /></View>;
-  } else {
-    drawing = <ThemedMallObject id={archetype} color={color} icon={icon} />;
-  }
+  const artwork = category === 'shop'
+    ? SHOP_FACADE_ARTWORK[getShopFacadeVariant(animationSeed)]
+    : OBJECT_ARTWORK[archetype];
+  const drawing = artwork
+    ? <Image source={artwork} resizeMode="contain" fadeDuration={0} style={s.sceneSprite} />
+    : <ThemedMallObject id={archetype} color={color} icon={icon} />;
 
   const sparkleScale = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.15] });
   return (
@@ -84,59 +122,6 @@ export function MallObjectVisual({ id, itemId, color, icon, category, isActive =
   );
 }
 
-function IllustratedShop({ id, color, icon }: { id: string; color: string; icon: string }) {
-  const variant = getShopFacadeVariant(id);
-  const stripeCount = variant === 2 ? 6 : 5;
-
-  return (
-    <View style={[s.shop, variant === 1 && s.shopArched, variant === 2 && s.shopWide, variant === 3 && s.shopBoutique]}>
-      <View style={[s.shopSign, { backgroundColor: color, borderColor: c.candyCaramelDark }, variant === 2 && s.shopSignWide]}>
-        <Feather name={icon as keyof typeof Feather.glyphMap} size={variant === 3 ? 8 : 9} color={c.card} />
-        <View style={s.shopSignGlint} />
-      </View>
-      <View style={[s.awning, { backgroundColor: color }, variant === 2 && s.awningWide]}>
-        {Array.from({ length: stripeCount }, (_, index) => (
-          <View key={index} style={[s.stripe, { backgroundColor: index % 2 ? color : c.card }]} />
-        ))}
-      </View>
-      <View style={s.scallopRow}>
-        {Array.from({ length: stripeCount }, (_, index) => (
-          <View key={index} style={[s.scallop, { backgroundColor: index % 2 ? c.card : color }]} />
-        ))}
-      </View>
-      <View style={[s.shopFront, { backgroundColor: c.candyCream, borderColor: color }]}>
-        <View style={[s.window, variant === 1 && s.windowArched]}>
-          <View style={s.windowHighlight} />
-          <Feather name={icon as keyof typeof Feather.glyphMap} size={variant === 2 ? 11 : 13} color={c.candyCaramelDark} />
-          <View style={s.displayShelf}>
-            {[c.candyPink, c.candyLemon, c.candyMint].map((shade, index) => (
-              <View key={index} style={[s.displayDot, { backgroundColor: shade }]} />
-            ))}
-          </View>
-        </View>
-        <View style={[s.door, { backgroundColor: color, borderColor: c.candyCaramelDark }]}>
-          <View style={s.doorPane} />
-          <View style={s.doorHandle} />
-        </View>
-      </View>
-      <View style={[s.shopBase, { backgroundColor: c.candyCaramelDark }]} />
-    </View>
-  );
-}
-
-function MiniFountain({ color }: { color: string }) {
-  const rise = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(rise, { toValue: -4, duration: 900, useNativeDriver }),
-      Animated.timing(rise, { toValue: 0, duration: 900, useNativeDriver }),
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, [rise]);
-  return <View style={s.object}><Animated.View style={{ transform: [{ translateY: rise }] }}><Feather name="droplet" size={24} color={c.candySkyDark} /></Animated.View><View style={[s.fountainBowl, { backgroundColor: color, borderColor: c.candySkyDark }]} /><View style={[s.fountainFoot, { backgroundColor: c.candyLavender }]} /></View>;
-}
-
 export function MallAmbience({ floor = 1 }: { floor?: number }) {
   const shimmer = useRef(new Animated.Value(0.25)).current;
   useEffect(() => {
@@ -148,7 +133,7 @@ export function MallAmbience({ floor = 1 }: { floor?: number }) {
     return () => { twinkle.stop(); };
   }, [shimmer]);
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, s.visitorLayer]}>
       <Animated.View style={[s.sparkle, { left: '24%', top: '8%', opacity: shimmer }]}><Feather name="star" size={11} color={c.card} /></Animated.View>
       <Animated.View style={[s.sparkle, { right: '20%', top: '11%', opacity: shimmer }]}><Feather name="star" size={8} color={c.card} /></Animated.View>
       <Animated.View style={[s.waterGlint, { opacity: shimmer }]}><Feather name="droplet" size={14} color={c.candySkyDark} /></Animated.View>
@@ -160,54 +145,9 @@ export function MallAmbience({ floor = 1 }: { floor?: number }) {
 const s = StyleSheet.create({
   illustrationCanvas: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   illustrationMotion: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center' },
+  sceneSprite: { width: '100%', height: '100%' },
   objectSparkle: { position: 'absolute', right: 6, top: 4 },
-  shop: { width: 62, height: 47, alignItems: 'center', justifyContent: 'flex-end' },
-  shopArched: { transform: [{ scaleX: 0.96 }] },
-  shopWide: { transform: [{ scaleX: 0.98 }] },
-  shopBoutique: { transform: [{ scale: 0.94 }] },
-  shopSign: { height: 8, minWidth: 34, paddingHorizontal: 5, marginBottom: 1, borderWidth: 1, borderRadius: 5, alignItems: 'center', justifyContent: 'center', zIndex: 2, overflow: 'hidden' },
-  shopSignWide: { minWidth: 47, height: 9 },
-  shopSignGlint: { position: 'absolute', width: 4, height: 4, borderRadius: 2, right: 3, top: 1, backgroundColor: c.candyLemon },
-  awning: { width: 59, height: 7, flexDirection: 'row', overflow: 'hidden', borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 1, borderBottomWidth: 0, borderColor: c.candyCaramelDark },
-  awningWide: { height: 8, width: 62 },
-  stripe: { flex: 1, height: 8 },
-  scallopRow: { height: 4, width: 57, marginTop: -1, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center' },
-  scallop: { flex: 1, height: 4, marginHorizontal: 0.4, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, borderWidth: 0.5, borderTopWidth: 0, borderColor: c.candyCaramelDark },
-  shopFront: { width: 58, flex: 1, borderWidth: 2, flexDirection: 'row', padding: 2, gap: 3, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
-  window: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 3, borderWidth: 1, borderColor: c.card, overflow: 'hidden' },
-  windowArched: { borderTopLeftRadius: 9, borderTopRightRadius: 9 },
-  windowHighlight: { position: 'absolute', width: 18, height: 3, top: 2, left: 2, borderRadius: 2, backgroundColor: c.card, opacity: 0.62 },
-  displayShelf: { position: 'absolute', bottom: 2, left: 2, right: 2, height: 4, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 0.5, borderColor: c.candyCaramelDark },
-  displayDot: { width: 3, height: 3, borderRadius: 2 },
-  door: { width: 12, borderWidth: 1, borderTopLeftRadius: 5, borderTopRightRadius: 5, overflow: 'hidden' },
-  doorPane: { position: 'absolute', top: 3, left: 2, right: 2, height: 7, borderRadius: 2, backgroundColor: c.candySky, opacity: 0.72 },
-  doorHandle: { position: 'absolute', width: 2, height: 2, borderRadius: 1, right: 2, bottom: 6, backgroundColor: c.candyLemon },
-  shopBase: { width: 61, height: 3, borderRadius: 2 },
-  object: { width: 62, height: 47, alignItems: 'center', justifyContent: 'flex-end' },
-  benchBack: { height: 13, width: 49, borderRadius: 3 },
-  benchSeat: { height: 7, width: 55, borderRadius: 2 },
-  legs: { width: 43, justifyContent: 'space-between', flexDirection: 'row' },
-  leg: { width: 4, height: 10 },
-  lampGlow: { width: 23, height: 18, borderRadius: 9 },
-  lampStem: { width: 4, height: 24 },
-  lampBase: { width: 20, height: 4, borderRadius: 2 },
-  flowers: { flexDirection: 'row', gap: 3, alignItems: 'flex-end' },
-  flower: { alignItems: 'center' },
-  flowerHead: { width: 13, height: 13, borderRadius: 7, borderWidth: 1 },
-  flowerStem: { width: 3, height: 13 },
-  planter: { width: 53, height: 14, borderBottomLeftRadius: 9, borderBottomRightRadius: 9 },
-  pavilionRoof: { width: 0, height: 0, borderLeftWidth: 30, borderRightWidth: 30, borderBottomWidth: 18, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
-  pavilionColumns: { flexDirection: 'row', justifyContent: 'space-between', width: 42 },
-  column: { width: 5, height: 23 },
-  pavilionBase: { width: 58, height: 6, borderRadius: 2 },
-  walkway: { flexDirection: 'row', flexWrap: 'wrap', width: 52, transform: [{ rotate: '-12deg' }] },
-  paving: { width: 25, height: 15, margin: 0.5, borderRadius: 2 },
-  pathPlant: { width: 12, height: 20, borderRadius: 7, position: 'absolute', right: 0, top: 8 },
-  fountainBowl: { width: 48, height: 13, borderWidth: 2, borderRadius: 24 },
-  fountainFoot: { width: 55, height: 7, borderRadius: 20 },
+  visitorLayer: { zIndex: 10, elevation: 10 },
   sparkle: { position: 'absolute' },
   waterGlint: { position: 'absolute', left: '48%', top: '82%' },
-  visitor: { position: 'absolute', alignItems: 'center' },
-  head: { width: 5, height: 5, borderRadius: 3 },
-  body: { width: 7, height: 12, borderRadius: 3 },
 });

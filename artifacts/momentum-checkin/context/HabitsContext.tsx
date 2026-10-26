@@ -81,6 +81,7 @@ interface HabitsContextValue {
   purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
   moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
   storeMallItem: (itemId: string) => Promise<void>;
+  grantTestCoins: (minimumBalance: number) => Promise<void>;
   placeShopInteriorDecoration: (shopId: string, decorationId: string, slotId: ShopInteriorSlotId) => Promise<void>;
   storeShopInteriorDecoration: (shopId: string, slotId: ShopInteriorSlotId) => Promise<void>;
 }
@@ -92,6 +93,7 @@ const CHECK_IN_TRANSACTION_KEY = 'momentum.checkin-transaction.v1';
 const MALL_SCHEMA_VERSION = 3;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
+const IS_DEVELOPMENT_BUILD = typeof __DEV__ !== 'undefined' && __DEV__;
 
 function parseCheckInTransaction(value: string | null): CheckInTransaction | null {
   if (value === null) return null;
@@ -520,9 +522,28 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
+  const grantTestCoins = useCallback(async (minimumBalance: number) => {
+    if (!IS_DEVELOPMENT_BUILD) throw new Error('測試金幣只供開發預覽使用');
+    if (!Number.isSafeInteger(minimumBalance) || minimumBalance < 0) throw new Error('測試金幣數量無效');
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins: Math.max(coins, minimumBalance),
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors,
+      });
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, placeShopInteriorDecoration, storeShopInteriorDecoration]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

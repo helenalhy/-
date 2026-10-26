@@ -184,7 +184,7 @@ const filterCatalog = Array.from({ length: 60 }, (_, i) => ({
 }));
 filterCatalog.push({ ...filterCatalog[0], id: 'other-floor', name: '外層款式', floor: 2, price: 10 });
 
-test('every shop type has 50 unique interior choices and clothing shops include garment wardrobes and limited editions', () => {
+test('every shop type has 50 unique interior choices and clothing shops include wardrobes and character editions', () => {
   const optionsByType = shopInteriorCatalog.SHOP_INTERIOR_DECORATIONS;
   for (const [type, options] of Object.entries(optionsByType)) {
     assert.equal(options.length, 50, `${type} should offer exactly 50 choices`);
@@ -196,6 +196,18 @@ test('every shop type has 50 unique interior choices and clothing shops include 
   assert.ok(womenswear.some((option) => option.name.includes('百褶裙與長裙衣櫃')));
   assert.ok(womenswear.some((option) => option.limitedEdition && option.name.includes('上衣')));
   assert.ok(womenswear.some((option) => option.limitedEdition && option.name.includes('長裙')));
+
+  const swimwear = optionsByType.swimwear;
+  assert.ok(swimwear.some((option) => option.name.includes('泳衣上衣衣櫃')));
+  assert.ok(swimwear.some((option) => option.name.includes('泳裝裙裝衣櫃')));
+  assert.ok(swimwear.some((option) => option.limitedEdition && /火影忍者鳴人/.test(option.name)));
+
+  const cosplay = optionsByType.cosplay;
+  assert.ok(cosplay.some((option) => option.name.includes('角色上衣與外套衣櫃')));
+  assert.ok(cosplay.some((option) => option.name.includes('角色裙裝與連身服衣櫃')));
+  const cosplayCharacterEditions = cosplay.filter((option) => option.limitedEdition);
+  assert.equal(cosplayCharacterEditions.length, 4);
+  assert.ok(cosplayCharacterEditions.every((option) => option.name.includes('火影忍者')));
 
   const kimonoLimitedEditions = optionsByType.kimono.filter((option) => option.limitedEdition);
   assert.equal(kimonoLimitedEditions.length, 4);

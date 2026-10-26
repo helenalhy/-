@@ -444,9 +444,9 @@ test('search filters keep original floor separate from the current mall placemen
   assert.equal(app.calls.length, 0, 'filtering never starts a move, restore, or redemption');
 });
 
-test('real catalog is fully searchable and includes six new shop types on their assigned floors', () => {
+test('real catalog is fully searchable and includes ten specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 1506);
+  assert.equal(MALL_ITEMS.length, 1510);
   assert.equal(MALL_FLOORS.length, 10);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -456,7 +456,7 @@ test('real catalog is fully searchable and includes six new shop types on their 
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 506, facility: 500, decor: 500 },
+    { shop: 510, facility: 500, decor: 500 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(
@@ -468,6 +468,10 @@ test('real catalog is fully searchable and includes six new shop types on their 
       ['evening-gown-salon', 7, 'eveningwear'],
       ['sunny-supermarket', 9, 'supermarket'],
       ['bridal-gown-house', 10, 'bridal'],
+      ['blue-tide-swimwear', 4, 'swimwear'],
+      ['cosplay-costume-studio', 5, 'cosplay'],
+      ['little-circuit-electronics', 6, 'electronics'],
+      ['starlight-luxury-boutique', 8, 'boutique'],
     ],
   );
 

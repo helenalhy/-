@@ -20,7 +20,18 @@ export interface MallItem {
   visual?: 'cloud-walk' | 'central-fountain' | 'wooden-bench' | 'garden-lights' | 'colorful-planter' | 'rest-pavilion' | 'coral-aquarium' | 'rhythm-stage' | 'yoga-deck' | 'sculpture-plaza' | 'observatory-dome' | 'tasting-court' | 'cloud-swing' | 'shell-lantern' | 'neon-sign' | 'aroma-diffuser' | 'gallery-frames' | 'starlight-mobile' | 'spice-display' | 'rainbow-arch';
 }
 
-export type MallShopType = 'general' | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen';
+export type MallShopType =
+  | 'general'
+  | 'womenswear'
+  | 'bridal'
+  | 'eveningwear'
+  | 'kimono'
+  | 'supermarket'
+  | 'hyakuen'
+  | 'swimwear'
+  | 'cosplay'
+  | 'electronics'
+  | 'boutique';
 
 export interface MallFloorTheme {
   title: string;
@@ -145,6 +156,10 @@ export const MALL_ITEMS: MallItem[] = [
   item(7, 'evening-gown-salon', '晚禮服店', '為特別的日子挑一套優雅禮服', 'star', 'shop', 115, 0, c.candyLavender, undefined, 'eveningwear'),
   item(9, 'sunny-supermarket', '陽光超市', '把日常所需和新鮮食材一次買齊', 'shopping-cart', 'shop', 130, 0, c.candyMint, undefined, 'supermarket'),
   item(10, 'bridal-gown-house', '婚紗店', '在柔光之中挑選夢想中的婚紗', 'heart', 'shop', 160, 0, c.candyPeach, undefined, 'bridal'),
+  item(4, 'blue-tide-swimwear', '泳衣店', '挑選泳衣、沙灘罩衫和度假配件', 'sun', 'shop', 95, 0, c.candySky, undefined, 'swimwear'),
+  item(5, 'cosplay-costume-studio', 'Cosplay服裝店', '挑選角色服裝、假髮和舞台配件', 'star', 'shop', 110, 0, c.candyLavender, undefined, 'cosplay'),
+  item(6, 'little-circuit-electronics', '電器店', '發現日常家電、耳機和可愛小科技', 'cpu', 'shop', 125, 0, c.candyMint, undefined, 'electronics'),
+  item(8, 'starlight-luxury-boutique', '精品店', '收藏精緻手袋、首飾和限量配件', 'shopping-bag', 'shop', 145, 0, c.candyRose, undefined, 'boutique'),
   ...createExpandedItems(MALL_FLOORS),
 ];
 

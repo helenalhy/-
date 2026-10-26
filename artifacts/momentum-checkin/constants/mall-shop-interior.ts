@@ -109,6 +109,38 @@ const legacyDecorations: Record<MallShopType, ShopInteriorDecoration[]> = {
     option('hyakuen', 'price-sign', '百元價目燈牌', '為店內加上一盞醒目的招牌。', 'tag', 30, c.candyPink),
     option('hyakuen', 'gift-wrap-corner', '禮物包裝角', '用緞帶包裝剛挑好的小禮物。', 'gift', 40, c.candyLavender),
   ],
+  swimwear: [
+    option('swimwear', 'swimwear-rack', '繽紛泳衣衣架', '展示各種顏色的連身泳衣與比基尼。', 'shopping-bag', 35, c.candySky, 'clothing-rack'),
+    option('swimwear', 'coverup-wardrobe', '沙灘罩衫衣櫃', '收納薄紗罩衫和海邊洋裝。', 'shopping-bag', 40, c.candyPeach, 'clothing-wardrobe'),
+    option('swimwear', 'swim-mannequin', '泳裝模特展示台', '把整套度假穿搭展示在入口旁。', 'user', 38, c.candyCoral, 'dress-display'),
+    option('swimwear', 'shell-mirror', '貝殼全身鏡', '試穿泳衣後看看完整造型。', 'square', 30, c.candyPink),
+    option('swimwear', 'sunhat-display', '遮陽帽與涼鞋架', '把海邊配件搭配好方便挑選。', 'sun', 28, c.candyLemon, 'sculpture-plaza'),
+    option('swimwear', 'beach-photo-wall', '海島拍照背景', '用海浪和棕櫚葉佈置打卡角落。', 'image', 45, c.candyMint, 'coral-aquarium'),
+  ],
+  cosplay: [
+    option('cosplay', 'costume-wardrobe', '角色服裝衣櫃', '依角色主題收納服裝和披風。', 'shopping-bag', 42, c.candyLavender, 'clothing-wardrobe'),
+    option('cosplay', 'costume-rack', 'Cosplay服裝衣架', '展示不同作品的角色服裝。', 'shopping-bag', 38, c.candyPink, 'clothing-rack'),
+    option('cosplay', 'wig-wall', '假髮造型展示牆', '展示長短髮型和角色色彩。', 'user', 35, c.candyCoral, 'gallery-frames'),
+    option('cosplay', 'prop-showcase', '角色道具展示櫃', '陳列手杖、徽章和收藏道具。', 'star', 40, c.candySky, 'gallery-frames'),
+    option('cosplay', 'stage-fitting-room', '舞台試裝間', '在柔和布幕後整理角色造型。', 'columns', 45, c.candyPeach, 'rainbow-arch'),
+    option('cosplay', 'character-photo-set', '角色拍照佈景', '為完成造型的客人準備拍照角落。', 'camera', 48, c.candyLavender, 'rhythm-stage'),
+  ],
+  electronics: [
+    option('electronics', 'gadget-shelf', '糖果色科技展示架', '陳列耳機、相機和日常小電器。', 'grid', 38, c.candySky, 'spice-display'),
+    option('electronics', 'headphone-stand', '耳機試聽展示台', '讓客人試聽不同款式的耳機。', 'headphones', 35, c.candyLavender, 'gallery-frames'),
+    option('electronics', 'smart-home-counter', '智慧家電體驗桌', '展示方便生活的小型智慧家電。', 'cpu', 45, c.candyMint, 'tasting-court'),
+    option('electronics', 'camera-display', '相機收藏展示櫃', '把相機和拍攝配件放在透明櫃中。', 'camera', 42, c.candyPeach, 'gallery-frames'),
+    option('electronics', 'charging-station', '多色充電體驗站', '整理手機和穿戴裝置的充電配件。', 'zap', 30, c.candyCoral, 'neon-sign'),
+    option('electronics', 'screen-demo-wall', '大螢幕體驗牆', '展示影音和居家娛樂設備。', 'monitor', 50, c.candySky, 'gallery-frames'),
+  ],
+  boutique: [
+    option('boutique', 'handbag-display', '精品手袋展示櫃', '用柔光陳列手袋和小皮件。', 'shopping-bag', 45, c.candyPeach, 'gallery-frames'),
+    option('boutique', 'jewelry-case', '珠寶玻璃展示櫃', '展示首飾、腕錶和精緻配件。', 'gift', 48, c.candyLemon, 'starlight-mobile'),
+    option('boutique', 'silk-scarf-rack', '絲巾與披肩衣架', '把絲巾依色彩和花紋排列。', 'shopping-bag', 35, c.candyPink, 'clothing-rack'),
+    option('boutique', 'luxury-mannequin', '精品穿搭模特台', '搭配展示手袋和當季造型。', 'user', 42, c.candyLavender, 'dress-display'),
+    option('boutique', 'watch-pedestal', '腕錶收藏展示台', '讓腕錶在小型展示台上閃耀。', 'clock', 40, c.candySky, 'sculpture-plaza'),
+    option('boutique', 'boutique-lounge', '香檳色精品休息椅', '讓客人舒適地慢慢挑選。', 'heart', 32, c.candyCoral, 'wooden-bench'),
+  ],
 };
 
 interface DecorationSeed {
@@ -226,6 +258,54 @@ const shopFixtures: Record<Exclude<MallShopType, 'general'>, DecorationFixture[]
     { key: 'toy-basket', name: '迷你玩具展示籃', description: '展示小玩具、吊飾和趣味選物。', icon: 'gift', price: 25, visual: 'sculpture-plaza' },
     { key: 'price-board', name: '百元好物價目燈牌', description: '為店內加上一塊明亮的商品指示牌。', icon: 'tag', price: 27, visual: 'neon-sign' },
   ],
+  swimwear: [
+    { key: 'swim-suit-wardrobe', name: '連身泳衣衣櫃', description: '按顏色收納連身泳衣和運動泳裝。', icon: 'shopping-bag', price: 38, visual: 'clothing-wardrobe' },
+    { key: 'bikini-rack', name: '比基尼分層衣架', description: '展示不同剪裁和色彩的比基尼。', icon: 'shopping-bag', price: 36, visual: 'clothing-rack' },
+    { key: 'rash-guard-wall', name: '防曬上衣展示牆', description: '陳列輕薄防曬上衣和水母衣。', icon: 'grid', price: 33, visual: 'clothing-rack' },
+    { key: 'beach-dress-display', name: '海灘洋裝模特台', description: '展示泳裝外搭和度假洋裝。', icon: 'user', price: 38, visual: 'dress-display' },
+    { key: 'swim-short-shelf', name: '泳褲與沙灘短褲架', description: '把不同長度的泳褲整齊展示。', icon: 'shopping-bag', price: 30, visual: 'clothing-rack' },
+    { key: 'sunscreen-counter', name: '防曬用品小櫃台', description: '收納防曬乳、護唇膏和海邊用品。', icon: 'sun', price: 29, visual: 'spice-display' },
+    { key: 'beach-towel-rack', name: '海灘毛巾掛架', description: '把柔軟的大浴巾掛在入口旁。', icon: 'grid', price: 26, visual: 'clothing-rack' },
+    { key: 'float-ring-display', name: '彩色泳圈展示架', description: '展示適合戲水的繽紛泳圈。', icon: 'circle', price: 34, visual: 'coral-aquarium' },
+    { key: 'sandals-shelf', name: '沙灘涼鞋展示台', description: '陳列舒適的涼鞋和水鞋。', icon: 'grid', price: 28, visual: 'sculpture-plaza' },
+    { key: 'shell-accessory-case', name: '貝殼泳裝配件櫃', description: '展示髮夾、太陽眼鏡和海洋飾品。', icon: 'gift', price: 35, visual: 'gallery-frames' },
+  ],
+  cosplay: [
+    { key: 'hero-costume-wardrobe', name: '英雄角色服裝衣櫃', description: '收納制服、披風和成套角色服。', icon: 'shopping-bag', price: 44, visual: 'clothing-wardrobe' },
+    { key: 'fantasy-costume-rack', name: '奇幻服裝衣架', description: '展示魔法師、騎士和精靈造型。', icon: 'shopping-bag', price: 40, visual: 'clothing-rack' },
+    { key: 'wig-style-wall', name: '角色假髮造型牆', description: '按長度和顏色展示造型假髮。', icon: 'user', price: 35, visual: 'gallery-frames' },
+    { key: 'cape-display', name: '披風旋轉展示架', description: '讓不同角色的披風展開展示。', icon: 'shopping-bag', price: 37, visual: 'clothing-rack' },
+    { key: 'armor-mannequin', name: '盔甲角色模特台', description: '展示奇幻風格的服裝與護甲。', icon: 'user', price: 46, visual: 'dress-display' },
+    { key: 'prop-glass-case', name: '舞台道具玻璃櫃', description: '收藏手杖、徽章與角色小道具。', icon: 'star', price: 39, visual: 'gallery-frames' },
+    { key: 'mask-display', name: '角色面具展示牆', description: '陳列不同作品的面具和頭飾。', icon: 'eye', price: 34, visual: 'gallery-frames' },
+    { key: 'cosplay-lighting', name: '角色聚光燈組', description: '為主打服裝加上舞台般的柔光。', icon: 'sun', price: 36, visual: 'garden-lights' },
+    { key: 'photo-backdrop', name: '幻想世界拍照背景', description: '用星光與彩色布景佈置拍照區。', icon: 'camera', price: 42, visual: 'rainbow-arch' },
+    { key: 'badge-accessory-board', name: '徽章與配件展示板', description: '把徽章、髮飾和角色小物分類展示。', icon: 'star', price: 32, visual: 'starlight-mobile' },
+  ],
+  electronics: [
+    { key: 'phone-display-wall', name: '手機與平板展示牆', description: '展示不同尺寸的手機和平板。', icon: 'smartphone', price: 42, visual: 'gallery-frames' },
+    { key: 'headphone-listening-stand', name: '耳機試聽展示台', description: '陳列耳罩式耳機和無線耳機。', icon: 'headphones', price: 36, visual: 'starlight-mobile' },
+    { key: 'camera-demo-counter', name: '相機體驗展示桌', description: '展示相機、鏡頭和拍攝配件。', icon: 'camera', price: 40, visual: 'tasting-court' },
+    { key: 'smart-home-shelf', name: '智慧家電展示架', description: '陳列方便日常生活的小型家電。', icon: 'cpu', price: 39, visual: 'spice-display' },
+    { key: 'speaker-stage', name: '藍牙喇叭體驗台', description: '把不同造型的喇叭放上展示台。', icon: 'music', price: 35, visual: 'rhythm-stage' },
+    { key: 'kitchen-appliance-shelf', name: '廚房小家電層架', description: '展示烤麵包機、熱水壺和攪拌機。', icon: 'grid', price: 44, visual: 'spice-display' },
+    { key: 'gaming-gear-wall', name: '電競配件展示牆', description: '陳列鍵盤、滑鼠和遊戲控制器。', icon: 'monitor', price: 43, visual: 'neon-sign' },
+    { key: 'charging-dock-counter', name: '充電配件體驗櫃', description: '展示充電座、線材和行動電源。', icon: 'zap', price: 31, visual: 'gallery-frames' },
+    { key: 'television-demo-wall', name: '影音螢幕展示牆', description: '讓電視和投影設備成為店內焦點。', icon: 'monitor', price: 48, visual: 'gallery-frames' },
+    { key: 'robot-vacuum-display', name: '智能清潔家電展示台', description: '展示掃地機械人和居家清潔設備。', icon: 'settings', price: 45, visual: 'sculpture-plaza' },
+  ],
+  boutique: [
+    { key: 'designer-bag-wardrobe', name: '設計師手袋收藏櫃', description: '依大小和款式展示精緻手袋。', icon: 'shopping-bag', price: 46, visual: 'gallery-frames' },
+    { key: 'jewelry-light-case', name: '珠寶柔光展示櫃', description: '讓項鍊、耳環和戒指閃閃發亮。', icon: 'gift', price: 44, visual: 'starlight-mobile' },
+    { key: 'silk-scarf-wardrobe', name: '真絲圍巾衣櫃', description: '收納花色不同的絲巾和披肩。', icon: 'shopping-bag', price: 38, visual: 'clothing-wardrobe' },
+    { key: 'watch-collection-shelf', name: '腕錶收藏展示架', description: '為每款腕錶安排專屬展示位置。', icon: 'clock', price: 40, visual: 'gallery-frames' },
+    { key: 'designer-shoe-podium', name: '精品鞋履展示台', description: '展示精緻鞋履和限定配色。', icon: 'star', price: 39, visual: 'sculpture-plaza' },
+    { key: 'leather-goods-wall', name: '皮件與卡夾展示牆', description: '陳列皮夾、卡套和小型皮件。', icon: 'grid', price: 34, visual: 'gallery-frames' },
+    { key: 'perfume-glass-case', name: '香水收藏玻璃櫃', description: '展示香水瓶和香氛禮盒。', icon: 'droplet', price: 36, visual: 'shell-lantern' },
+    { key: 'luxury-mannequin-stand', name: '精品造型模特台', description: '展示搭配手袋與首飾的完整造型。', icon: 'user', price: 44, visual: 'dress-display' },
+    { key: 'gift-box-table', name: '精品禮盒陳列桌', description: '擺放緞帶禮盒和收藏小物。', icon: 'gift', price: 32, visual: 'tasting-court' },
+    { key: 'velvet-lounge-chair', name: '天鵝絨貴賓座椅', description: '為挑選精品的客人準備舒適座位。', icon: 'heart', price: 35, visual: 'wooden-bench' },
+  ],
 };
 
 const finishes: Record<MallShopType, FinishStyle[]> = {
@@ -271,6 +351,30 @@ const finishes: Record<MallShopType, FinishStyle[]> = {
     { key: 'sky', name: '天空藍', description: '天空藍與柔和白色', color: c.candySky, priceExtra: 4 },
     { key: 'lemon', name: '檸檬汽水', description: '檸檬黃與薄荷綠', color: c.candyLemon, priceExtra: 6 },
   ],
+  swimwear: [
+    { key: 'lagoon', name: '潟湖藍', description: '清透海藍與珍珠白', color: c.candySky, priceExtra: 6 },
+    { key: 'coral', name: '珊瑚粉', description: '珊瑚粉與暖沙色', color: c.candyCoral, priceExtra: 5 },
+    { key: 'palm', name: '棕櫚薄荷', description: '棕櫚綠與奶油白', color: c.candyMint, priceExtra: 4 },
+    { key: 'sunset', name: '日落蜜桃', description: '日落橘粉與柔金色', color: c.candyPeach, priceExtra: 8 },
+  ],
+  cosplay: [
+    { key: 'stardust', name: '星塵紫', description: '星光紫與柔和銀白', color: c.candyLavender, priceExtra: 9 },
+    { key: 'hero-red', name: '英雄莓紅', description: '莓紅色與亮金點綴', color: c.candyRose, priceExtra: 8 },
+    { key: 'magic-blue', name: '魔法晴藍', description: '晴空藍與珍珠白', color: c.candySky, priceExtra: 6 },
+    { key: 'fairy-pink', name: '精靈櫻粉', description: '櫻花粉與薄荷綠', color: c.candyPink, priceExtra: 7 },
+  ],
+  electronics: [
+    { key: 'pixel-mint', name: '像素薄荷', description: '薄荷綠與清爽白色', color: c.candyMint, priceExtra: 5 },
+    { key: 'glacier-blue', name: '冰晶藍', description: '冰藍色與銀白細節', color: c.candySky, priceExtra: 8 },
+    { key: 'peach-tech', name: '蜜桃科技', description: '柔和蜜桃色與奶油白', color: c.candyPeach, priceExtra: 6 },
+    { key: 'lavender-tech', name: '薰衣草科技', description: '薰衣草紫與星光銀', color: c.candyLavender, priceExtra: 10 },
+  ],
+  boutique: [
+    { key: 'champagne-gold', name: '香檳金', description: '香檳金與珍珠白', color: c.candyLemon, priceExtra: 12 },
+    { key: 'rose-quartz', name: '玫瑰晶石', description: '玫瑰粉與柔金色', color: c.candyPink, priceExtra: 10 },
+    { key: 'lilac-silk', name: '紫藤絲緞', description: '紫藤紫與銀白光澤', color: c.candyLavender, priceExtra: 11 },
+    { key: 'ocean-pearl', name: '海洋珍珠', description: '海水藍與珍珠奶油色', color: c.candySky, priceExtra: 9 },
+  ],
 };
 
 const signatureDecorations: Partial<Record<MallShopType, DecorationSeed[]>> = {
@@ -309,6 +413,30 @@ const signatureDecorations: Partial<Record<MallShopType, DecorationSeed[]>> = {
     { key: 'limited-seasonal-bento', name: '限定款・季節便當盒牆', description: '展示季節花色的收納與便當盒。', icon: 'package', price: 62, color: c.candyMint, visual: 'spice-display', limitedEdition: true },
     { key: 'travel-organizer-set', name: '旅行收納袋展示台', description: '把旅行用收納袋分類展示。', icon: 'shopping-bag', price: 42, color: c.candySky, visual: 'gallery-frames' },
     { key: 'craft-gift-shelf', name: '手作小禮物陳列架', description: '展示包裝好的季節小禮物。', icon: 'gift', price: 40, color: c.candyLavender, visual: 'spice-display' },
+  ],
+  swimwear: [
+    { key: 'limited-moonlit-swimsuit', name: '限定款・月光珍珠泳衣', description: '以月光與珍珠色設計的收藏款泳衣。', icon: 'shopping-bag', price: 82, color: c.candySky, visual: 'dress-display', limitedEdition: true },
+    { key: 'limited-sunset-coverup', name: '限定款・夕陽薄紗罩衫', description: '夕陽配色的輕柔沙灘罩衫。', icon: 'shopping-bag', price: 78, color: c.candyCoral, visual: 'clothing-rack', limitedEdition: true },
+    { key: 'shell-bikini-display', name: '貝殼刺繡比基尼展示台', description: '用貝殼小刺繡點綴的泳裝造型。', icon: 'user', price: 56, color: c.candyPeach, visual: 'dress-display' },
+    { key: 'tropical-surf-set', name: '熱帶浪花泳裝套組', description: '展示泳衣、防曬衣和海灘短褲。', icon: 'shopping-bag', price: 60, color: c.candyMint, visual: 'clothing-wardrobe' },
+  ],
+  cosplay: [
+    { key: 'limited-starlight-magician', name: '限定款・星月魔法師套裝', description: '星月刺繡與披風組成的限定角色服。', icon: 'shopping-bag', price: 88, color: c.candyLavender, visual: 'clothing-wardrobe', limitedEdition: true },
+    { key: 'limited-galaxy-armor', name: '限定款・銀河機甲Cosplay裝', description: '帶有銀河配色的收藏版機甲造型。', icon: 'user', price: 92, color: c.candySky, visual: 'dress-display', limitedEdition: true },
+    { key: 'fairy-wing-costume', name: '夢幻精靈翅膀套裝', description: '搭配薄紗翅膀的精靈角色服。', icon: 'feather', price: 64, color: c.candyPink, visual: 'clothing-wardrobe' },
+    { key: 'hero-cape-collection', name: '英雄披風收藏架', description: '展示不同配色的角色披風。', icon: 'shopping-bag', price: 58, color: c.candyCoral, visual: 'clothing-rack' },
+  ],
+  electronics: [
+    { key: 'limited-starlight-projector', name: '限定款・星空迷你投影機', description: '把星河投影帶回家的特別版家電。', icon: 'star', price: 90, color: c.candyLavender, visual: 'gallery-frames', limitedEdition: true },
+    { key: 'limited-pearl-headphones', name: '限定款・珍珠白無線耳機', description: '珍珠白與香檳金配色的收藏款耳機。', icon: 'headphones', price: 84, color: c.candyCream, visual: 'starlight-mobile', limitedEdition: true },
+    { key: 'smart-speaker-display', name: '薄荷智慧音箱展示台', description: '展示可愛造型的智慧音箱和語音助理。', icon: 'music', price: 62, color: c.candyMint, visual: 'rhythm-stage' },
+    { key: 'camera-lens-set', name: '晴空相機鏡頭組', description: '搭配展示相機機身和不同鏡頭。', icon: 'camera', price: 68, color: c.candySky, visual: 'tasting-court' },
+  ],
+  boutique: [
+    { key: 'limited-rose-handbag', name: '限定款・玫瑰金珍藏手袋', description: '玫瑰金配色的限定收藏手袋。', icon: 'shopping-bag', price: 96, color: c.candyPink, visual: 'gallery-frames', limitedEdition: true },
+    { key: 'limited-pearl-necklace', name: '限定款・星河珍珠項鍊', description: '以珍珠和星光細節設計的限定首飾。', icon: 'gift', price: 92, color: c.candyLavender, visual: 'starlight-mobile', limitedEdition: true },
+    { key: 'silk-scarf-collection', name: '晨光真絲圍巾收藏', description: '展示手繪花色與柔亮絲緞。', icon: 'shopping-bag', price: 68, color: c.candyPeach, visual: 'clothing-rack' },
+    { key: 'designer-watch-podium', name: '月光設計腕錶展示台', description: '為精緻腕錶留一座柔光展示台。', icon: 'clock', price: 72, color: c.candySky, visual: 'sculpture-plaza' },
   ],
 };
 
@@ -353,6 +481,10 @@ export const SHOP_INTERIOR_DECORATIONS: Record<MallShopType, ShopInteriorDecorat
   kimono: [...legacyDecorations.kimono, ...variantDecorations('kimono'), ...featureDecorations('kimono')],
   supermarket: [...legacyDecorations.supermarket, ...variantDecorations('supermarket'), ...featureDecorations('supermarket')],
   hyakuen: [...legacyDecorations.hyakuen, ...variantDecorations('hyakuen'), ...featureDecorations('hyakuen')],
+  swimwear: [...legacyDecorations.swimwear, ...variantDecorations('swimwear'), ...featureDecorations('swimwear')],
+  cosplay: [...legacyDecorations.cosplay, ...variantDecorations('cosplay'), ...featureDecorations('cosplay')],
+  electronics: [...legacyDecorations.electronics, ...variantDecorations('electronics'), ...featureDecorations('electronics')],
+  boutique: [...legacyDecorations.boutique, ...variantDecorations('boutique'), ...featureDecorations('boutique')],
 };
 
 export const SHOP_INTERIOR_DECORATION_BY_ID = Object.fromEntries(
@@ -375,6 +507,10 @@ export function getShopTypeLabel(shopType?: MallShopType): string {
     kimono: '和服店',
     supermarket: '超市',
     hyakuen: '日本百元店',
+    swimwear: '泳衣店',
+    cosplay: 'Cosplay服裝店',
+    electronics: '電器店',
+    boutique: '精品店',
   };
   return labels[shopType ?? 'general'];
 }

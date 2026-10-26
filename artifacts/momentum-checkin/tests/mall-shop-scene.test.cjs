@@ -57,15 +57,51 @@ test('interior page retains six accessible slots and wires scene selection to pe
   assert.match(scene, /accessibilityState=\{\{ selected \}\}/);
 });
 
-test('placed decorations render as room objects over shared furniture anchors, not opaque slot cards', () => {
+const anchorSource = ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../constants/mall-shop-scene-anchors.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },
+).outputText;
+const anchorModule = { exports: {} };
+new Function('require', 'module', 'exports', anchorSource)(require, anchorModule, anchorModule.exports);
+const { SCENE_ANCHORS, classifyDecoration, resolveObjectAnchor, mapCoverPoint } = anchorModule.exports;
+
+test('every scene defines in-bounds anchors for all six slots', () => {
+  const slots = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter'];
+  assert.equal(Object.keys(SCENE_ANCHORS).length, 21);
+  for (const [scene, anchors] of Object.entries(SCENE_ANCHORS)) {
+    assert.deepEqual(Object.keys(anchors).sort(), [...slots].sort(), scene);
+    for (const { table, floor } of Object.values(anchors)) {
+      for (const p of [table, floor]) assert.ok(p.x >= 0 && p.x <= 1 && p.y >= 0.1 && p.y <= 1, scene);
+      assert.ok(floor.y >= table.y - 0.001, `${scene} floor is not above table`);
+    }
+  }
+});
+
+test('equipment classification: espresso is tabletop, oven/cabinets/staff are floor', () => {
+  assert.equal(classifyDecoration({ id: 'general-equipment-cafe-espresso-machine', visual: 'coffee-machine', itemKind: 'equipment' }).cls, 'tabletop');
+  assert.ok(classifyDecoration({ id: 'x-espresso-machine', visual: 'coffee-machine' }).scale <= 0.85, 'coffee machine is not enlarged');
+  assert.equal(classifyDecoration({ id: 'bakery-oven', visual: 'bakery-oven' }).cls, 'floor');
+  assert.equal(classifyDecoration({ id: 'ice-cream-freezer', visual: 'ice-cream-machine' }).cls, 'floor');
+  assert.equal(classifyDecoration({ id: 'fluffy-staff-butter', visual: 'dog-staff-butter' }).cls, 'floor');
+  assert.equal(classifyDecoration({ id: 'curved-showcase', visual: 'gallery-frames' }).cls, 'wall');
+  assert.equal(classifyDecoration({ id: 'tops-wardrobe', visual: 'clothing-wardrobe' }).cls, 'floor');
+});
+
+test('cafe coffee machine lands on the right counter top, not window or floor', () => {
+  const counter = resolveObjectAnchor('cafe', 'counter', 'tabletop');
+  assert.ok(counter.x > 0.65 && counter.y > 0.5 && counter.y < 0.62, 'counter top on right side');
+  const floor = resolveObjectAnchor('cafe', 'counter', 'floor');
+  assert.ok(floor.y > counter.y + 0.2, 'floor anchor is separate');
+  const window = SCENE_ANCHORS.cafe['front-window'].table;
+  assert.ok(Math.abs(window.x - counter.x) > 0.2, 'counter slot is not at the window');
+  const mapped = mapCoverPoint(counter, 360, 383);
+  assert.ok(mapped.x > 250 && mapped.y > 200);
+});
+
+test('scene renders objects with MallObjectVisual, contact shadow only, and keeps hotspots accessible', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   assert.match(scene, /<MallObjectVisual/);
-  assert.match(scene, /getObjectPlacementStyle\(decoration, slot\.id\)/);
-  assert.match(scene, /decoration\.itemKind === 'equipment'/);
-  assert.match(scene, /floorBase/);
-  assert.match(scene, /tableBase/);
-  assert.match(scene, /wallMounted/);
-  assert.match(scene, /emptyAnchor/);
-  assert.match(scene, /pointerEvents="none"/);
-  assert.doesNotMatch(scene, /backgroundColor:\s*selected\s*\?\s*'rgba\(255,251,244,0\.96\)'/);
+  assert.match(scene, /resolveObjectAnchor\(sceneKey, slot\.id/);
+  assert.match(scene, /contactShadow/);
+  assert.doesNotMatch(scene, /floorBase|tableBase|shelfBase/);
 });

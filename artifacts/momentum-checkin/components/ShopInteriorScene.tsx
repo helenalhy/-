@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
+import { classifyDecoration, mapCoverPoint, resolveObjectAnchor } from '@/constants/mall-shop-scene-anchors';
 import { useColors } from '@/hooks/useColors';
 
 const SCENES: Record<ShopInteriorSceneKey, number> = {
@@ -29,38 +30,6 @@ const SCENES: Record<ShopInteriorSceneKey, number> = {
   boutique: require('../assets/images/shop-room-boutique.jpg'),
 };
 
-// These fixed scene anchors are shared by every room illustration. Positions
-// align with the illustrated window, wall shelving, tabletop and counter.
-const SLOT_POSITIONS: Record<ShopInteriorSlotId, { left: `${number}%`; top: `${number}%` }> = {
-  'front-window': { left: '4%', top: '37%' },
-  'left-wall': { left: '4%', top: '64%' },
-  center: { left: '36.5%', top: '68%' },
-  'right-wall': { left: '70%', top: '64%' },
-  'back-wall': { left: '70%', top: '37%' },
-  counter: { left: '36.5%', top: '42%' },
-};
-
-type ObjectPlacementStyle = {
-  scale: number;
-  base: 'floor' | 'shelf' | 'wall' | 'table';
-};
-
-function getObjectPlacementStyle(decoration: ShopInteriorDecoration | undefined, slotId: ShopInteriorSlotId): ObjectPlacementStyle {
-  if (!decoration) return { scale: 1, base: 'table' };
-
-  const visualId = `${decoration.visual ?? ''} ${decoration.id} ${decoration.icon}`.toLowerCase();
-  const wallMounted = /wall|frame|mirror|sign|lamp|mobile|light|picture|gallery|neon/.test(visualId);
-  const largeFixture = /rack|wardrobe|bench|pavilion|fountain|machine|oven|counter|stage|display|carousel|aquarium|arch/.test(visualId);
-  const tabletopAnchor = slotId === 'counter' || slotId === 'center' || slotId === 'front-window';
-
-  if (wallMounted) return { scale: 0.86, base: 'wall' };
-  if (decoration.itemKind === 'equipment') {
-    return { scale: largeFixture ? 1.12 : 0.92, base: tabletopAnchor ? 'table' : 'shelf' };
-  }
-  if (largeFixture) return { scale: 1.16, base: tabletopAnchor ? 'shelf' : 'floor' };
-  return { scale: tabletopAnchor ? 0.9 : 0.98, base: tabletopAnchor ? 'table' : 'shelf' };
-}
-
 export function ShopInteriorScene({
   testID,
   sceneKey,
@@ -81,6 +50,7 @@ export function ShopInteriorScene({
   onSelectSlot: (slot: ShopInteriorSlotId) => void;
 }) {
   const colors = useColors();
+  const [size, setSize] = useState({ width: 360, height: 383 });
   return (
     <View
       testID={testID}
@@ -93,7 +63,7 @@ export function ShopInteriorScene({
         },
       ]}
     >
-      <ImageBackground source={SCENES[sceneKey]} resizeMode="cover" style={styles.image} imageStyle={styles.imageShape}>
+      <ImageBackground onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} source={SCENES[sceneKey]} resizeMode="cover" style={styles.image} imageStyle={styles.imageShape}>
         <View style={styles.topScrim} pointerEvents="none" />
         <View style={[styles.namePlaque, { backgroundColor: colors.card, borderColor: shopColor }]} pointerEvents="none">
           <View style={[styles.plaqueDot, { backgroundColor: shopColor }]} />
@@ -102,7 +72,9 @@ export function ShopInteriorScene({
         {SHOP_INTERIOR_SLOTS.map((slot) => {
           const decoration = decorations.find(({ id }) => id === placements[slot.id]);
           const selected = selectedSlot === slot.id;
-          const placementStyle = getObjectPlacementStyle(decoration, slot.id);
+          const profile = decoration ? classifyDecoration(decoration) : { cls: 'tabletop' as const, scale: 1 };
+          const point = mapCoverPoint(resolveObjectAnchor(sceneKey, slot.id, profile.cls), size.width, size.height);
+          const lift = (OBJECT_H * (profile.scale - 1)) / 2;
           return (
             <Pressable
               key={slot.id}
@@ -112,47 +84,35 @@ export function ShopInteriorScene({
               accessibilityHint="選取這個店內位置，再從下方選擇佈置"
               accessibilityState={{ selected }}
               onPress={() => onSelectSlot(slot.id)}
-              style={[styles.hotspot, SLOT_POSITIONS[slot.id]]}
+              style={[styles.hotspot, { left: point.x - HOTSPOT_W / 2, top: point.y - HOTSPOT_H }]}
             >
-              <View
-                style={[
-                  styles.anchor,
-                  selected && { borderColor: colors.primary, backgroundColor: 'rgba(255,251,244,0.68)' },
-                  !decoration && !selected && styles.emptyAnchor,
-                ]}
-              >
-                {decoration ? (
-                  <>
-                    {placementStyle.base !== 'wall' && (
-                      <View
-                        pointerEvents="none"
-                        style={[
-                          styles.objectBase,
-                          placementStyle.base === 'floor' ? styles.floorBase : placementStyle.base === 'shelf' ? styles.shelfBase : styles.tableBase,
-                          { backgroundColor: `${decoration.color}B8` },
-                        ]}
-                      />
-                    )}
-                    <View style={[styles.objectVisual, { transform: [{ scale: placementStyle.scale }] }]}>
-                      <MallObjectVisual
-                        id={decoration.visual ?? decoration.id}
-                        itemId={`${shopName}:${decoration.id}`}
-                        color={decoration.color}
-                        icon={decoration.icon}
-                        category="decor"
-                        isActive
-                      />
-                    </View>
-                  </>
-                ) : (
-                  <Feather name={slot.icon as keyof typeof Feather.glyphMap} size={16} color={selected ? colors.primary : colors.mutedForeground} />
-                )}
-              </View>
-              <View style={[styles.slotLabelPill, selected && { borderColor: colors.primary, backgroundColor: colors.card }]}>
+              {decoration ? (
+                <>
+                  <View pointerEvents="none" style={styles.contactShadow} />
+                  <View pointerEvents="none" style={[styles.objectVisual, { transform: [{ translateY: lift }, { scale: profile.scale }] }]}>
+                    <MallObjectVisual
+                      id={decoration.visual ?? decoration.id}
+                      itemId={`${shopName}:${decoration.id}`}
+                      color={decoration.color}
+                      icon={decoration.icon}
+                      category="decor"
+                      isActive
+                    />
+                  </View>
+                  {selected && <View pointerEvents="none" style={[styles.selectRing, { borderColor: colors.primary }]} />}
+                </>
+              ) : (
+                <View
+                  pointerEvents="none"
+                  style={[styles.emptyMarker, selected ? { borderColor: colors.primary, backgroundColor: 'rgba(255,251,244,0.8)' } : null]}
+                >
+                  <Feather name={slot.icon as keyof typeof Feather.glyphMap} size={15} color={selected ? colors.primary : colors.mutedForeground} />
+                </View>
+              )}
+              <View pointerEvents="none" style={[styles.slotLabelPill, selected && { borderColor: colors.primary, backgroundColor: colors.card }]}>
                 <Text numberOfLines={1} style={[styles.slotLabel, { color: colors.foreground }]}>
                   {decoration?.name ?? slot.label}
                 </Text>
-                {!decoration && <Text style={[styles.slotState, { color: selected ? colors.primary : colors.mutedForeground }]}>可佈置</Text>}
               </View>
             </Pressable>
           );
@@ -161,6 +121,10 @@ export function ShopInteriorScene({
     </View>
   );
 }
+
+const OBJECT_H = 47;
+const HOTSPOT_W = 64;
+const HOTSPOT_H = 50;
 
 const styles = StyleSheet.create({
   frame: {
@@ -202,49 +166,40 @@ const styles = StyleSheet.create({
   nameText: { fontSize: 11, fontWeight: '800' },
   hotspot: {
     position: 'absolute',
-    width: '27%',
-    minHeight: 70,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    overflow: 'visible',
-    zIndex: 2,
-  },
-  anchor: {
-    width: '100%',
-    height: 50,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    width: HOTSPOT_W,
+    height: HOTSPOT_H,
     alignItems: 'center',
     justifyContent: 'flex-end',
     overflow: 'visible',
-  },
-  emptyAnchor: {
-    borderColor: 'rgba(255,255,255,0.78)',
-    borderStyle: 'dashed',
-    backgroundColor: 'rgba(255,251,244,0.34)',
-  },
-  objectVisual: {
-    position: 'absolute',
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
     zIndex: 2,
   },
-  objectBase: {
+  contactShadow: {
     position: 'absolute',
-    bottom: 1,
-    borderRadius: 99,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.76)',
+    bottom: -1,
+    width: 38,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(92,60,60,0.22)',
   },
-  floorBase: { width: '76%', height: 11 },
-  shelfBase: { width: '62%', height: 7, bottom: 4 },
-  tableBase: { width: '54%', height: 5, bottom: 5 },
+  objectVisual: { width: 62, height: OBJECT_H, alignItems: 'center', justifyContent: 'center' },
+  selectRing: { position: 'absolute', bottom: -2, width: 56, height: 56, borderRadius: 18, borderWidth: 2, borderStyle: 'dashed' },
+  emptyMarker: {
+    width: 38,
+    height: 38,
+    marginBottom: 0,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,251,244,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   slotLabelPill: {
-    maxWidth: '100%',
-    minHeight: 19,
-    marginTop: 1,
+    position: 'absolute',
+    top: HOTSPOT_H + 1,
+    maxWidth: 84,
+    minHeight: 16,
     paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 7,
@@ -255,5 +210,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   slotLabel: { maxWidth: '100%', fontSize: 8, lineHeight: 11, fontWeight: '800', textAlign: 'center' },
-  slotState: { fontSize: 7, lineHeight: 9 },
 });

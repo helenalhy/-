@@ -161,13 +161,16 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
       await new Promise((resolve) => setImmediate(resolve));
       render();
     },
-    slot(id) {
-      const node = find(`mall-slot-${id}`);
+    renderSlot(node) {
       cursor = states.length;
       first = true;
       const result = node.type(node.props);
       first = false;
       return result;
+    },
+    slot(id) {
+      const node = find(`mall-slot-${id}`);
+      return this.renderSlot(node);
     },
     async press(id) {
       const node = find(id);
@@ -731,34 +734,92 @@ test('search shows redeemed state and selecting an owned result remains free', a
   assert.equal(app.calls.length, 0);
 });
 
-test('search location jumps to the saved floor and annex, highlights it, and leaves placement and coins unchanged', async () => {
-  const savedSlot = 'floor-9-extension4-1-left';
-  const slots = [...Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(), savedSlot];
-  const app = mount({
-    coins: 7,
-    purchasedItems: ['owned'],
-    mallPlacements: { [savedSlot]: 'owned' },
-  }, undefined, 'ios', slots);
-  app.find('mall-search-input').props.onChangeText('已擁有花圃');
-  app.render();
+test('search cards match the saved scene location in the main mall, atrium and every annex', async () => {
+  const placementsToCheck = [
+    ['floor-1-center', 'main'],
+    ['floor-2-plaza-2-right', 'main'],
+    ['floor-3-annex-3-left', 'annex'],
+    ['floor-4-extension-2-center', 'extension'],
+    ['floor-5-extension3-3-right', 'extension3'],
+    ['floor-6-extension4-4-left', 'extension4'],
+  ];
+  const items = placementsToCheck.map(([slotId], index) => ({
+    ...mallCatalog.MALL_ITEMS[0],
+    id: `location-fixture-${index}`,
+    name: `位置驗證選物${index}`,
+    floor: 10,
+    price: 20 + index,
+  }));
+  const placements = Object.fromEntries(placementsToCheck.map(([slotId], index) => [slotId, items[index].id]));
+  const app = mount(
+    { coins: 7, purchasedItems: items.map(({ id }) => id), mallPlacements: placements },
+    items,
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
 
-  assert.ok(app.find('search-location-owned'));
-  assert.ok(app.find('search-select-owned'), 'the existing select/rearrange action remains available');
-  await app.press('search-location-owned');
+  for (let index = 0; index < placementsToCheck.length; index += 1) {
+    const [slotId, wing] = placementsToCheck[index];
+    const item = items[index];
+    const position = layoutModule.exports.getMallSlotPosition(slotId);
+    const expectedLocation = `${position.floor} · ${position.label} · ${item.price} 金幣`;
+    app.find('mall-search-input').props.onChangeText(item.name);
+    app.render();
 
-  const pagerNode = app.nodes().find((node) => node.type === 'MallWingPager');
-  assert.equal(pagerNode.props.focusWing, 'extension4');
-  assert.equal(pagerNode.props.focusRequestId, 1);
-  assert.match(textContent(app.find('floor-current')), /^9F/);
-  assert.match(app.announcements.at(-1), /9F・延伸區四.*沒有進入搬動模式.*未更改擺放或扣除金幣/);
-  const wingScene = pagerNode.props.renderWing('extension4', true);
-  const targetSlot = wingScene.props.children.flat(Infinity)
-    .find((child) => child.props.slotId === savedSlot);
-  assert.ok(targetSlot, `Rendered slots: ${wingScene.props.children.flat(Infinity).map((child) => child.props.slotId).filter(Boolean).join(', ')}`);
-  assert.equal(targetSlot.props.isLocationHighlighted, true);
-  assert.deepEqual(app.habits.mallPlacements, { [savedSlot]: 'owned' });
-  assert.equal(app.habits.coins, 7);
-  assert.equal(app.calls.length, 0);
+    const resultCard = app.nodes().find((node) =>
+      node.type === 'Text' && textContent(node) === expectedLocation,
+    );
+    assert.ok(resultCard, `${item.id} card shows its saved scene position: ${expectedLocation}`);
+    assert.ok(app.find(`search-location-${item.id}`), `${item.id} has a view-location control`);
+    await app.press(`search-location-${item.id}`);
+
+    const pagerNode = app.nodes().find((node) => node.type === 'MallWingPager');
+    assert.equal(pagerNode.props.focusWing, wing, `${item.id} opens the saved scene section`);
+    assert.match(textContent(app.find('floor-current')), new RegExp(`^${position.floor}`));
+    const wingScene = pagerNode.props.renderWing(wing, true);
+    const slotElement = wingScene.props.children.flat(Infinity)
+      .find((child) => child?.props?.slotId === slotId);
+    assert.ok(slotElement, `${slotId} is present in its scene section`);
+    assert.equal(slotElement.props.isLocationHighlighted, true, `${slotId} is marked as the search result location`);
+    const renderedSlot = app.renderSlot(slotElement);
+    assert.match(renderedSlot.props.accessibilityLabel, new RegExp(`${position.floor} ${position.label} ${item.name}`));
+    assert.deepEqual(app.habits.mallPlacements, placements, 'viewing a location does not change saved positions');
+    assert.equal(app.habits.coins, 7, 'viewing a location does not deduct coins');
+    assert.equal(app.calls.length, 0, 'viewing a location does not move or redeem items');
+  }
+});
+
+test('unplaced search results show only their original floor and never offer a saved location', () => {
+  const warehouseItem = {
+    ...mallCatalog.MALL_ITEMS[0], id: 'warehouse-location-check', floor: 3,
+    name: '待取出的花圃', price: 45,
+  };
+  const unredeemedItem = {
+    ...mallCatalog.MALL_ITEMS[1], id: 'unredeemed-location-check', floor: 7,
+    name: '尚未兌換的花燈', price: 60,
+  };
+  const app = mount(
+    {
+      purchasedItems: [warehouseItem.id],
+      mallPlacements: {},
+    },
+    [warehouseItem, unredeemedItem],
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+
+  for (const item of [warehouseItem, unredeemedItem]) {
+    const origin = `${item.floor}F · ${mallCatalog.MALL_FLOORS[item.floor - 1].title} · ${item.price} 金幣`;
+    app.find('mall-search-input').props.onChangeText(item.name);
+    app.render();
+
+    assert.ok(
+      app.nodes().some((node) => node.type === 'Text' && textContent(node) === origin),
+      `${item.id} shows its original floor rather than an invented placement`,
+    );
+    assert.equal(app.find(`search-location-${item.id}`), undefined, `${item.id} has no view-location control`);
+    assert.equal(app.find(`search-select-${item.id}`) !== undefined, true);
+  }
 });
 
 test('the existing search select action still enters free rearrangement on the item’s catalog floor', async () => {

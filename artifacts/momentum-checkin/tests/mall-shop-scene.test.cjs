@@ -56,3 +56,16 @@ test('interior page retains six accessible slots and wires scene selection to pe
   assert.match(scene, /accessibilityLabel=/);
   assert.match(scene, /accessibilityState=\{\{ selected \}\}/);
 });
+
+test('placed decorations render as room objects over shared furniture anchors, not opaque slot cards', () => {
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  assert.match(scene, /<MallObjectVisual/);
+  assert.match(scene, /getObjectPlacementStyle\(decoration, slot\.id\)/);
+  assert.match(scene, /decoration\.itemKind === 'equipment'/);
+  assert.match(scene, /floorBase/);
+  assert.match(scene, /tableBase/);
+  assert.match(scene, /wallMounted/);
+  assert.match(scene, /emptyAnchor/);
+  assert.match(scene, /pointerEvents="none"/);
+  assert.doesNotMatch(scene, /backgroundColor:\s*selected\s*\?\s*'rgba\(255,251,244,0\.96\)'/);
+});

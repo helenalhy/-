@@ -29,14 +29,37 @@ const SCENES: Record<ShopInteriorSceneKey, number> = {
   boutique: require('../assets/images/shop-room-boutique.jpg'),
 };
 
+// These fixed scene anchors are shared by every room illustration. Positions
+// align with the illustrated window, wall shelving, tabletop and counter.
 const SLOT_POSITIONS: Record<ShopInteriorSlotId, { left: `${number}%`; top: `${number}%` }> = {
-  'front-window': { left: '5%', top: '33%' },
-  'left-wall': { left: '5%', top: '57%' },
-  center: { left: '35%', top: '62%' },
-  'right-wall': { left: '66%', top: '57%' },
-  'back-wall': { left: '66%', top: '33%' },
-  counter: { left: '35%', top: '36%' },
+  'front-window': { left: '4%', top: '37%' },
+  'left-wall': { left: '4%', top: '64%' },
+  center: { left: '36.5%', top: '68%' },
+  'right-wall': { left: '70%', top: '64%' },
+  'back-wall': { left: '70%', top: '37%' },
+  counter: { left: '36.5%', top: '42%' },
 };
+
+type ObjectPlacementStyle = {
+  scale: number;
+  base: 'floor' | 'shelf' | 'wall' | 'table';
+};
+
+function getObjectPlacementStyle(decoration: ShopInteriorDecoration | undefined, slotId: ShopInteriorSlotId): ObjectPlacementStyle {
+  if (!decoration) return { scale: 1, base: 'table' };
+
+  const visualId = `${decoration.visual ?? ''} ${decoration.id} ${decoration.icon}`.toLowerCase();
+  const wallMounted = /wall|frame|mirror|sign|lamp|mobile|light|picture|gallery|neon/.test(visualId);
+  const largeFixture = /rack|wardrobe|bench|pavilion|fountain|machine|oven|counter|stage|display|carousel|aquarium|arch/.test(visualId);
+  const tabletopAnchor = slotId === 'counter' || slotId === 'center' || slotId === 'front-window';
+
+  if (wallMounted) return { scale: 0.86, base: 'wall' };
+  if (decoration.itemKind === 'equipment') {
+    return { scale: largeFixture ? 1.12 : 0.92, base: tabletopAnchor ? 'table' : 'shelf' };
+  }
+  if (largeFixture) return { scale: 1.16, base: tabletopAnchor ? 'shelf' : 'floor' };
+  return { scale: tabletopAnchor ? 0.9 : 0.98, base: tabletopAnchor ? 'table' : 'shelf' };
+}
 
 export function ShopInteriorScene({
   testID,
@@ -72,13 +95,14 @@ export function ShopInteriorScene({
     >
       <ImageBackground source={SCENES[sceneKey]} resizeMode="cover" style={styles.image} imageStyle={styles.imageShape}>
         <View style={styles.topScrim} pointerEvents="none" />
-        <View style={[styles.namePlaque, { backgroundColor: colors.card, borderColor: shopColor }]}>
+        <View style={[styles.namePlaque, { backgroundColor: colors.card, borderColor: shopColor }]} pointerEvents="none">
           <View style={[styles.plaqueDot, { backgroundColor: shopColor }]} />
           <Text numberOfLines={1} style={[styles.nameText, { color: colors.foreground }]}>{shopName}</Text>
         </View>
         {SHOP_INTERIOR_SLOTS.map((slot) => {
           const decoration = decorations.find(({ id }) => id === placements[slot.id]);
           const selected = selectedSlot === slot.id;
+          const placementStyle = getObjectPlacementStyle(decoration, slot.id);
           return (
             <Pressable
               key={slot.id}
@@ -88,35 +112,48 @@ export function ShopInteriorScene({
               accessibilityHint="選取這個店內位置，再從下方選擇佈置"
               accessibilityState={{ selected }}
               onPress={() => onSelectSlot(slot.id)}
-              style={[
-                styles.hotspot,
-                SLOT_POSITIONS[slot.id],
-                {
-                  backgroundColor: selected ? 'rgba(255,251,244,0.96)' : 'rgba(255,251,244,0.88)',
-                  borderColor: selected ? colors.primary : 'rgba(255,255,255,0.96)',
-                },
-              ]}
+              style={[styles.hotspot, SLOT_POSITIONS[slot.id]]}
             >
-              <View style={[styles.objectStage, { borderColor: decoration?.color ?? 'rgba(117,92,83,0.24)' }]}>
+              <View
+                style={[
+                  styles.anchor,
+                  selected && { borderColor: colors.primary, backgroundColor: 'rgba(255,251,244,0.68)' },
+                  !decoration && !selected && styles.emptyAnchor,
+                ]}
+              >
                 {decoration ? (
-                  <MallObjectVisual
-                    id={decoration.visual ?? decoration.id}
-                    itemId={`${shopName}:${decoration.id}`}
-                    color={decoration.color}
-                    icon={decoration.icon}
-                    category="decor"
-                    isActive
-                  />
+                  <>
+                    {placementStyle.base !== 'wall' && (
+                      <View
+                        pointerEvents="none"
+                        style={[
+                          styles.objectBase,
+                          placementStyle.base === 'floor' ? styles.floorBase : placementStyle.base === 'shelf' ? styles.shelfBase : styles.tableBase,
+                          { backgroundColor: `${decoration.color}B8` },
+                        ]}
+                      />
+                    )}
+                    <View style={[styles.objectVisual, { transform: [{ scale: placementStyle.scale }] }]}>
+                      <MallObjectVisual
+                        id={decoration.visual ?? decoration.id}
+                        itemId={`${shopName}:${decoration.id}`}
+                        color={decoration.color}
+                        icon={decoration.icon}
+                        category="decor"
+                        isActive
+                      />
+                    </View>
+                  </>
                 ) : (
-                  <Feather name={slot.icon as keyof typeof Feather.glyphMap} size={16} color={colors.primary} />
+                  <Feather name={slot.icon as keyof typeof Feather.glyphMap} size={16} color={selected ? colors.primary : colors.mutedForeground} />
                 )}
               </View>
-              <Text numberOfLines={1} style={[styles.slotLabel, { color: colors.foreground }]}>
-                {decoration?.name ?? slot.label}
-              </Text>
-              <Text style={[styles.slotState, { color: selected ? colors.primary : colors.mutedForeground }]}>
-                {selected ? '選取位置' : decoration ? '已佈置' : '可佈置'}
-              </Text>
+              <View style={[styles.slotLabelPill, selected && { borderColor: colors.primary, backgroundColor: colors.card }]}>
+                <Text numberOfLines={1} style={[styles.slotLabel, { color: colors.foreground }]}>
+                  {decoration?.name ?? slot.label}
+                </Text>
+                {!decoration && <Text style={[styles.slotState, { color: selected ? colors.primary : colors.mutedForeground }]}>可佈置</Text>}
+              </View>
             </Pressable>
           );
         })}
@@ -142,7 +179,7 @@ const styles = StyleSheet.create({
   imageShape: { width: '100%', height: '100%' },
   topScrim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(255,248,239,0.10)',
+    backgroundColor: 'rgba(255,248,239,0.08)',
   },
   namePlaque: {
     position: 'absolute',
@@ -165,29 +202,58 @@ const styles = StyleSheet.create({
   nameText: { fontSize: 11, fontWeight: '800' },
   hotspot: {
     position: 'absolute',
-    width: '29%',
-    minHeight: 88,
-    borderWidth: 2,
+    width: '27%',
+    minHeight: 70,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    overflow: 'visible',
+    zIndex: 2,
+  },
+  anchor: {
+    width: '100%',
+    height: 50,
     borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    paddingVertical: 5,
-    shadowColor: '#63464F',
-    shadowOpacity: 0.18,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  objectStage: {
-    height: 47,
-    width: '92%',
     borderWidth: 1,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255,255,255,0.62)',
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    overflow: 'visible',
+  },
+  emptyAnchor: {
+    borderColor: 'rgba(255,255,255,0.78)',
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(255,251,244,0.34)',
+  },
+  objectVisual: {
+    position: 'absolute',
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    zIndex: 2,
   },
-  slotLabel: { maxWidth: '100%', fontSize: 8, fontWeight: '800', textAlign: 'center' },
-  slotState: { fontSize: 7 },
+  objectBase: {
+    position: 'absolute',
+    bottom: 1,
+    borderRadius: 99,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.76)',
+  },
+  floorBase: { width: '76%', height: 11 },
+  shelfBase: { width: '62%', height: 7, bottom: 4 },
+  tableBase: { width: '54%', height: 5, bottom: 5 },
+  slotLabelPill: {
+    maxWidth: '100%',
+    minHeight: 19,
+    marginTop: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: 'rgba(255,251,244,0.70)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotLabel: { maxWidth: '100%', fontSize: 8, lineHeight: 11, fontWeight: '800', textAlign: 'center' },
+  slotState: { fontSize: 7, lineHeight: 9 },
 });

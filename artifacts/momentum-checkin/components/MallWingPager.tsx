@@ -115,6 +115,7 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
               onPress={() => changeWing(wing.id)}
               onKeyDown={Platform.OS === 'web' ? handleTabKeyDown : undefined}
               tabIndex={selected ? 0 : -1}
+              aria-selected={selected}
               accessibilityRole="tab"
               accessibilityLabel={`${wing.name}分區，${counts[wing.id]} 個位置已使用，共 ${wing.capacity} 個位置`}
               accessibilityState={{ selected }}

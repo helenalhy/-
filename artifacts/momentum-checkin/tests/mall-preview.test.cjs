@@ -889,8 +889,10 @@ test('mall wing controls announce their section name, capacity and selected stat
   assert.equal(extension.props.accessibilityLabel, '延伸區二分區，0 個位置已使用，共 12 個位置');
   assert.equal(findWing('mall-wing-main').props.accessibilityRole, 'tab');
   assert.equal(findWing('mall-wing-main').props.accessibilityState.selected, true);
+  assert.equal(findWing('mall-wing-main').props['aria-selected'], true);
   assert.equal(findWing('mall-wing-main').props.tabIndex, 0);
   assert.equal(extension.props.accessibilityState.selected, false);
+  assert.equal(extension.props['aria-selected'], false);
   assert.equal(extension.props.tabIndex, -1);
   assert.equal(findWing('mall-wing-announcement').props.role, 'status');
   assert.equal(findWing('mall-wing-announcement').props['aria-live'], 'polite');
@@ -913,6 +915,7 @@ test('mall wing controls announce their section name, capacity and selected stat
   assert.deepEqual(findWing('mall-wing-announcement').props.children, ['目前所在區域：延伸區']);
   assertOnlyWingIsAccessible('annex');
   assert.equal(findWing('mall-wing-annex').props.accessibilityState.selected, true);
+  assert.equal(findWing('mall-wing-annex').props['aria-selected'], true);
   assert.equal(findWing('mall-wing-annex').props.tabIndex, 0);
   assert.equal(findWing('mall-wing-main').props.tabIndex, -1);
   assert.equal(wingChanges, 1);

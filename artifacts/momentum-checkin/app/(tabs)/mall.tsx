@@ -209,7 +209,7 @@ export default function MallScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const shopSectionY = useRef(0);
   const mallSceneY = useRef(0);
-  const sceneOpacity = useRef(new Animated.Value(0)).current;
+  const sceneOpacity = useRef(new Animated.Value(1)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
   const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, isLoading } = useHabits();
   const [showCollection, setShowCollection] = useState(false);

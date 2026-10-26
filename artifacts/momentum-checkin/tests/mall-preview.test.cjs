@@ -498,7 +498,7 @@ test('search filters keep original floor separate from the current mall placemen
 
 test('real catalog is fully searchable and includes ten specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 1510);
+  assert.equal(MALL_ITEMS.length, 1511);
   assert.equal(MALL_FLOORS.length, 10);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -508,7 +508,7 @@ test('real catalog is fully searchable and includes ten specialized shop types o
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 510, facility: 500, decor: 500 },
+    { shop: 511, facility: 500, decor: 500 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(
@@ -1554,4 +1554,27 @@ test('full-floor move retains exchanges and storage, while restore can use anoth
   await app.press('mall-slot-floor-2-left');
   assert.deepEqual(app.calls[2], ['move', 'owned', 'floor-2-left']);
   assert.equal(app.habits.coins, 100);
+});
+
+test('6F 毛茸茸棉花糖cafe keeps 50 choices and adds four redeemable dog attendants', () => {
+  const shop = mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  assert.ok(shop);
+  assert.equal(shop.floor, 6);
+  assert.equal(shop.name, '毛茸茸棉花糖cafe');
+
+  const options = shopInteriorCatalog.getShopInteriorDecorations('general', shop.id, shop.name);
+  assert.equal(options.length, 50);
+  assert.equal(new Set(options.map((option) => option.id)).size, 50);
+
+  const dogStaff = options.filter((option) => option.id.startsWith('general-fluffy-staff-'));
+  assert.deepEqual(
+    dogStaff.map(({ name, visual }) => [name, visual]),
+    [
+      ['花花・淺啡色博美店員', 'dog-staff-huahua'],
+      ['奶昔・白色博美店員', 'dog-staff-milkshake'],
+      ['小牛・黑白色邊牧店員', 'dog-staff-xiaoniu'],
+      ['布丁・黃金獵犬寶寶店員', 'dog-staff-pudding'],
+    ],
+  );
+  assert.ok(dogStaff.every((option) => option.price > 0 && option.itemKind === 'decoration'));
 });

@@ -657,6 +657,19 @@ const featureDecorations = (type: MallShopType): ShopInteriorDecoration[] =>
     ),
   );
 
+const fluffyMarshmallowCafeStaff: ShopInteriorDecoration[] = [
+  option('general', 'fluffy-staff-huahua', '花花・淺啡色博美店員', '淺啡色博美花花會在店裡熱情迎接每位客人。', 'heart', 80, c.candyPeach, 'dog-staff-huahua'),
+  option('general', 'fluffy-staff-milkshake', '奶昔・白色博美店員', '白色博美奶昔會陪客人挑選蓬鬆的棉花糖。', 'coffee', 80, c.candyCream, 'dog-staff-milkshake'),
+  option('general', 'fluffy-staff-xiaoniu', '小牛・黑白色邊牧店員', '黑白邊境牧羊犬小牛會精神奕奕地照看店內。', 'star', 95, c.candyMint, 'dog-staff-xiaoniu'),
+  option('general', 'fluffy-staff-pudding', '布丁・黃金獵犬寶寶店員', '黃金獵犬寶寶布丁用暖暖的笑容陪伴客人。', 'gift', 90, c.candyLemon, 'dog-staff-pudding'),
+];
+
+const fluffyCafeReplacedDecorationIds = new Set(
+  variantDecorations('general', 10)
+    .slice(-fluffyMarshmallowCafeStaff.length)
+    .map(({ id }) => id),
+);
+
 const previousShopInteriorDecorations: Record<MallShopType, ShopInteriorDecoration[]> = {
   general: [...legacyDecorations.general, ...variantDecorations('general')],
   womenswear: [...legacyDecorations.womenswear, ...variantDecorations('womenswear'), ...featureDecorations('womenswear')],
@@ -689,6 +702,7 @@ export const SHOP_INTERIOR_DECORATION_BY_ID = Object.fromEntries(
   [
     ...Object.values(previousShopInteriorDecorations).flat(),
     ...Object.values(SHOP_INTERIOR_DECORATIONS).flat(),
+    ...fluffyMarshmallowCafeStaff,
     ...Object.entries(generalShopEquipment).flatMap(([specialty, seeds]) =>
       seedDecorations('general', seeds, `equipment-${specialty}`),
     ),
@@ -713,12 +727,18 @@ export function getShopInteriorDecorations(
       ...specialtyEquipment('general', specialty),
     ]
     : SHOP_INTERIOR_DECORATIONS[type];
-  const activeIds = new Set(active.map(({ id }) => id));
+  const shopActive = shopId === 'fluffy-marshmallow-cafe' && specialty === 'cafe'
+    ? [
+      ...active.filter(({ id }) => !fluffyCafeReplacedDecorationIds.has(id)),
+      ...fluffyMarshmallowCafeStaff,
+    ]
+    : active;
+  const activeIds = new Set(shopActive.map(({ id }) => id));
   const ownedLegacy = ownedDecorationIds
     .filter((id) => !activeIds.has(id))
     .map((id) => SHOP_INTERIOR_DECORATION_BY_ID[id])
     .filter((decoration): decoration is ShopInteriorDecoration => !!decoration);
-  return [...active, ...ownedLegacy];
+  return [...shopActive, ...ownedLegacy];
 }
 
 export function getShopTypeLabel(shopType?: MallShopType): string {

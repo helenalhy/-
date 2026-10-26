@@ -30,3 +30,14 @@ test('known visual IDs stay intact and unsupported items resolve to themed categ
   assert.ok(['central-fountain', 'rest-pavilion', 'tasting-court', 'cloud-swing', 'rhythm-stage', 'coral-aquarium', 'observatory-dome', 'sculpture-plaza', 'yoga-deck', 'cloud-walk'].includes(facility));
   assert.ok(['colorful-planter', 'garden-lights', 'gallery-frames', 'shell-lantern', 'starlight-mobile', 'neon-sign', 'aroma-diffuser', 'spice-display', 'rainbow-arch', 'wooden-bench', 'sculpture-plaza'].includes(decor));
 });
+
+test('each dog staff decoration keeps its distinct illustrated visual', () => {
+  for (const visual of [
+    'dog-staff-huahua',
+    'dog-staff-milkshake',
+    'dog-staff-xiaoniu',
+    'dog-staff-pudding',
+  ]) {
+    assert.equal(resolveMallObjectArchetype(visual, 'heart', 'decor'), visual);
+  }
+});

@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
 import palette from '@/constants/colors';
+import { DogAttendant } from './DogAttendant';
 
 const c = palette.light;
 const useNativeDriver = Platform.OS !== 'web';
@@ -110,6 +111,18 @@ export function ThemedMallObject({ id, color, icon = 'gift' }: { id: string; col
       break;
     case 'jewelry-case':
       drawing = <JewelryCase color={color} />;
+      break;
+    case 'dog-staff-huahua':
+      drawing = <DogAttendant kind="huahua" />;
+      break;
+    case 'dog-staff-milkshake':
+      drawing = <DogAttendant kind="milkshake" />;
+      break;
+    case 'dog-staff-xiaoniu':
+      drawing = <DogAttendant kind="xiaoniu" />;
+      break;
+    case 'dog-staff-pudding':
+      drawing = <DogAttendant kind="pudding" />;
       break;
     default:
       drawing = <><View style={[s.fallbackShowcase, { backgroundColor: color, borderColor: c.candyCaramelDark }]}><Feather name={icon as keyof typeof Feather.glyphMap} size={20} color={c.candyCaramelDark} /></View><View style={[s.base, { backgroundColor: c.candyCaramel }]} /></>;

@@ -657,6 +657,45 @@ test('cafe equipment is clearly labeled, illustrated, and purchased with earned 
   );
 });
 
+test('fluffy cafe dog staff can be redeemed with earned coins and placed inside the shop', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 120,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  const dogId = 'general-fluffy-staff-huahua';
+  for (let page = 0; page < 10 && !findNodes(interiorTree, (node) => node.props?.testID === `shop-decoration-${dogId}`).length; page += 1) {
+    await press(interiorTree, 'shop-decoration-page-next');
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+  }
+
+  assert.equal(findNodes(interiorTree, (node) => node.props?.testID === `shop-decoration-${dogId}`).length, 1);
+  await press(interiorTree, `shop-decoration-place-${dogId}`);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+
+  assert.equal(app.contextExports.useHabits().coins, 40);
+  assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].placements['front-window'], dogId);
+  assert.equal(
+    findByTestId(interiorTree, 'shop-interior-placed-front-window').props.visual,
+    'dog-staff-huahua',
+  );
+});
+
 test('long-pressing a goal opens edit and delete actions', async () => {
   const app = createHarness();
   app.renderProvider();

@@ -39,7 +39,11 @@ export type MallObjectArchetype =
   | 'craft-station'
   | 'sewing-machine'
   | 'electronics-bench'
-  | 'jewelry-case';
+  | 'jewelry-case'
+  | 'dog-staff-huahua'
+  | 'dog-staff-milkshake'
+  | 'dog-staff-xiaoniu'
+  | 'dog-staff-pudding';
 
 const ARCHETYPES = new Set<MallObjectArchetype>([
   'cloud-walk',
@@ -82,6 +86,10 @@ const ARCHETYPES = new Set<MallObjectArchetype>([
   'sewing-machine',
   'electronics-bench',
   'jewelry-case',
+  'dog-staff-huahua',
+  'dog-staff-milkshake',
+  'dog-staff-xiaoniu',
+  'dog-staff-pudding',
 ]);
 
 const ICON_ARCHETYPES: Record<string, MallObjectArchetype> = {

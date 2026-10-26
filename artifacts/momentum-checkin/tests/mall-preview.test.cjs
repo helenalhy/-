@@ -1185,6 +1185,166 @@ const fullFirstFloor = {
   'floor-1-right': 'other-right',
 };
 
+function mountHabitsContext(initialStorage = new Map(), options = {}) {
+  const storage = initialStorage;
+  const storageCalls = [];
+  let failWrites = options.failWrites ?? false;
+  const asyncStorage = {
+    async getItem(key) {
+      storageCalls.push(['get', key]);
+      return storage.get(key) ?? null;
+    },
+    async setItem(key, value) {
+      storageCalls.push(['set', key, value]);
+      if (failWrites) throw new Error('simulated storage failure');
+      storage.set(key, value);
+    },
+    async removeItem(key) {
+      storageCalls.push(['remove', key]);
+      if (failWrites) throw new Error('simulated storage failure');
+      storage.delete(key);
+    },
+  };
+
+  const hooks = [];
+  let hookCursor = 0;
+  let effectStarted = false;
+  const context = { Provider: Symbol('HabitsContext.Provider'), value: null };
+  const react = {
+    createContext: () => context,
+    createElement(type, props, ...children) {
+      if (type === context.Provider) context.value = props.value;
+      return { type, props: { ...props, children } };
+    },
+    useState(initial) {
+      const index = hookCursor++;
+      if (!(index in hooks)) hooks[index] = initial;
+      return [hooks[index], (next) => {
+        hooks[index] = typeof next === 'function' ? next(hooks[index]) : next;
+      }];
+    },
+    useRef(initial) {
+      const index = hookCursor++;
+      if (!(index in hooks)) hooks[index] = { current: initial };
+      return hooks[index];
+    },
+    useCallback: (callback) => callback,
+    useContext: (value) => value.value,
+    useEffect(effect) {
+      if (!effectStarted) {
+        effectStarted = true;
+        effect();
+      }
+    },
+    useMemo: (callback) => callback(),
+  };
+  const mockRequire = (name) => {
+    if (name === 'react') return react;
+    if (name === '@react-native-async-storage/async-storage') return { __esModule: true, default: asyncStorage };
+    if (name === 'expo-haptics') return {
+      ImpactFeedbackStyle: { Light: 'light' },
+      NotificationFeedbackType: { Success: 'success' },
+      impactAsync: async () => {},
+      notificationAsync: async () => {},
+      selectionAsync: async () => {},
+    };
+    if (name === '@/constants/colors') return {
+      default: { light: { candyMint: '#0f0', candyLavender: '#f0f', candyPink: '#f00' } },
+      light: { candyMint: '#0f0', candyLavender: '#f0f', candyPink: '#f00' },
+    };
+    if (name === '@/constants/mall-layout') return {
+      MALL_SLOT_IDS: [
+        'floor-1-left', 'floor-1-center', 'floor-1-right',
+        ...Array.from({ length: 9 }, (_, index) => ['left', 'center', 'right']
+          .map((column) => `floor-${index + 2}-${column}`)).flat(),
+      ],
+    };
+    if (name === '@/constants/mall-shop-interior') return {
+      SHOP_INTERIOR_DECORATION_IDS: ['test-decoration'],
+      SHOP_INTERIOR_SLOT_IDS: ['test-interior-slot'],
+      SHOP_INTERIOR_DECORATION_BY_ID: { 'test-decoration': { price: 10 } },
+    };
+    throw new Error(`Unexpected HabitsContext dependency: ${name}`);
+  };
+  const filename = path.join(__dirname, '../context/HabitsContext.tsx');
+  const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      jsx: ts.JsxEmit.React,
+      esModuleInterop: true,
+    },
+  }).outputText;
+  const loadedModule = { exports: {} };
+  new Function('require', 'module', 'exports', output)(mockRequire, loadedModule, loadedModule.exports);
+  const provider = loadedModule.exports.HabitsProvider;
+  function render() {
+    hookCursor = 0;
+    provider({ children: null });
+    return context.value;
+  }
+  render();
+  return {
+    storage,
+    storageCalls,
+    render,
+    get value() { return context.value; },
+    setFailWrites(value) { failWrites = value; },
+  };
+}
+
+test('AsyncStorage mall write failures preserve ownership, coins and placement after reload', async () => {
+  const mallKey = 'momentum.mall.v1';
+  const initialMall = {
+    schemaVersion: 3,
+    coins: 100,
+    purchasedItems: ['owned'],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: { 'floor-1-right': 'owned' },
+    shopInteriors: {},
+  };
+  const storage = new Map([[mallKey, JSON.stringify(initialMall)]]);
+  const app = mountHabitsContext(storage);
+  await new Promise((resolve) => setImmediate(resolve));
+  let habits = app.render();
+  assert.equal(habits.isLoading, false);
+  assert.equal(habits.coins, 100);
+  assert.deepEqual(habits.purchasedItems, ['owned']);
+  assert.deepEqual(habits.mallPlacements, { 'floor-1-right': 'owned' });
+  const persistedBefore = storage.get(mallKey);
+
+  app.setFailWrites(true);
+  await assert.rejects(
+    habits.purchaseMallItem('new-item', 20, 'decor', 0, 'floor-1-left'),
+    /無法儲存商場資料/,
+  );
+  habits = app.render();
+  assert.equal(habits.coins, 100, 'failed redemption does not deduct coins');
+  assert.deepEqual(habits.purchasedItems, ['owned'], 'failed redemption does not grant ownership');
+  assert.deepEqual(habits.mallPlacements, { 'floor-1-right': 'owned' }, 'existing item stays in its original slot');
+
+  await assert.rejects(habits.moveMallItem('owned', 'floor-1-left'), /無法儲存商場資料/);
+  habits = app.render();
+  assert.equal(habits.coins, 100);
+  assert.deepEqual(habits.purchasedItems, ['owned']);
+  assert.deepEqual(habits.mallPlacements, { 'floor-1-right': 'owned' }, 'failed move does not change placement');
+
+  await assert.rejects(habits.storeMallItem('owned'), /無法儲存商場資料/);
+  habits = app.render();
+  assert.equal(habits.coins, 100);
+  assert.deepEqual(habits.purchasedItems, ['owned'], 'failed warehouse storage keeps ownership');
+  assert.deepEqual(habits.mallPlacements, { 'floor-1-right': 'owned' }, 'failed warehouse storage keeps original placement');
+  assert.equal(storage.get(mallKey), persistedBefore, 'failed writes do not replace persisted mall data');
+  assert.equal(app.storageCalls.filter(([operation, key]) => operation === 'set' && key === mallKey).length, 3);
+
+  const reloaded = mountHabitsContext(storage);
+  await new Promise((resolve) => setImmediate(resolve));
+  habits = reloaded.render();
+  assert.equal(habits.coins, 100, 'reload shows the pre-failure coin balance');
+  assert.deepEqual(habits.purchasedItems, ['owned'], 'reload preserves the previously redeemed item');
+  assert.deepEqual(habits.mallPlacements, { 'floor-1-right': 'owned' }, 'reload restores the pre-failure position');
+});
+
 function textContent(node) {
   if (typeof node === 'string' || typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(textContent).join('');

@@ -1,6 +1,6 @@
-- [商場場景要求](mall-scene-requirements.md) — 每層至少 10 位獨立客人，主題樓層新增角色不取代原有客人；店內依店型配置設備與限定品。
+- [商場場景要求](mall-scene-requirements.md) — 每層至少 10 位獨立客人；店內場景依店型變化，設備、限定品和各店擺設仍獨立。
 - [完全免費的金幣制度](free-economy.md) — 不課金、不儲值；只用完成目標獲得的金幣兌換，不能再要求獎勵券。
-- [Expo 預覽快取](expo-preview-cache.md) — 長時間頁面可能仍是舊版；截圖也可能早於本地圖片載入，需在新視窗確認。
+- [Expo 預覽快取](expo-preview-cache.md) — 舊頁或過早截圖會顯舊版／空圖；EADDRINUSE 時先檢查殘留 Expo 子程序。
 - [商場讀屏結果回饋](mall-accessibility-results.md) — 操作結果保持單一回饋；分區切換依平台使用一種禮貌公告機制。
 - [商場路由回歸測試](mall-navigation-tests.md) — 元件測試替身不會自動渲染巢狀元件；路由測試須明確推進堆疊並渲染實際路由入口。
 - [打卡與金幣原子性](checkin-atomicity.md) — 一次打卡同時更新完成狀態與金幣時，以單筆可恢復交易記錄避免跨儲存項目部分成功。

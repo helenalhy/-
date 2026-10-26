@@ -14,8 +14,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHabits } from '@/context/HabitsContext';
 import { MallObjectVisual } from '@/components/MallVisuals';
+import { ShopInteriorScene } from '@/components/ShopInteriorScene';
 import {
   getShopInteriorDecorations,
+  getShopInteriorSceneKey,
   getShopTypeLabel,
   SHOP_INTERIOR_SLOTS,
   type ShopInteriorSlotId,
@@ -226,93 +228,16 @@ export default function MallShopInteriorScreen() {
               </Text>
             </View>
 
-            <View
+            <ShopInteriorScene
               testID="shop-interior-scene"
-              style={[styles.room, { backgroundColor: colors.candyCream, borderColor: shop.color }]}
-            >
-              <View style={[styles.roomSign, { backgroundColor: shop.color, borderColor: colors.candyCaramelDark }]}>
-                <Feather name={shop.icon as keyof typeof Feather.glyphMap} size={13} color={colors.foreground} />
-                <Text numberOfLines={1} style={[styles.roomSignText, { color: colors.foreground }]}>{shop.name}</Text>
-                <View style={[styles.signLight, { backgroundColor: colors.candyLemon }]} />
-              </View>
-              <View style={[styles.roomWall, { backgroundColor: floor.surface }]}>
-                <View style={styles.roomTopTrim} />
-                <View style={styles.shelfLine}>
-                  {[0, 1, 2, 3, 4, 5].map((index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.miniProduct,
-                        { backgroundColor: [colors.candyPink, colors.candyMint, colors.candyLemon, colors.candyLavender][index % 4] },
-                      ]}
-                    />
-                  ))}
-                </View>
-                <View style={[styles.roomGrid, { borderColor: colors.border }]}>
-                  {SHOP_INTERIOR_SLOTS.map((slot) => {
-                    const decorationId = placements[slot.id];
-                    const decoration = decorations.find((candidate) => candidate.id === decorationId);
-                    const selected = selectedSlot === slot.id;
-                    return (
-                      <Pressable
-                        key={slot.id}
-                        testID={`shop-interior-slot-${slot.id}`}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${slot.label}${decoration ? `，目前是${decoration.name}` : '，尚未佈置'}${selected ? '，目前選取' : ''}`}
-                        accessibilityState={{ selected }}
-                        onPress={() => setSelectedSlot(slot.id)}
-                        style={[
-                          styles.roomSlot,
-                          {
-                            backgroundColor: colors.card,
-                            borderColor: selected ? colors.primary : colors.border,
-                          },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.roomObjectStage,
-                            {
-                              backgroundColor: decoration ? colors.candyCream : colors.secondary,
-                              borderColor: decoration?.color ?? colors.border,
-                            },
-                          ]}
-                        >
-                          {decoration ? (
-                            <ShopInteriorAnimatedObject
-                              testID={`shop-interior-placed-${slot.id}`}
-                              id={decoration.id}
-                              itemId={`${shop.id}:${decoration.id}`}
-                              color={decoration.color}
-                              icon={decoration.icon}
-                              category="decor"
-                              visual={decoration.visual}
-                            />
-                          ) : (
-                            <View style={[styles.emptyDecorBadge, { backgroundColor: colors.card }]}>
-                              <Feather name={slot.icon as keyof typeof Feather.glyphMap} size={16} color={colors.primary} />
-                            </View>
-                          )}
-                        </View>
-                        <Text numberOfLines={1} style={[styles.slotName, { color: colors.foreground }]}>
-                          {decoration?.name ?? slot.label}
-                        </Text>
-                        <Text style={[styles.slotStatus, { color: selected ? colors.primary : colors.mutedForeground }]}>
-                          {selected ? '選取位置' : decoration ? '已佈置' : '可佈置'}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <View style={[styles.roomFloor, { backgroundColor: colors.candyCaramel }]}>
-                  <View style={styles.floorTileRow}>
-                    {[0, 1, 2, 3, 4, 5, 6].map((tile) => (
-                      <View key={tile} style={[styles.floorTile, { borderColor: colors.candyCaramelDark }]} />
-                    ))}
-                  </View>
-                </View>
-              </View>
-            </View>
+              sceneKey={getShopInteriorSceneKey(shop.shopType, shop.id, shop.name)}
+              shopName={shop.name}
+              shopColor={shop.color}
+              placements={placements}
+              decorations={decorations}
+              selectedSlot={selectedSlot}
+              onSelectSlot={setSelectedSlot}
+            />
 
             <View style={styles.sectionHeading}>
               <View>

@@ -583,20 +583,50 @@ const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> 
 
 const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
   ['cafe', /咖啡|coffee|cafe|烘豆/i],
-  ['candy', /糖果|軟糖|棉花糖|彩糖|糖藝|糖霜/i],
-  ['icecream', /雪糕|冰淇淋|冰棒|冰沙|gelato/i],
-  ['bakery', /烘焙|麵包|曲奇|餅乾|甜甜圈|鬆餅|布丁|馬卡龍|巧克力|甜點|甜品|果塔/i],
-  ['tea', /奶茶|茶|汽水|飲品|飲料|smoothie|冰飲/i],
-  ['food', /食堂|食館|小食|飯糰|咖喱|咖哩|披薩|意粉|可麗餅|捲餅|起司|香料|料理|餐/i],
-  ['flower', /花|植物|園藝|苗圃|盆栽|花藝/i],
-  ['book', /書|文具|手帳|紙品|明信片|繪本|漫畫|雜誌/i],
-  ['toy', /扭蛋|玩偶|玩具|遊戲|模型|積木|卡牌|街機/i],
-  ['craft', /工房|工藝|陶|畫室|畫作|手作|編織|刺繡|玻璃|皮革/i],
+  ['candy', /糖果|軟糖|棉花糖|彩糖|糖藝|糖霜|candy|sweets/i],
+  ['icecream', /雪糕|冰淇淋|冰棒|冰沙|gelato|ice.?cream|smoothie/i],
+  ['bakery', /烘焙|麵包|曲奇|餅乾|甜甜圈|鬆餅|布丁|馬卡龍|巧克力|甜點|甜品|果塔|bakery|bake|pastry/i],
+  ['tea', /奶茶|茶|汽水|飲品|飲料|bubble.?tea|tea.?shop|冰飲/i],
+  ['food', /食堂|食館|小食|飯糰|咖喱|咖哩|披薩|意粉|可麗餅|捲餅|起司|香料|料理|餐|kitchen|noodle|food.?bar/i],
+  ['flower', /花|植物|園藝|苗圃|盆栽|花藝|flower|florist|plant.?shop/i],
+  ['book', /書|文具|手帳|紙品|明信片|繪本|漫畫|雜誌|book|stationery/i],
+  ['toy', /扭蛋|玩偶|玩具|遊戲|模型|積木|卡牌|街機|toy|capsule|arcade/i],
+  ['craft', /工房|工藝|陶|畫室|畫作|手作|編織|刺繡|玻璃|皮革|craft|studio|atelier|ceramic/i],
 ];
 
 function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpecialty | undefined {
   const text = `${shopId} ${shopName}`;
   return generalSpecialtyPatterns.find(([, pattern]) => pattern.test(text))?.[0];
+}
+
+export type ShopInteriorSceneKey =
+  | 'general' | 'cafe' | 'candy' | 'icecream' | 'bakery' | 'tea' | 'food' | 'flower' | 'book' | 'toy' | 'craft'
+  | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen'
+  | 'swimwear' | 'cosplay' | 'electronics' | 'boutique';
+
+const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorSceneKey> = {
+  cafe: 'cafe',
+  candy: 'candy',
+  icecream: 'icecream',
+  bakery: 'bakery',
+  tea: 'tea',
+  food: 'food',
+  flower: 'flower',
+  book: 'book',
+  toy: 'toy',
+  craft: 'craft',
+};
+
+/** One shared illustrated room per shop type/specialty; names and placements remain store-specific. */
+export function getShopInteriorSceneKey(
+  shopType?: MallShopType,
+  shopId?: string,
+  shopName?: string,
+): ShopInteriorSceneKey {
+  const type = shopType ?? 'general';
+  if (type !== 'general') return type;
+  const specialty = inferGeneralShopSpecialty(shopId, shopName);
+  return specialty ? GENERAL_SCENE_BY_SPECIALTY[specialty] : 'general';
 }
 
 function seedDecorations(type: MallShopType, seeds: DecorationSeed[], idPrefix: string): ShopInteriorDecoration[] {

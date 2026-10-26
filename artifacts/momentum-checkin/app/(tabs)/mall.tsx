@@ -57,6 +57,16 @@ const CATEGORY_NAMES: Record<RewardCategory, string> = {
   decor: '裝潢',
 };
 
+function focusAccessibilityTarget(target: React.ElementRef<typeof Pressable> | null) {
+  if (Platform.OS === 'web') {
+    const webElement = target as unknown as { focus?: () => void } | null;
+    webElement?.focus?.();
+    return;
+  }
+  const node = findNodeHandle(target);
+  if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
+}
+
 function matchesMallSearch(item: MallItem, searchTerms: string[]) {
   const searchableText = `${item.name} ${item.description}`.toLocaleLowerCase();
   return searchTerms.every((term) => searchableText.includes(term));
@@ -145,8 +155,7 @@ function MallSceneSlot({
   useEffect(() => {
     if (!focusAfterResult) return;
     const frame = requestAnimationFrame(() => {
-      const node = findNodeHandle(accessibilityRef.current);
-      if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
+      focusAccessibilityTarget(accessibilityRef.current);
       onFocusAfterResult?.();
     });
     return () => cancelAnimationFrame(frame);
@@ -439,8 +448,7 @@ export default function MallScreen() {
   useEffect(() => {
     if (!focusRestoreActionItemId) return;
     const frame = requestAnimationFrame(() => {
-      const node = findNodeHandle(focusRestoreActionRef.current);
-      if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
+      focusAccessibilityTarget(focusRestoreActionRef.current);
     });
     return () => cancelAnimationFrame(frame);
   }, [focusRestoreActionItemId, showCollection]);

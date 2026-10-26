@@ -16,3 +16,9 @@ React Native Web 的 `accessibilityState.selected` 不會自動輸出分頁控�
 **Why:** 元件替身只能看到 React Native props，無法發現網頁平台映射後缺失的 ARIA 屬性。
 
 **How to apply:** 新增或調整商場分頁語意時，同時驗證原生 accessibility state 與瀏覽器中的 `role`、`aria-selected`、`tabindex` 和實際焦點。
+
+網頁上的操作結果需透過 React Native Web 的 DOM `ref.focus()` 移動焦點；不可在 web 呼叫 `findNodeHandle` 或原生 `AccessibilityInfo.setAccessibilityFocus`。原生平台仍使用原生輔助使用焦點。
+
+**Why:** React Native Web 的 `findNodeHandle` 會直接丟出執行期錯誤；這類錯誤只在商場移動或存倉等成功結果後觸發，單純載入頁面不一定會重現。
+
+**How to apply:** 商場焦點回饋改動時，分別測試網頁上的搬動與存倉成功路徑，並保持 iOS／Android 的原生焦點行為。

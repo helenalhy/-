@@ -214,6 +214,12 @@ function createHarness() {
     return render(key, () => shopInteriorScreen.default());
   }
 
+  function renderShopInteriorScene(tree) {
+    const sceneElement = findByTestId(tree, 'shop-interior-scene');
+    if (!sceneElement || typeof sceneElement.type !== 'function') return null;
+    return render('shop-interior-scene', () => sceneElement.type(sceneElement.props));
+  }
+
   function renderToday(key = 'today') {
     return render(key, () => todayRouteModule.default());
   }
@@ -256,6 +262,7 @@ function createHarness() {
     renderCurrentRoute,
     renderMall,
     renderShopInterior,
+    renderShopInteriorScene,
     renderProvider,
     renderToday,
     runEffects,
@@ -784,25 +791,33 @@ test('shop interior page shows its matching decor catalog and charges only goal-
     interiorTree = app.renderShopInterior();
   }
   assert.equal(catalogVisuals(interiorTree).length, 10);
-  for (const slot of ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter']) {
-    assert.ok(findByTestId(interiorTree, `shop-interior-slot-${slot}`), `${slot} can be selected`);
+  let sceneTree = app.renderShopInteriorScene(interiorTree);
+  for (const slot of ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table']) {
+    assert.ok(findByTestId(sceneTree, `shop-interior-slot-${slot}`), `${slot} can be selected`);
   }
+  assert.equal(
+    findNodes(sceneTree, (node) => typeof node.props?.testID === 'string' && node.props.testID.startsWith('shop-interior-slot-')).length,
+    8,
+    'the main area exposes eight placement positions',
+  );
   assert.ok(findByTestId(interiorTree, 'shop-decoration-womenswear-clothing-rack'));
 
   await press(interiorTree, 'shop-decoration-place-womenswear-clothing-rack');
   app.renderProvider();
   interiorTree = app.renderShopInterior();
+  sceneTree = app.renderShopInteriorScene(interiorTree);
   assert.equal(app.contextExports.useHabits().coins, 90);
   assert.deepEqual(app.contextExports.useHabits().shopInteriors[shop.id], {
     ownedDecorations: ['womenswear-clothing-rack'],
     placements: { 'front-window': 'womenswear-clothing-rack' },
   });
-  const installedVisual = findByTestId(interiorTree, 'shop-interior-placed-front-window');
+  const installedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
+  const installedVisual = findNodes(installedSlot, (node) => node.type === 'MallObjectVisual')[0];
   assert.equal(installedVisual.props.category, 'decor');
-  assert.equal(installedVisual.props.id, 'womenswear-clothing-rack');
+  assert.equal(installedVisual.props.id, 'clothing-rack');
   assert.match(
     textContent(findByTestId(interiorTree, 'shop-decoration-womenswear-clothing-rack')),
-    /已佈置於櫥窗/,
+    /已佈置於主區櫥窗/,
   );
 });
 
@@ -838,13 +853,15 @@ test('cafe equipment is clearly labeled, illustrated, and purchased with earned 
   await press(interiorTree, 'shop-decoration-place-general-equipment-cafe-espresso-machine');
   app.renderProvider();
   interiorTree = app.renderShopInterior();
+  const sceneTree = app.renderShopInteriorScene(interiorTree);
   assert.equal(app.contextExports.useHabits().coins, 58);
   assert.equal(
     app.contextExports.useHabits().shopInteriors[shop.id].placements['front-window'],
     'general-equipment-cafe-espresso-machine',
   );
+  const installedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
   assert.equal(
-    findByTestId(interiorTree, 'shop-interior-placed-front-window').props.visual,
+    findNodes(installedSlot, (node) => node.type === 'MallObjectVisual')[0].props.id,
     'coffee-machine',
   );
 });
@@ -879,11 +896,13 @@ test('fluffy cafe dog staff can be redeemed with earned coins and placed inside 
   await press(interiorTree, `shop-decoration-place-${dogId}`);
   app.renderProvider();
   interiorTree = app.renderShopInterior();
+  const sceneTree = app.renderShopInteriorScene(interiorTree);
 
   assert.equal(app.contextExports.useHabits().coins, 40);
   assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].placements['front-window'], dogId);
+  const installedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
   assert.equal(
-    findByTestId(interiorTree, 'shop-interior-placed-front-window').props.visual,
+    findNodes(installedSlot, (node) => node.type === 'MallObjectVisual')[0].props.id,
     'dog-staff-huahua',
   );
 });

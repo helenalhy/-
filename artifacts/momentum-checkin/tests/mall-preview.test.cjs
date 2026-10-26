@@ -110,9 +110,14 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
           announcements.push(message);
           announcementOptions.push(options);
         },
-        setAccessibilityFocus() {},
+        setAccessibilityFocus() {
+          if (platformOS === 'web') throw new Error('setAccessibilityFocus is not supported on web');
+        },
       },
-      findNodeHandle: () => 1,
+      findNodeHandle: () => {
+        if (platformOS === 'web') throw new Error('findNodeHandle is not supported on web');
+        return 1;
+      },
       Keyboard: { dismiss: () => keyboardDismissals.push(true) },
       Alert: { alert: (...args) => alerts.push(args) }, StyleSheet: { create: (s) => s }, Platform: { OS: platformOS },
       ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View'].map((key) => [key, key])),
@@ -1720,7 +1725,7 @@ function textContent(node) {
   return node?.props ? textContent(node.props.children) : '';
 }
 
-function mountWithPlacementMutation(overrides = {}, catalog, platformOS = 'ios', failures = {}) {
+function mountWithPlacementMutation(overrides = {}, catalog, platformOS = 'ios', failures = {}, options = {}) {
   let app;
   let failMoveOnce = failures.moveOnce === true;
   let failStoreOnce = failures.storeOnce === true;
@@ -1746,7 +1751,7 @@ function mountWithPlacementMutation(overrides = {}, catalog, platformOS = 'ios',
       if (placedId === itemId) delete app.habits.mallPlacements[slotId];
     }
   };
-  app = mount({ ...overrides, moveMallItem, storeMallItem }, catalog, platformOS);
+  app = mount({ ...overrides, moveMallItem, storeMallItem }, catalog, platformOS, undefined, mallCatalog.MALL_FLOORS, options);
   return app;
 }
 
@@ -1754,6 +1759,21 @@ async function settle(app) {
   await new Promise((resolve) => setImmediate(resolve));
   app.render();
 }
+
+test('web mall focus feedback uses DOM refs instead of unsupported native focus APIs', async () => {
+  const app = mountWithPlacementMutation({}, undefined, 'web', {}, { runEffects: true });
+  const sceneSlot = app.nodes().find((node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-1-left',
+  );
+  assert.ok(sceneSlot, 'the scene slot is available for result focus');
+  app.renderSlot({ ...sceneSlot, props: { ...sceneSlot.props, focusAfterResult: true } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  await app.press('mall-slot-floor-1-right');
+  await app.press('store-selected-item');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(app.find('restore-owned'), 'the next restore action stays available after storage');
+});
 
 for (const platformOS of ['ios', 'android']) {
   test(`${platformOS}: move, exchange, warehouse storage and free restore each focus one clear success result`, async () => {

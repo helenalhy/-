@@ -17,7 +17,15 @@ new Function('require', 'module', 'exports', constantsOutput)(
 );
 
 test('floor guest counts, unique frame positions, routes, and sprite sheets stay aligned', () => {
-  const { GUEST_COUNTS_BY_FLOOR, GUEST_FRAME_CELLS, GUEST_ROUTES, GUEST_SHEETS, GUESTS_PER_FLOOR } = guestConstants.exports;
+  const {
+    GUEST_ATLAS_FRAME_WIDTH,
+    GUEST_COLUMNS,
+    GUEST_COUNTS_BY_FLOOR,
+    GUEST_FRAME_CELLS,
+    GUEST_ROUTES,
+    GUEST_SHEETS,
+    GUESTS_PER_FLOOR,
+  } = guestConstants.exports;
   assert.equal(GUESTS_PER_FLOOR, 10);
   assert.deepEqual(GUEST_COUNTS_BY_FLOOR, [10, 10, 10, 12, 10, 10, 11, 13, 10, 10]);
   assert.equal(GUEST_ROUTES.length, 13);
@@ -30,7 +38,7 @@ test('floor guest counts, unique frame positions, routes, and sprite sheets stay
   const sheetHashes = new Set();
   for (let floor = 1; floor <= 10; floor += 1) {
     const image = fs.readFileSync(path.join(imageDirectory, `guests-floor-${floor}.png`));
-    assert.equal(image.readUInt32BE(16), 640, `floor ${floor} sheet width`);
+    assert.equal(image.readUInt32BE(16), GUEST_ATLAS_FRAME_WIDTH * GUEST_COLUMNS, `floor ${floor} sheet width`);
     assert.equal(image.readUInt32BE(20), 768, `floor ${floor} sheet height`);
     sheetHashes.add(crypto.createHash('sha256').update(image).digest('hex'));
   }

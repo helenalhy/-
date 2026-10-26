@@ -55,7 +55,6 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
       { left: `${route.from}%`, top: Math.min(route.top * width / 100, Math.max(0, width - GUEST_FRAME_HEIGHT)), zIndex: route.top, transform: [
         { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, (route.to - route.from) * width / 100] }) },
         { translateY: bob },
-        { scale: index === 5 ? 0.86 : 1 },
       ] },
     ]}>
       <View style={[s.shadow, { backgroundColor: c.candyLavenderDark }]} />
@@ -98,7 +97,7 @@ export function MallCustomers({ floor }: { floor: number }) {
 
 const s = StyleSheet.create({
   guest: { position: 'absolute', width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT },
-  shadow: { position: 'absolute', bottom: 7, left: 5, width: 22, height: 4, borderRadius: 12, opacity: 0.15 },
+  shadow: { position: 'absolute', bottom: 7, left: 10, width: 28, height: 4, borderRadius: 12, opacity: 0.15 },
   spriteWindow: { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT, overflow: 'hidden' },
   spriteSheet: { position: 'absolute', width: GUEST_FRAME_WIDTH * GUEST_COLUMNS, height: GUEST_FRAME_HEIGHT * GUEST_ROWS },
 });

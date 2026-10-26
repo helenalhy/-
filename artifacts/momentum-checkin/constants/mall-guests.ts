@@ -18,7 +18,8 @@ export const GUEST_SHEETS: ImageSourcePropType[] = [
 export const GUESTS_PER_FLOOR = 10;
 export const GUEST_COLUMNS = 5;
 export const GUEST_ROWS = 3;
-export const GUEST_FRAME_WIDTH = 32;
+export const GUEST_ATLAS_FRAME_WIDTH = 192;
+export const GUEST_FRAME_WIDTH = 48;
 export const GUEST_FRAME_HEIGHT = 64;
 export const GUEST_COUNTS_BY_FLOOR = [10, 10, 10, 12, 10, 10, 11, 13, 10, 10] as const;
 

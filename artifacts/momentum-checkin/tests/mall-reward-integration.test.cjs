@@ -293,6 +293,8 @@ async function press(tree, testID) {
   assert.ok(button, `Expected ${testID} to be rendered`);
   assert.ok(!button.props.disabled, `Expected ${testID} to be enabled`);
   await button.props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 test('goal reward updates an active affordable catalog and survives provider reload', async () => {

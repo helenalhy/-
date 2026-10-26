@@ -264,9 +264,9 @@ test('a failed write-ahead record leaves both the completion and coin balance un
     rewardedCheckIns: [],
     placements: {},
   });
+  const app = await mount(storage);
   const originalHabits = storage[habitsKey];
   const originalMall = storage[key];
-  const app = await mount(storage);
   const today = app.value.today;
 
   app.setFailWrites(true);

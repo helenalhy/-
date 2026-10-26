@@ -45,7 +45,7 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
   reward: number;
-  onToggle: () => void;
+  onToggle: () => Promise<void>;
   onEdit: () => void;
   onManage: () => void;
 }) {
@@ -286,7 +286,7 @@ export function TodayScreen() {
                 habit={habit}
                 done={habit.checkIns.includes(today)}
                 reward={getCheckInReward(habit.id)}
-                onToggle={() => void handleToggle(habit)}
+                onToggle={() => handleToggle(habit)}
                 onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
                 onManage={() => openHabitActions(habit)}
               />

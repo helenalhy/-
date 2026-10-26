@@ -638,6 +638,98 @@ test('long-pressing facilities and decor allows free movement or warehouse stora
   assert.equal(savedMall.coins, 27, 'storing does not refund or spend coins');
 });
 
+test('search cards follow saved moves, show warehouse state after storage, and stay unchanged when canceled', async () => {
+  const app = createHarness();
+  const item = app.mallCatalog.MALL_ITEMS.find((candidate) => candidate.id === 'welcome-flowers');
+  assert.ok(item);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 20,
+    purchasedItems: [item.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: { 'floor-1-left': item.id },
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  const renderWingScene = (mallTree, wing) => {
+    const pager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
+    assert.ok(pager, 'the mall renders its floor and wing pager');
+    return pager.props.renderWing(wing, true);
+  };
+  const searchItem = (mallTree) => findByTestId(mallTree, `search-item-location-${item.id}`);
+  const enterSearch = (mallTree) => {
+    findByTestId(mallTree, 'mall-search-input').props.onChangeText(item.name);
+    return app.renderMall();
+  };
+
+  let mallTree = enterSearch(app.renderMall());
+  assert.match(textContent(searchItem(mallTree)), /1F · 主商場 · 店面區左側/);
+  assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /已擺放/);
+
+  await press(mallTree, `search-select-${item.id}`);
+  mallTree = app.renderMall();
+  await press(mallTree, 'cancel-placement');
+  mallTree = app.renderMall();
+  assert.match(textContent(searchItem(mallTree)), /1F · 主商場 · 店面區左側/);
+
+  await press(mallTree, `search-select-${item.id}`);
+  mallTree = app.renderMall();
+  await press(mallTree, 'floor-next');
+  mallTree = app.renderMall();
+  const newSlot = findNodes(renderWingScene(mallTree, 'annex'), (node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-2-annex-1-left',
+  )[0];
+  assert.ok(newSlot, 'the selected annex contains the target slot');
+  newSlot.props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  app.renderProvider();
+  mallTree = app.renderMall();
+  assert.match(textContent(searchItem(mallTree)), /2F · 延伸區 · 延伸區店面區左側/);
+  assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /已擺放/);
+
+  const movedSlot = findNodes(renderWingScene(mallTree, 'annex'), (node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-2-annex-1-left',
+  )[0];
+  assert.ok(movedSlot);
+  movedSlot.props.onLongPress();
+  mallTree = app.renderMall();
+  await press(mallTree, 'store-selected-item');
+  app.renderProvider();
+
+  mallTree = enterSearch(app.renderMall());
+  assert.match(textContent(searchItem(mallTree)), /倉庫保存中 · 原屬 1F/);
+  assert.doesNotMatch(textContent(searchItem(mallTree)), /店面區|延伸區/);
+  assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /倉庫保存中 · 免費擺放/);
+  assert.deepEqual(app.contextExports.useHabits().mallPlacements, {});
+  assert.ok(app.contextExports.useHabits().purchasedItems.includes(item.id), 'storage keeps ownership for free placement');
+
+  await press(mallTree, `search-select-${item.id}`);
+  mallTree = app.renderMall();
+  assert.match(textContent(mallTree), /從倉庫免費擺放/);
+  await press(mallTree, 'cancel-placement');
+  mallTree = app.renderMall();
+  assert.match(textContent(searchItem(mallTree)), /倉庫保存中 · 原屬 1F/);
+
+  await press(mallTree, `search-select-${item.id}`);
+  mallTree = app.renderMall();
+  const restoreSlot = findNodes(renderWingScene(mallTree, 'main'), (node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-1-left',
+  )[0];
+  assert.ok(restoreSlot, 'the item can be selected for free placement from its search result');
+  restoreSlot.props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  app.renderProvider();
+  mallTree = app.renderMall();
+  assert.match(textContent(searchItem(mallTree)), /1F · 主商場 · 店面區左側/);
+  assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /已擺放/);
+  assert.equal(app.contextExports.useHabits().coins, 20, 'movement and free placement do not spend coins');
+});
+
 test('shop interior page shows its matching decor catalog and charges only goal-earned coins', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');

@@ -28,9 +28,13 @@ export const MALL_SLOT_IDS: MallSlotId[] = [
   )),
 ];
 
+export function getMallSlotFloor(slotId: MallSlotId): number {
+  return Number(slotId.split('-')[1]);
+}
+
 export function getMallSlotPosition(slotId: MallSlotId) {
   const parts = slotId.split('-');
-  const floor = `${parts[1]}F`;
+  const floor = `${getMallSlotFloor(slotId)}F`;
   const column = parts[parts.length - 1];
   const columnLabel = column === 'left' ? '左側' : column === 'center' ? '中央' : '右側';
   const annex = parts[2] === 'annex';

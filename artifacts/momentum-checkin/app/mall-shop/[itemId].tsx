@@ -19,7 +19,13 @@ import {
   getShopInteriorDecorations,
   getShopInteriorSceneKey,
   getShopTypeLabel,
+  getShopInteriorPlacementId,
+  getShopInteriorAreaPlacements,
+  getShopInteriorAreaLabel,
+  parseShopInteriorPlacementId,
+  SHOP_INTERIOR_AREAS,
   SHOP_INTERIOR_SLOTS,
+  type ShopInteriorAreaId,
   type ShopInteriorSlotId,
 } from '@/constants/mall-shop-interior';
 import { MALL_FLOORS, MALL_ITEM_BY_ID } from '@/constants/mall';
@@ -93,6 +99,7 @@ export default function MallShopInteriorScreen() {
     storeShopInteriorDecoration,
   } = useHabits();
   const [selectedSlot, setSelectedSlot] = useState<ShopInteriorSlotId>(SHOP_INTERIOR_SLOTS[0].id);
+  const [selectedArea, setSelectedArea] = useState<ShopInteriorAreaId>('main');
   const [workingDecoration, setWorkingDecoration] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
@@ -105,7 +112,12 @@ export default function MallShopInteriorScreen() {
   );
   const owned = new Set(interior?.ownedDecorations ?? []);
   const placements = interior?.placements ?? {};
-  const selectedDecorationId = placements[selectedSlot];
+  const areaPlacements = useMemo(
+    () => getShopInteriorAreaPlacements(placements, selectedArea),
+    [placements, selectedArea],
+  );
+  const selectedPlacementId = getShopInteriorPlacementId(selectedArea, selectedSlot);
+  const selectedDecorationId = areaPlacements[selectedSlot];
   const selectedDecoration = decorations.find(({ id }) => id === selectedDecorationId);
   const floor = shop ? MALL_FLOORS[shop.floor - 1] : MALL_FLOORS[0];
   const hasAccess = !!shop && shop.category === 'shop' && purchasedItems.includes(shop.id);
@@ -119,8 +131,8 @@ export default function MallShopInteriorScreen() {
     setWorkingDecoration(decorationId);
     setNotice('');
     try {
-      await placeShopInteriorDecoration(shop.id, decorationId, selectedSlot);
-      const location = SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label ?? '店內';
+      await placeShopInteriorDecoration(shop.id, decorationId, selectedPlacementId);
+      const location = `${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label ?? '店內'}`;
       setNotice(alreadyOwned
         ? `已免費將項目移至${location}。舊項目仍保留在店內收藏。`
         : `已兌換並放在${location}，扣除 ${price} 金幣。`);
@@ -136,7 +148,7 @@ export default function MallShopInteriorScreen() {
     setWorkingDecoration(selectedDecoration.id);
     setNotice('');
     try {
-      await storeShopInteriorDecoration(shop.id, selectedSlot);
+      await storeShopInteriorDecoration(shop.id, selectedPlacementId);
       setNotice(`已將${selectedDecoration.name}收進這間店的收藏，沒有退款或扣除金幣。`);
     } catch (error) {
       Alert.alert('收納未完成', error instanceof Error ? error.message : '請稍後再試。');
@@ -233,11 +245,51 @@ export default function MallShopInteriorScreen() {
               sceneKey={getShopInteriorSceneKey(shop.shopType, shop.id, shop.name)}
               shopName={shop.name}
               shopColor={shop.color}
-              placements={placements}
+              areaLabel={getShopInteriorAreaLabel(selectedArea)}
+              placements={areaPlacements}
               decorations={decorations}
               selectedSlot={selectedSlot}
               onSelectSlot={setSelectedSlot}
             />
+
+            <View style={[styles.areaPager, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Pressable
+                testID="shop-interior-area-prev"
+                accessibilityRole="button"
+                accessibilityLabel="上一個店內區域"
+                accessibilityState={{ disabled: SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea) === 0 }}
+                disabled={SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea) === 0}
+                onPress={() => {
+                  const index = SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea);
+                  if (index > 0) setSelectedArea(SHOP_INTERIOR_AREAS[index - 1].id);
+                }}
+                style={[styles.areaButton, { backgroundColor: colors.secondary, opacity: selectedArea === 'main' ? 0.45 : 1 }]}
+              >
+                <Feather name="chevron-left" size={18} color={colors.primary} />
+              </Pressable>
+              <View style={styles.areaCopy}>
+                <Text testID="shop-interior-area-label" style={[styles.areaTitle, { color: colors.foreground }]}>
+                  {getShopInteriorAreaLabel(selectedArea)}
+                </Text>
+                <Text style={[styles.areaSubtitle, { color: colors.mutedForeground }]}>
+                  區域 {SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea) + 1} / {SHOP_INTERIOR_AREAS.length} · 8 個位置
+                </Text>
+              </View>
+              <Pressable
+                testID="shop-interior-area-next"
+                accessibilityRole="button"
+                accessibilityLabel="下一個店內區域"
+                accessibilityState={{ disabled: SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea) === SHOP_INTERIOR_AREAS.length - 1 }}
+                disabled={SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea) === SHOP_INTERIOR_AREAS.length - 1}
+                onPress={() => {
+                  const index = SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea);
+                  if (index < SHOP_INTERIOR_AREAS.length - 1) setSelectedArea(SHOP_INTERIOR_AREAS[index + 1].id);
+                }}
+                style={[styles.areaButton, { backgroundColor: colors.secondary, opacity: selectedArea === 'extension-5' ? 0.45 : 1 }]}
+              >
+                <Feather name="chevron-right" size={18} color={colors.primary} />
+              </Pressable>
+            </View>
 
             <View style={styles.sectionHeading}>
               <View>
@@ -249,7 +301,7 @@ export default function MallShopInteriorScreen() {
               <View style={[styles.selectedSlotPill, { backgroundColor: colors.secondary }]}>
                 <Feather name="map-pin" size={12} color={colors.primary} />
                 <Text style={[styles.selectedSlotText, { color: colors.primary }]}>
-                  {SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}
+                  {getShopInteriorAreaLabel(selectedArea)} · {SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}
                 </Text>
               </View>
             </View>
@@ -307,8 +359,12 @@ export default function MallShopInteriorScreen() {
             <View style={styles.decorationList}>
               {visibleDecorations.map((decoration) => {
                 const isOwned = owned.has(decoration.id);
-                const currentSlot = Object.entries(placements).find(([, id]) => id === decoration.id)?.[0];
-                const alreadyHere = currentSlot === selectedSlot;
+                const currentPlacementId = Object.entries(placements).find(([, id]) => id === decoration.id)?.[0];
+                const currentPlacement = currentPlacementId ? parseShopInteriorPlacementId(currentPlacementId) : null;
+                const alreadyHere = currentPlacementId === selectedPlacementId;
+                const currentLocation = currentPlacement
+                  ? `${getShopInteriorAreaLabel(currentPlacement.areaId)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === currentPlacement.slotId)?.label ?? ''}`
+                  : null;
                 const affordable = coins >= decoration.price;
                 const disabled = workingDecoration !== null || alreadyHere || (!isOwned && !affordable);
                 return (
@@ -351,8 +407,8 @@ export default function MallShopInteriorScreen() {
                       <Text style={[styles.decorationDescription, { color: colors.mutedForeground }]}>{decoration.description}</Text>
                       <Text style={[styles.decorationCost, { color: colors.candyCaramelDark }]}>
                         {isOwned
-                          ? currentSlot
-                            ? `已佈置於${SHOP_INTERIOR_SLOTS.find(({ id }) => id === currentSlot)?.label} · 可免費換位`
+                          ? currentPlacement
+                            ? `已佈置於${currentLocation} · 可免費換位`
                             : '已兌換 · 可免費佈置'
                           : affordable
                             ? `完成目標取得 ${decoration.price} 金幣`
@@ -362,7 +418,7 @@ export default function MallShopInteriorScreen() {
                     <Pressable
                       testID={`shop-decoration-place-${decoration.id}`}
                       accessibilityRole="button"
-                      accessibilityLabel={alreadyHere ? `${decoration.name}已在${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : isOwned ? `免費佈置${decoration.name}於${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : `兌換${decoration.name}並佈置於${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}，${decoration.price}金幣${affordable ? '' : `，還差 ${decoration.price - coins} 枚`}`}
+                      accessibilityLabel={alreadyHere ? `${decoration.name}已在${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : isOwned ? `免費佈置${decoration.name}於${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : `兌換${decoration.name}並佈置於${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}，${decoration.price}金幣${affordable ? '' : `，還差 ${decoration.price - coins} 枚`}`}
                       accessibilityState={{ disabled }}
                       disabled={disabled}
                       onPress={() => void placeDecoration(decoration.id, decoration.price)}
@@ -404,6 +460,11 @@ const styles = StyleSheet.create({
   shopTypeText: { fontSize: 11, fontWeight: '700' },
   shopName: { fontSize: 24, fontWeight: '800', textAlign: 'center' },
   shopLocation: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  areaPager: { minHeight: 58, paddingHorizontal: 9, paddingVertical: 7, borderWidth: 1, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  areaButton: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  areaCopy: { alignItems: 'center', justifyContent: 'center', flex: 1 },
+  areaTitle: { fontSize: 14, fontWeight: '800' },
+  areaSubtitle: { fontSize: 10, marginTop: 2 },
   room: { borderRadius: 25, borderWidth: 2, overflow: 'hidden', padding: 10, shadowColor: '#6A4B57', shadowOpacity: 0.1, shadowRadius: 12, elevation: 3 },
   roomSign: { minHeight: 32, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, marginBottom: 8, borderRadius: 12, borderWidth: 1 },
   roomSignText: { fontSize: 12, fontWeight: '800', maxWidth: 180 },

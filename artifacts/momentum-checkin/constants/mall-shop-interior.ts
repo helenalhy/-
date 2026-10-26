@@ -7,7 +7,24 @@ export type ShopInteriorSlotId =
   | 'center'
   | 'right-wall'
   | 'back-wall'
-  | 'counter';
+  | 'counter'
+  | 'left-table'
+  | 'right-table';
+
+export type ShopInteriorExtensionId = `extension-${1 | 2 | 3 | 4 | 5}`;
+export type ShopInteriorAreaId = 'main' | ShopInteriorExtensionId;
+export type ShopInteriorPlacementId =
+  | ShopInteriorSlotId
+  | `${ShopInteriorExtensionId}:${ShopInteriorSlotId}`;
+
+export const SHOP_INTERIOR_AREAS: { id: ShopInteriorAreaId; label: string }[] = [
+  { id: 'main', label: '主區' },
+  { id: 'extension-1', label: '延伸區 1' },
+  { id: 'extension-2', label: '延伸區 2' },
+  { id: 'extension-3', label: '延伸區 3' },
+  { id: 'extension-4', label: '延伸區 4' },
+  { id: 'extension-5', label: '延伸區 5' },
+];
 
 export interface ShopInteriorDecoration {
   id: string;
@@ -28,7 +45,53 @@ export const SHOP_INTERIOR_SLOTS: { id: ShopInteriorSlotId; label: string; icon:
   { id: 'right-wall', label: '右牆', icon: 'grid' },
   { id: 'back-wall', label: '後牆', icon: 'home' },
   { id: 'counter', label: '櫃台', icon: 'shopping-bag' },
+  { id: 'left-table', label: '左側桌面', icon: 'square' },
+  { id: 'right-table', label: '右側桌面', icon: 'square' },
 ];
+
+export const SHOP_INTERIOR_SLOT_IDS = SHOP_INTERIOR_SLOTS.map(({ id }) => id);
+export const SHOP_INTERIOR_AREA_CAPACITY = SHOP_INTERIOR_SLOTS.length;
+export const SHOP_INTERIOR_PLACEMENT_IDS: ShopInteriorPlacementId[] = [
+  ...SHOP_INTERIOR_SLOT_IDS,
+  ...SHOP_INTERIOR_AREAS
+    .filter(({ id }) => id !== 'main')
+    .flatMap(({ id }) => SHOP_INTERIOR_SLOT_IDS.map((slotId) => `${id}:${slotId}` as ShopInteriorPlacementId)),
+];
+
+export function getShopInteriorPlacementId(areaId: ShopInteriorAreaId, slotId: ShopInteriorSlotId): ShopInteriorPlacementId {
+  return areaId === 'main' ? slotId : `${areaId}:${slotId}`;
+}
+
+export function parseShopInteriorPlacementId(placementId: string): { areaId: ShopInteriorAreaId; slotId: ShopInteriorSlotId } | null {
+  if ((SHOP_INTERIOR_SLOT_IDS as readonly string[]).includes(placementId)) {
+    return { areaId: 'main', slotId: placementId as ShopInteriorSlotId };
+  }
+  const [areaId, slotId, ...extra] = placementId.split(':');
+  if (
+    extra.length === 0
+    && SHOP_INTERIOR_AREAS.some(({ id }) => id === areaId && id !== 'main')
+    && (SHOP_INTERIOR_SLOT_IDS as readonly string[]).includes(slotId)
+  ) {
+    return { areaId: areaId as ShopInteriorAreaId, slotId: slotId as ShopInteriorSlotId };
+  }
+  return null;
+}
+
+export function getShopInteriorAreaPlacements(
+  placements: Partial<Record<ShopInteriorPlacementId, string>>,
+  areaId: ShopInteriorAreaId,
+): Partial<Record<ShopInteriorSlotId, string>> {
+  const areaPlacements: Partial<Record<ShopInteriorSlotId, string>> = {};
+  for (const [placementId, decorationId] of Object.entries(placements)) {
+    const parsed = parseShopInteriorPlacementId(placementId);
+    if (parsed?.areaId === areaId) areaPlacements[parsed.slotId] = decorationId;
+  }
+  return areaPlacements;
+}
+
+export function getShopInteriorAreaLabel(areaId: ShopInteriorAreaId): string {
+  return SHOP_INTERIOR_AREAS.find(({ id }) => id === areaId)?.label ?? '主區';
+}
 
 const c = palette.light;
 
@@ -750,7 +813,6 @@ export const SHOP_INTERIOR_DECORATION_BY_ID = Object.fromEntries(
 ) as Record<string, ShopInteriorDecoration>;
 
 export const SHOP_INTERIOR_DECORATION_IDS = Object.keys(SHOP_INTERIOR_DECORATION_BY_ID);
-export const SHOP_INTERIOR_SLOT_IDS = SHOP_INTERIOR_SLOTS.map(({ id }) => id);
 
 export function getShopInteriorDecorations(
   shopType?: MallShopType,

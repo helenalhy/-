@@ -14,9 +14,9 @@ import palette from '@/constants/colors';
 import { MALL_SLOT_IDS, type MallSlotId } from '@/constants/mall-layout';
 import {
   SHOP_INTERIOR_DECORATION_IDS,
-  SHOP_INTERIOR_SLOT_IDS,
+  SHOP_INTERIOR_PLACEMENT_IDS,
   SHOP_INTERIOR_DECORATION_BY_ID,
-  type ShopInteriorSlotId,
+  type ShopInteriorPlacementId,
 } from '@/constants/mall-shop-interior';
 export { MALL_SLOT_IDS } from '@/constants/mall-layout';
 export type { MallSlotId } from '@/constants/mall-layout';
@@ -52,7 +52,7 @@ interface CheckInTransaction {
 
 export interface ShopInteriorState {
   ownedDecorations: string[];
-  placements: Partial<Record<ShopInteriorSlotId, string>>;
+  placements: Partial<Record<ShopInteriorPlacementId, string>>;
 }
 
 export type ShopInteriorCollection = Record<string, ShopInteriorState>;
@@ -82,8 +82,8 @@ interface HabitsContextValue {
   moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
   storeMallItem: (itemId: string) => Promise<void>;
   grantTestCoins: (minimumBalance: number) => Promise<void>;
-  placeShopInteriorDecoration: (shopId: string, decorationId: string, slotId: ShopInteriorSlotId) => Promise<void>;
-  storeShopInteriorDecoration: (shopId: string, slotId: ShopInteriorSlotId) => Promise<void>;
+  placeShopInteriorDecoration: (shopId: string, decorationId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
+  storeShopInteriorDecoration: (shopId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
 }
 
 const STORAGE_KEY = 'momentum.habits.v1';
@@ -172,7 +172,7 @@ function normalizeShopInteriors(
   purchasedItems: string[],
 ): ShopInteriorCollection {
   const decorationIds = new Set(SHOP_INTERIOR_DECORATION_IDS);
-  const slotIds = new Set<string>(SHOP_INTERIOR_SLOT_IDS);
+  const placementIds = new Set<string>(SHOP_INTERIOR_PLACEMENT_IDS);
   const interiors: ShopInteriorCollection = {};
   for (const [shopId, saved] of Object.entries(savedInteriors ?? {})) {
     if (!purchasedItems.includes(shopId) || !saved || typeof saved !== 'object') continue;
@@ -181,15 +181,15 @@ function normalizeShopInteriors(
     ))];
     const owned = new Set(ownedDecorations);
     const assigned = new Set<string>();
-    const placements: Partial<Record<ShopInteriorSlotId, string>> = {};
-    for (const [slotId, decorationId] of Object.entries(saved.placements ?? {})) {
+    const placements: Partial<Record<ShopInteriorPlacementId, string>> = {};
+    for (const [placementId, decorationId] of Object.entries(saved.placements ?? {})) {
       if (
-        slotIds.has(slotId)
+        placementIds.has(placementId)
         && typeof decorationId === 'string'
         && owned.has(decorationId)
         && !assigned.has(decorationId)
       ) {
-        placements[slotId as ShopInteriorSlotId] = decorationId;
+        placements[placementId as ShopInteriorPlacementId] = decorationId;
         assigned.add(decorationId);
       }
     }
@@ -465,21 +465,21 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, shopInteriors, mallPlacements, saveMall]);
 
-  const placeShopInteriorDecoration = useCallback(async (shopId: string, decorationId: string, slotId: ShopInteriorSlotId) => {
+  const placeShopInteriorDecoration = useCallback(async (shopId: string, decorationId: string, placementId: ShopInteriorPlacementId) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
     if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
     const decoration = SHOP_INTERIOR_DECORATION_BY_ID[decorationId];
     if (!decoration) throw new Error('找不到這款店內裝飾');
-    if (!(SHOP_INTERIOR_SLOT_IDS as readonly string[]).includes(slotId)) throw new Error('這個店內位置不存在');
+    if (!(SHOP_INTERIOR_PLACEMENT_IDS as readonly string[]).includes(placementId)) throw new Error('這個店內位置不存在');
     const current = shopInteriors[shopId] ?? { ownedDecorations: [], placements: {} };
     const alreadyOwned = current.ownedDecorations.includes(decorationId);
     if (!alreadyOwned && coins < decoration.price) throw new Error(`金幣還差 ${decoration.price - coins} 枚`);
     actionLock.current = true;
     try {
       const placements = Object.fromEntries(
-        Object.entries(current.placements).filter(([, id]) => id !== decorationId && id !== current.placements[slotId]),
-      ) as Partial<Record<ShopInteriorSlotId, string>>;
-      placements[slotId] = decorationId;
+        Object.entries(current.placements).filter(([, id]) => id !== decorationId && id !== current.placements[placementId]),
+      ) as Partial<Record<ShopInteriorPlacementId, string>>;
+      placements[placementId] = decorationId;
       const nextInterior = {
         ownedDecorations: alreadyOwned ? current.ownedDecorations : [...current.ownedDecorations, decorationId],
         placements,
@@ -499,16 +499,16 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
-  const storeShopInteriorDecoration = useCallback(async (shopId: string, slotId: ShopInteriorSlotId) => {
+  const storeShopInteriorDecoration = useCallback(async (shopId: string, placementId: ShopInteriorPlacementId) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
     if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
     const current = shopInteriors[shopId];
-    if (!current?.placements[slotId]) return;
+    if (!current?.placements[placementId]) return;
     actionLock.current = true;
     try {
       const placements = Object.fromEntries(
-        Object.entries(current.placements).filter(([id]) => id !== slotId),
-      ) as Partial<Record<ShopInteriorSlotId, string>>;
+        Object.entries(current.placements).filter(([id]) => id !== placementId),
+      ) as Partial<Record<ShopInteriorPlacementId, string>>;
       await saveMall({
         coins,
         purchasedItems,

@@ -35,6 +35,7 @@ export function ShopInteriorScene({
   sceneKey,
   shopName,
   shopColor,
+  areaLabel,
   placements,
   decorations,
   selectedSlot,
@@ -44,6 +45,7 @@ export function ShopInteriorScene({
   sceneKey: ShopInteriorSceneKey;
   shopName: string;
   shopColor: string;
+  areaLabel: string;
   placements: Partial<Record<ShopInteriorSlotId, string>>;
   decorations: ShopInteriorDecoration[];
   selectedSlot: ShopInteriorSlotId;
@@ -74,13 +76,13 @@ export function ShopInteriorScene({
           const selected = selectedSlot === slot.id;
           const profile = decoration ? classifyDecoration(decoration) : { cls: 'tabletop' as const, scale: 1 };
           const point = mapCoverPoint(resolveObjectAnchor(sceneKey, slot.id, profile.cls), size.width, size.height);
-          const lift = (OBJECT_H * (profile.scale - 1)) / 2;
+          const lift = (OBJECT_H * (1 - profile.scale)) / 2;
           return (
             <Pressable
               key={slot.id}
               testID={`shop-interior-slot-${slot.id}`}
               accessibilityRole="button"
-              accessibilityLabel={`${slot.label}${decoration ? `，目前是${decoration.name}` : '，尚未佈置'}${selected ? '，目前選取' : ''}`}
+              accessibilityLabel={`${areaLabel}，${slot.label}${decoration ? `，目前是${decoration.name}` : '，尚未佈置'}${selected ? '，目前選取' : ''}`}
               accessibilityHint="選取這個店內位置，再從下方選擇佈置"
               accessibilityState={{ selected }}
               onPress={() => onSelectSlot(slot.id)}

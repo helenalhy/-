@@ -62,7 +62,15 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
     };
     if (name === '@/constants/mall-shop-interior') return {
       SHOP_INTERIOR_DECORATION_IDS: ['general-display-shelf', 'general-warm-lamp'],
-      SHOP_INTERIOR_SLOT_IDS: ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter'],
+      SHOP_INTERIOR_SLOT_IDS: [
+        'front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table',
+      ],
+      SHOP_INTERIOR_PLACEMENT_IDS: [
+        'front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table',
+        ...['extension-1', 'extension-2', 'extension-3', 'extension-4', 'extension-5'].flatMap((area) =>
+          ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table']
+            .map((slot) => `${area}:${slot}`)),
+      ],
       SHOP_INTERIOR_DECORATION_BY_ID: {
         'general-display-shelf': { id: 'general-display-shelf', price: 20 },
         'general-warm-lamp': { id: 'general-warm-lamp', price: 25 },
@@ -349,6 +357,39 @@ test('shop interior decorations spend earned coins once, can move for free, and 
 
   await assert.rejects(reopened.value.placeShopInteriorDecoration('not-owned', 'general-display-shelf', 'left-wall'), /先兌換/);
   await assert.rejects(reopened.value.placeShopInteriorDecoration('a', 'unknown-decoration', 'left-wall'), /找不到/);
+});
+
+test('five interior extensions accept eight-position placement keys and preserve legacy main-area saves', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 100,
+    purchasedItems: ['a'],
+    shopInteriors: {},
+  });
+  let app = await mount(storage);
+  await app.value.placeShopInteriorDecoration('a', 'general-display-shelf', 'front-window');
+  await app.value.placeShopInteriorDecoration('a', 'general-warm-lamp', 'center');
+  await app.value.placeShopInteriorDecoration('a', 'general-warm-lamp', 'extension-3:right-table');
+
+  assert.equal(app.value.coins, 55, 'moving owned decor into an extension is free');
+  assert.deepEqual(app.value.shopInteriors.a.placements, {
+    'front-window': 'general-display-shelf',
+    'extension-3:right-table': 'general-warm-lamp',
+  });
+
+  app = await mount(storage);
+  assert.deepEqual(app.value.shopInteriors.a.placements, {
+    'front-window': 'general-display-shelf',
+    'extension-3:right-table': 'general-warm-lamp',
+  });
+  await app.value.storeShopInteriorDecoration('a', 'extension-3:right-table');
+  assert.deepEqual(app.value.shopInteriors.a.placements, {
+    'front-window': 'general-display-shelf',
+  });
+  await assert.rejects(
+    app.value.placeShopInteriorDecoration('a', 'general-warm-lamp', 'extension-6:center'),
+    /不存在/,
+  );
 });
 
 test('existing versioned habits and mall hydrate without any startup writes on a full device', async () => {

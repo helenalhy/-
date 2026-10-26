@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 
-// Each floor has a separately illustrated cast. The original eight guests keep
-// their 4×2 frame positions; two new guests occupy the fifth column.
+// Every floor has its own cast. The original eight keep their 4×2 positions,
+// and the remaining guests occupy the fifth column and the third atlas row.
 export const GUEST_SHEETS: ImageSourcePropType[] = [
   require('../assets/images/guests-floor-1.png'),
   require('../assets/images/guests-floor-2.png'),
@@ -17,8 +17,10 @@ export const GUEST_SHEETS: ImageSourcePropType[] = [
 
 export const GUESTS_PER_FLOOR = 10;
 export const GUEST_COLUMNS = 5;
+export const GUEST_ROWS = 3;
 export const GUEST_FRAME_WIDTH = 32;
 export const GUEST_FRAME_HEIGHT = 64;
+export const GUEST_COUNTS_BY_FLOOR = [10, 10, 10, 12, 10, 10, 11, 13, 10, 10] as const;
 
 export const GUEST_FRAME_CELLS: ReadonlyArray<{ column: number; row: number }> = [
   { column: 0, row: 0 },
@@ -31,6 +33,9 @@ export const GUEST_FRAME_CELLS: ReadonlyArray<{ column: number; row: number }> =
   { column: 3, row: 1 },
   { column: 4, row: 0 },
   { column: 4, row: 1 },
+  { column: 0, row: 2 },
+  { column: 1, row: 2 },
+  { column: 2, row: 2 },
 ];
 
 export const GUEST_ROUTES: ReadonlyArray<{ from: number; to: number; top: number; duration: number }> = [
@@ -44,4 +49,7 @@ export const GUEST_ROUTES: ReadonlyArray<{ from: number; to: number; top: number
   { from: 85, to: 46, top: 76, duration: 19000 },
   { from: 28, to: 78, top: 69, duration: 15500 },
   { from: 91, to: 38, top: 86, duration: 13500 },
+  { from: 5, to: 89, top: 68, duration: 16400 },
+  { from: 88, to: 17, top: 78, duration: 14200 },
+  { from: 18, to: 76, top: 88, duration: 17600 },
 ];

@@ -6,9 +6,10 @@ import {
   GUEST_FRAME_HEIGHT,
   GUEST_FRAME_WIDTH,
   GUEST_ROUTES,
+  GUEST_ROWS,
   GUEST_SHEETS,
   GUEST_COLUMNS,
-  GUESTS_PER_FLOOR,
+  GUEST_COUNTS_BY_FLOOR,
 } from '@/constants/mall-guests';
 
 const c = palette.light;
@@ -81,6 +82,7 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
 export function MallCustomers({ floor }: { floor: number }) {
   const [width, setWidth] = useState(360);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const guestCount = GUEST_COUNTS_BY_FLOOR[floor - 1] ?? 0;
   useEffect(() => {
     let active = true;
     void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => { if (active) setReducedMotion(enabled); });
@@ -89,7 +91,7 @@ export function MallCustomers({ floor }: { floor: number }) {
   }, []);
   return (
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="mall-customers" style={StyleSheet.absoluteFill} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      {GUEST_ROUTES.slice(0, GUESTS_PER_FLOOR).map((_, index) => <Shopper key={`${floor}-${index}`} index={index} floor={floor} width={width} reducedMotion={reducedMotion} />)}
+      {GUEST_ROUTES.slice(0, guestCount).map((_, index) => <Shopper key={`${floor}-${index}`} index={index} floor={floor} width={width} reducedMotion={reducedMotion} />)}
     </View>
   );
 }
@@ -98,5 +100,5 @@ const s = StyleSheet.create({
   guest: { position: 'absolute', width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT },
   shadow: { position: 'absolute', bottom: 7, left: 5, width: 22, height: 4, borderRadius: 12, opacity: 0.15 },
   spriteWindow: { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT, overflow: 'hidden' },
-  spriteSheet: { position: 'absolute', width: GUEST_FRAME_WIDTH * GUEST_COLUMNS, height: GUEST_FRAME_HEIGHT * 2 },
+  spriteSheet: { position: 'absolute', width: GUEST_FRAME_WIDTH * GUEST_COLUMNS, height: GUEST_FRAME_HEIGHT * GUEST_ROWS },
 });

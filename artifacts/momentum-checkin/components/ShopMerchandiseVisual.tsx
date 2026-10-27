@@ -18,14 +18,15 @@ export function ShopMerchandiseVisual({
   const colors = useColors();
   const accents = [
     colors.candyRose,
-    colors.candyLavender,
-    colors.candySky,
-    colors.candyMint,
-    colors.candyLemon,
     colors.candyPeach,
     colors.candyCoral,
+    colors.candyMint,
+    colors.candyLavender,
+    colors.candySky,
+    colors.candyLemon,
   ];
   const accent = accents[(product.variant + index) % accents.length];
+  const garmentStyle = product.variant % 3;
   const lift = motion.interpolate({
     inputRange: [0, 1],
     outputRange: [0, index % 3 === 0 ? -1.8 : -1.1],
@@ -39,6 +40,7 @@ export function ShopMerchandiseVisual({
       importantForAccessibility="no"
       style={[styles.canvas, { width: size, height: size, transform: [{ translateY: lift }] }]}
     >
+      <View pointerEvents="none" style={[styles.softHalo, { backgroundColor: product.color }]} />
       <View pointerEvents="none" style={[styles.drawing, { transform: [{ scale: size / 42 }] }]}>
         {product.illustration === 'bottle' && (
           <>
@@ -47,19 +49,43 @@ export function ShopMerchandiseVisual({
             <View style={[styles.bottle, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]}>
               <View style={[styles.bottleLabel, { backgroundColor: colors.candyCream }]}>
                 <Feather name={product.icon as keyof typeof Feather.glyphMap} size={8} color={colors.candyRoseDark} />
+                <View style={[styles.bottleLabelLine, { backgroundColor: colors.candyCaramel }]} />
               </View>
               <View style={[styles.bottleShine, { backgroundColor: colors.card }]} />
+              <View style={[styles.bottleGem, { backgroundColor: accent, borderColor: colors.candyCream }]} />
             </View>
           </>
         )}
         {product.illustration === 'garment' && (
           <>
-            <View style={styles.hanger}>
-              <Feather name="heart" size={8} color={colors.candyCaramelDark} />
-            </View>
-            <View style={[styles.garment, { backgroundColor: product.color, borderColor: colors.candyRoseDark }]}>
-              <View style={[styles.garmentCollar, { borderColor: colors.candyRoseDark }]} />
-              <Feather name={product.icon as keyof typeof Feather.glyphMap} size={9} color={colors.candyCaramelDark} />
+            <View style={[styles.hanger, { borderColor: colors.candyCaramelDark }]} />
+            <View style={[
+              styles.garment,
+              garmentStyle === 1 ? styles.garmentDress : garmentStyle === 2 ? styles.garmentSkirt : null,
+              { backgroundColor: product.color, borderColor: colors.candyCaramelDark },
+            ]}>
+              {garmentStyle === 1 ? (
+                <>
+                  <View style={[styles.garmentSleeve, styles.garmentSleeveLeft, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+                  <View style={[styles.garmentSleeve, styles.garmentSleeveRight, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+                  <View style={[styles.garmentBodice, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+                  <View style={[styles.garmentWaist, { backgroundColor: accent }]} />
+                  <View style={[styles.garmentHem, { borderTopColor: colors.candyCream }]} />
+                </>
+              ) : garmentStyle === 2 ? (
+                <>
+                  <View style={[styles.skirtWaist, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+                  <View style={[styles.skirtPleat, styles.skirtPleatLeft, { borderColor: colors.candyCream }]} />
+                  <View style={[styles.skirtPleat, styles.skirtPleatRight, { borderColor: colors.candyCream }]} />
+                  <View style={[styles.garmentHem, { borderTopColor: colors.candyCream }]} />
+                </>
+              ) : (
+                <>
+                  <View style={[styles.garmentCollar, { borderColor: colors.candyCaramelDark }]} />
+                  <View style={[styles.garmentButton, { backgroundColor: accent }]} />
+                  <View style={[styles.garmentPocket, { borderColor: colors.candyCream }]} />
+                </>
+              )}
             </View>
           </>
         )}
@@ -67,6 +93,8 @@ export function ShopMerchandiseVisual({
           <>
             <View style={[styles.treatTop, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]}>
               <Feather name={product.icon as keyof typeof Feather.glyphMap} size={9} color={colors.candyRoseDark} />
+              <View style={[styles.sugarPearl, styles.sugarPearlLeft, { backgroundColor: colors.candyCream }]} />
+              <View style={[styles.sugarPearl, styles.sugarPearlRight, { backgroundColor: colors.candyLemon }]} />
             </View>
             <View style={[styles.treatBase, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]}>
               <View style={[styles.treatStripe, { backgroundColor: colors.candyCream }]} />
@@ -173,17 +201,37 @@ export function ShopMerchandiseVisual({
 
 const styles = StyleSheet.create({
   canvas: { alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
+  softHalo: { position: 'absolute', width: 33, height: 33, borderRadius: 20, opacity: 0.2 },
   drawing: { width: 42, height: 42, alignItems: 'center', justifyContent: 'flex-end', overflow: 'visible' },
   groundShadow: { position: 'absolute', bottom: 1, width: 27, height: 4, borderRadius: 6, opacity: 0.48 },
   bottleCap: { position: 'absolute', top: 4, width: 10, height: 4, borderRadius: 2 },
   bottleNeck: { position: 'absolute', top: 7, width: 10, height: 6, borderWidth: 1, borderBottomWidth: 0 },
   bottle: { position: 'absolute', bottom: 5, width: 22, height: 27, borderWidth: 1.2, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  bottleLabel: { width: 15, height: 13, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  bottleLabel: { width: 15, height: 13, borderRadius: 4, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  bottleLabelLine: { width: 8, height: 1, borderRadius: 1, opacity: 0.8 },
   bottleShine: { position: 'absolute', left: 3, top: 5, width: 2, height: 13, borderRadius: 2, opacity: 0.8 },
-  hanger: { position: 'absolute', top: 2, zIndex: 2 },
-  garment: { position: 'absolute', bottom: 6, width: 25, height: 29, borderWidth: 1.2, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  bottleGem: { position: 'absolute', right: -2, top: 5, width: 5, height: 5, borderWidth: 0.6, borderRadius: 3 },
+  hanger: { position: 'absolute', top: 3, width: 17, height: 9, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderBottomRightRadius: 8, zIndex: 2 },
+  garment: { position: 'absolute', bottom: 5, width: 25, height: 29, borderWidth: 1.2, borderTopLeftRadius: 9, borderTopRightRadius: 9, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   garmentCollar: { position: 'absolute', top: 0, width: 10, height: 6, borderBottomWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  garmentButton: { position: 'absolute', top: 9, width: 3, height: 3, borderRadius: 2 },
+  garmentPocket: { position: 'absolute', right: 3, bottom: 5, width: 5, height: 6, borderWidth: 0.7, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
+  garmentDress: { width: 27, borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
+  garmentSkirt: { width: 28, height: 25, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderBottomLeftRadius: 11, borderBottomRightRadius: 11 },
+  garmentSleeve: { position: 'absolute', top: 3, width: 8, height: 11, borderWidth: 1, borderRadius: 5 },
+  garmentSleeveLeft: { left: -5, transform: [{ rotate: '20deg' }] },
+  garmentSleeveRight: { right: -5, transform: [{ rotate: '-20deg' }] },
+  garmentBodice: { position: 'absolute', top: 1, width: 13, height: 11, borderWidth: 1, borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  garmentWaist: { position: 'absolute', top: 11, left: 2, right: 2, height: 3, borderRadius: 3 },
+  garmentHem: { position: 'absolute', left: 1, right: 1, bottom: 2, height: 5, borderTopWidth: 1, borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  skirtWaist: { position: 'absolute', top: 1, left: 2, right: 2, height: 5, borderWidth: 0.7, borderRadius: 4 },
+  skirtPleat: { position: 'absolute', top: 7, width: 5, height: 12, borderLeftWidth: 1, borderBottomWidth: 1, borderBottomLeftRadius: 5 },
+  skirtPleatLeft: { left: 5, transform: [{ rotate: '8deg' }] },
+  skirtPleatRight: { right: 5, transform: [{ rotate: '-8deg' }] },
   treatTop: { position: 'absolute', bottom: 15, width: 24, height: 14, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  sugarPearl: { position: 'absolute', width: 3, height: 3, borderRadius: 2 },
+  sugarPearlLeft: { left: 4, top: 3 },
+  sugarPearlRight: { right: 4, bottom: 3 },
   treatBase: { position: 'absolute', bottom: 6, width: 19, height: 12, borderWidth: 1, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, alignItems: 'center' },
   treatStripe: { width: 2, height: 9, opacity: 0.75 },
   treatPlate: { position: 'absolute', bottom: 3, width: 30, height: 5, borderWidth: 1, borderRadius: 10 },

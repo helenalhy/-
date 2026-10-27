@@ -1,4 +1,5 @@
 import React from 'react';
+import { Feather } from '@expo/vector-icons';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import palette from '@/constants/colors';
 import {
@@ -278,7 +279,7 @@ export function DogAttendant({
         <View style={[
           s.outfitBase,
           outfitCutStyle,
-          { backgroundColor: outfit.color, borderColor: outfit.accentColor },
+          { backgroundColor: outfit.color, borderColor: c.candyCaramelDark },
         ]}>
           <View style={[
             s.outfitDetail,
@@ -294,11 +295,20 @@ export function DogAttendant({
               <View style={[s.magicalBowLoop, s.leftMagicalBowLoop, { backgroundColor: outfit.accentColor }]} />
               <View style={[s.magicalBowLoop, s.rightMagicalBowLoop, { backgroundColor: outfit.accentColor }]} />
               <View style={[s.magicalBowKnot, { backgroundColor: outfit.color, borderColor: outfit.accentColor }]} />
-              <View style={[s.magicalGem, { backgroundColor: outfit.accentColor, borderColor: outfit.color }]} />
+              <View style={[s.magicalGem, { backgroundColor: outfit.color, borderColor: c.candyCaramelDark }]}>
+                <View style={[s.magicalGemGlint, { backgroundColor: c.card }]} />
+              </View>
+              <View style={[s.magicalSkirtLayer, { backgroundColor: outfit.accentColor, borderColor: outfit.color }]} />
+              <View style={[s.magicalLaceHem, { borderTopColor: c.candyCream }]}>
+                {Array.from({ length: 6 }, (_, index) => (
+                  <View key={index} style={[s.magicalScallop, { backgroundColor: c.candyCream, borderColor: outfit.accentColor }]} />
+                ))}
+              </View>
               <View style={[s.magicalSleeve, s.leftMagicalSleeve, { backgroundColor: outfit.accentColor }]} />
               <View style={[s.magicalSleeve, s.rightMagicalSleeve, { backgroundColor: outfit.accentColor }]} />
-              <View style={[s.magicalStar, s.leftMagicalStar, { backgroundColor: outfit.accentColor }]} />
-              <View style={[s.magicalStar, s.rightMagicalStar, { backgroundColor: outfit.accentColor }]} />
+              <Feather name="star" size={5} color={c.candyCream} style={s.leftMagicalStarGlyph} />
+              <Feather name="star" size={5} color={c.candyCream} style={s.rightMagicalStarGlyph} />
+              <View style={[s.magicalWaistBand, { backgroundColor: outfit.accentColor }]} />
             </>
           )}
           {outfit.cut === 'sweater' && (
@@ -364,9 +374,55 @@ export function DogAttendant({
         <View style={[
           s.accessoryBase,
           accessoryShapeStyle,
-          { backgroundColor: accessory.color, borderColor: accessory.accentColor },
+          { backgroundColor: accessory.color, borderColor: c.candyCaramelDark },
         ]}>
-          <View style={[s.accessoryDetail, { backgroundColor: accessory.accentColor }]} />
+          {accessory.shape === 'bow' && (
+            <>
+              <View style={[s.accessoryBowLoop, s.accessoryBowLeft, { backgroundColor: accessory.accentColor }]} />
+              <View style={[s.accessoryBowLoop, s.accessoryBowRight, { backgroundColor: accessory.accentColor }]} />
+              <View style={[s.accessoryBowKnot, { backgroundColor: accessory.color }]} />
+            </>
+          )}
+          {accessory.shape === 'beret' && (
+            <>
+              <View style={[s.accessoryBeretHighlight, { backgroundColor: c.card }]} />
+              <View style={[s.accessoryBeretPin, { backgroundColor: accessory.accentColor }]} />
+            </>
+          )}
+          {accessory.shape === 'headband' && (
+            <>
+              <View style={[s.accessoryHeadbandGem, { backgroundColor: accessory.accentColor }]} />
+              <View style={[s.accessoryHeadbandGlint, { backgroundColor: c.card }]} />
+            </>
+          )}
+          {accessory.shape === 'flower' && (
+            <>
+              {[0, 1, 2, 3, 4].map((petal) => (
+                <View
+                  key={petal}
+                  style={[
+                    s.accessoryFlowerPetal,
+                    { backgroundColor: accessory.accentColor },
+                    petal === 0 ? s.accessoryFlowerTop : null,
+                    petal === 1 ? s.accessoryFlowerRight : null,
+                    petal === 2 ? s.accessoryFlowerBottom : null,
+                    petal === 3 ? s.accessoryFlowerLeft : null,
+                    petal === 4 ? s.accessoryFlowerTopLeft : null,
+                  ]}
+                />
+              ))}
+              <View style={[s.accessoryFlowerCenter, { backgroundColor: c.candyLemon }]} />
+            </>
+          )}
+          {accessory.shape === 'scarf' && (
+            <>
+              <View style={[s.accessoryScarfFold, { backgroundColor: accessory.accentColor }]} />
+              <View style={[s.accessoryScarfTail, { backgroundColor: accessory.color, borderColor: c.candyCaramelDark }]} />
+            </>
+          )}
+          {accessory.shape !== 'bow' && accessory.shape !== 'beret' && accessory.shape !== 'headband' && accessory.shape !== 'flower' && accessory.shape !== 'scarf' && (
+            <View style={[s.accessoryDetail, { backgroundColor: accessory.accentColor }]} />
+          )}
         </View>
       )}
       {animalEarKind && animalEarShape && animalEarColor && animalEarAccent && (
@@ -418,7 +474,7 @@ const s = StyleSheet.create({
   lionDanceOutfit: { left: 8, bottom: 3, width: 34, height: 17, borderRadius: 12, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
   starFairyOutfit: { left: 8, bottom: 4, width: 34, height: 15, borderRadius: 8, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 },
   forestLeafOutfit: { left: 9, bottom: 4, width: 32, height: 14, borderRadius: 8, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
-  magicalGirlOutfit: { left: 8, bottom: 3, width: 34, height: 16, borderRadius: 9, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
+  magicalGirlOutfit: { left: 6, bottom: 2, width: 38, height: 18, borderRadius: 9, borderBottomLeftRadius: 17, borderBottomRightRadius: 17, overflow: 'visible' },
   sweaterOutfit: { left: 9, bottom: 5, width: 32, height: 14, borderRadius: 7, borderBottomLeftRadius: 9, borderBottomRightRadius: 9 },
   animalCostumeOutfit: { left: 8, bottom: 4, width: 34, height: 15, borderRadius: 10, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 },
   outfitDetail: { position: 'absolute', left: 3, top: 3, width: 7, height: 2, borderRadius: 2 },
@@ -427,17 +483,22 @@ const s = StyleSheet.create({
   outfitStar: { width: 4, height: 4, left: 5, top: 2, borderRadius: 4 },
   outfitFlower: { width: 5, height: 5, left: 4, top: 2, borderRadius: 4 },
   outfitButton: { position: 'absolute', width: 2, height: 2, right: 4, top: 3, borderRadius: 2 },
-  magicalGem: { position: 'absolute', left: 14, top: 4, width: 5, height: 5, borderWidth: 0.7, borderRadius: 2, transform: [{ rotate: '45deg' }] },
-  magicalBowLoop: { position: 'absolute', top: 1, width: 8, height: 5, borderRadius: 5, zIndex: 2 },
-  leftMagicalBowLoop: { left: 9, transform: [{ rotate: '-22deg' }] },
-  rightMagicalBowLoop: { left: 17, transform: [{ rotate: '22deg' }] },
-  magicalBowKnot: { position: 'absolute', left: 14, top: 2, width: 5, height: 4, borderWidth: 0.5, borderRadius: 3, zIndex: 3 },
-  magicalStar: { position: 'absolute', top: 9, width: 3, height: 3, borderRadius: 1, transform: [{ rotate: '45deg' }] },
-  leftMagicalStar: { left: 6 },
-  rightMagicalStar: { right: 6 },
-  magicalSleeve: { position: 'absolute', top: 3, width: 5, height: 7, borderRadius: 3, zIndex: 2 },
-  leftMagicalSleeve: { left: -1 },
-  rightMagicalSleeve: { right: -1 },
+  magicalGem: { position: 'absolute', left: 16, top: 4, width: 6, height: 6, borderWidth: 0.8, borderRadius: 2, transform: [{ rotate: '45deg' }], zIndex: 4, alignItems: 'flex-start', justifyContent: 'flex-start' },
+  magicalGemGlint: { width: 2, height: 2, margin: 0.8, borderRadius: 2 },
+  magicalBowLoop: { position: 'absolute', top: -1, width: 9, height: 6, borderRadius: 6, borderWidth: 0.8, borderColor: c.candyCaramelDark, zIndex: 4 },
+  leftMagicalBowLoop: { left: 10, transform: [{ rotate: '-22deg' }] },
+  rightMagicalBowLoop: { left: 19, transform: [{ rotate: '22deg' }] },
+  magicalBowKnot: { position: 'absolute', left: 16, top: 1, width: 6, height: 5, borderWidth: 0.8, borderColor: c.candyCaramelDark, borderRadius: 3, zIndex: 5 },
+  magicalStarGlyph: { position: 'absolute', top: 10 },
+  leftMagicalStarGlyph: { left: 5 },
+  rightMagicalStarGlyph: { right: 5 },
+  magicalSleeve: { position: 'absolute', top: 4, width: 7, height: 8, borderRadius: 5, borderWidth: 0.8, borderColor: c.candyCaramelDark, zIndex: 3 },
+  leftMagicalSleeve: { left: -2 },
+  rightMagicalSleeve: { right: -2 },
+  magicalSkirtLayer: { position: 'absolute', left: 1, right: 1, bottom: 2, height: 7, borderTopWidth: 1, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 11, borderBottomRightRadius: 11 },
+  magicalLaceHem: { position: 'absolute', left: 0, right: 0, bottom: -1, height: 5, borderTopWidth: 0.7, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around' },
+  magicalScallop: { width: 5, height: 4, borderRadius: 4, borderWidth: 0.6 },
+  magicalWaistBand: { position: 'absolute', left: 4, right: 4, top: 9, height: 2, borderRadius: 3 },
   knitRib: { position: 'absolute', left: 2, right: 2, height: 1.5, borderRadius: 2 },
   knitRibTop: { top: 3 },
   knitRibBottom: { bottom: 2 },
@@ -502,4 +563,21 @@ const s = StyleSheet.create({
   scarfAccessory: { left: 27, top: 27, width: 17, height: 6, borderRadius: 4, transform: [{ rotate: '15deg' }] },
   animalEarsAccessory: { left: 12, top: 5, width: 26, height: 4, borderRadius: 4 },
   accessoryDetail: { width: 3, height: 3, borderRadius: 3 },
+  accessoryBowLoop: { position: 'absolute', top: 0, width: 6, height: 5, borderRadius: 5, borderWidth: 0.6, borderColor: c.candyCaramelDark },
+  accessoryBowLeft: { left: -1, transform: [{ rotate: '-18deg' }] },
+  accessoryBowRight: { right: -1, transform: [{ rotate: '18deg' }] },
+  accessoryBowKnot: { position: 'absolute', width: 3, height: 4, borderRadius: 2, borderWidth: 0.5, borderColor: c.candyCaramelDark },
+  accessoryBeretHighlight: { position: 'absolute', top: 1, left: 4, width: 8, height: 2, borderRadius: 3, opacity: 0.8 },
+  accessoryBeretPin: { position: 'absolute', top: -1, right: 4, width: 4, height: 4, borderRadius: 3, borderWidth: 0.5, borderColor: c.candyCaramelDark },
+  accessoryHeadbandGem: { position: 'absolute', top: -2, left: 8, width: 6, height: 5, borderRadius: 3, borderWidth: 0.6, borderColor: c.candyCaramelDark },
+  accessoryHeadbandGlint: { position: 'absolute', top: -1, left: 9, width: 2, height: 2, borderRadius: 2 },
+  accessoryFlowerPetal: { position: 'absolute', width: 4, height: 4, borderRadius: 3, borderWidth: 0.4, borderColor: c.candyCaramelDark },
+  accessoryFlowerTop: { top: -2, left: 2 },
+  accessoryFlowerRight: { top: 1, right: -1 },
+  accessoryFlowerBottom: { bottom: -2, left: 3 },
+  accessoryFlowerLeft: { top: 2, left: -2 },
+  accessoryFlowerTopLeft: { top: -1, left: -1 },
+  accessoryFlowerCenter: { width: 3, height: 3, borderRadius: 2, borderWidth: 0.4, borderColor: c.candyCaramelDark },
+  accessoryScarfFold: { position: 'absolute', left: 3, top: 1, width: 8, height: 2, borderRadius: 3 },
+  accessoryScarfTail: { position: 'absolute', right: 0, top: 3, width: 4, height: 7, borderWidth: 0.5, borderTopWidth: 0, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
 });

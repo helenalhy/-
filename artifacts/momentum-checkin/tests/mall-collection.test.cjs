@@ -35,8 +35,10 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
     createElement: (_, props) => { value = props.value; },
     useState: (initial) => {
       const index = cursor++;
-      if (firstRender) states[index] = initial;
-      return [states[index], (next) => { states[index] = next; }];
+      if (firstRender) states[index] = typeof initial === 'function' ? initial() : initial;
+      return [states[index], (next) => {
+        states[index] = typeof next === 'function' ? next(states[index]) : next;
+      }];
     },
     useRef: (initial) => {
       const index = cursor++;
@@ -132,6 +134,12 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       ImpactFeedbackStyle: { Light: 'light' },
       NotificationFeedbackType: { Success: 'success' },
     };
+    if (name === 'react-native') return {
+      AppState: {
+        currentState: 'active',
+        addEventListener: () => ({ remove() {} }),
+      },
+    };
     if (name === '@react-native-async-storage/async-storage') return {
       getItem: async (name) => storage[name] ?? null,
       setItem: async (name, data) => {
@@ -146,7 +154,13 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
     };
     throw new Error(`Unexpected dependency: ${name}`);
   };
-  new Function('require', 'module', 'exports', source)(mockedRequire, module, module.exports);
+  new Function('require', 'module', 'exports', 'setTimeout', 'clearTimeout', source)(
+    mockedRequire,
+    module,
+    module.exports,
+    () => 1,
+    () => {},
+  );
   const render = () => {
     cursor = 0;
     module.exports.HabitsProvider({ children: null });

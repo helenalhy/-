@@ -1582,6 +1582,7 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
   };
 
   const hooks = [];
+  const pendingEffects = [];
   let hookCursor = 0;
   let effectStarted = false;
   const context = { Provider: Symbol('HabitsContext.Provider'), value: null };
@@ -1593,7 +1594,7 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     },
     useState(initial) {
       const index = hookCursor++;
-      if (!(index in hooks)) hooks[index] = initial;
+      if (!(index in hooks)) hooks[index] = typeof initial === 'function' ? initial() : initial;
       return [hooks[index], (next) => {
         hooks[index] = typeof next === 'function' ? next(hooks[index]) : next;
       }];
@@ -1606,10 +1607,7 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     useCallback: (callback) => callback,
     useContext: (value) => value.value,
     useEffect(effect) {
-      if (!effectStarted) {
-        effectStarted = true;
-        effect();
-      }
+      if (!effectStarted) pendingEffects.push(effect);
     },
     useMemo: (callback) => callback(),
   };
@@ -1651,6 +1649,12 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
       resolveDogStaffLook: () => null,
       isValidDogStaffLook: () => false,
     };
+    if (name === 'react-native') return {
+      AppState: {
+        currentState: 'active',
+        addEventListener: () => ({ remove() {} }),
+      },
+    };
     throw new Error(`Unexpected HabitsContext dependency: ${name}`);
   };
   const filename = path.join(__dirname, '../context/HabitsContext.tsx');
@@ -1662,7 +1666,13 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     },
   }).outputText;
   const loadedModule = { exports: {} };
-  new Function('require', 'module', 'exports', output)(mockRequire, loadedModule, loadedModule.exports);
+  new Function('require', 'module', 'exports', 'setTimeout', 'clearTimeout', output)(
+    mockRequire,
+    loadedModule,
+    loadedModule.exports,
+    () => 1,
+    () => {},
+  );
   const provider = loadedModule.exports.HabitsProvider;
   function render() {
     hookCursor = 0;
@@ -1670,6 +1680,8 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     return context.value;
   }
   render();
+  effectStarted = true;
+  pendingEffects.forEach((effect) => effect());
   return {
     storage,
     storageCalls,
@@ -2049,11 +2061,23 @@ test('each cafe dog has unique dog-specific outfits and accessories, including t
   assert.equal(magicalGirlOutfits[1].name.includes('紫色'), true, 'Milkshake’s magical-girl dress is purple');
   assert.equal(magicalGirlOutfits[2].name.includes('藍色'), true, 'Xiaoniu’s magical-girl dress is blue');
   assert.equal(magicalGirlOutfits[3].name.includes('橙色'), true, 'Pudding’s magical-girl dress is orange');
+  assert.deepEqual(magicalGirlOutfits.slice(0, 4).map(({ name }) => name), [
+    '花花・粉紅魔法少女星願裙',
+    '奶昔・紫色魔法少女星願裙',
+    '小牛・藍色魔法少女星願裙',
+    '布丁・橙色魔法少女星願裙',
+  ], 'the named magical-girl outfits stay unchanged');
   assert.equal(dogCostumeKinds.size, 14, 'each dog has a different animal costume');
   assert.equal(huahuaCatalog.outfits.find(({ cut }) => cut === 'animal-costume').animalKind, 'lion');
   assert.equal(tangtangCatalog.outfits.find(({ cut }) => cut === 'animal-costume').animalKind, 'bear');
   const dogComponent = fs.readFileSync(path.join(__dirname, '../components/DogAttendant.tsx'), 'utf8');
   assert.match(dogComponent, /magicalBowKnot/);
+  assert.match(dogComponent, /magicalSkirtLayer/);
+  assert.match(dogComponent, /magicalLaceHem/);
+  assert.match(dogComponent, /magicalGemGlint/);
+  assert.match(dogComponent, /name="star"/);
+  assert.match(dogComponent, /accessoryFlowerPetal/);
+  assert.match(dogComponent, /accessoryBowLoop/);
   assert.match(dogComponent, /animalEarsHat/);
   assert.match(dogComponent, /sweaterOutfit/);
   assert.equal(

@@ -5,6 +5,7 @@ import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
 import { classifyDecoration, mapCoverPoint, resolveObjectAnchor } from '@/constants/mall-shop-scene-anchors';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
+import { canDisplayShopProducts, SHOP_DISPLAY_SLOT_COUNT, type ShopDisplayProduct } from '@/constants/mall-shop-display';
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_STATIONS,
@@ -48,8 +49,11 @@ export function ShopInteriorScene({
   decorations,
   dogStaffLooks,
   dogStaffPlacements,
+  fixtureContents,
+  fixtureProducts,
   selectedSlot,
   onSelectSlot,
+  onOpenDisplayFixture,
 }: {
   testID: string;
   sceneKey: ShopInteriorSceneKey;
@@ -60,8 +64,11 @@ export function ShopInteriorScene({
   decorations: ShopInteriorDecoration[];
   dogStaffLooks?: Record<string, DogStaffLook>;
   dogStaffPlacements?: Partial<Record<DogStaffStationId, string>>;
+  fixtureContents?: Record<string, (string | null)[]>;
+  fixtureProducts?: Record<string, ShopDisplayProduct[]>;
   selectedSlot: ShopInteriorSlotId;
   onSelectSlot: (slot: ShopInteriorSlotId) => void;
+  onOpenDisplayFixture: (decorationId: string) => void;
 }) {
   const colors = useColors();
   const [size, setSize] = useState({ width: 360, height: 383 });
@@ -86,6 +93,13 @@ export function ShopInteriorScene({
         {SHOP_INTERIOR_SLOTS.map((slot) => {
           const decoration = decorations.find(({ id }) => id === placements[slot.id]);
           const dogLook = decoration ? resolveDogStaffLook(decoration.id, dogStaffLooks?.[decoration.id]) : null;
+          const displayEnabled = !!decoration
+            && canDisplayShopProducts(decoration)
+            && (fixtureProducts?.[decoration.id]?.length ?? 0) > 0;
+          const productById = new Map((decoration ? fixtureProducts?.[decoration.id] : undefined)?.map((product) => [product.id, product]));
+          const displayedProducts = (decoration ? fixtureContents?.[decoration.id] : undefined)
+            ?.map((productId) => productId ? productById.get(productId) : undefined)
+            .filter((product): product is ShopDisplayProduct => !!product) ?? [];
           const selected = selectedSlot === slot.id;
           const profile = decoration ? classifyDecoration(decoration) : { cls: 'tabletop' as const, scale: 1 };
           const point = mapCoverPoint(resolveObjectAnchor(sceneKey, slot.id, profile.cls), size.width, size.height);
@@ -95,10 +109,13 @@ export function ShopInteriorScene({
               key={slot.id}
               testID={`shop-interior-slot-${slot.id}`}
               accessibilityRole="button"
-              accessibilityLabel={`${areaLabel}，${slot.label}${decoration ? `，目前是${decoration.name}` : '，尚未佈置'}${selected ? '，目前選取' : ''}`}
-              accessibilityHint="選取這個店內位置，再從下方選擇佈置"
+              accessibilityLabel={`${areaLabel}，${slot.label}${decoration ? `，目前是${decoration.name}` : '，尚未佈置'}${displayEnabled ? `，已陳列 ${displayedProducts.length} 款商品，點選可管理貨架商品` : ''}${selected ? '，目前選取' : ''}`}
+              accessibilityHint={displayEnabled ? '點選開啟這個展示架的商品陳列；關閉後仍可從下方收納或調整家具。' : '選取這個店內位置，再從下方選擇佈置'}
               accessibilityState={{ selected }}
-              onPress={() => onSelectSlot(slot.id)}
+              onPress={() => {
+                onSelectSlot(slot.id);
+                if (decoration && displayEnabled) onOpenDisplayFixture(decoration.id);
+              }}
               style={[styles.hotspot, { left: point.x - HOTSPOT_W / 2, top: point.y - HOTSPOT_H }]}
             >
               {decoration ? (
@@ -115,7 +132,28 @@ export function ShopInteriorScene({
                       dogOutfitId={dogLook?.outfitId}
                       dogAccessoryId={dogLook?.accessoryId}
                     />
+                    {displayedProducts.length > 0 && (
+                      <View pointerEvents="none" style={styles.displayedProductsRow}>
+                        {displayedProducts.slice(0, 4).map((product, index) => (
+                          <View
+                            key={`${product.id}-${index}`}
+                            style={[styles.displayedProduct, { backgroundColor: product.color }]}
+                          >
+                            <Feather name={product.icon as keyof typeof Feather.glyphMap} size={7} color="#FFFFFF" />
+                          </View>
+                        ))}
+                        {displayedProducts.length > 4 && (
+                          <Text style={[styles.moreDisplayedProducts, { color: colors.foreground }]}>+{displayedProducts.length - 4}</Text>
+                        )}
+                      </View>
+                    )}
                   </View>
+                  {displayEnabled && (
+                    <View pointerEvents="none" style={[styles.displayCountBadge, { backgroundColor: colors.card, borderColor: shopColor }]}>
+                      <Feather name="package" size={8} color={shopColor} />
+                      <Text style={[styles.displayCountText, { color: colors.foreground }]}>{displayedProducts.length}/{SHOP_DISPLAY_SLOT_COUNT}</Text>
+                    </View>
+                  )}
                   {selected && <View pointerEvents="none" style={[styles.selectRing, { borderColor: colors.primary }]} />}
                 </>
               ) : (
@@ -273,7 +311,12 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(92,60,60,0.22)',
   },
-  objectVisual: { width: 62, height: OBJECT_H, alignItems: 'center', justifyContent: 'center' },
+  objectVisual: { width: 62, height: OBJECT_H, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  displayedProductsRow: { position: 'absolute', top: 11, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 2, zIndex: 3 },
+  displayedProduct: { width: 11, height: 12, borderRadius: 4, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
+  moreDisplayedProducts: { fontSize: 7, lineHeight: 9, fontWeight: '900', backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 5, overflow: 'hidden', paddingHorizontal: 2 },
+  displayCountBadge: { position: 'absolute', top: -5, right: -5, minHeight: 17, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 4, borderWidth: 1, borderRadius: 7, zIndex: 4 },
+  displayCountText: { fontSize: 7, lineHeight: 10, fontWeight: '800' },
   selectRing: { position: 'absolute', bottom: -2, width: 56, height: 56, borderRadius: 18, borderWidth: 2, borderStyle: 'dashed' },
   emptyMarker: {
     width: 38,

@@ -79,10 +79,29 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
             .map((slot) => `${area}:${slot}`)),
       ],
       SHOP_INTERIOR_DECORATION_BY_ID: {
-        'general-display-shelf': { id: 'general-display-shelf', price: 20 },
-        'general-warm-lamp': { id: 'general-warm-lamp', price: 25 },
+        'general-display-shelf': { id: 'general-display-shelf', name: '糖果色展示架', description: '展示商品', price: 20 },
+        'general-warm-lamp': { id: 'general-warm-lamp', name: '暖光吊燈', description: '燈', price: 25 },
         [dogId]: { id: dogId, price: 80 },
       },
+      getShopInteriorDecorations: (_shopType, _shopId, _shopName, owned = []) => [
+        { id: 'general-display-shelf', name: '糖果色展示架', description: '展示商品', price: 20 },
+        { id: 'general-warm-lamp', name: '暖光吊燈', description: '燈', price: 25 },
+        ...owned.filter((id) => id.startsWith('general-')).map((id) => ({ id, name: id, description: '' })),
+      ],
+    };
+    if (name === '@/constants/mall') return {
+      MALL_ITEM_BY_ID: {
+        a: { id: 'a', name: '雲朵香氛館', category: 'shop', shopType: 'general' },
+        b: { id: 'b', name: '一般商店', category: 'shop', shopType: 'general' },
+      },
+    };
+    if (name === '@/constants/mall-shop-display') return {
+      SHOP_DISPLAY_SLOT_COUNT: 6,
+      canDisplayShopProducts: (decoration) => /shelf|rack|display|展示|貨架/i.test(`${decoration.id} ${decoration.name}`),
+      getShopFixtureProductCatalog: () => [
+        { id: 'display-fragrance-1', name: '薰衣草晚風香氛' },
+        { id: 'display-fragrance-2', name: '月光陶瓷擴香石' },
+      ],
     };
     if (name === '@/constants/dog-staff-customization') return {
       DOG_STAFF_PROFILE_BY_DECORATION_ID: {
@@ -164,7 +183,7 @@ test('legacy migration preserves positions and assigns only missing legacy purch
   assert.deepEqual(app.value.mallPlacements, {
     'floor-1-left': 'a', 'floor-3-right': 'b', 'floor-3-left': 'c',
   });
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 3);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 4);
   const noPositions = await mount(seed({ placements: undefined }));
   assert.deepEqual(noPositions.value.mallPlacements, { 'floor-3-left': 'a', 'floor-3-center': 'b' });
 });
@@ -181,7 +200,7 @@ test('store, reload, reward, restore on another floor, swap and reload preserve 
   app = await mount(storage);
   assert.deepEqual(app.value.mallPlacements, { 'floor-3-right': 'b' });
   await app.value.toggleCheckIn('starter-walk');
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 3);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 4);
   app = await mount(storage);
   assert.equal(Object.values(app.value.mallPlacements).includes('a'), false);
   const before = { coins: app.value.coins, tokens: { ...app.value.rewardTokens } };
@@ -389,6 +408,45 @@ test('shop interior decorations spend earned coins once, can move for free, and 
   await assert.rejects(reopened.value.placeShopInteriorDecoration('a', 'unknown-decoration', 'left-wall'), /找不到/);
 });
 
+test('shop fixture merchandise is free, validated, and persists through reload and storage', async () => {
+  const storage = seed({
+    schemaVersion: 4,
+    coins: 100,
+    purchasedItems: ['a', 'b'],
+    shopInteriors: {
+      a: {
+        ownedDecorations: ['general-display-shelf', 'general-warm-lamp'],
+        placements: { center: 'general-display-shelf' },
+      },
+    },
+  });
+  let app = await mount(storage);
+
+  await app.value.setShopInteriorFixtureProduct('a', 'general-display-shelf', 2, 'display-fragrance-1');
+  assert.equal(app.value.coins, 100, 'displaying included products never spends coins');
+  assert.deepEqual(app.value.shopInteriors.a.fixtureContents['general-display-shelf'], [
+    null, null, 'display-fragrance-1', null, null, null,
+  ]);
+  await assert.rejects(
+    app.value.setShopInteriorFixtureProduct('a', 'general-display-shelf', 2, 'unrelated-product'),
+    /不屬於這間商店/,
+  );
+
+  app = await mount(storage);
+  assert.equal(app.value.shopInteriors.a.fixtureContents['general-display-shelf'][2], 'display-fragrance-1');
+  await app.value.storeShopInteriorDecoration('a', 'center');
+  assert.equal(app.value.coins, 100, 'storing a fixture does not refund or charge coins');
+  assert.equal(app.value.shopInteriors.a.fixtureContents['general-display-shelf'][2], 'display-fragrance-1');
+
+  app = await mount(storage);
+  await app.value.placeShopInteriorDecoration('a', 'general-display-shelf', 'left-wall');
+  assert.equal(app.value.shopInteriors.a.fixtureContents['general-display-shelf'][2], 'display-fragrance-1');
+  await assert.rejects(
+    app.value.setShopInteriorFixtureProduct('a', 'general-warm-lamp', 0, 'display-fragrance-1'),
+    /沒有商品展示位置/,
+  );
+});
+
 test('five interior extensions accept eight-position placement keys and preserve legacy main-area saves', async () => {
   const storage = seed({
     schemaVersion: 3,
@@ -494,7 +552,7 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
 });
 
 test('existing versioned habits and mall hydrate without any startup writes on a full device', async () => {
-  const storage = seed({ schemaVersion: 3, placements: { 'floor-1-left': 'a' } });
+  const storage = seed({ schemaVersion: 4, placements: { 'floor-1-left': 'a' } });
   const habits = [{
     id: 'saved-habit', title: '已儲存目標', reason: '保留我的紀錄',
     icon: 'activity', rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: ['2026-10-20'],

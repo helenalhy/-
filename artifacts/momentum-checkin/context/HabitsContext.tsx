@@ -16,8 +16,15 @@ import {
   SHOP_INTERIOR_DECORATION_IDS,
   SHOP_INTERIOR_PLACEMENT_IDS,
   SHOP_INTERIOR_DECORATION_BY_ID,
+  getShopInteriorDecorations,
   type ShopInteriorPlacementId,
 } from '@/constants/mall-shop-interior';
+import { MALL_ITEM_BY_ID } from '@/constants/mall';
+import {
+  canDisplayShopProducts,
+  getShopFixtureProductCatalog,
+  SHOP_DISPLAY_SLOT_COUNT,
+} from '@/constants/mall-shop-display';
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_STATIONS,
@@ -62,6 +69,7 @@ interface CheckInTransaction {
 export interface ShopInteriorState {
   ownedDecorations: string[];
   placements: Partial<Record<ShopInteriorPlacementId, string>>;
+  fixtureContents?: Record<string, (string | null)[]>;
   dogStaffLooks?: Record<string, DogStaffLook>;
   dogStaffPlacements?: Partial<Record<DogStaffStationId, string>>;
 }
@@ -95,6 +103,7 @@ interface HabitsContextValue {
   grantTestCoins: (minimumBalance: number) => Promise<void>;
   placeShopInteriorDecoration: (shopId: string, decorationId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
   storeShopInteriorDecoration: (shopId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
+  setShopInteriorFixtureProduct: (shopId: string, fixtureDecorationId: string, slotIndex: number, productId: string | null) => Promise<void>;
   placeShopInteriorDogStaff: (shopId: string, dogDecorationId: string, stationId: DogStaffStationId) => Promise<void>;
   storeShopInteriorDogStaff: (shopId: string, dogDecorationId: string) => Promise<void>;
   updateShopInteriorDogLook: (shopId: string, dogDecorationId: string, look: DogStaffLook) => Promise<void>;
@@ -104,7 +113,7 @@ const STORAGE_KEY = 'momentum.habits.v1';
 const MALL_STORAGE_KEY = 'momentum.mall.v1';
 const CHECK_IN_TRANSACTION_KEY = 'momentum.checkin-transaction.v1';
 // Version 2 made unplaced items intentional collection items; v3 adds per-shop interiors.
-const MALL_SCHEMA_VERSION = 3;
+const MALL_SCHEMA_VERSION = 4;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
 const IS_DEVELOPMENT_BUILD = typeof __DEV__ !== 'undefined' && __DEV__;
@@ -194,6 +203,24 @@ function normalizeShopInteriors(
       (id): id is string => typeof id === 'string' && decorationIds.has(id),
     ))];
     const owned = new Set(ownedDecorations);
+    const shopItem = MALL_ITEM_BY_ID[shopId];
+    const shopDecorations = shopItem?.category === 'shop'
+      ? getShopInteriorDecorations(shopItem.shopType, shopId, shopItem.name, ownedDecorations)
+      : [];
+    const fixtureById = new Map(shopDecorations.map((decoration) => [decoration.id, decoration]));
+    const fixtureContents: Record<string, (string | null)[]> = {};
+    for (const [fixtureId, savedProducts] of Object.entries(saved.fixtureContents ?? {})) {
+      const fixture = fixtureById.get(fixtureId);
+      if (!owned.has(fixtureId) || !fixture || !canDisplayShopProducts(fixture) || !Array.isArray(savedProducts)) continue;
+      const allowedProductIds = new Set(
+        getShopFixtureProductCatalog(shopId, shopItem?.name ?? '', shopItem?.shopType, fixture).map(({ id }) => id),
+      );
+      const slots = Array.from({ length: SHOP_DISPLAY_SLOT_COUNT }, (_, index) => {
+        const productId = savedProducts[index];
+        return typeof productId === 'string' && allowedProductIds.has(productId) ? productId : null;
+      });
+      if (slots.some(Boolean)) fixtureContents[fixtureId] = slots;
+    }
     const assigned = new Set<string>();
     const placements: Partial<Record<ShopInteriorPlacementId, string>> = {};
     const dogStaffLooks: Record<string, DogStaffLook> = {};
@@ -241,10 +268,11 @@ function normalizeShopInteriors(
       const look = resolveDogStaffLook(dogDecorationId, savedLook);
       if (look) dogStaffLooks[dogDecorationId] = look;
     }
-    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(dogStaffLooks).length > 0 || Object.keys(dogStaffPlacements).length > 0) {
+    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(fixtureContents).length > 0 || Object.keys(dogStaffLooks).length > 0 || Object.keys(dogStaffPlacements).length > 0) {
       interiors[shopId] = {
         ownedDecorations,
         placements,
+        ...(Object.keys(fixtureContents).length > 0 ? { fixtureContents } : {}),
         ...(Object.keys(dogStaffLooks).length > 0 ? { dogStaffLooks } : {}),
         ...(Object.keys(dogStaffPlacements).length > 0 ? { dogStaffPlacements } : {}),
       };
@@ -577,6 +605,55 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
+  const setShopInteriorFixtureProduct = useCallback(async (
+    shopId: string,
+    fixtureDecorationId: string,
+    slotIndex: number,
+    productId: string | null,
+  ) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= SHOP_DISPLAY_SLOT_COUNT) {
+      throw new Error('這個商品展示位置不存在');
+    }
+    const shop = MALL_ITEM_BY_ID[shopId];
+    const current = shopInteriors[shopId];
+    if (!shop || shop.category !== 'shop' || !current?.ownedDecorations.includes(fixtureDecorationId)) {
+      throw new Error('請先兌換這個展示架');
+    }
+    const fixture = getShopInteriorDecorations(shop.shopType, shopId, shop.name, current.ownedDecorations)
+      .find(({ id }) => id === fixtureDecorationId);
+    if (!fixture || !canDisplayShopProducts(fixture)) throw new Error('這個物件沒有商品展示位置');
+    if (
+      productId !== null
+      && !getShopFixtureProductCatalog(shopId, shop.name, shop.shopType, fixture).some(({ id }) => id === productId)
+    ) {
+      throw new Error('這款商品不屬於這間商店的展示目錄');
+    }
+    actionLock.current = true;
+    try {
+      const slots = Array.from(
+        { length: SHOP_DISPLAY_SLOT_COUNT },
+        (_, index) => current.fixtureContents?.[fixtureDecorationId]?.[index] ?? null,
+      );
+      slots[slotIndex] = productId;
+      const fixtureContents = { ...current.fixtureContents };
+      if (slots.some(Boolean)) fixtureContents[fixtureDecorationId] = slots;
+      else delete fixtureContents[fixtureDecorationId];
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: { ...shopInteriors, [shopId]: { ...current, fixtureContents } },
+      });
+      await Haptics.selectionAsync();
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
   const placeShopInteriorDogStaff = useCallback(async (
     shopId: string,
     dogDecorationId: string,
@@ -701,8 +778,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

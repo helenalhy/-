@@ -1,0 +1,295 @@
+import palette from './colors';
+import type { MallShopType } from './mall';
+import type { ShopInteriorDecoration } from './mall-shop-interior';
+
+export const SHOP_DISPLAY_SLOT_COUNT = 6;
+
+export interface ShopDisplayProduct {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+type ProductTheme =
+  | MallShopType
+  | 'fragrance'
+  | 'cafe'
+  | 'candy'
+  | 'icecream'
+  | 'bakery'
+  | 'tea'
+  | 'food'
+  | 'flower'
+  | 'book'
+  | 'toy'
+  | 'craft'
+  | 'general';
+
+type ProductSeed = { name: string; description: string; icon: string; color: string };
+const c = palette.light;
+
+const productSeeds: Record<ProductTheme, ProductSeed[]> = {
+  fragrance: [
+    { name: '薰衣草晚風香氛', description: '柔和花草調香氛瓶', icon: 'wind', color: c.candyLavender },
+    { name: '白茶晨露香氛', description: '清新茶香擴香瓶', icon: 'droplet', color: c.candyMint },
+    { name: '柚子花香擴香', description: '明亮柑橘與花香', icon: 'sun', color: c.candyLemon },
+    { name: '玫瑰柔霧香氛', description: '淡淡玫瑰香調', icon: 'heart', color: c.candyPink },
+    { name: '海鹽微風擴香石', description: '海風造型擴香石', icon: 'cloud', color: c.candySky },
+    { name: '棉花糖香氛石', description: '柔軟雲朵造型香氛石', icon: 'star', color: c.candyPeach },
+    { name: '暖木香調香氛', description: '溫暖木質調香水瓶', icon: 'feather', color: c.candyCaramel },
+    { name: '月光陶瓷擴香石', description: '月亮造型的陶瓷擴香石', icon: 'moon', color: c.candyLavender },
+  ],
+  general: [
+    { name: '雲朵造型小物', description: '柔軟配色的日常選物', icon: 'cloud', color: c.candySky },
+    { name: '星星收納盒', description: '放置細小收藏的盒子', icon: 'star', color: c.candyLemon },
+    { name: '緞帶禮物包', description: '適合送給朋友的小禮物', icon: 'gift', color: c.candyPink },
+    { name: '花花筆記本', description: '記下今天的小點子', icon: 'book-open', color: c.candyMint },
+    { name: '迷你陶瓷杯', description: '手繪花紋的迷你杯', icon: 'coffee', color: c.candyPeach },
+    { name: '彩色貼紙包', description: '為手帳添上亮眼圖案', icon: 'image', color: c.candyLavender },
+    { name: '月亮吊飾', description: '掛在包袋上的小吊飾', icon: 'moon', color: c.candyCoral },
+    { name: '迷你花束', description: '以柔和彩紙包好的花束', icon: 'feather', color: c.candyRose },
+  ],
+  cafe: [
+    { name: '星星拿鐵', description: '奶泡上有小星星圖案', icon: 'coffee', color: c.candyPeach },
+    { name: '草莓雲朵蛋糕', description: '粉紅奶油與鬆軟蛋糕', icon: 'heart', color: c.candyPink },
+    { name: '蜂蜜鬆餅', description: '配上蜂蜜的小份鬆餅', icon: 'sun', color: c.candyLemon },
+    { name: '牛奶糖曲奇', description: '烤成金黃色的小曲奇', icon: 'gift', color: c.candyCaramel },
+    { name: '果香氣泡飲', description: '繽紛水果風味飲品', icon: 'droplet', color: c.candySky },
+    { name: '可可小馬芬', description: '撒上糖粉的迷你蛋糕', icon: 'heart', color: c.candyLavender },
+    { name: '棉花糖杯', description: '裝滿彩色棉花糖的小杯', icon: 'star', color: c.candyRose },
+    { name: '焦糖布丁', description: '滑嫩的焦糖風味布丁', icon: 'sun', color: c.candyPeach },
+  ],
+  candy: [
+    { name: '彩虹軟糖', description: '一顆顆排列的水果軟糖', icon: 'heart', color: c.candyCoral },
+    { name: '星星棉花糖', description: '蓬鬆的星形棉花糖', icon: 'star', color: c.candyPink },
+    { name: '水果糖罐', description: '裝有多種果味的小糖果', icon: 'gift', color: c.candyLemon },
+    { name: '雲朵巧克力', description: '奶香巧克力小點心', icon: 'cloud', color: c.candyPeach },
+    { name: '酸甜莓果糖', description: '莓果口味的繽紛糖果', icon: 'heart', color: c.candyRose },
+    { name: '薄荷小糖球', description: '清爽薄荷口味糖球', icon: 'circle', color: c.candyMint },
+    { name: '星月棒棒糖', description: '星星與月亮造型棒棒糖', icon: 'moon', color: c.candyLavender },
+    { name: '彩糖小禮盒', description: '包裝成禮物的小糖果', icon: 'gift', color: c.candySky },
+  ],
+  icecream: [
+    { name: '草莓雲朵冰淇淋', description: '粉色草莓風味冰淇淋', icon: 'heart', color: c.candyPink },
+    { name: '抹茶小雪球', description: '淡淡茶香的冰淇淋球', icon: 'sun', color: c.candyMint },
+    { name: '香草星星甜筒', description: '香草口味星形甜筒', icon: 'star', color: c.candyLemon },
+    { name: '藍莓氣泡冰沙', description: '帶有藍莓果香的冰沙', icon: 'droplet', color: c.candySky },
+    { name: '焦糖脆片雪糕', description: '焦糖脆片裹著香草雪糕', icon: 'gift', color: c.candyCaramel },
+    { name: '芒果陽光雪糕', description: '明亮果香的芒果雪糕', icon: 'sun', color: c.candyPeach },
+    { name: '葡萄紫冰棒', description: '清爽葡萄口味冰棒', icon: 'droplet', color: c.candyLavender },
+    { name: '彩虹三球杯', description: '三種口味的迷你冰品', icon: 'circle', color: c.candyCoral },
+  ],
+  bakery: [
+    { name: '草莓奶油小蛋糕', description: '擺上新鮮草莓的奶油蛋糕', icon: 'heart', color: c.candyPink },
+    { name: '奶油菠蘿包', description: '剛出爐的金黃色麵包', icon: 'sun', color: c.candyLemon },
+    { name: '星星糖霜曲奇', description: '星形糖霜餅乾', icon: 'star', color: c.candyLavender },
+    { name: '蜂蜜可頌', description: '外層酥脆的蜂蜜可頌', icon: 'gift', color: c.candyPeach },
+    { name: '藍莓小塔', description: '盛著藍莓餡的小塔', icon: 'circle', color: c.candySky },
+    { name: '雲朵棉花糖麵包', description: '鬆軟的雲朵造型甜麵包', icon: 'cloud', color: c.candyMint },
+    { name: '巧克力甜甜圈', description: '淋上巧克力糖衣的甜甜圈', icon: 'circle', color: c.candyCaramel },
+    { name: '季節限定蛋塔', description: '當季口味的小蛋塔', icon: 'sun', color: c.candyCoral },
+  ],
+  tea: [
+    { name: '珍珠奶茶', description: '香濃奶茶配上Q彈珍珠', icon: 'coffee', color: c.candyCaramel },
+    { name: '蜜桃烏龍茶', description: '清甜蜜桃與茶香', icon: 'droplet', color: c.candyPeach },
+    { name: '抹茶奶蓋飲', description: '綿密奶蓋與淡雅抹茶', icon: 'coffee', color: c.candyMint },
+    { name: '柚子氣泡茶', description: '帶有柑橘香氣的氣泡茶', icon: 'sun', color: c.candyLemon },
+    { name: '莓果冰茶', description: '莓果與冰茶的清爽組合', icon: 'heart', color: c.candyRose },
+    { name: '紫薯珍珠飲', description: '柔和紫色的香甜飲品', icon: 'circle', color: c.candyLavender },
+    { name: '檸檬蜂蜜水', description: '清新檸檬搭配蜂蜜', icon: 'sun', color: c.candySky },
+    { name: '桂花熱茶', description: '淡雅花香的暖茶', icon: 'feather', color: c.candyCoral },
+  ],
+  food: [
+    { name: '彩色飯糰盒', description: '不同口味的小飯糰', icon: 'package', color: c.candyMint },
+    { name: '香料咖喱包', description: '暖香咖喱的小份餐點', icon: 'gift', color: c.candyCaramel },
+    { name: '番茄起司小披薩', description: '迷你披薩分享點心', icon: 'heart', color: c.candyCoral },
+    { name: '水果可麗餅', description: '包著水果與奶油的可麗餅', icon: 'sun', color: c.candyPeach },
+    { name: '鮮蔬便當', description: '繽紛蔬菜搭配米飯', icon: 'grid', color: c.candyLemon },
+    { name: '海苔小卷', description: '方便帶著走的小食', icon: 'package', color: c.candySky },
+    { name: '芝麻湯圓', description: '暖暖的甜湯小點心', icon: 'circle', color: c.candyLavender },
+    { name: '香草烤蔬菜', description: '以香草調味的烤蔬菜', icon: 'feather', color: c.candyPink },
+  ],
+  flower: [
+    { name: '粉紅鬱金香花束', description: '以薄紙包好的春日花束', icon: 'feather', color: c.candyPink },
+    { name: '迷你向日葵盆栽', description: '為桌面添一點陽光', icon: 'sun', color: c.candyLemon },
+    { name: '紫藤小花瓶', description: '淡紫花朵搭配透明花瓶', icon: 'droplet', color: c.candyLavender },
+    { name: '薄荷綠多肉盆', description: '可愛的小型多肉植物', icon: 'cloud', color: c.candyMint },
+    { name: '野花玻璃瓶', description: '收集繽紛的小野花', icon: 'heart', color: c.candyCoral },
+    { name: '玫瑰花瓣禮盒', description: '將花瓣收進小小禮盒', icon: 'gift', color: c.candyRose },
+    { name: '白色小雛菊', description: '清新的白色花朵', icon: 'star', color: c.candySky },
+    { name: '彩葉觀葉盆栽', description: '葉片帶有柔和的漸層色', icon: 'feather', color: c.candyPeach },
+  ],
+  book: [
+    { name: '手繪花園筆記本', description: '封面有手繪花草的筆記本', icon: 'book-open', color: c.candyMint },
+    { name: '星空故事繪本', description: '裝滿星星故事的小書', icon: 'star', color: c.candyLavender },
+    { name: '彩虹便利貼', description: '方便記下靈感的便利貼', icon: 'edit-2', color: c.candyCoral },
+    { name: '動物造型書籤', description: '夾在書頁間的小動物書籤', icon: 'bookmark', color: c.candyPeach },
+    { name: '旅行明信片組', description: '收錄不同城市的風景', icon: 'image', color: c.candySky },
+    { name: '珍藏漫畫單行本', description: '一冊適合收藏的小漫畫', icon: 'book', color: c.candyPink },
+    { name: '透明花朵貼紙', description: '為手帳增添花朵圖案', icon: 'feather', color: c.candyRose },
+    { name: '迷你彩色筆組', description: '適合畫畫與做筆記', icon: 'edit-3', color: c.candyLemon },
+  ],
+  toy: [
+    { name: '小熊布偶', description: '柔軟蓬鬆的小熊玩偶', icon: 'heart', color: c.candyPeach },
+    { name: '星星積木組', description: '可以拼出不同造型的積木', icon: 'star', color: c.candyLemon },
+    { name: '迷你扭蛋', description: '打開有驚喜的小收藏', icon: 'gift', color: c.candyPink },
+    { name: '彩虹拼圖盒', description: '拼出一幅繽紛的小圖畫', icon: 'grid', color: c.candyLavender },
+    { name: '兔兔音樂盒', description: '轉動後會播放輕快旋律', icon: 'music', color: c.candySky },
+    { name: '手作黏土套裝', description: '用柔軟黏土捏出小角色', icon: 'edit-2', color: c.candyCoral },
+    { name: '迷你火車模型', description: '適合收藏的小火車模型', icon: 'truck', color: c.candyMint },
+    { name: '貼紙收藏包', description: '收錄可愛圖案的貼紙', icon: 'image', color: c.candyRose },
+  ],
+  craft: [
+    { name: '手繪陶瓷小碟', description: '每一只都有不同手繪花紋', icon: 'circle', color: c.candySky },
+    { name: '彩色編織線團', description: '柔軟的多色手作毛線', icon: 'feather', color: c.candyCoral },
+    { name: '玻璃花朵吊飾', description: '透亮的手工玻璃小花', icon: 'star', color: c.candyLavender },
+    { name: '皮革迷你卡套', description: '手作縫線的小卡套', icon: 'credit-card', color: c.candyCaramel },
+    { name: '緞帶髮夾組', description: '不同顏色的手作髮夾', icon: 'gift', color: c.candyPink },
+    { name: '彩繪木製胸針', description: '手工畫上的繽紛圖案', icon: 'sun', color: c.candyLemon },
+    { name: '迷你編織花籃', description: '可放在桌面的小花籃', icon: 'package', color: c.candyMint },
+    { name: '陶土星月擺飾', description: '星星與月亮造型的手作品', icon: 'moon', color: c.candyPeach },
+  ],
+  womenswear: [
+    { name: '粉彩針織上衣', description: '柔軟親膚的日常上衣', icon: 'shopping-bag', color: c.candyPink },
+    { name: '百褶小裙子', description: '輕盈好搭的短裙', icon: 'shopping-bag', color: c.candyLavender },
+    { name: '花朵襯衫', description: '印有小花圖案的襯衫', icon: 'feather', color: c.candyMint },
+    { name: '奶油色連身裙', description: '適合日常外出的連身裙', icon: 'heart', color: c.candyPeach },
+    { name: '蝴蝶結髮飾', description: '為穿搭添上柔和亮點', icon: 'gift', color: c.candyCoral },
+    { name: '柔軟圍巾', description: '適合微涼天氣的圍巾', icon: 'wind', color: c.candySky },
+    { name: '珍珠小耳環', description: '細緻珍珠造型耳環', icon: 'circle', color: c.candyLemon },
+    { name: '手提小方包', description: '方便搭配日常服裝', icon: 'shopping-bag', color: c.candyRose },
+  ],
+  bridal: [
+    { name: '蕾絲白紗禮服', description: '有細緻蕾絲花邊的婚紗', icon: 'heart', color: c.candyPink },
+    { name: '珍珠頭紗', description: '點綴小珍珠的柔紗頭飾', icon: 'star', color: c.candyLemon },
+    { name: '玫瑰捧花', description: '粉白色系的新娘捧花', icon: 'feather', color: c.candyRose },
+    { name: '緞面婚鞋', description: '簡約柔亮的緞面鞋款', icon: 'shopping-bag', color: c.candyPeach },
+    { name: '水晶髮梳', description: '閃耀小水晶的髮飾', icon: 'sun', color: c.candySky },
+    { name: '蕾絲手套', description: '輕柔透膚的婚禮手套', icon: 'gift', color: c.candyLavender },
+    { name: '香檳色伴娘裙', description: '適合婚禮場合的柔色裙裝', icon: 'shopping-bag', color: c.candyCaramel },
+    { name: '婚戒小禮盒', description: '為戒指準備的收藏盒', icon: 'circle', color: c.candyMint },
+  ],
+  eveningwear: [
+    { name: '莓果粉晚宴裙', description: '輕盈裙襬的晚宴服', icon: 'shopping-bag', color: c.candyRose },
+    { name: '星光亮片披肩', description: '在燈光下閃耀的小披肩', icon: 'star', color: c.candyLavender },
+    { name: '珍珠手拿包', description: '搭配晚宴造型的手拿包', icon: 'gift', color: c.candyPeach },
+    { name: '緞面高跟鞋', description: '優雅簡潔的緞面鞋款', icon: 'shopping-bag', color: c.candyPink },
+    { name: '水晶項鍊', description: '細緻閃亮的晚宴配件', icon: 'sun', color: c.candySky },
+    { name: '蝴蝶結胸針', description: '為禮服加上一點光彩', icon: 'heart', color: c.candyLemon },
+    { name: '薄紗長手套', description: '輕柔透明的長手套', icon: 'wind', color: c.candyMint },
+    { name: '金色耳墜', description: '小巧的金色晚宴耳飾', icon: 'circle', color: c.candyCaramel },
+  ],
+  kimono: [
+    { name: '櫻花振袖', description: '有柔粉櫻花花紋的和服', icon: 'feather', color: c.candyPink },
+    { name: '紫藤浴衣', description: '帶有紫藤圖案的夏日浴衣', icon: 'shopping-bag', color: c.candyLavender },
+    { name: '金魚腰帶', description: '搭配浴衣的小巧腰帶', icon: 'gift', color: c.candyCoral },
+    { name: '木屐與緞帶', description: '適合夏日祭典的木屐', icon: 'shopping-bag', color: c.candyCaramel },
+    { name: '和風髮簪', description: '點綴花朵的傳統髮飾', icon: 'star', color: c.candyLemon },
+    { name: '手繪扇子', description: '畫有柔和花草的摺扇', icon: 'wind', color: c.candyMint },
+    { name: '絞染羽織', description: '帶有漸層紋樣的羽織', icon: 'shopping-bag', color: c.candySky },
+    { name: '櫻花小荷包', description: '繫在腰帶上的和風小包', icon: 'gift', color: c.candyPeach },
+  ],
+  supermarket: [
+    { name: '新鮮草莓籃', description: '一籃鮮紅多汁的草莓', icon: 'heart', color: c.candyRose },
+    { name: '彩色水果盒', description: '裝有多種當季水果', icon: 'package', color: c.candyLemon },
+    { name: '牛奶玻璃瓶', description: '新鮮牛奶的玻璃瓶裝', icon: 'droplet', color: c.candySky },
+    { name: '蔬菜小菜籃', description: '精選新鮮的日常蔬菜', icon: 'grid', color: c.candyMint },
+    { name: '果汁紙盒組', description: '方便帶著走的果汁飲品', icon: 'coffee', color: c.candyPeach },
+    { name: '餅乾分享包', description: '適合午後分享的小餅乾', icon: 'gift', color: c.candyCaramel },
+    { name: '彩糖零食包', description: '繽紛的季節限定小零食', icon: 'star', color: c.candyPink },
+    { name: '迷你花束', description: '新鮮花朵包成的小花束', icon: 'feather', color: c.candyLavender },
+  ],
+  hyakuen: [
+    { name: '便利貼收納包', description: '多色便利貼與索引標籤', icon: 'edit-2', color: c.candyLemon },
+    { name: '迷你收納盒', description: '整理桌面小物的收納盒', icon: 'package', color: c.candyMint },
+    { name: '動物造型杯', description: '可愛造型的日用杯子', icon: 'coffee', color: c.candyPeach },
+    { name: '緞帶與包裝紙', description: '包裝禮物用的手作材料', icon: 'gift', color: c.candyPink },
+    { name: '彩色餐具組', description: '適合野餐使用的小餐具', icon: 'grid', color: c.candySky },
+    { name: '迷你盆栽', description: '容易照顧的小型綠植', icon: 'feather', color: c.candyMint },
+    { name: '手機掛繩', description: '方便攜帶的彩色掛繩', icon: 'smartphone', color: c.candyLavender },
+    { name: '星星貼紙包', description: '手帳和卡片都能使用', icon: 'star', color: c.candyCoral },
+  ],
+  swimwear: [
+    { name: '海鹽藍連身泳衣', description: '清爽藍色系的連身泳衣', icon: 'shopping-bag', color: c.candySky },
+    { name: '珊瑚粉比基尼', description: '柔和粉色系的泳裝套裝', icon: 'heart', color: c.candyCoral },
+    { name: '薄荷綠防曬上衣', description: '適合海邊活動的防曬衣', icon: 'wind', color: c.candyMint },
+    { name: '花朵沙灘裙', description: '輕柔花紋的沙灘裙', icon: 'feather', color: c.candyPink },
+    { name: '貝殼遮陽帽', description: '夏日海邊的遮陽配件', icon: 'sun', color: c.candyLemon },
+    { name: '彩虹沙灘巾', description: '繽紛柔軟的沙灘毛巾', icon: 'grid', color: c.candyLavender },
+    { name: '透明水母包', description: '方便收納海邊用品的小包', icon: 'shopping-bag', color: c.candyPeach },
+    { name: '星星水鞋', description: '適合沙灘與水邊活動', icon: 'star', color: c.candyRose },
+  ],
+  cosplay: [
+    { name: '星光魔法裙裝', description: '以星月色彩設計的角色服', icon: 'star', color: c.candyLavender },
+    { name: '忍者風斗篷', description: '原創忍者主題的輕便斗篷', icon: 'wind', color: c.candySky },
+    { name: '櫻花角色上衣', description: '粉色系的原創角色上衣', icon: 'heart', color: c.candyPink },
+    { name: '彩虹舞台裙', description: '適合表演的繽紛裙裝', icon: 'sun', color: c.candyCoral },
+    { name: '精靈耳朵髮箍', description: '搭配奇幻造型的耳朵配件', icon: 'feather', color: c.candyMint },
+    { name: '魔法星星手杖', description: '星形裝飾的原創道具', icon: 'star', color: c.candyLemon },
+    { name: '月光假髮', description: '柔和銀紫色的造型假髮', icon: 'moon', color: c.candyPeach },
+    { name: '角色徽章組', description: '收藏原創角色的小徽章', icon: 'gift', color: c.candyRose },
+  ],
+  electronics: [
+    { name: '薄荷色耳機', description: '輕巧舒適的日常耳機', icon: 'headphones', color: c.candyMint },
+    { name: '迷你拍立得相機', description: '記錄出遊時的可愛瞬間', icon: 'camera', color: c.candyPink },
+    { name: '星星藍牙喇叭', description: '播放音樂的迷你喇叭', icon: 'music', color: c.candySky },
+    { name: '便攜遊戲機', description: '適合休息時使用的小遊戲機', icon: 'cpu', color: c.candyLavender },
+    { name: '智慧手錶', description: '顯示時間與日常提醒', icon: 'watch', color: c.candyCoral },
+    { name: '多色充電線', description: '收納方便的柔色充電線', icon: 'zap', color: c.candyLemon },
+    { name: '迷你投影機', description: '在牆面播放影片的小裝置', icon: 'monitor', color: c.candyPeach },
+    { name: '相機小腳架', description: '適合拍照和錄影的配件', icon: 'camera', color: c.candyRose },
+  ],
+  boutique: [
+    { name: '珍珠手提包', description: '搭配日常穿搭的小手袋', icon: 'shopping-bag', color: c.candyPeach },
+    { name: '水晶耳環', description: '細緻閃亮的小型耳飾', icon: 'star', color: c.candySky },
+    { name: '月光腕錶', description: '柔和色系的收藏腕錶', icon: 'clock', color: c.candyLavender },
+    { name: '絲緞方巾', description: '有細緻花紋的柔軟方巾', icon: 'feather', color: c.candyPink },
+    { name: '花朵胸針', description: '為外套加上一點色彩', icon: 'sun', color: c.candyCoral },
+    { name: '迷你皮革卡夾', description: '方便收納卡片的小皮件', icon: 'credit-card', color: c.candyCaramel },
+    { name: '珍珠項鍊', description: '簡潔優雅的珍珠配件', icon: 'circle', color: c.candyLemon },
+    { name: '緞帶髮夾', description: '柔和色系的日常髮飾', icon: 'gift', color: c.candyMint },
+  ],
+};
+
+const fixturePattern = /shelf|shelves|rack|showcase|display|display-case|display-cabinet|wardrobe|cabinet|pedestal|island|counter|陳列|展示|貨架|衣架|衣櫃|衣柜|收納架|櫥窗|櫃台|櫃|柜|架/i;
+
+export function canDisplayShopProducts(decoration: ShopInteriorDecoration): boolean {
+  return fixturePattern.test(`${decoration.id} ${decoration.name} ${decoration.description}`);
+}
+
+function resolveProductTheme(
+  shopId: string,
+  shopName: string,
+  shopType: MallShopType | undefined,
+): ProductTheme {
+  const identity = `${shopId} ${shopName}`;
+  if (/fragrance|aroma|diffuser|香氛|香薰|擴香|扩香|香氣|香气/i.test(identity)) return 'fragrance';
+  if (shopType && shopType !== 'general') return shopType;
+  if (/咖啡|coffee|cafe|烘豆/i.test(identity)) return 'cafe';
+  if (/糖果|軟糖|棉花糖|彩糖|糖藝|糖霜|candy|sweets/i.test(identity)) return 'candy';
+  if (/雪糕|冰淇淋|冰棒|冰沙|gelato|ice.?cream|smoothie/i.test(identity)) return 'icecream';
+  if (/烘焙|麵包|曲奇|餅乾|甜甜圈|鬆餅|布丁|馬卡龍|巧克力|甜點|甜品|bakery|pastry/i.test(identity)) return 'bakery';
+  if (/奶茶|茶|飲品|飲料|bubble.?tea|tea.?shop|冰飲/i.test(identity)) return 'tea';
+  if (/食堂|食館|小食|飯糰|咖喱|咖哩|披薩|意粉|可麗餅|料理|餐|kitchen|noodle|food/i.test(identity)) return 'food';
+  if (/花|植物|園藝|苗圃|盆栽|花藝|flower|florist|plant/i.test(identity)) return 'flower';
+  if (/書|文具|手帳|紙品|明信片|繪本|漫畫|雜誌|book|stationery/i.test(identity)) return 'book';
+  if (/扭蛋|玩偶|玩具|遊戲|模型|積木|卡牌|街機|toy|capsule|arcade/i.test(identity)) return 'toy';
+  if (/工房|工藝|陶|畫室|畫作|手作|編織|刺繡|玻璃|皮革|craft|studio|atelier|ceramic/i.test(identity)) return 'craft';
+  return 'general';
+}
+
+export function getShopFixtureProductCatalog(
+  shopId: string,
+  shopName: string,
+  shopType: MallShopType | undefined,
+  decoration: ShopInteriorDecoration,
+): ShopDisplayProduct[] {
+  if (!canDisplayShopProducts(decoration)) return [];
+  const theme = resolveProductTheme(shopId, shopName, shopType);
+  return productSeeds[theme].map((seed, index) => ({
+    id: `display-${theme}-${index + 1}`,
+    ...seed,
+  }));
+}

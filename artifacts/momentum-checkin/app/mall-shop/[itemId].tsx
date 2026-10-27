@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useHabits } from '@/context/HabitsContext';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { ShopInteriorScene } from '@/components/ShopInteriorScene';
+import { ShopDisplayFixturePanel } from '@/components/ShopDisplayFixturePanel';
 import { DogStaffCustomizer } from '@/components/DogStaffCustomizer';
 import {
   getShopInteriorDecorations,
@@ -38,6 +39,7 @@ import {
 } from '@/constants/dog-staff-customization';
 import { MALL_FLOORS, MALL_ITEM_BY_ID } from '@/constants/mall';
 import type { MallVisualCategory } from '@/constants/mall-visual-profile';
+import { canDisplayShopProducts, getShopFixtureProductCatalog, SHOP_DISPLAY_SLOT_COUNT } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
 
 function ShopInteriorAnimatedObject({
@@ -105,6 +107,7 @@ export default function MallShopInteriorScreen() {
     shopInteriors,
     placeShopInteriorDecoration,
     storeShopInteriorDecoration,
+    setShopInteriorFixtureProduct,
     placeShopInteriorDogStaff,
     storeShopInteriorDogStaff,
     updateShopInteriorDogLook,
@@ -112,6 +115,9 @@ export default function MallShopInteriorScreen() {
   const [selectedSlot, setSelectedSlot] = useState<ShopInteriorSlotId>(SHOP_INTERIOR_SLOTS[0].id);
   const [selectedArea, setSelectedArea] = useState<ShopInteriorAreaId>('main');
   const [workingDecoration, setWorkingDecoration] = useState<string | null>(null);
+  const [activeFixtureId, setActiveFixtureId] = useState<string | null>(null);
+  const [selectedDisplaySlot, setSelectedDisplaySlot] = useState(0);
+  const [workingDisplayProduct, setWorkingDisplayProduct] = useState(false);
   const [notice, setNotice] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
   const interior = shop ? shopInteriors[shop.id] : undefined;
@@ -125,6 +131,18 @@ export default function MallShopInteriorScreen() {
     () => decorations.filter(({ id }) => !DOG_STAFF_PROFILE_BY_DECORATION_ID[id]),
     [decorations],
   );
+  const fixtureProducts = useMemo(() => {
+    if (!shop) return {};
+    return Object.fromEntries(
+      interiorDecorations
+        .filter(canDisplayShopProducts)
+        .map((fixture) => [
+          fixture.id,
+          getShopFixtureProductCatalog(shop.id, shop.name, shop.shopType, fixture),
+        ])
+        .filter(([, products]) => (products as { id: string }[]).length > 0),
+    ) as Record<string, ReturnType<typeof getShopFixtureProductCatalog>>;
+  }, [shop?.id, shop?.name, shop?.shopType, interiorDecorations]);
   const owned = new Set(interior?.ownedDecorations ?? []);
   const placements = interior?.placements ?? {};
   const areaPlacements = useMemo(
@@ -134,6 +152,15 @@ export default function MallShopInteriorScreen() {
   const selectedPlacementId = getShopInteriorPlacementId(selectedArea, selectedSlot);
   const selectedDecorationId = areaPlacements[selectedSlot];
   const selectedDecoration = interiorDecorations.find(({ id }) => id === selectedDecorationId);
+  const activeFixture = activeFixtureId
+    ? interiorDecorations.find(({ id }) => id === activeFixtureId) ?? null
+    : null;
+  const activeFixtureProducts = activeFixture && shop
+    ? fixtureProducts[activeFixture.id] ?? getShopFixtureProductCatalog(shop.id, shop.name, shop.shopType, activeFixture)
+    : [];
+  const activeFixtureSlots = activeFixture
+    ? interior?.fixtureContents?.[activeFixture.id] ?? Array.from({ length: SHOP_DISPLAY_SLOT_COUNT }, () => null)
+    : [];
   const floor = shop ? MALL_FLOORS[shop.floor - 1] : MALL_FLOORS[0];
   const hasAccess = !!shop && shop.category === 'shop' && purchasedItems.includes(shop.id);
   const catalogPageSize = 10;
@@ -155,6 +182,23 @@ export default function MallShopInteriorScreen() {
       Alert.alert('項目未能放置', error instanceof Error ? error.message : '請稍後再試。');
     } finally {
       setWorkingDecoration(null);
+    }
+  }
+
+  async function updateFixtureProduct(productId: string | null) {
+    if (!shop || !activeFixture || !hasAccess || workingDisplayProduct) return;
+    setWorkingDisplayProduct(true);
+    setNotice('');
+    try {
+      await setShopInteriorFixtureProduct(shop.id, activeFixture.id, selectedDisplaySlot, productId);
+      const productName = activeFixtureProducts.find(({ id }) => id === productId)?.name;
+      setNotice(productId
+        ? `已將${productName ?? '商品'}放入${activeFixture.name}第 ${selectedDisplaySlot + 1} 格，免費陳列。`
+        : `已清空${activeFixture.name}第 ${selectedDisplaySlot + 1} 格，沒有扣除金幣。`);
+    } catch (error) {
+      Alert.alert('商品陳列未完成', error instanceof Error ? error.message : '請稍後再試。');
+    } finally {
+      setWorkingDisplayProduct(false);
     }
   }
 
@@ -305,8 +349,14 @@ export default function MallShopInteriorScreen() {
               decorations={interiorDecorations}
               dogStaffLooks={interior?.dogStaffLooks}
               dogStaffPlacements={interior?.dogStaffPlacements}
+              fixtureContents={interior?.fixtureContents}
+              fixtureProducts={fixtureProducts}
               selectedSlot={selectedSlot}
               onSelectSlot={setSelectedSlot}
+              onOpenDisplayFixture={(fixtureId) => {
+                setSelectedDisplaySlot(0);
+                setActiveFixtureId(fixtureId);
+              }}
             />
 
             <View style={[styles.areaPager, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -367,7 +417,7 @@ export default function MallShopInteriorScreen() {
               <View>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>挑選店內設備與佈置</Text>
                 <Text style={[styles.sectionCopy, { color: colors.mutedForeground }]}>
-                  不同店型有專屬設備；先選上方位置，已兌換項目可免費換位或收納。
+                  不同店型有專屬設備；點選已擺放的貨架或展示物件，可免費陳列本店商品。
                 </Text>
               </View>
               <View style={[styles.selectedSlotPill, { backgroundColor: colors.secondary }]}>
@@ -514,6 +564,19 @@ export default function MallShopInteriorScreen() {
           </>
         ) : null}
       </ScrollView>
+      <ShopDisplayFixturePanel
+        visible={!!activeFixtureId && hasAccess}
+        shopName={shop?.name ?? ''}
+        fixture={activeFixture}
+        products={activeFixtureProducts}
+        slots={activeFixtureSlots}
+        selectedSlot={selectedDisplaySlot}
+        busy={workingDisplayProduct}
+        onSelectSlot={setSelectedDisplaySlot}
+        onPlaceProduct={(productId) => void updateFixtureProduct(productId)}
+        onClearSlot={() => void updateFixtureProduct(null)}
+        onClose={() => setActiveFixtureId(null)}
+      />
     </SafeAreaView>
   );
 }

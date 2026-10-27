@@ -1638,6 +1638,13 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
       SHOP_INTERIOR_DECORATION_IDS: ['test-decoration'],
       SHOP_INTERIOR_SLOT_IDS: ['test-interior-slot'],
       SHOP_INTERIOR_DECORATION_BY_ID: { 'test-decoration': { price: 10 } },
+      getShopInteriorDecorations: () => [],
+    };
+    if (name === '@/constants/mall') return { MALL_ITEM_BY_ID: {} };
+    if (name === '@/constants/mall-shop-display') return {
+      SHOP_DISPLAY_SLOT_COUNT: 6,
+      canDisplayShopProducts: () => false,
+      getShopFixtureProductCatalog: () => [],
     };
     if (name === '@/constants/dog-staff-customization') return {
       DOG_STAFF_STYLE_CATALOGS: {},
@@ -1675,7 +1682,7 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
 test('AsyncStorage mall write failures preserve ownership, coins and placement after reload', async () => {
   const mallKey = 'momentum.mall.v1';
   const initialMall = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     coins: 100,
     purchasedItems: ['owned'],
     rewardedCheckIns: [],

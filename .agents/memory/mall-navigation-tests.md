@@ -7,4 +7,4 @@ When testing mall navigation, drive the same route entry modules and route stack
 
 **Why:** The harness creates React element records rather than using a native renderer, so merely logging a router push or inspecting a parent tree can miss route wiring and nested scene interactions.
 
-**How to apply:** For mall-to-today flows, push the today route, render its route module, pop the stack, and render the mall route again; assert retained UI state and persisted domain data separately.
+**How to apply:** For mall-to-today flows, use the real tab routes and render the route modules again; assert retained UI state and persisted domain data separately. After async provider mutations, explicitly render the provider before reading its updated context in this lightweight harness.

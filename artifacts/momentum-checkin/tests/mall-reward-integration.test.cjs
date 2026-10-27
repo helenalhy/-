@@ -561,6 +561,89 @@ test('mall to today and back preserves the filtered catalog, purchase preview an
   assert.deepEqual(afterNavigation.purchasedItems, beforeNavigation.purchasedItems);
   assert.deepEqual(afterNavigation.mallPlacements, beforeNavigation.mallPlacements);
   assert.equal(app.storage.get(storageKeys.mall), savedMallBeforeNavigation);
+
+  await press(mallTree, 'cancel-purchase-preview');
+  mallTree = app.renderCurrentRoute();
+  assert.equal(findByTestId(mallTree, 'mall-purchase-preview'), undefined, 'cancel removes the returned preview');
+  const afterCancel = app.contextExports.useHabits();
+  assert.equal(afterCancel.coins, beforeNavigation.coins, 'cancel does not spend coins');
+  assert.deepEqual(afterCancel.purchasedItems, beforeNavigation.purchasedItems, 'cancel does not grant ownership');
+  assert.deepEqual(afterCancel.mallPlacements, beforeNavigation.mallPlacements, 'cancel does not change saved placements');
+  assert.equal(app.storage.get(storageKeys.mall), savedMallBeforeNavigation, 'cancel leaves persisted mall data untouched');
+});
+
+test('mall to today and back keeps purchase confirmation actionable', async () => {
+  const app = createHarness();
+  const ownedItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'welcome-flowers');
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 20,
+    purchasedItems: [ownedItem.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: { 'floor-1-left': ownedItem.id },
+  }));
+
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let mallTree = app.renderCurrentRoute();
+  await press(mallTree, 'mall-category-decor');
+  mallTree = app.renderCurrentRoute();
+  await press(mallTree, 'mall-price-sort');
+  mallTree = app.renderCurrentRoute();
+
+  const buildButton = findNodes(mallTree, (node) =>
+    typeof node.props?.testID === 'string'
+    && node.props.testID.startsWith('build-')
+    && !node.props.disabled,
+  )[0];
+  assert.ok(buildButton, 'an affordable decoration can be selected');
+  const itemId = buildButton.props.testID.slice('build-'.length);
+  const item = app.mallCatalog.MALL_ITEMS.find((candidate) => candidate.id === itemId);
+  await press(mallTree, buildButton.props.testID);
+
+  mallTree = app.renderCurrentRoute();
+  const wingPager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
+  const mainWing = wingPager.props.renderWing('main', true);
+  const emptySlot = findNodes(mainWing, (node) =>
+    node.type?.name === 'MallSceneSlot'
+    && node.props.slotId.startsWith('floor-1-')
+    && !node.props.item,
+  )[0];
+  assert.ok(emptySlot, 'the selected item has an empty preview slot');
+  const previewSlotId = emptySlot.props.slotId;
+  emptySlot.props.onPress();
+
+  mallTree = app.renderCurrentRoute();
+  assert.ok(findByTestId(mallTree, 'confirm-purchase-preview'), 'confirmation is available before leaving');
+  const beforeNavigation = app.contextExports.useHabits();
+  const savedMallBeforeNavigation = app.storage.get(storageKeys.mall);
+  app.navigateTo('/today');
+  assert.deepEqual(app.navigationStack, ['/today'], 'switching to Today keeps the mall screen mounted');
+  const todayTree = app.renderCurrentRoute();
+  await press(todayTree, 'today-mall-shortcut');
+  assert.deepEqual(app.navigationStack, ['/'], 'the Today shortcut returns to the mall tab');
+
+  mallTree = app.renderCurrentRoute();
+  assert.ok(findByTestId(mallTree, 'mall-purchase-preview'), 'the same preview returns with the mall route');
+  assert.ok(findByTestId(mallTree, 'confirm-purchase-preview'), 'confirmation remains actionable after returning');
+  assert.equal(app.contextExports.useHabits().coins, beforeNavigation.coins);
+  assert.equal(app.storage.get(storageKeys.mall), savedMallBeforeNavigation, 'navigation alone does not change saved mall data');
+
+  await press(mallTree, 'confirm-purchase-preview');
+  app.renderProvider();
+  const afterPurchase = app.contextExports.useHabits();
+  assert.equal(afterPurchase.coins, beforeNavigation.coins - item.price, 'confirmation deducts the item price once');
+  assert.ok(afterPurchase.purchasedItems.includes(itemId), 'confirmation grants ownership');
+  assert.equal(afterPurchase.mallPlacements[previewSlotId], itemId, 'confirmation persists the previewed placement');
+  assert.equal(afterPurchase.purchasedItems.filter((purchasedId) => purchasedId === itemId).length, 1);
+
+  const savedMall = JSON.parse(app.storage.get(storageKeys.mall));
+  assert.equal(savedMall.coins, afterPurchase.coins);
+  assert.ok(savedMall.purchasedItems.includes(itemId));
+  assert.equal(savedMall.placements[previewSlotId], itemId);
 });
 
 test('today mall shortcut returns to the same affordable category without changing saved mall data', async () => {

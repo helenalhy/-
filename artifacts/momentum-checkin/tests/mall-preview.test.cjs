@@ -1573,6 +1573,7 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
   const storage = initialStorage;
   const storageCalls = [];
   let failWrites = options.failWrites ?? false;
+  let failNextWriteForKey;
   const asyncStorage = {
     async getItem(key) {
       storageCalls.push(['get', key]);
@@ -1581,6 +1582,10 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     async setItem(key, value) {
       storageCalls.push(['set', key, value]);
       if (failWrites) throw new Error('simulated storage failure');
+      if (failNextWriteForKey === key) {
+        failNextWriteForKey = undefined;
+        throw new Error(`simulated one-time storage failure for ${key}`);
+      }
       storage.set(key, value);
     },
     async removeItem(key) {
@@ -1697,7 +1702,56 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     render,
     get value() { return context.value; },
     setFailWrites(value) { failWrites = value; },
+    failNextWriteForKey(key) { failNextWriteForKey = key; },
   };
+}
+
+for (const mirrorKey of ['momentum.habits.v1', 'momentum.mall.v1']) {
+  test(`check-in transaction restores reward after ${mirrorKey} mirror failure without duplicate coins`, async () => {
+    const transactionKey = 'momentum.checkin-transaction.v1';
+    const app = mountHabitsContext();
+    await new Promise((resolve) => setImmediate(resolve));
+    let habits = app.render();
+    assert.equal(habits.isLoading, false);
+    assert.equal(habits.coins, 0);
+
+    app.failNextWriteForKey(mirrorKey);
+    assert.equal(await habits.toggleCheckIn('starter-walk'), 20);
+    habits = app.render();
+    assert.equal(habits.coins, 20, 'the committed transaction immediately updates the displayed balance');
+
+    const pendingTransaction = JSON.parse(app.storage.get(transactionKey));
+    assert.equal(pendingTransaction.mall.coins, 20);
+    assert.deepEqual(pendingTransaction.mall.rewardedCheckIns, [`starter-walk:${pendingTransaction.habits[0].checkIns[0]}`]);
+    assert.ok(app.storage.has(transactionKey), 'failed mirror synchronization leaves its recovery record intact');
+
+    const recovered = mountHabitsContext(app.storage);
+    await new Promise((resolve) => setImmediate(resolve));
+    habits = recovered.render();
+    assert.equal(habits.isLoading, false);
+    assert.equal(habits.coins, 20, 'reload restores the committed coin balance');
+    assert.equal(habits.habits.find((habit) => habit.id === 'starter-walk').checkIns.length, 1);
+    assert.equal(habits.getCheckInReward('starter-walk'), 0, 'reload restores the claimed-reward marker');
+    assert.equal(recovered.storage.has(transactionKey), false, 'recovery clears the journal after both mirrors succeed');
+    const recoveredMall = JSON.parse(recovered.storage.get('momentum.mall.v1'));
+    assert.equal(recoveredMall.coins, 20);
+    assert.deepEqual(recoveredMall.rewardedCheckIns, pendingTransaction.mall.rewardedCheckIns);
+
+    const reloadedAgain = mountHabitsContext(recovered.storage);
+    await new Promise((resolve) => setImmediate(resolve));
+    habits = reloadedAgain.render();
+    assert.equal(habits.coins, 20, 'a second reload does not replay the reward');
+    assert.equal(await habits.toggleCheckIn('starter-walk'), 0, 'undoing a check-in does not issue another reward');
+    habits = reloadedAgain.render();
+    assert.equal(await habits.toggleCheckIn('starter-walk'), 0, 'checking in again the same day cannot claim twice');
+    habits = reloadedAgain.render();
+    assert.equal(habits.coins, 20);
+    assert.equal(habits.getCheckInReward('starter-walk'), 0);
+    assert.deepEqual(
+      JSON.parse(reloadedAgain.storage.get('momentum.mall.v1')).rewardedCheckIns,
+      pendingTransaction.mall.rewardedCheckIns,
+    );
+  });
 }
 
 test('AsyncStorage mall write failures preserve ownership, coins and placement after reload', async () => {

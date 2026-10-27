@@ -35,8 +35,12 @@ export const DOG_STAFF_PROFILES: DogStaffProfile[] = [
 export type DogOutfitCut =
   | 'apron' | 'vest' | 'jacket' | 'cape' | 'dress' | 'princess' | 'little-skirt'
   | 'santa-coat' | 'snowflake-cape' | 'pumpkin-dress' | 'ghost-poncho' | 'moon-rabbit'
-  | 'sakura-kimono' | 'tropical-sailor' | 'lion-dance' | 'star-fairy' | 'forest-leaf';
-export type DogAccessoryShape = 'bow' | 'beret' | 'headband' | 'flower' | 'scarf';
+  | 'sakura-kimono' | 'tropical-sailor' | 'lion-dance' | 'star-fairy' | 'forest-leaf'
+  | 'magical-girl' | 'sweater' | 'animal-costume';
+export type DogAnimalKind =
+  | 'lion' | 'rabbit' | 'fox' | 'duck' | 'bear' | 'cat' | 'deer'
+  | 'koala' | 'lamb' | 'panda' | 'polar-bear' | 'seal' | 'tiger' | 'raccoon';
+export type DogAccessoryShape = 'bow' | 'beret' | 'headband' | 'flower' | 'scarf' | 'animal-ears';
 export type DogOutfitPattern = 'dots' | 'stripes' | 'checks' | 'stars' | 'flowers';
 
 export interface DogStaffOutfit {
@@ -49,6 +53,7 @@ export interface DogStaffOutfit {
   pattern: DogOutfitPattern;
   theme?: string;
   lace?: boolean;
+  animalKind?: DogAnimalKind;
 }
 
 export interface DogStaffAccessory {
@@ -59,6 +64,7 @@ export interface DogStaffAccessory {
   accentColor: string;
   shape: DogAccessoryShape;
   motif: string;
+  animalKind?: DogAnimalKind;
 }
 
 export interface DogStaffLook {
@@ -141,6 +147,50 @@ const festivalThemes: { id: string; label: string; cut: DogOutfitCut; hue: numbe
   { id: 'new-year', label: '新年舞獅慶典服', cut: 'lion-dance', hue: 15 },
   { id: 'star-fairy', label: '星空仙子禮服', cut: 'star-fairy', hue: 255 },
   { id: 'forest', label: '森林精靈葉片披風', cut: 'forest-leaf', hue: 120 },
+];
+const magicalGirlColors = [
+  { label: '粉紅', hue: 338 },
+  { label: '紫色', hue: 260 },
+  { label: '藍色', hue: 208 },
+  { label: '橙色', hue: 26 },
+  { label: '莓果紅', hue: 0 },
+  { label: '檸檬黃', hue: 52 },
+  { label: '嫩芽黃綠', hue: 78 },
+  { label: '草木綠', hue: 104 },
+  { label: '薄荷綠', hue: 130 },
+  { label: '薄荷青', hue: 156 },
+  { label: '湖水青', hue: 182 },
+  { label: '靛藍', hue: 234 },
+  { label: '葡萄紫', hue: 286 },
+  { label: '櫻花紫粉', hue: 312 },
+] as const;
+const dogAnimalCostumes: Record<string, { kind: DogAnimalKind; label: string; hue: number }> = {
+  'general-fluffy-staff-huahua': { kind: 'lion', label: '小獅子', hue: 34 },
+  'general-fluffy-staff-milkshake': { kind: 'rabbit', label: '小兔子', hue: 330 },
+  'general-fluffy-staff-xiaoniu': { kind: 'fox', label: '小狐狸', hue: 22 },
+  'general-fluffy-staff-pudding': { kind: 'duck', label: '小鴨子', hue: 54 },
+  'general-fluffy-staff-tangtang': { kind: 'bear', label: '小熊', hue: 28 },
+  'general-fluffy-staff-pipi': { kind: 'cat', label: '小貓咪', hue: 198 },
+  'general-fluffy-staff-amber': { kind: 'deer', label: '小鹿', hue: 42 },
+  'general-fluffy-staff-cloud': { kind: 'koala', label: '無尾熊', hue: 210 },
+  'general-fluffy-staff-wonton': { kind: 'lamb', label: '小綿羊', hue: 275 },
+  'general-fluffy-staff-butter': { kind: 'panda', label: '小熊貓', hue: 155 },
+  'general-fluffy-staff-sesame': { kind: 'polar-bear', label: '北極熊', hue: 188 },
+  'general-fluffy-staff-snowball': { kind: 'seal', label: '小海豹', hue: 225 },
+  'general-fluffy-staff-maomao': { kind: 'tiger', label: '小老虎', hue: 18 },
+  'general-fluffy-staff-poppy': { kind: 'raccoon', label: '小浣熊', hue: 245 },
+};
+const animalEarHats: { kind: DogAnimalKind; label: string; hue: number }[] = [
+  { kind: 'lion', label: '獅子', hue: 34 },
+  { kind: 'bear', label: '小熊', hue: 28 },
+  { kind: 'rabbit', label: '兔子', hue: 330 },
+  { kind: 'cat', label: '小貓', hue: 198 },
+  { kind: 'fox', label: '狐狸', hue: 22 },
+  { kind: 'deer', label: '小鹿', hue: 42 },
+  { kind: 'panda', label: '熊貓', hue: 155 },
+  { kind: 'koala', label: '無尾熊', hue: 210 },
+  { kind: 'tiger', label: '小老虎', hue: 18 },
+  { kind: 'lamb', label: '綿羊', hue: 275 },
 ];
 
 function hslToHex(hue: number, saturation: number, lightness: number) {
@@ -236,8 +286,44 @@ export const DOG_STAFF_STYLE_CATALOGS = Object.fromEntries(
         };
       }),
     );
+    const magicalColor = magicalGirlColors[dogIndex];
+    const animalCostume = dogAnimalCostumes[dog.decorationId];
+    const themedCostumes = [
+      {
+        id: `${dog.decorationId}:outfit:magical-girl`,
+        name: `${dog.name}・${magicalColor.label}魔法少女星願裙`,
+        dogDecorationId: dog.decorationId,
+        color: hslToHex(magicalColor.hue, 64, 74),
+        accentColor: hslToHex(magicalColor.hue + 152, 66, 83),
+        cut: 'magical-girl' as const,
+        pattern: 'stars' as const,
+        theme: 'magical-girl',
+      },
+      {
+        id: `${dog.decorationId}:outfit:cozy-sweater`,
+        name: `${dog.name}・暖暖毛衣`,
+        dogDecorationId: dog.decorationId,
+        color: hslToHex(24 + dogIndex * 23, 58, 72),
+        accentColor: hslToHex(24 + dogIndex * 23 + 150, 52, 84),
+        cut: 'sweater' as const,
+        pattern: outfitPatterns[dogIndex % outfitPatterns.length],
+        theme: 'cozy-sweater',
+      },
+      {
+        id: `${dog.decorationId}:outfit:animal-costume`,
+        name: `${dog.name}・${animalCostume.label}動物造型服`,
+        dogDecorationId: dog.decorationId,
+        color: hslToHex(animalCostume.hue, 58, 74),
+        accentColor: hslToHex(animalCostume.hue + 155, 55, 83),
+        cut: 'animal-costume' as const,
+        pattern: 'dots' as const,
+        theme: 'animal-costume',
+        animalKind: animalCostume.kind,
+      },
+    ];
     const outfits = [...standardOutfits, ...specialOutfits, ...festivalOutfits];
-    const accessories = accessoryMotifs.flatMap((motif, motifIndex) =>
+    outfits.push(...themedCostumes);
+    const standardAccessories = accessoryMotifs.flatMap((motif, motifIndex) =>
       accessoryShapes.map((shape, shapeIndex) => {
         const index = motifIndex * accessoryShapes.length + shapeIndex;
         return {
@@ -251,6 +337,17 @@ export const DOG_STAFF_STYLE_CATALOGS = Object.fromEntries(
         };
       }),
     );
+    const animalAccessories = animalEarHats.map((animal, index) => ({
+      id: `${dog.decorationId}:accessory:animal-ears:${animal.kind}`,
+      name: `${dog.name}・${animal.label}耳朵帽`,
+      dogDecorationId: dog.decorationId,
+      color: hslToHex(animal.hue + dogIndex * 3, 57, 75),
+      accentColor: hslToHex(animal.hue + 150 + dogIndex * 3, 56, 84),
+      shape: 'animal-ears' as const,
+      motif: animal.label,
+      animalKind: animal.kind,
+    }));
+    const accessories = [...standardAccessories, ...animalAccessories];
     return [dog.decorationId, { outfits, accessories }];
   }),
 ) as Record<string, { outfits: DogStaffOutfit[]; accessories: DogStaffAccessory[] }>;

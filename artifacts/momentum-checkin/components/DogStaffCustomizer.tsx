@@ -317,7 +317,7 @@ export function DogStaffCustomizer({
           <View style={styles.tabs}>
             {([
               ['outfit', `服裝 ${basicOutfits.length} 款`],
-              ['theme', `節日主題 ${themedOutfits.length} 款`],
+              ['theme', `主題服裝 ${themedOutfits.length} 款`],
               ['accessory', `配飾 ${catalog.accessories.length} 款`],
             ] as const).map(([tab, label]) => {
               const selected = activeTab === tab;
@@ -410,7 +410,7 @@ export function DogStaffCustomizer({
         </>
       ) : (
         <Text style={[styles.copy, { color: colors.mutedForeground }]}>
-          兌換後免費解鎖專屬服裝、配飾及 50 套不同顏色的節日／主題服裝，選穿造型不扣金幣。花花的粉紅公主裙有蕾絲邊。
+          兌換後免費解鎖服裝與配飾，包含 50 套節日造型、14 色魔法少女服、毛衣、動物造型服及動物耳朵帽；選穿不扣金幣。
         </Text>
       )}
 

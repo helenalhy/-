@@ -565,6 +565,7 @@ export default function MallShopInteriorScreen() {
         ) : null}
       </ScrollView>
       <ShopDisplayFixturePanel
+        key={activeFixtureId ?? 'no-fixture'}
         visible={!!activeFixtureId && hasAccess}
         shopName={shop?.name ?? ''}
         fixture={activeFixture}

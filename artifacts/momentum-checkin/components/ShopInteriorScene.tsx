@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
 import { classifyDecoration, mapCoverPoint, resolveObjectAnchor } from '@/constants/mall-shop-scene-anchors';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
 import { canDisplayShopProducts, SHOP_DISPLAY_SLOT_COUNT, type ShopDisplayProduct } from '@/constants/mall-shop-display';
+import { ShopMerchandiseVisual } from '@/components/ShopMerchandiseVisual';
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_STATIONS,
@@ -72,6 +73,20 @@ export function ShopInteriorScene({
 }) {
   const colors = useColors();
   const [size, setSize] = useState({ width: 360, height: 383 });
+  const merchandiseMotion = useRef(new Animated.Value(0)).current;
+  const hasMerchandise = Object.values(fixtureContents ?? {}).some((slots) => slots.some(Boolean));
+  useEffect(() => {
+    if (!hasMerchandise) {
+      merchandiseMotion.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(merchandiseMotion, { toValue: 1, duration: 1050, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(merchandiseMotion, { toValue: 0, duration: 1250, useNativeDriver: Platform.OS !== 'web' }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [hasMerchandise, merchandiseMotion]);
   return (
     <View
       testID={testID}
@@ -134,16 +149,17 @@ export function ShopInteriorScene({
                     />
                     {displayedProducts.length > 0 && (
                       <View pointerEvents="none" style={styles.displayedProductsRow}>
-                        {displayedProducts.slice(0, 4).map((product, index) => (
-                          <View
+                        {displayedProducts.slice(0, 3).map((product, index) => (
+                          <ShopMerchandiseVisual
                             key={`${product.id}-${index}`}
-                            style={[styles.displayedProduct, { backgroundColor: product.color }]}
-                          >
-                            <Feather name={product.icon as keyof typeof Feather.glyphMap} size={7} color="#FFFFFF" />
-                          </View>
+                            product={product}
+                            motion={merchandiseMotion}
+                            size={18}
+                            index={index}
+                          />
                         ))}
-                        {displayedProducts.length > 4 && (
-                          <Text style={[styles.moreDisplayedProducts, { color: colors.foreground }]}>+{displayedProducts.length - 4}</Text>
+                        {displayedProducts.length > 3 && (
+                          <Text style={[styles.moreDisplayedProducts, { color: colors.foreground }]}>+{displayedProducts.length - 3}</Text>
                         )}
                       </View>
                     )}
@@ -313,7 +329,6 @@ const styles = StyleSheet.create({
   },
   objectVisual: { width: 62, height: OBJECT_H, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   displayedProductsRow: { position: 'absolute', top: 11, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 2, zIndex: 3 },
-  displayedProduct: { width: 11, height: 12, borderRadius: 4, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   moreDisplayedProducts: { fontSize: 7, lineHeight: 9, fontWeight: '900', backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 5, overflow: 'hidden', paddingHorizontal: 2 },
   displayCountBadge: { position: 'absolute', top: -5, right: -5, minHeight: 17, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 4, borderWidth: 1, borderRadius: 7, zIndex: 4 },
   displayCountText: { fontSize: 7, lineHeight: 10, fontWeight: '800' },

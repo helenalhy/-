@@ -1642,7 +1642,7 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     };
     if (name === '@/constants/mall') return { MALL_ITEM_BY_ID: {} };
     if (name === '@/constants/mall-shop-display') return {
-      SHOP_DISPLAY_SLOT_COUNT: 6,
+      SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: () => false,
       getShopFixtureProductCatalog: () => [],
     };

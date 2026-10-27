@@ -2,7 +2,19 @@ import palette from './colors';
 import type { MallShopType } from './mall';
 import type { ShopInteriorDecoration } from './mall-shop-interior';
 
-export const SHOP_DISPLAY_SLOT_COUNT = 6;
+export const SHOP_DISPLAY_SLOT_COUNT = 18;
+
+export type ShopProductIllustration =
+  | 'bottle'
+  | 'garment'
+  | 'treat'
+  | 'drink'
+  | 'produce'
+  | 'device'
+  | 'book'
+  | 'flower'
+  | 'gift'
+  | 'jewel';
 
 export interface ShopDisplayProduct {
   id: string;
@@ -10,6 +22,9 @@ export interface ShopDisplayProduct {
   description: string;
   icon: string;
   color: string;
+  theme: ProductTheme;
+  illustration: ShopProductIllustration;
+  variant: number;
 }
 
 type ProductTheme =
@@ -253,6 +268,41 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
   ],
 };
 
+const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> = {
+  fragrance: 'bottle',
+  general: 'gift',
+  cafe: 'drink',
+  candy: 'treat',
+  icecream: 'treat',
+  bakery: 'treat',
+  tea: 'drink',
+  food: 'treat',
+  flower: 'flower',
+  book: 'book',
+  toy: 'gift',
+  craft: 'gift',
+  womenswear: 'garment',
+  bridal: 'garment',
+  eveningwear: 'garment',
+  kimono: 'garment',
+  supermarket: 'produce',
+  hyakuen: 'gift',
+  swimwear: 'garment',
+  cosplay: 'garment',
+  electronics: 'device',
+  boutique: 'jewel',
+};
+
+const packageVariants = [
+  { label: '春日櫻花限定', color: c.candyRose },
+  { label: '星河月光限定', color: c.candyLavender },
+  { label: '海風藍調限定', color: c.candySky },
+  { label: '薄荷花園限定', color: c.candyMint },
+  { label: '陽光蜂蜜限定', color: c.candyLemon },
+  { label: '奶油焦糖限定', color: c.candyCaramel },
+  { label: '珊瑚晚霞限定', color: c.candyCoral },
+];
+
 const fixturePattern = /shelf|shelves|rack|showcase|display|display-case|display-cabinet|wardrobe|cabinet|pedestal|island|counter|陳列|展示|貨架|衣架|衣櫃|衣柜|收納架|櫥窗|櫃台|櫃|柜|架/i;
 
 export function canDisplayShopProducts(decoration: ShopInteriorDecoration): boolean {
@@ -288,8 +338,29 @@ export function getShopFixtureProductCatalog(
 ): ShopDisplayProduct[] {
   if (!canDisplayShopProducts(decoration)) return [];
   const theme = resolveProductTheme(shopId, shopName, shopType);
-  return productSeeds[theme].map((seed, index) => ({
+  const illustration = productIllustrationByTheme[theme];
+  const catalog: ShopDisplayProduct[] = productSeeds[theme].map((seed, index) => ({
     id: `display-${theme}-${index + 1}`,
     ...seed,
+    theme,
+    illustration,
+    variant: index % packageVariants.length,
   }));
+  for (let variantIndex = 0; variantIndex < packageVariants.length && catalog.length < 60; variantIndex += 1) {
+    const variant = packageVariants[variantIndex];
+    for (const seed of productSeeds[theme]) {
+      if (catalog.length >= 60) break;
+      catalog.push({
+        id: `display-${theme}-${catalog.length + 1}`,
+        name: `${seed.name}・${variant.label}款`,
+        description: `${seed.description}，採用${variant.label}包裝。`,
+        icon: seed.icon,
+        color: variant.color,
+        theme,
+        illustration,
+        variant: variantIndex + 1,
+      });
+    }
+  }
+  return catalog;
 }

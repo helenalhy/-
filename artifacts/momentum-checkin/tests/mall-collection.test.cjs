@@ -96,7 +96,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       },
     };
     if (name === '@/constants/mall-shop-display') return {
-      SHOP_DISPLAY_SLOT_COUNT: 6,
+      SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: (decoration) => /shelf|rack|display|展示|貨架/i.test(`${decoration.id} ${decoration.name}`),
       getShopFixtureProductCatalog: () => [
         { id: 'display-fragrance-1', name: '薰衣草晚風香氛' },
@@ -423,10 +423,13 @@ test('shop fixture merchandise is free, validated, and persists through reload a
   let app = await mount(storage);
 
   await app.value.setShopInteriorFixtureProduct('a', 'general-display-shelf', 2, 'display-fragrance-1');
+  await app.value.setShopInteriorFixtureProduct('a', 'general-display-shelf', 17, 'display-fragrance-2');
   assert.equal(app.value.coins, 100, 'displaying included products never spends coins');
-  assert.deepEqual(app.value.shopInteriors.a.fixtureContents['general-display-shelf'], [
-    null, null, 'display-fragrance-1', null, null, null,
-  ]);
+  assert.equal(app.value.shopInteriors.a.fixtureContents['general-display-shelf'].length, 18);
+  const expectedFixtureContents = Array(18).fill(null);
+  expectedFixtureContents[2] = 'display-fragrance-1';
+  expectedFixtureContents[17] = 'display-fragrance-2';
+  assert.deepEqual(app.value.shopInteriors.a.fixtureContents['general-display-shelf'], expectedFixtureContents);
   await assert.rejects(
     app.value.setShopInteriorFixtureProduct('a', 'general-display-shelf', 2, 'unrelated-product'),
     /不屬於這間商店/,
@@ -434,6 +437,7 @@ test('shop fixture merchandise is free, validated, and persists through reload a
 
   app = await mount(storage);
   assert.equal(app.value.shopInteriors.a.fixtureContents['general-display-shelf'][2], 'display-fragrance-1');
+  assert.equal(app.value.shopInteriors.a.fixtureContents['general-display-shelf'][17], 'display-fragrance-2');
   await app.value.storeShopInteriorDecoration('a', 'center');
   assert.equal(app.value.coins, 100, 'storing a fixture does not refund or charge coins');
   assert.equal(app.value.shopInteriors.a.fixtureContents['general-display-shelf'][2], 'display-fragrance-1');

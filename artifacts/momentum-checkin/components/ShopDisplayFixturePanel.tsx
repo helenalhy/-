@@ -1,10 +1,11 @@
 import { Feather } from '@expo/vector-icons';
-import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ShopInteriorDecoration } from '@/constants/mall-shop-interior';
 import { SHOP_DISPLAY_SLOT_COUNT, type ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
+import { ShopMerchandiseVisual } from '@/components/ShopMerchandiseVisual';
 
 export function ShopDisplayFixturePanel({
   visible,
@@ -32,6 +33,23 @@ export function ShopDisplayFixturePanel({
   onClose: () => void;
 }) {
   const colors = useColors();
+  const [catalogPage, setCatalogPage] = useState(1);
+  const productMotion = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!visible || products.length === 0) {
+      productMotion.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(productMotion, { toValue: 1, duration: 1050, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(productMotion, { toValue: 0, duration: 1250, useNativeDriver: Platform.OS !== 'web' }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [productMotion, products.length, visible]);
+  const catalogPageSize = 12;
+  const catalogPageCount = Math.max(1, Math.ceil(products.length / catalogPageSize));
+  const visibleProducts = products.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
   const productsById = new Map(products.map((product) => [product.id, product]));
   const filledSlots = slots.filter(Boolean).length;
   const selectedProduct = productsById.get(slots[selectedSlot] ?? '');
@@ -80,7 +98,7 @@ export function ShopDisplayFixturePanel({
               </View>
 
               <Text style={[styles.helper, { color: colors.mutedForeground }]}>
-                選擇一個展示格，再挑選本店商品；商品隨展示架附送，擺放不扣金幣。
+                18 個展示格 · 本店 60 款免費商品。選一格後陳列，商品不扣金幣。
               </Text>
 
               <View style={styles.slotGrid}>
@@ -108,7 +126,7 @@ export function ShopDisplayFixturePanel({
                       <Text style={[styles.slotIndex, { color: colors.mutedForeground }]}>{index + 1}</Text>
                       {product ? (
                         <>
-                          <Feather name={product.icon as keyof typeof Feather.glyphMap} size={17} color={colors.primary} />
+                          <ShopMerchandiseVisual product={product} motion={productMotion} size={31} index={index} />
                           <Text numberOfLines={2} style={[styles.slotProductName, { color: colors.foreground }]}>{product.name}</Text>
                         </>
                       ) : (
@@ -126,7 +144,7 @@ export function ShopDisplayFixturePanel({
                 <View>
                   <Text style={[styles.catalogTitle, { color: colors.foreground }]}>可陳列商品</Text>
                   <Text style={[styles.catalogCount, { color: colors.mutedForeground }]}>
-                    已放 {filledSlots} / {SHOP_DISPLAY_SLOT_COUNT} · {selectedProduct ? `目前第 ${selectedSlot + 1} 格：${selectedProduct.name}` : `目前選取第 ${selectedSlot + 1} 格`}
+                    已放 {filledSlots} / {SHOP_DISPLAY_SLOT_COUNT} · {products.length} 款 · {selectedProduct ? `第 ${selectedSlot + 1} 格：${selectedProduct.name}` : `選取第 ${selectedSlot + 1} 格`}
                   </Text>
                 </View>
                 {selectedProduct && (
@@ -150,7 +168,7 @@ export function ShopDisplayFixturePanel({
                 contentContainerStyle={styles.catalogGrid}
                 showsVerticalScrollIndicator={false}
               >
-                {products.map((product) => {
+                {visibleProducts.map((product, index) => {
                   const alreadyDisplayed = slots.includes(product.id);
                   return (
                     <Pressable
@@ -169,9 +187,7 @@ export function ShopDisplayFixturePanel({
                         },
                       ]}
                     >
-                      <View style={[styles.productIcon, { backgroundColor: `${product.color}66` }]}>
-                        <Feather name={product.icon as keyof typeof Feather.glyphMap} size={17} color={colors.primary} />
-                      </View>
+                      <ShopMerchandiseVisual product={product} motion={productMotion} size={39} index={index + (catalogPage - 1) * catalogPageSize} />
                       <View style={styles.productCopy}>
                         <Text numberOfLines={1} style={[styles.productName, { color: colors.foreground }]}>{product.name}</Text>
                         <Text numberOfLines={2} style={[styles.productDescription, { color: colors.mutedForeground }]}>{product.description}</Text>
@@ -181,6 +197,31 @@ export function ShopDisplayFixturePanel({
                   );
                 })}
               </ScrollView>
+              <View style={styles.pageNavigation}>
+                <Pressable
+                  testID="shop-display-page-previous"
+                  accessibilityRole="button"
+                  accessibilityLabel="上一頁商品"
+                  onPress={() => setCatalogPage((page) => Math.max(1, page - 1))}
+                  disabled={catalogPage <= 1}
+                  style={[styles.pageButton, { borderColor: colors.border, backgroundColor: colors.background, opacity: catalogPage <= 1 ? 0.4 : 1 }]}
+                >
+                  <Feather name="chevron-left" size={16} color={colors.primary} />
+                </Pressable>
+                <Text style={[styles.pageText, { color: colors.mutedForeground }]}>
+                  商品 {Math.min((catalogPage - 1) * catalogPageSize + 1, products.length)}–{Math.min(catalogPage * catalogPageSize, products.length)} · 第 {catalogPage} / {catalogPageCount} 頁
+                </Text>
+                <Pressable
+                  testID="shop-display-page-next"
+                  accessibilityRole="button"
+                  accessibilityLabel="下一頁商品"
+                  onPress={() => setCatalogPage((page) => Math.min(catalogPageCount, page + 1))}
+                  disabled={catalogPage >= catalogPageCount}
+                  style={[styles.pageButton, { borderColor: colors.border, backgroundColor: colors.background, opacity: catalogPage >= catalogPageCount ? 0.4 : 1 }]}
+                >
+                  <Feather name="chevron-right" size={16} color={colors.primary} />
+                </Pressable>
+              </View>
             </View>
           </SafeAreaView>
         )}
@@ -200,11 +241,11 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 9, fontWeight: '800', letterSpacing: 0.4 },
   title: { fontSize: 17, fontWeight: '800' },
   closeButton: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  helper: { fontSize: 11, lineHeight: 16 },
+  helper: { fontSize: 10, lineHeight: 15 },
   slotGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 7 },
-  displaySlot: { width: '31.8%', minHeight: 73, borderWidth: 1.5, borderRadius: 13, padding: 6, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  displaySlot: { width: '15.8%', minHeight: 66, borderWidth: 1.5, borderRadius: 10, padding: 3, alignItems: 'center', justifyContent: 'center', gap: 1 },
   slotIndex: { position: 'absolute', top: 4, left: 6, fontSize: 8, fontWeight: '800' },
-  slotProductName: { maxWidth: '100%', fontSize: 8, lineHeight: 10, fontWeight: '700', textAlign: 'center' },
+  slotProductName: { maxWidth: '100%', fontSize: 7, lineHeight: 8, fontWeight: '700', textAlign: 'center' },
   emptySlotText: { fontSize: 8, fontWeight: '600' },
   catalogHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   catalogTitle: { fontSize: 14, fontWeight: '800' },
@@ -212,10 +253,12 @@ const styles = StyleSheet.create({
   clearButton: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 10, paddingHorizontal: 9 },
   clearButtonText: { fontSize: 9, fontWeight: '700' },
   catalogScroll: { flexShrink: 1, minHeight: 100 },
-  catalogGrid: { gap: 7, paddingBottom: 4 },
-  productCard: { minHeight: 58, borderWidth: 1, borderRadius: 13, paddingHorizontal: 9, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  productIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  catalogGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 7, paddingBottom: 4 },
+  productCard: { width: '48.6%', minHeight: 60, borderWidth: 1, borderRadius: 13, paddingHorizontal: 6, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
   productCopy: { flex: 1, minWidth: 0, gap: 2 },
-  productName: { fontSize: 11, fontWeight: '800' },
-  productDescription: { fontSize: 9, lineHeight: 12 },
+  productName: { fontSize: 9, fontWeight: '800' },
+  productDescription: { fontSize: 8, lineHeight: 10 },
+  pageNavigation: { minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pageButton: { width: 32, height: 30, borderWidth: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  pageText: { fontSize: 9, fontWeight: '700' },
 });

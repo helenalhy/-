@@ -81,7 +81,7 @@ test('interior page retains accessible slots and routes placement operations thr
   assert.match(page, /testID="shop-interior-area-next"/);
   const slotIds = SHOP_INTERIOR_SLOTS.map(({ id }) => id);
   assert.deepEqual(slotIds, ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table']);
-  assert.equal((scene.match(/accessibilityRole="button"/g) ?? []).length, 1, 'all eight mapped hotspots share an accessible button template');
+  assert.match(scene, /<Pressable\s+key=\{slot\.id\}[\s\S]*?accessibilityRole="button"[\s\S]*?style=\{\[styles\.hotspot/);
   assert.match(scene, /accessibilityLabel=/);
   assert.match(scene, /accessibilityState=\{\{ selected \}\}/);
 });
@@ -119,9 +119,13 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.match(scene, /dogStaffPlacements\?\.\[dog\.decorationId\] !== areaId/);
   assert.match(scene, /testID=\{`dog-staff-walker-\$\{dog\.key\}`\}/);
   assert.match(scene, /reduceMotionChanged/);
+  assert.match(scene, /dog-staff-interaction-sheet/);
+  assert.match(scene, /兌換狗店員後附送/);
+  assert.match(scene, /onPress=\{onPress\}/);
   assert.match(page, /areaId=\{selectedArea\}/);
   assert.match(page, /setSelectedArea\(areaId\)/);
   assert.match(customizer, /SHOP_INTERIOR_AREAS\.map/);
+  assert.match(customizer, /點擊梳毛、餵食或玩耍/);
 });
 
 const anchorSource = ts.transpileModule(

@@ -432,7 +432,7 @@ export default function MallShopInteriorScreen() {
             <View style={[styles.decorationPager, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text testID="shop-decoration-page-count" style={[styles.pageCount, { color: colors.mutedForeground }]}>
                 第 {catalogPage} / {catalogPageCount} 頁 · 共 {interiorDecorations.length} 款
-                {shop.id === 'fluffy-marshmallow-cafe' ? '（狗狗店員在專屬站位）' : ''}
+                {shop.id === 'fluffy-marshmallow-cafe' ? '（狗狗店員可點擊互動）' : ''}
               </Text>
               <View style={styles.pageActions}>
                 <Pressable

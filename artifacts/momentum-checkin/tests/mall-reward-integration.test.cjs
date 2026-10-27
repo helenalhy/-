@@ -1128,7 +1128,7 @@ test('cafe equipment is clearly labeled, illustrated, and purchased with earned 
   );
 });
 
-test('fluffy cafe dogs can be redeemed into the main area and walk on the floor outside the 48 interior slots', async () => {
+test('redeemed cafe dogs walk, open free care actions, and stay outside the 48 interior slots', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
   assert.ok(shop);
@@ -1172,6 +1172,26 @@ test('fluffy cafe dogs can be redeemed into the main area and walk on the floor 
   );
   assert.ok(findNodes(staffArea, (node) => node.props?.testID?.startsWith('dog-staff-walker-')).length);
   assert.equal(findByTestId(sceneTree, 'dog-staff-scene-area-extension-1'), undefined);
+
+  const walker = findNodes(staffArea, (node) => node.props?.testID?.startsWith('dog-staff-walker-'))[0];
+  await press(sceneTree, walker.props.testID);
+  let interactionTree = app.renderShopInteriorScene(interiorTree);
+  assert.ok(findByTestId(interactionTree, 'dog-staff-interaction-sheet'), 'tapping the redeemed dog opens its care panel');
+
+  for (const [action, feedback] of [
+    ['groom', '享受梳毛'],
+    ['feed', '小點心'],
+    ['play', '玩得很開心'],
+  ]) {
+    await press(interactionTree, `dog-staff-interaction-fluffy-staff-huahua-${action}`);
+    interactionTree = app.renderShopInteriorScene(interiorTree);
+    assert.ok(textContent(findByTestId(interactionTree, 'dog-staff-interaction-feedback')).includes(feedback));
+    assert.equal(app.contextExports.useHabits().coins, 40, `${action} is included and does not spend coins`);
+    assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffPlacements[dogId], 'main');
+  }
+  await press(interactionTree, 'dog-staff-interaction-close');
+  interactionTree = app.renderShopInteriorScene(interiorTree);
+  assert.equal(findByTestId(interactionTree, 'dog-staff-interaction-sheet'), undefined);
 });
 
 test('dog outfits persist when walking dogs move between all six areas, while the 48 decor slots remain independent', async () => {

@@ -18,7 +18,7 @@ import {
 } from '@/constants/dog-staff-customization';
 import { useColors } from '@/hooks/useColors';
 
-type DogStaffInteractionAction = 'groom' | 'feed' | 'play';
+type DogStaffInteractionAction = 'groom' | 'pet' | 'feed' | 'play';
 type AreaDogStaff = { dog: DogStaffProfile; look: DogStaffLook; index: number };
 type DogStaffInteraction = { dogDecorationId: string; action: DogStaffInteractionAction; id: number };
 const DOG_STAFF_INTERACTION_DURATION_MS = 5000;
@@ -34,6 +34,7 @@ const DOG_STAFF_INTERACTIONS: {
   description: string;
 }[] = [
   { id: 'groom', title: '梳毛', description: '輕輕梳順蓬鬆毛毛' },
+  { id: 'pet', title: '摸摸牠', description: '溫柔摸摸頭，享受親密時光' },
   { id: 'feed', title: '餵食', description: '送上店裡準備的小點心' },
   { id: 'play', title: '一起玩', description: '陪狗狗開心玩一會' },
 ];
@@ -347,7 +348,9 @@ export function ShopInteriorScene({
                       key={action.id}
                       testID={`dog-staff-interaction-${selectedDog.dog.key}-${action.id}`}
                       accessibilityRole="button"
-                      accessibilityLabel={`免費為${selectedDog.dog.name}${action.title}，不耗金幣`}
+                      accessibilityLabel={action.id === 'pet'
+                        ? `免費摸摸${selectedDog.dog.name}，不耗金幣`
+                        : `免費為${selectedDog.dog.name}${action.title}，不耗金幣`}
                       onPress={() => {
                         interactionSequence.current += 1;
                         setDogInteraction({
@@ -357,9 +360,11 @@ export function ShopInteriorScene({
                         });
                         const response = action.id === 'groom'
                           ? `${selectedDog.dog.name}舒服地享受梳毛，毛毛變得蓬鬆亮澤。`
-                          : action.id === 'feed'
-                            ? `${selectedDog.dog.name}開心地吃完小點心，尾巴搖個不停。`
-                            : `${selectedDog.dog.name}玩得很開心，蹦蹦跳跳地回來了。`;
+                          : action.id === 'pet'
+                            ? `${selectedDog.dog.name}舒服地瞇起眼睛，享受你的摸摸。`
+                            : action.id === 'feed'
+                              ? `${selectedDog.dog.name}開心地吃完小點心，尾巴搖個不停。`
+                              : `${selectedDog.dog.name}玩得很開心，蹦蹦跳跳地回來了。`;
                         setInteractionMessage(response);
                       }}
                       style={({ pressed }) => [
@@ -498,23 +503,28 @@ function WalkingStaffDog({
       ? ['0deg', '-8deg', '6deg']
       : interaction?.action === 'play'
         ? ['0deg', '-6deg', '8deg']
+        : interaction?.action === 'pet' ? ['0deg', '7deg', '-4deg']
         : ['0deg', '-3deg', '3deg'],
   });
   const reactionLift = reaction.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: interaction?.action === 'play'
       ? [0, -13, 0]
-      : interaction?.action === 'feed' ? [0, -5, 0] : [0, -2, 0],
+      : interaction?.action === 'feed' ? [0, -5, 0]
+        : interaction?.action === 'pet' ? [0, -6, 0] : [0, -2, 0],
   });
   const interactionFloatX = reaction.interpolate({
     inputRange: [0, 1],
-    outputRange: interaction?.action === 'groom' ? [-7, 7] : [0, 0],
+    outputRange: interaction?.action === 'groom'
+      ? [-7, 7]
+      : interaction?.action === 'pet' ? [3, -3] : [0, 0],
   });
   const interactionFloatY = reaction.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: interaction?.action === 'play'
       ? [6, -16, 6]
-      : interaction?.action === 'feed' ? [6, -7, 6] : [3, -3, 3],
+      : interaction?.action === 'feed' ? [6, -7, 6]
+        : interaction?.action === 'pet' ? [8, -5, 8] : [3, -3, 3],
   });
   const interactionOpacity = reaction.interpolate({ inputRange: [0, 0.12, 0.85, 1], outputRange: [0, 1, 1, 0] });
   const interactionAction = interaction?.action;
@@ -538,7 +548,7 @@ function WalkingStaffDog({
         testID={testID}
         accessibilityRole="button"
         accessibilityLabel={`${dog.name}，${dog.breed}，點擊照顧或陪牠玩`}
-        accessibilityHint="開啟免費的梳毛、餵食和玩耍互動"
+        accessibilityHint="開啟免費的梳毛、摸摸牠、餵食和玩耍互動"
         onPress={onPress}
         style={styles.staffDogTapTarget}
       >
@@ -564,7 +574,7 @@ function WalkingStaffDog({
               kind={dog.kind as DogAttendantKind}
               outfitId={look.outfitId}
               accessoryId={look.accessoryId}
-              happy={interaction?.action === 'groom'}
+              happy={interaction?.action === 'groom' || interaction?.action === 'pet'}
             />
           </View>
         </Animated.View>
@@ -628,6 +638,23 @@ function DogCareIllustration({
         {[0.32, 0.5, 0.68].map((left, index) => (
           <View key={index} style={[styles.foodPiece, { left: size * left, top: size * (index === 1 ? 0.19 : 0.25), backgroundColor: color }]} />
         ))}
+      </View>
+    );
+  }
+  if (action === 'pet') {
+    return (
+      <View
+        testID="dog-care-icon-pet"
+        accessible={false}
+        style={[styles.careIllustration, { width: size, height: size }]}
+      >
+        <View style={[styles.petFinger, { left: size * 0.24, top: size * 0.08, width: size * 0.13, height: size * 0.39, backgroundColor: color }]} />
+        <View style={[styles.petFinger, { left: size * 0.39, top: size * 0.02, width: size * 0.13, height: size * 0.42, backgroundColor: color }]} />
+        <View style={[styles.petFinger, { left: size * 0.54, top: size * 0.08, width: size * 0.13, height: size * 0.39, backgroundColor: color }]} />
+        <View style={[styles.petPalm, { left: size * 0.25, top: size * 0.36, width: size * 0.5, height: size * 0.5, backgroundColor: color }]} />
+        <View style={[styles.petThumb, { left: size * 0.08, top: size * 0.5, width: size * 0.34, height: size * 0.14, backgroundColor: color }]} />
+        <View style={[styles.petShine, { left: size * 0.4, top: size * 0.53, backgroundColor: colors.card }]} />
+        <View style={[styles.petMotionMark, { right: size * 0.04, top: size * 0.14, borderColor: color }]} />
       </View>
     );
   }
@@ -753,8 +780,8 @@ const styles = StyleSheet.create({
   interactionTitle: { fontSize: 14, fontWeight: '800' },
   interactionClose: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   interactionHelper: { fontSize: 10, lineHeight: 15, textAlign: 'center' },
-  interactionActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  interactionAction: { flex: 1, minWidth: 0, minHeight: 94, borderWidth: 1, borderRadius: 17, paddingHorizontal: 7, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  interactionActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  interactionAction: { width: '47%', flexGrow: 0, minWidth: 0, minHeight: 94, borderWidth: 1, borderRadius: 17, paddingHorizontal: 7, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', gap: 4 },
   interactionActionIcon: { width: 48, height: 48, borderWidth: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   interactionActionTitle: { fontSize: 12, fontWeight: '800' },
   interactionActionDescription: { minHeight: 23, fontSize: 8, lineHeight: 11, textAlign: 'center' },
@@ -771,4 +798,9 @@ const styles = StyleSheet.create({
   ballStripe: { position: 'absolute', width: '130%', height: 4, borderRadius: 4, transform: [{ rotate: '-38deg' }] },
   ballPatch: { position: 'absolute', top: '18%', left: '18%', width: '25%', height: '25%', borderRadius: 20 },
   ballSpark: { position: 'absolute', width: 4, height: 4, borderRadius: 3 },
+  petFinger: { position: 'absolute', borderRadius: 8 },
+  petPalm: { position: 'absolute', borderRadius: 9 },
+  petThumb: { position: 'absolute', borderRadius: 8, transform: [{ rotate: '-38deg' }] },
+  petShine: { position: 'absolute', width: 3, height: 6, borderRadius: 3 },
+  petMotionMark: { position: 'absolute', width: 4, height: 8, borderRightWidth: 1.5, borderTopWidth: 1, borderTopRightRadius: 5, transform: [{ rotate: '20deg' }] },
 });

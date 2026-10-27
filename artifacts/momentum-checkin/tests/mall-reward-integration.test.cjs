@@ -1180,6 +1180,7 @@ test('redeemed cafe dogs walk, open free care actions, and stay outside the 48 i
 
   for (const [action, feedback] of [
     ['groom', '享受梳毛'],
+    ['pet', '享受你的摸摸'],
     ['feed', '小點心'],
     ['play', '玩得很開心'],
   ]) {

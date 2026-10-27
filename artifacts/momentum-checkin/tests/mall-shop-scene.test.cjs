@@ -125,7 +125,7 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.match(page, /areaId=\{selectedArea\}/);
   assert.match(page, /setSelectedArea\(areaId\)/);
   assert.match(customizer, /SHOP_INTERIOR_AREAS\.map/);
-  assert.match(customizer, /點擊梳毛、餵食或玩耍/);
+  assert.match(customizer, /免費梳毛、摸摸牠、餵食或玩耍/);
 });
 
 test('all fourteen dogs get distinct illustrated care colors and five-second action animations', () => {
@@ -148,16 +148,19 @@ test('all fourteen dogs get distinct illustrated care colors and five-second act
   assert.equal(colorByDog['fluffy-staff-xiaoniu'], 'candySky');
   assert.match(scene, /DOG_STAFF_INTERACTION_DURATION_MS = 5000/);
   assert.match(scene, /iterations: DOG_STAFF_INTERACTION_DURATION_MS \/ cycleDuration/);
+  assert.match(scene, /interactionActions: \{[^}]*flexWrap: 'wrap'/);
+  assert.match(scene, /interactionAction: \{ width: '47%'/);
   assert.match(scene, /testID="dog-care-icon-comb"/);
   assert.match(scene, /testID="dog-care-icon-food"/);
+  assert.match(scene, /testID="dog-care-icon-pet"/);
   assert.match(scene, /testID="dog-care-icon-ball"/);
   assert.match(scene, /每次互動約 5 秒/);
 });
 
-test('grooming gives the walking dog a closed-eye smile', () => {
+test('grooming and petting give the walking dog a closed-eye smile', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const dog = fs.readFileSync(path.join(__dirname, '../components/DogAttendant.tsx'), 'utf8');
-  assert.match(scene, /happy=\{interaction\?\.action === 'groom'\}/);
+  assert.match(scene, /happy=\{interaction\?\.action === 'groom' \|\| interaction\?\.action === 'pet'\}/);
   assert.match(dog, /happy = false/);
   assert.match(dog, /happy \? s\.happyEye : s\.eye/);
   assert.match(dog, /happy \? c\.candyPink : look\.marking/);

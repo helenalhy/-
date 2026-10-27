@@ -135,7 +135,7 @@ export function DogStaffCustomizer({
         <View style={styles.headingCopy}>
           <Text style={[styles.title, { color: colors.foreground }]}>狗狗店員活動區域</Text>
           <Text style={[styles.copy, { color: colors.mutedForeground }]}>
-            店員可安排在主區或 5 個延伸區並在地面巡走，不佔每區 8 個一般位置；已兌換的狗狗可點擊梳毛、餵食或玩耍，互動不耗金幣。
+            店員可安排在主區或 5 個延伸區並在地面巡走，不佔每區 8 個一般位置；已兌換的狗狗可免費梳毛、摸摸牠、餵食或玩耍。
           </Text>
         </View>
       </View>

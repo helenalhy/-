@@ -1,5 +1,6 @@
 import palette from './colors';
 import type { MallShopType } from './mall';
+import { DOG_STAFF_PROFILES } from './dog-staff-customization';
 
 export type ShopInteriorSlotId =
   | 'front-window'
@@ -36,6 +37,8 @@ export interface ShopInteriorDecoration {
   itemKind?: 'equipment' | 'decoration';
   visual?: string;
   limitedEdition?: boolean;
+  dogOutfitId?: string;
+  dogAccessoryId?: string;
 }
 
 export const SHOP_INTERIOR_SLOTS: { id: ShopInteriorSlotId; label: string; icon: string }[] = [
@@ -750,22 +753,18 @@ const featureDecorations = (type: MallShopType): ShopInteriorDecoration[] =>
     ),
   );
 
-const fluffyMarshmallowCafeStaff: ShopInteriorDecoration[] = [
-  option('general', 'fluffy-staff-huahua', '花花・淺啡色博美店員', '淺啡色博美花花會在店裡熱情迎接每位客人。', 'heart', 80, c.candyPeach, 'dog-staff-huahua'),
-  option('general', 'fluffy-staff-milkshake', '奶昔・白色博美店員', '白色博美奶昔會陪客人挑選蓬鬆的棉花糖。', 'coffee', 80, c.candyCream, 'dog-staff-milkshake'),
-  option('general', 'fluffy-staff-xiaoniu', '小牛・黑白色邊牧店員', '黑白邊境牧羊犬小牛會精神奕奕地照看店內。', 'star', 95, c.candyMint, 'dog-staff-xiaoniu'),
-  option('general', 'fluffy-staff-pudding', '布丁・黃金獵犬寶寶店員', '黃金獵犬寶寶布丁用暖暖的笑容陪伴客人。', 'gift', 90, c.candyLemon, 'dog-staff-pudding'),
-  option('general', 'fluffy-staff-tangtang', '糖糖・白色比熊店員', '白色比熊糖糖有蓬鬆的毛毛，最喜歡迎接客人。', 'heart', 85, c.candyCream, 'dog-staff-tangtang'),
-  option('general', 'fluffy-staff-pipi', '皮皮・黃白柯基店員', '黃白色柯基皮皮會搖著尾巴在店內巡場。', 'star', 80, c.candyLemon, 'dog-staff-pipi'),
-  option('general', 'fluffy-staff-amber', '琥珀・淺啡色比熊店員', '淺啡色比熊琥珀會在櫃台旁陪伴大家。', 'sun', 90, c.candyPeach, 'dog-staff-amber'),
-  option('general', 'fluffy-staff-cloud', '雲朵・白色博美店員', '白色小型博美雲朵像一團柔軟的小雲。', 'cloud', 85, c.candySky, 'dog-staff-cloud'),
-  option('general', 'fluffy-staff-wonton', '雲吞・白色馬爾濟斯店員', '白色馬爾濟斯雲吞會乖巧地陪客人挑選甜點。', 'heart', 85, c.candyLavender, 'dog-staff-wonton'),
-  option('general', 'fluffy-staff-butter', '奶油・奶油色貴賓店員', '奶油色貴賓奶油有俏皮的捲毛和溫柔笑容。', 'coffee', 80, c.candyLemon, 'dog-staff-butter'),
-  option('general', 'fluffy-staff-sesame', '芝麻・黑白西施店員', '黑白西施芝麻會在店裡開心地陪伴客人。', 'gift', 90, c.candyInk, 'dog-staff-sesame'),
-  option('general', 'fluffy-staff-snowball', '雪球・白色迷你雪納瑞店員', '白色迷你雪納瑞雪球有蓬鬆的小鬍鬚和眉毛。', 'star', 90, c.card, 'dog-staff-snowball'),
-  option('general', 'fluffy-staff-maomao', '毛毛・白色薩摩耶店員', '白色薩摩耶毛毛會用暖暖的笑容迎接大家。', 'sun', 110, c.candyCream, 'dog-staff-maomao'),
-  option('general', 'fluffy-staff-poppy', '波比・淺啡臘腸店員', '淺啡色臘腸波比會慢慢走到每個角落打招呼。', 'heart', 95, c.candyCaramel, 'dog-staff-poppy'),
-];
+const fluffyMarshmallowCafeStaff: ShopInteriorDecoration[] = DOG_STAFF_PROFILES.map((dog) =>
+  option(
+    'general',
+    dog.key,
+    `${dog.name}・${dog.breed}店員`,
+    dog.description,
+    dog.icon,
+    dog.price,
+    dog.color,
+    dog.visual,
+  ),
+);
 
 const fluffyCafeReplacedDecorationIds = new Set(
   variantDecorations('general', 10)

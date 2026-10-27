@@ -1,6 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import palette from '@/constants/colors';
+import {
+  DOG_STAFF_ACCESSORY_BY_ID,
+  DOG_STAFF_OUTFIT_BY_ID,
+} from '@/constants/dog-staff-customization';
 
 const c = palette.light;
 
@@ -187,14 +191,38 @@ const dogLooks: Record<DogAttendantKind, {
   },
 };
 
-export function DogAttendant({ kind }: { kind: DogAttendantKind }) {
+export function DogAttendant({
+  kind,
+  outfitId,
+  accessoryId,
+}: {
+  kind: DogAttendantKind;
+  outfitId?: string;
+  accessoryId?: string;
+}) {
   const look = dogLooks[kind];
+  const outfit = outfitId ? DOG_STAFF_OUTFIT_BY_ID[outfitId] : undefined;
+  const accessory = accessoryId ? DOG_STAFF_ACCESSORY_BY_ID[accessoryId] : undefined;
   const leftEarStyle = look.earStyle === 'upright'
     ? s.leftUprightEar
     : look.earStyle === 'floppy' ? s.leftFloppyEar : s.leftEar;
   const rightEarStyle = look.earStyle === 'upright'
     ? s.rightUprightEar
     : look.earStyle === 'floppy' ? s.rightFloppyEar : s.rightEar;
+  const outfitCutStyle = outfit ? {
+    apron: s.apronOutfit,
+    vest: s.vestOutfit,
+    jacket: s.jacketOutfit,
+    cape: s.capeOutfit,
+    dress: s.dressOutfit,
+  }[outfit.cut] : null;
+  const accessoryShapeStyle = accessory ? {
+    bow: s.bowAccessory,
+    beret: s.beretAccessory,
+    headband: s.headbandAccessory,
+    flower: s.flowerAccessory,
+    scarf: s.scarfAccessory,
+  }[accessory.shape] : null;
 
   return (
     <View testID={`dog-attendant-${kind}`} accessible={false} style={s.canvas}>
@@ -208,6 +236,23 @@ export function DogAttendant({ kind }: { kind: DogAttendantKind }) {
         <View style={[s.chest, { backgroundColor: look.marking }]} />
         {look.facePattern === 'collie' && <View style={s.saddlePatch} />}
       </View>
+      {outfit && (
+        <View style={[
+          s.outfitBase,
+          outfitCutStyle,
+          { backgroundColor: outfit.color, borderColor: outfit.accentColor },
+        ]}>
+          <View style={[
+            s.outfitDetail,
+            outfit.pattern === 'stripes' ? s.outfitStripe : null,
+            outfit.pattern === 'checks' ? s.outfitCheck : null,
+            outfit.pattern === 'stars' ? s.outfitStar : null,
+            outfit.pattern === 'flowers' ? s.outfitFlower : null,
+            { backgroundColor: outfit.accentColor },
+          ]} />
+          <View style={[s.outfitButton, { backgroundColor: outfit.accentColor }]} />
+        </View>
+      )}
       <View style={[s.legs, look.bodyStyle === 'low' && s.lowLegs, look.bodyStyle === 'long' && s.longLegs]}>
         <View style={[s.leg, { backgroundColor: look.coat, borderColor: look.ear }]} />
         <View style={[s.leg, { backgroundColor: look.coat, borderColor: look.ear }]} />
@@ -242,6 +287,15 @@ export function DogAttendant({ kind }: { kind: DogAttendantKind }) {
       <View style={[s.collar, { backgroundColor: look.collar }]}>
         <View style={s.bell} />
       </View>
+      {accessory && (
+        <View style={[
+          s.accessoryBase,
+          accessoryShapeStyle,
+          { backgroundColor: accessory.color, borderColor: accessory.accentColor },
+        ]}>
+          <View style={[s.accessoryDetail, { backgroundColor: accessory.accentColor }]} />
+        </View>
+      )}
     </View>
   );
 }
@@ -252,6 +306,18 @@ const s = StyleSheet.create({
   body: { position: 'absolute', width: 25, height: 15, left: 13, bottom: 5, borderRadius: 10, borderWidth: 1.2, overflow: 'hidden' },
   lowBody: { width: 29, left: 11, height: 13, bottom: 5, borderRadius: 8 },
   longBody: { width: 31, left: 10, height: 13, bottom: 5, borderRadius: 8 },
+  outfitBase: { position: 'absolute', zIndex: 1, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  apronOutfit: { left: 16, bottom: 7, width: 19, height: 10, borderRadius: 4 },
+  vestOutfit: { left: 14, bottom: 6, width: 23, height: 12, borderRadius: 7 },
+  jacketOutfit: { left: 14, bottom: 7, width: 23, height: 9, borderRadius: 5 },
+  capeOutfit: { left: 11, bottom: 5, width: 28, height: 13, borderRadius: 8 },
+  dressOutfit: { left: 11, bottom: 4, width: 28, height: 14, borderRadius: 7, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
+  outfitDetail: { position: 'absolute', left: 3, top: 3, width: 7, height: 2, borderRadius: 2 },
+  outfitStripe: { width: 16, height: 2, left: 2, top: 4 },
+  outfitCheck: { width: 6, height: 4, left: 4, top: 3 },
+  outfitStar: { width: 4, height: 4, left: 5, top: 2, borderRadius: 4 },
+  outfitFlower: { width: 5, height: 5, left: 4, top: 2, borderRadius: 4 },
+  outfitButton: { position: 'absolute', width: 2, height: 2, right: 4, top: 3, borderRadius: 2 },
   chest: { position: 'absolute', width: 9, height: 14, left: 2, top: 0, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
   saddlePatch: { position: 'absolute', right: 1, top: 2, width: 11, height: 9, borderRadius: 6, backgroundColor: c.candyCream },
   legs: { position: 'absolute', left: 16, bottom: 0, flexDirection: 'row', gap: 8 },
@@ -286,4 +352,11 @@ const s = StyleSheet.create({
   smile: { position: 'absolute', top: 3, width: 4, height: 2, borderBottomWidth: 0.8, borderColor: c.candyCaramelDark, borderRadius: 4 },
   collar: { position: 'absolute', width: 16, height: 4, left: 18, bottom: 15, borderRadius: 3, zIndex: 3 },
   bell: { position: 'absolute', width: 3, height: 3, left: 6.5, top: 2, borderRadius: 2, backgroundColor: c.candyLemon },
+  accessoryBase: { position: 'absolute', zIndex: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  bowAccessory: { left: 31, top: 5, width: 9, height: 7, borderRadius: 4, transform: [{ rotate: '15deg' }] },
+  beretAccessory: { left: 16, top: 0, width: 20, height: 8, borderRadius: 8, transform: [{ rotate: '-12deg' }] },
+  headbandAccessory: { left: 14, top: 7, width: 22, height: 4, borderRadius: 4 },
+  flowerAccessory: { left: 11, top: 1, width: 10, height: 10, borderRadius: 7 },
+  scarfAccessory: { left: 27, top: 27, width: 17, height: 6, borderRadius: 4, transform: [{ rotate: '15deg' }] },
+  accessoryDetail: { width: 3, height: 3, borderRadius: 3 },
 });

@@ -18,6 +18,12 @@ import {
   SHOP_INTERIOR_DECORATION_BY_ID,
   type ShopInteriorPlacementId,
 } from '@/constants/mall-shop-interior';
+import {
+  DOG_STAFF_STYLE_CATALOGS,
+  resolveDogStaffLook,
+  isValidDogStaffLook,
+  type DogStaffLook,
+} from '@/constants/dog-staff-customization';
 export { MALL_SLOT_IDS } from '@/constants/mall-layout';
 export type { MallSlotId } from '@/constants/mall-layout';
 
@@ -53,6 +59,7 @@ interface CheckInTransaction {
 export interface ShopInteriorState {
   ownedDecorations: string[];
   placements: Partial<Record<ShopInteriorPlacementId, string>>;
+  dogStaffLooks?: Record<string, DogStaffLook>;
 }
 
 export type ShopInteriorCollection = Record<string, ShopInteriorState>;
@@ -84,6 +91,7 @@ interface HabitsContextValue {
   grantTestCoins: (minimumBalance: number) => Promise<void>;
   placeShopInteriorDecoration: (shopId: string, decorationId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
   storeShopInteriorDecoration: (shopId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
+  updateShopInteriorDogLook: (shopId: string, dogDecorationId: string, look: DogStaffLook) => Promise<void>;
 }
 
 const STORAGE_KEY = 'momentum.habits.v1';
@@ -182,6 +190,7 @@ function normalizeShopInteriors(
     const owned = new Set(ownedDecorations);
     const assigned = new Set<string>();
     const placements: Partial<Record<ShopInteriorPlacementId, string>> = {};
+    const dogStaffLooks: Record<string, DogStaffLook> = {};
     for (const [placementId, decorationId] of Object.entries(saved.placements ?? {})) {
       if (
         placementIds.has(placementId)
@@ -193,8 +202,17 @@ function normalizeShopInteriors(
         assigned.add(decorationId);
       }
     }
-    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0) {
-      interiors[shopId] = { ownedDecorations, placements };
+    for (const [dogDecorationId, savedLook] of Object.entries(saved.dogStaffLooks ?? {})) {
+      if (!owned.has(dogDecorationId) || !DOG_STAFF_STYLE_CATALOGS[dogDecorationId]) continue;
+      const look = resolveDogStaffLook(dogDecorationId, savedLook);
+      if (look) dogStaffLooks[dogDecorationId] = look;
+    }
+    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(dogStaffLooks).length > 0) {
+      interiors[shopId] = {
+        ownedDecorations,
+        placements,
+        ...(Object.keys(dogStaffLooks).length > 0 ? { dogStaffLooks } : {}),
+      };
     }
   }
   return interiors;
@@ -481,6 +499,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       ) as Partial<Record<ShopInteriorPlacementId, string>>;
       placements[placementId] = decorationId;
       const nextInterior = {
+        ...current,
         ownedDecorations: alreadyOwned ? current.ownedDecorations : [...current.ownedDecorations, decorationId],
         placements,
       };
@@ -522,6 +541,39 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
+  const updateShopInteriorDogLook = useCallback(async (
+    shopId: string,
+    dogDecorationId: string,
+    look: DogStaffLook,
+  ) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== 'fluffy-marshmallow-cafe') throw new Error('狗狗造型只適用於毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    const current = shopInteriors[shopId];
+    if (!current?.ownedDecorations.includes(dogDecorationId)) throw new Error('請先兌換這位狗狗店員');
+    if (!isValidDogStaffLook(dogDecorationId, look)) throw new Error('這套服裝或配飾不屬於這位狗狗店員');
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: {
+          ...shopInteriors,
+          [shopId]: {
+            ...current,
+            dogStaffLooks: { ...current.dogStaffLooks, [dogDecorationId]: look },
+          },
+        },
+      });
+      await Haptics.selectionAsync();
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
   const grantTestCoins = useCallback(async (minimumBalance: number) => {
     if (!IS_DEVELOPMENT_BUILD) throw new Error('測試金幣只供開發預覽使用');
     if (!Number.isSafeInteger(minimumBalance) || minimumBalance < 0) throw new Error('測試金幣數量無效');
@@ -542,8 +594,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, updateShopInteriorDogLook,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, updateShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

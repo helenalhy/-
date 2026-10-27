@@ -4,6 +4,7 @@ import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
 import { classifyDecoration, mapCoverPoint, resolveObjectAnchor } from '@/constants/mall-shop-scene-anchors';
+import { resolveDogStaffLook, type DogStaffLook } from '@/constants/dog-staff-customization';
 import { useColors } from '@/hooks/useColors';
 
 const SCENES: Record<ShopInteriorSceneKey, number> = {
@@ -38,6 +39,7 @@ export function ShopInteriorScene({
   areaLabel,
   placements,
   decorations,
+  dogStaffLooks,
   selectedSlot,
   onSelectSlot,
 }: {
@@ -48,6 +50,7 @@ export function ShopInteriorScene({
   areaLabel: string;
   placements: Partial<Record<ShopInteriorSlotId, string>>;
   decorations: ShopInteriorDecoration[];
+  dogStaffLooks?: Record<string, DogStaffLook>;
   selectedSlot: ShopInteriorSlotId;
   onSelectSlot: (slot: ShopInteriorSlotId) => void;
 }) {
@@ -73,6 +76,7 @@ export function ShopInteriorScene({
         </View>
         {SHOP_INTERIOR_SLOTS.map((slot) => {
           const decoration = decorations.find(({ id }) => id === placements[slot.id]);
+          const dogLook = decoration ? resolveDogStaffLook(decoration.id, dogStaffLooks?.[decoration.id]) : null;
           const selected = selectedSlot === slot.id;
           const profile = decoration ? classifyDecoration(decoration) : { cls: 'tabletop' as const, scale: 1 };
           const point = mapCoverPoint(resolveObjectAnchor(sceneKey, slot.id, profile.cls), size.width, size.height);
@@ -99,6 +103,8 @@ export function ShopInteriorScene({
                       icon={decoration.icon}
                       category="decor"
                       isActive
+                      dogOutfitId={dogLook?.outfitId}
+                      dogAccessoryId={dogLook?.accessoryId}
                     />
                   </View>
                   {selected && <View pointerEvents="none" style={[styles.selectRing, { borderColor: colors.primary }]} />}

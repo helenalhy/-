@@ -7,7 +7,19 @@ import { DogAttendant } from './DogAttendant';
 const c = palette.light;
 const useNativeDriver = Platform.OS !== 'web';
 
-export function ThemedMallObject({ id, color, icon = 'gift' }: { id: string; color: string; icon?: string }) {
+export function ThemedMallObject({
+  id,
+  color,
+  icon = 'gift',
+  dogOutfitId,
+  dogAccessoryId,
+}: {
+  id: string;
+  color: string;
+  icon?: string;
+  dogOutfitId?: string;
+  dogAccessoryId?: string;
+}) {
   let drawing: React.ReactNode;
   switch (id) {
     case 'coral-aquarium':
@@ -113,46 +125,46 @@ export function ThemedMallObject({ id, color, icon = 'gift' }: { id: string; col
       drawing = <JewelryCase color={color} />;
       break;
     case 'dog-staff-huahua':
-      drawing = <DogAttendant kind="huahua" />;
+      drawing = <DogAttendant kind="huahua" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-milkshake':
-      drawing = <DogAttendant kind="milkshake" />;
+      drawing = <DogAttendant kind="milkshake" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-xiaoniu':
-      drawing = <DogAttendant kind="xiaoniu" />;
+      drawing = <DogAttendant kind="xiaoniu" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-pudding':
-      drawing = <DogAttendant kind="pudding" />;
+      drawing = <DogAttendant kind="pudding" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-tangtang':
-      drawing = <DogAttendant kind="tangtang" />;
+      drawing = <DogAttendant kind="tangtang" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-pipi':
-      drawing = <DogAttendant kind="pipi" />;
+      drawing = <DogAttendant kind="pipi" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-amber':
-      drawing = <DogAttendant kind="amber" />;
+      drawing = <DogAttendant kind="amber" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-cloud':
-      drawing = <DogAttendant kind="cloud" />;
+      drawing = <DogAttendant kind="cloud" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-wonton':
-      drawing = <DogAttendant kind="wonton" />;
+      drawing = <DogAttendant kind="wonton" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-butter':
-      drawing = <DogAttendant kind="butter" />;
+      drawing = <DogAttendant kind="butter" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-sesame':
-      drawing = <DogAttendant kind="sesame" />;
+      drawing = <DogAttendant kind="sesame" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-snowball':
-      drawing = <DogAttendant kind="snowball" />;
+      drawing = <DogAttendant kind="snowball" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-maomao':
-      drawing = <DogAttendant kind="maomao" />;
+      drawing = <DogAttendant kind="maomao" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     case 'dog-staff-poppy':
-      drawing = <DogAttendant kind="poppy" />;
+      drawing = <DogAttendant kind="poppy" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
     default:
       drawing = <><View style={[s.fallbackShowcase, { backgroundColor: color, borderColor: c.candyCaramelDark }]}><Feather name={icon as keyof typeof Feather.glyphMap} size={20} color={c.candyCaramelDark} /></View><View style={[s.base, { backgroundColor: c.candyCaramel }]} /></>;

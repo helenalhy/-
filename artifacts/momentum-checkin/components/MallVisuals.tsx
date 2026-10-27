@@ -59,13 +59,15 @@ const OBJECT_ARTWORK: Partial<Record<MallObjectArchetype, ImageSourcePropType>> 
   'jewelry-case': require('../assets/images/mall-jewelry-case.png'),
 };
 
-export function MallObjectVisual({ id, itemId, color, icon, category, isActive = true }: {
+export function MallObjectVisual({ id, itemId, color, icon, category, isActive = true, dogOutfitId, dogAccessoryId }: {
   id: string;
   itemId?: string;
   color: string;
   icon: string;
   category: MallVisualCategory;
   isActive?: boolean;
+  dogOutfitId?: string;
+  dogAccessoryId?: string;
 }) {
   const motion = useRef(new Animated.Value(0)).current;
   const shimmer = useRef(new Animated.Value(0)).current;
@@ -105,7 +107,7 @@ export function MallObjectVisual({ id, itemId, color, icon, category, isActive =
     : OBJECT_ARTWORK[archetype];
   const drawing = artwork
     ? <Image source={artwork} resizeMode="contain" fadeDuration={0} style={s.sceneSprite} />
-    : <ThemedMallObject id={archetype} color={color} icon={icon} />;
+    : <ThemedMallObject id={archetype} color={color} icon={icon} dogOutfitId={dogOutfitId} dogAccessoryId={dogAccessoryId} />;
 
   const sparkleScale = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.15] });
   return (

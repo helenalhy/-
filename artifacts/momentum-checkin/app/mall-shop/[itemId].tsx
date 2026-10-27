@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useHabits } from '@/context/HabitsContext';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { ShopInteriorScene } from '@/components/ShopInteriorScene';
+import { DogStaffCustomizer } from '@/components/DogStaffCustomizer';
 import {
   getShopInteriorDecorations,
   getShopInteriorSceneKey,
@@ -28,6 +29,10 @@ import {
   type ShopInteriorAreaId,
   type ShopInteriorSlotId,
 } from '@/constants/mall-shop-interior';
+import {
+  DOG_STAFF_PROFILES,
+  type DogStaffLook,
+} from '@/constants/dog-staff-customization';
 import { MALL_FLOORS, MALL_ITEM_BY_ID } from '@/constants/mall';
 import type { MallVisualCategory } from '@/constants/mall-visual-profile';
 import { useColors } from '@/hooks/useColors';
@@ -97,6 +102,7 @@ export default function MallShopInteriorScreen() {
     shopInteriors,
     placeShopInteriorDecoration,
     storeShopInteriorDecoration,
+    updateShopInteriorDogLook,
   } = useHabits();
   const [selectedSlot, setSelectedSlot] = useState<ShopInteriorSlotId>(SHOP_INTERIOR_SLOTS[0].id);
   const [selectedArea, setSelectedArea] = useState<ShopInteriorAreaId>('main');
@@ -111,6 +117,7 @@ export default function MallShopInteriorScreen() {
     [shop?.shopType, shop?.id, shop?.name, ownedDecorationKey],
   );
   const owned = new Set(interior?.ownedDecorations ?? []);
+  const ownedDogStaff = DOG_STAFF_PROFILES.filter(({ decorationId }) => owned.has(decorationId));
   const placements = interior?.placements ?? {};
   const areaPlacements = useMemo(
     () => getShopInteriorAreaPlacements(placements, selectedArea),
@@ -141,6 +148,11 @@ export default function MallShopInteriorScreen() {
     } finally {
       setWorkingDecoration(null);
     }
+  }
+
+  async function saveDogStaffLook(dogDecorationId: string, look: DogStaffLook) {
+    if (!shop) return;
+    await updateShopInteriorDogLook(shop.id, dogDecorationId, look);
   }
 
   async function storeSelectedDecoration() {
@@ -248,6 +260,7 @@ export default function MallShopInteriorScreen() {
               areaLabel={getShopInteriorAreaLabel(selectedArea)}
               placements={areaPlacements}
               decorations={decorations}
+              dogStaffLooks={interior?.dogStaffLooks}
               selectedSlot={selectedSlot}
               onSelectSlot={setSelectedSlot}
             />
@@ -290,6 +303,19 @@ export default function MallShopInteriorScreen() {
                 <Feather name="chevron-right" size={18} color={colors.primary} />
               </Pressable>
             </View>
+
+            {shop.id === 'fluffy-marshmallow-cafe' && (
+              <DogStaffCustomizer
+                dogs={ownedDogStaff}
+                looks={interior?.dogStaffLooks}
+                placements={placements}
+                destinationPlacementId={selectedPlacementId}
+                destinationLabel={`${getShopInteriorAreaLabel(selectedArea)} · ${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label ?? '店內位置'}`}
+                busyDecorationId={workingDecoration}
+                onMoveDog={(dogDecorationId) => void placeDecoration(dogDecorationId, 0)}
+                onSelectLook={saveDogStaffLook}
+              />
+            )}
 
             <View style={styles.sectionHeading}>
               <View>

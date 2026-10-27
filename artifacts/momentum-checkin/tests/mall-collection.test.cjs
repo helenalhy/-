@@ -13,6 +13,9 @@ const source = ts.transpileModule(
 const key = 'momentum.mall.v1';
 const habitsKey = 'momentum.habits.v1';
 const checkInTransactionKey = 'momentum.checkin-transaction.v1';
+const dogId = 'general-fluffy-staff-huahua';
+const dogOutfits = [`${dogId}:outfit:01`, `${dogId}:outfit:02`];
+const dogAccessories = [`${dogId}:accessory:01`, `${dogId}:accessory:02`];
 
 async function mount(storage, { failWritesOnLoad = false, expectedStorageError = null } = {}) {
   const states = [];

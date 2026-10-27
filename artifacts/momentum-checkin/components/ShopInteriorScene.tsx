@@ -221,6 +221,7 @@ export function ShopInteriorScene({
             {areaDogStaff.map(({ dog, look, index }) => (
               <WalkingStaffDog
                 key={dog.decorationId}
+                testID={`dog-staff-walker-${dog.key}`}
                 dog={dog}
                 look={look}
                 index={index}
@@ -237,6 +238,7 @@ export function ShopInteriorScene({
 }
 
 function WalkingStaffDog({
+  testID,
   dog,
   look,
   index,
@@ -244,6 +246,7 @@ function WalkingStaffDog({
   height,
   reducedMotion,
 }: {
+  testID: string;
   dog: (typeof DOG_STAFF_PROFILES)[number];
   look: DogStaffLook;
   index: number;
@@ -289,7 +292,7 @@ function WalkingStaffDog({
   const top = Math.min(route.top * height / 100, Math.max(0, height - STAFF_DOG_HEIGHT - 7));
   return (
     <Animated.View
-      testID={`dog-staff-walker-${dog.key}`}
+      testID={testID}
       style={[
         styles.staffDog,
         {

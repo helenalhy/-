@@ -17,8 +17,8 @@ const dogId = 'general-fluffy-staff-huahua';
 const dogOutfits = [`${dogId}:outfit:01`, `${dogId}:outfit:02`];
 const dogAccessories = [`${dogId}:accessory:01`, `${dogId}:accessory:02`];
 const dogStations = [
-  { id: 'entrance-greeting', label: '入口迎賓' },
-  { id: 'window-side', label: '窗邊座位' },
+  { id: 'entrance-greeting', label: '入口迎賓', areaId: 'extension-1' },
+  { id: 'window-side', label: '窗邊座位', areaId: 'extension-1' },
 ];
 
 async function mount(storage, { failWritesOnLoad = false, expectedStorageError = null } = {}) {
@@ -80,6 +80,9 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
           ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table']
             .map((slot) => `${area}:${slot}`)),
       ],
+      parseShopInteriorPlacementId: (placementId) => placementId === 'front-window'
+        ? { areaId: 'main', slotId: 'front-window' }
+        : null,
       SHOP_INTERIOR_DECORATION_BY_ID: {
         'general-display-shelf': { id: 'general-display-shelf', name: '糖果色展示架', description: '展示商品', price: 20 },
         'general-warm-lamp': { id: 'general-warm-lamp', name: '暖光吊燈', description: '燈', price: 25 },
@@ -110,6 +113,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
         [dogId]: { decorationId: dogId },
       },
       DOG_STAFF_STATIONS: dogStations,
+      isDogStaffAreaId: (value) => ['main', 'extension-1', 'extension-2', 'extension-3', 'extension-4', 'extension-5'].includes(value),
       DOG_STAFF_STYLE_CATALOGS: {
         [dogId]: {
           outfits: dogOutfits.map((id) => ({ id })),
@@ -561,7 +565,7 @@ test('five interior extensions accept eight-position placement keys and preserve
   );
 });
 
-test('redeemed cafe dog looks are free, restricted to that dog, and persist with its placement', async () => {
+test('redeemed cafe dog looks persist while dogs are freely assigned across interior areas', async () => {
   const shopId = 'fluffy-marshmallow-cafe';
   const storage = seed({
     schemaVersion: 3,
@@ -577,7 +581,7 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
   });
   let app = await mount(storage);
   assert.deepEqual(app.value.shopInteriors[shopId].placements, {}, 'legacy dog positions are removed from the 48 general slots');
-  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { 'entrance-greeting': dogId });
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { [dogId]: 'main' });
   app.setFailWriteKey(key);
   await assert.rejects(
     app.value.updateShopInteriorDogLook(shopId, dogId, {
@@ -594,7 +598,7 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
   });
   assert.equal(app.value.coins, 100, 'changing an included look does not cost coins');
   assert.deepEqual(app.value.shopInteriors[shopId].placements, {});
-  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { 'entrance-greeting': dogId });
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { [dogId]: 'main' });
   assert.deepEqual(app.value.shopInteriors[shopId].dogStaffLooks[dogId], {
     outfitId: dogOutfits[1],
     accessoryId: dogAccessories[1],
@@ -605,9 +609,9 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
     outfitId: dogOutfits[1],
     accessoryId: dogAccessories[1],
   });
-  await app.value.placeShopInteriorDogStaff(shopId, dogId, 'window-side');
-  assert.equal(app.value.coins, 100, 'moving an owned dog between exclusive stations is free');
-  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { 'window-side': dogId });
+  await app.value.placeShopInteriorDogStaff(shopId, dogId, 'extension-5');
+  assert.equal(app.value.coins, 100, 'moving an owned dog between areas is free');
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { [dogId]: 'extension-5' });
   await app.value.storeShopInteriorDogStaff(shopId, dogId);
   assert.equal(app.value.coins, 100, 'storing an owned dog does not refund or charge coins');
   assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, {});
@@ -630,6 +634,24 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
     }),
     /不屬於/,
   );
+});
+
+test('legacy dedicated dog stations migrate into their matching extension areas', async () => {
+  const shopId = 'fluffy-marshmallow-cafe';
+  const app = await mount(seed({
+    schemaVersion: 3,
+    coins: 100,
+    purchasedItems: [shopId],
+    placements: {},
+    shopInteriors: {
+      [shopId]: {
+        ownedDecorations: [dogId],
+        placements: {},
+        dogStaffPlacements: { 'window-side': dogId },
+      },
+    },
+  }));
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { [dogId]: 'extension-1' });
 });
 
 test('existing versioned habits and mall hydrate without any startup writes on a full device', async () => {

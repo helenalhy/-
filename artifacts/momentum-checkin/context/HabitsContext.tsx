@@ -230,7 +230,9 @@ function normalizeShopInteriors(
     const dogStaffLooks: Record<string, DogStaffLook> = {};
     const dogStaffPlacements: DogStaffAreaPlacements = {};
     const staffAssigned = new Set<string>();
-    const stationsById = new Map(DOG_STAFF_STATIONS.map((station) => [station.id, station]));
+    const stationsById = new Map<string, (typeof DOG_STAFF_STATIONS)[number]>(
+      DOG_STAFF_STATIONS.map((station) => [station.id, station] as const),
+    );
     const isFluffyCafe = shopId === 'fluffy-marshmallow-cafe';
     if (isFluffyCafe) {
       const savedStaffPlacements = saved.dogStaffPlacements as unknown as Record<string, unknown> | undefined;

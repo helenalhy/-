@@ -101,30 +101,27 @@ test('six areas each expose eight slots (48 total) and legacy/main placements re
   assert.equal(parseShopInteriorPlacementId('extension-3:unknown'), null);
 });
 
-test('cafe dog staff appear in assigned extension scenes without using furniture slots', () => {
-  const stations = dogStaffStyles.DOG_STAFF_STATIONS;
-  assert.equal(stations.length, 14);
-  assert.deepEqual(
-    ['extension-1', 'extension-2', 'extension-3', 'extension-4', 'extension-5']
-      .map((areaId) => stations.filter((station) => station.areaId === areaId).length),
-    [3, 3, 3, 3, 2],
-    'all five extensions have dedicated dog staff stations',
-  );
-  assert.equal(typeof dogStaffStyles.getDogStaffStationAreaLabel, 'function');
-  assert.equal(dogStaffStyles.getDogStaffStationAreaLabel('extension-5'), '延伸區 5');
+test('cafe dog staff can walk in all six areas without using furniture slots', () => {
+  assert.equal(dogStaffStyles.DOG_STAFF_PROFILES.length, 14);
+  assert.equal(dogStaffStyles.DOG_STAFF_ROUTES.length, 14);
+  assert.ok(SHOP_INTERIOR_AREAS.every(({ id }) => dogStaffStyles.isDogStaffAreaId(id)));
+  assert.equal(dogStaffStyles.getDogStaffAreaLabel('main'), '主區');
+  assert.equal(dogStaffStyles.getDogStaffAreaLabel('extension-5'), '延伸區 5');
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const page = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
+  const customizer = fs.readFileSync(path.join(__dirname, '../components/DogStaffCustomizer.tsx'), 'utf8');
   const imageEnd = scene.indexOf('</ImageBackground>');
-  const staffArea = scene.indexOf('testID={`dog-staff-scene-area-${areaId}`}');
-  assert.ok(imageEnd >= 0 && staffArea >= 0 && staffArea < imageEnd, 'assigned dogs render inside the selected extension image');
+  const staffWalkers = scene.indexOf('<WalkingStaffDog');
+  assert.ok(imageEnd >= 0 && staffWalkers >= 0 && staffWalkers < imageEnd, 'dogs walk inside the selected room image');
   assert.doesNotMatch(scene, /dog-staff-scene-dock/);
   assert.match(scene, /sceneKey === 'cafe'/);
-  assert.match(scene, /DOG_STAFF_STATIONS\s*\.filter/);
-  assert.match(scene, /station\.areaId === areaId/);
-  assert.match(scene, /dogStaffPlacements\?\.\[station\.id\]/);
-  assert.match(scene, /<AnimatedStaffDog/);
+  assert.match(scene, /DOG_STAFF_PROFILES/);
+  assert.match(scene, /dogStaffPlacements\?\.\[dog\.decorationId\] !== areaId/);
+  assert.match(scene, /testID=\{`dog-staff-walker-\$\{dog\.key\}`\}/);
+  assert.match(scene, /reduceMotionChanged/);
   assert.match(page, /areaId=\{selectedArea\}/);
-  assert.match(page, /setSelectedArea\(station\.areaId\)/);
+  assert.match(page, /setSelectedArea\(areaId\)/);
+  assert.match(customizer, /SHOP_INTERIOR_AREAS\.map/);
 });
 
 const anchorSource = ts.transpileModule(

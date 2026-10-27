@@ -95,7 +95,7 @@ export function DogStaffCustomizer({
   }
 
   async function storeDog() {
-    if (!isOwned || !currentStationId || working || busyDogId !== null) return;
+    if (!isOwned || !currentAreaId || working || busyDogId !== null) return;
     setWorking(true);
     setNotice('');
     try {

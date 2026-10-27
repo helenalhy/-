@@ -3,14 +3,16 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
 import {
-  DOG_STAFF_STATIONS,
   DOG_STAFF_STYLE_CATALOGS,
+  getDogStaffAreaLabel,
   getDefaultDogStaffLook,
   resolveDogStaffLook,
   type DogStaffLook,
+  type DogStaffAreaId,
+  type DogStaffAreaPlacements,
   type DogStaffProfile,
-  type DogStaffStationId,
 } from '@/constants/dog-staff-customization';
+import { SHOP_INTERIOR_AREAS } from '@/constants/mall-shop-interior';
 import { useColors } from '@/hooks/useColors';
 
 type LookTab = 'outfit' | 'theme' | 'accessory';
@@ -20,7 +22,7 @@ export function DogStaffCustomizer({
   dogs,
   ownedDecorationIds,
   looks,
-  stationPlacements,
+  areaPlacements,
   coins,
   busyDogId,
   onRedeem,
@@ -31,26 +33,28 @@ export function DogStaffCustomizer({
   dogs: DogStaffProfile[];
   ownedDecorationIds: string[];
   looks?: Record<string, DogStaffLook>;
-  stationPlacements?: Partial<Record<DogStaffStationId, string>>;
+  areaPlacements?: DogStaffAreaPlacements;
   coins: number;
   busyDogId: string | null;
-  onRedeem: (dogDecorationId: string, stationId: DogStaffStationId) => Promise<void>;
-  onMoveDog: (dogDecorationId: string, stationId: DogStaffStationId) => Promise<void>;
+  onRedeem: (dogDecorationId: string, areaId: DogStaffAreaId) => Promise<void>;
+  onMoveDog: (dogDecorationId: string, areaId: DogStaffAreaId) => Promise<void>;
   onStoreDog: (dogDecorationId: string) => Promise<void>;
   onSelectLook: (dogDecorationId: string, look: DogStaffLook) => Promise<void>;
 }) {
   const colors = useColors();
-  const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
-  const [selectedStationId, setSelectedStationId] = useState<DogStaffStationId>(DOG_STAFF_STATIONS[0].id);
+  const owned = new Set(ownedDecorationIds);
+  const initialDog = dogs.find(({ decorationId }) => owned.has(decorationId)) ?? dogs[0];
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(initialDog?.decorationId ?? null);
+  const [selectedAreaId, setSelectedAreaId] = useState<DogStaffAreaId>(
+    initialDog ? areaPlacements?.[initialDog.decorationId] ?? 'main' : 'main',
+  );
   const [activeTab, setActiveTab] = useState<LookTab>('outfit');
   const [page, setPage] = useState(1);
   const [savingLook, setSavingLook] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
-  const owned = new Set(ownedDecorationIds);
   const activeDog = dogs.find(({ decorationId }) => decorationId === selectedDogId)
-    ?? dogs.find(({ decorationId }) => owned.has(decorationId))
-    ?? dogs[0];
+    ?? initialDog;
 
   if (!activeDog) return null;
 
@@ -58,15 +62,10 @@ export function DogStaffCustomizer({
   const catalog = DOG_STAFF_STYLE_CATALOGS[activeDog.decorationId];
   const currentLook = resolveDogStaffLook(activeDog.decorationId, looks?.[activeDog.decorationId])
     ?? getDefaultDogStaffLook(activeDog.decorationId)!;
-  const currentStationEntry = Object.entries(stationPlacements ?? {})
-    .find(([, dogDecorationId]) => dogDecorationId === activeDog.decorationId);
-  const currentStationId = currentStationEntry?.[0] as DogStaffStationId | undefined;
-  const currentStation = DOG_STAFF_STATIONS.find(({ id }) => id === currentStationId);
-  const selectedStation = DOG_STAFF_STATIONS.find(({ id }) => id === selectedStationId)!;
-  const stationOccupantId = stationPlacements?.[selectedStationId];
-  const stationOccupant = dogs.find(({ decorationId }) => decorationId === stationOccupantId);
-  const alreadyAtStation = currentStationId === selectedStationId;
-  const stationOccupiedByOtherDog = !!stationOccupantId && stationOccupantId !== activeDog.decorationId;
+  const currentAreaId = areaPlacements?.[activeDog.decorationId];
+  const currentAreaLabel = currentAreaId ? getDogStaffAreaLabel(currentAreaId) : '';
+  const selectedAreaLabel = getDogStaffAreaLabel(selectedAreaId);
+  const alreadyAtArea = currentAreaId === selectedAreaId;
   const canRedeem = coins >= activeDog.price;
   const basicOutfits = catalog.outfits.filter(({ theme }) => !theme);
   const themedOutfits = catalog.outfits.filter(({ theme }) => !!theme);
@@ -82,11 +81,11 @@ export function DogStaffCustomizer({
     setNotice('');
     try {
       if (isOwned) {
-        await onMoveDog(activeDog.decorationId, selectedStationId);
-        setNotice(`${activeDog.name}已免費移至「${selectedStation.label}」。`);
+        await onMoveDog(activeDog.decorationId, selectedAreaId);
+        setNotice(`${activeDog.name}已免費安排在${selectedAreaLabel}，會在店內地面巡走。`);
       } else {
-        await onRedeem(activeDog.decorationId, selectedStationId);
-        setNotice(`${activeDog.name}已兌換並安排在「${selectedStation.label}」，服裝與配飾已附送。`);
+        await onRedeem(activeDog.decorationId, selectedAreaId);
+        setNotice(`${activeDog.name}已兌換並安排在${selectedAreaLabel}，服裝與配飾已附送。`);
       }
     } catch (error) {
       setNotice(error instanceof Error ? `操作未完成：${error.message}` : '操作未完成，請稍後再試。');
@@ -134,9 +133,9 @@ export function DogStaffCustomizer({
           <Feather name="heart" size={17} color={colors.candyCaramelDark} />
         </View>
         <View style={styles.headingCopy}>
-          <Text style={[styles.title, { color: colors.foreground }]}>狗狗店員專屬站位</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>狗狗店員活動區域</Text>
           <Text style={[styles.copy, { color: colors.mutedForeground }]}>
-            14 個 CAFÉ 專用站位，不佔用一般店內 48 個位置；每個站位可放一位店員。
+            店員可安排在主區或 5 個延伸區，會在地面來回巡走；不佔每區 8 個一般位置，移動不扣金幣。
           </Text>
         </View>
       </View>
@@ -144,59 +143,42 @@ export function DogStaffCustomizer({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stationPicker}
-        accessibilityLabel="狗狗店員專屬站位"
+        contentContainerStyle={styles.areaPicker}
+        accessibilityLabel="狗狗店員活動區域"
       >
-        {DOG_STAFF_STATIONS.map((station, index) => {
-          const occupantId = stationPlacements?.[station.id];
-          const occupant = dogs.find(({ decorationId }) => decorationId === occupantId);
-          const occupantLook = occupant
-            ? resolveDogStaffLook(occupant.decorationId, looks?.[occupant.decorationId])
-              ?? getDefaultDogStaffLook(occupant.decorationId)!
-            : null;
-          const selected = station.id === selectedStationId;
+        {SHOP_INTERIOR_AREAS.map((area) => {
+          const selected = area.id === selectedAreaId;
+          const areaDogCount = Object.values(areaPlacements ?? {}).filter((assignedArea) => assignedArea === area.id).length;
           return (
             <Pressable
-              key={station.id}
-              testID={`dog-staff-station-${station.id}`}
+              key={area.id}
+              testID={`dog-staff-area-${area.id}`}
               accessibilityRole="button"
-              accessibilityLabel={`${station.label}，${occupant ? `由${occupant.name}值班` : '空位'}${selected ? '，目前選取' : ''}`}
+              accessibilityLabel={`${area.label}，${areaDogCount} 位狗狗店員${selected ? '，目前選取' : ''}`}
               accessibilityState={{ selected }}
               onPress={() => {
-                setSelectedStationId(station.id);
-                if (occupant) setSelectedDogId(occupant.decorationId);
+                setSelectedAreaId(area.id);
                 setNotice('');
               }}
               style={[
-                styles.stationCard,
+                styles.areaCard,
                 {
                   backgroundColor: selected ? colors.secondary : colors.background,
                   borderColor: selected ? colors.primary : colors.border,
                 },
               ]}
             >
-              <Text style={[styles.stationNumber, { color: colors.mutedForeground }]}>站位 {index + 1}</Text>
-              <View style={styles.stationPreview}>
-                {occupant && occupantLook ? (
-                  <DogAttendant
-                    kind={occupant.kind as DogAttendantKind}
-                    outfitId={occupantLook.outfitId}
-                    accessoryId={occupantLook.accessoryId}
-                  />
-                ) : (
-                  <Feather name="plus-circle" size={19} color={colors.mutedForeground} />
-                )}
-              </View>
-              <Text numberOfLines={1} style={[styles.stationName, { color: colors.foreground }]}>
-                {occupant?.name ?? station.label}
-              </Text>
+              <Feather name={area.id === 'main' ? 'home' : 'map-pin'} size={17} color={selected ? colors.primary : colors.mutedForeground} />
+              <Text numberOfLines={1} style={[styles.areaName, { color: colors.foreground }]}>{area.label}</Text>
+              <Text style={[styles.areaCount, { color: colors.mutedForeground }]}>{areaDogCount} 隻</Text>
             </Pressable>
           );
         })}
       </ScrollView>
 
-      <Text style={[styles.selectedStationCopy, { color: colors.primary }]}>
-        目前選取：{selectedStation.label}{stationOccupant ? ` · ${stationOccupant.name}正在值班` : ' · 空位'}
+      <Text style={[styles.selectedAreaCopy, { color: colors.primary }]}>
+        {isOwned && currentAreaLabel ? `目前位置：${currentAreaLabel} · ` : '安排位置：'}
+        {selectedAreaLabel} · 狗狗會在地面移動
       </Text>
 
       <Text style={[styles.subheading, { color: colors.foreground }]}>店員名單</Text>
@@ -220,6 +202,7 @@ export function DogStaffCustomizer({
               accessibilityState={{ selected }}
               onPress={() => {
                 setSelectedDogId(dog.decorationId);
+                setSelectedAreaId(areaPlacements?.[dog.decorationId] ?? 'main');
                 setPage(1);
                 setNotice('');
               }}
@@ -258,13 +241,8 @@ export function DogStaffCustomizer({
         <View style={styles.profileCopy}>
           <Text style={[styles.profileName, { color: colors.foreground }]}>{activeDog.name} · {activeDog.breed}</Text>
           <Text style={[styles.profileLocation, { color: colors.mutedForeground }]}>
-            {isOwned ? `目前站位：${currentStation?.label ?? '店員收藏'}` : `兌換價格：${activeDog.price} 金幣`}
+            {isOwned ? `目前位置：${currentAreaLabel || '店員收藏'}` : `兌換價格：${activeDog.price} 金幣`}
           </Text>
-          {stationOccupiedByOtherDog && (
-            <Text style={[styles.profileLocation, { color: colors.candyCaramelDark }]}>
-              此站位已有{stationOccupant?.name ?? '店員'}；移入後原店員會回到收藏，仍保留所有權。
-            </Text>
-          )}
         </View>
       </View>
 
@@ -273,29 +251,29 @@ export function DogStaffCustomizer({
           testID={isOwned ? `dog-staff-move-${activeDog.key}` : `dog-staff-redeem-${activeDog.key}`}
           accessibilityRole="button"
           accessibilityLabel={isOwned
-            ? alreadyAtStation
-              ? `${activeDog.name}已在${selectedStation.label}`
-              : `免費將${activeDog.name}移到${selectedStation.label}`
-            : `使用${activeDog.price}金幣兌換${activeDog.name}並安排在${selectedStation.label}`}
-          accessibilityState={{ disabled: (isOwned && alreadyAtStation) || (!isOwned && (!canRedeem || stationOccupiedByOtherDog)) || busyDogId !== null }}
-          disabled={(isOwned && alreadyAtStation) || (!isOwned && (!canRedeem || stationOccupiedByOtherDog)) || busyDogId !== null || working}
+            ? alreadyAtArea
+              ? `${activeDog.name}已在${selectedAreaLabel}`
+              : `免費將${activeDog.name}安排到${selectedAreaLabel}`
+            : `使用${activeDog.price}金幣兌換${activeDog.name}並安排到${selectedAreaLabel}`}
+          accessibilityState={{ disabled: (isOwned && alreadyAtArea) || (!isOwned && !canRedeem) || busyDogId !== null }}
+          disabled={(isOwned && alreadyAtArea) || (!isOwned && !canRedeem) || busyDogId !== null || working}
           onPress={() => void redeemOrMoveDog()}
           style={[
             styles.actionButton,
             {
               backgroundColor: isOwned ? colors.secondary : colors.primary,
-              opacity: (isOwned && alreadyAtStation) || (!isOwned && (!canRedeem || stationOccupiedByOtherDog)) || busyDogId !== null || working ? 0.5 : 1,
+              opacity: (isOwned && alreadyAtArea) || (!isOwned && !canRedeem) || busyDogId !== null || working ? 0.5 : 1,
             },
           ]}
         >
           <Feather name={working ? 'loader' : isOwned ? 'move' : 'plus'} size={15} color={isOwned ? colors.primary : colors.primaryForeground} />
           <Text style={[styles.actionButtonText, { color: isOwned ? colors.primary : colors.primaryForeground }]}>
             {isOwned
-              ? alreadyAtStation ? '已在這個專屬站位' : `免費移到${selectedStation.label}`
-              : stationOccupiedByOtherDog ? '請選擇空站位' : canRedeem ? `兌換並安排 · ${activeDog.price} 金幣` : `還差 ${activeDog.price - coins} 金幣`}
+              ? alreadyAtArea ? `已在${selectedAreaLabel}` : `免費移到${selectedAreaLabel}`
+              : canRedeem ? `兌換並安排 · ${activeDog.price} 金幣` : `還差 ${activeDog.price - coins} 金幣`}
           </Text>
         </Pressable>
-        {isOwned && currentStationId && (
+        {isOwned && currentAreaId && (
           <Pressable
             testID={`dog-staff-store-${activeDog.key}`}
             accessibilityRole="button"
@@ -431,12 +409,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: '800' },
   copy: { fontSize: 11, lineHeight: 16 },
   subheading: { fontSize: 13, fontWeight: '800' },
-  stationPicker: { gap: 8, paddingVertical: 2, paddingRight: 4 },
-  stationCard: { width: 78, minHeight: 91, borderWidth: 1, borderRadius: 13, alignItems: 'center', justifyContent: 'center', padding: 5, gap: 2 },
-  stationNumber: { fontSize: 8, fontWeight: '700' },
-  stationPreview: { width: 44, height: 45, alignItems: 'center', justifyContent: 'center', transform: [{ scale: 0.78 }] },
-  stationName: { maxWidth: '100%', fontSize: 9, fontWeight: '800', textAlign: 'center' },
-  selectedStationCopy: { fontSize: 10, fontWeight: '800' },
+  areaPicker: { gap: 8, paddingVertical: 2, paddingRight: 4 },
+  areaCard: { width: 82, minHeight: 69, borderWidth: 1, borderRadius: 13, alignItems: 'center', justifyContent: 'center', padding: 5, gap: 2 },
+  areaName: { maxWidth: '100%', fontSize: 9, fontWeight: '800', textAlign: 'center' },
+  areaCount: { fontSize: 8, fontWeight: '700' },
+  selectedAreaCopy: { fontSize: 10, fontWeight: '800' },
   dogPicker: { gap: 8, paddingVertical: 2, paddingRight: 4 },
   dogChip: { width: 68, minHeight: 87, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 5, gap: 1 },
   dogChipPreview: { width: 45, height: 45, transform: [{ scale: 0.78 }], alignItems: 'center', justifyContent: 'center' },

@@ -101,17 +101,30 @@ test('six areas each expose eight slots (48 total) and legacy/main placements re
   assert.equal(parseShopInteriorPlacementId('extension-3:unknown'), null);
 });
 
-test('cafe dog staff have a separate animated-scene dock below the furniture canvas', () => {
-  assert.equal(dogStaffStyles.DOG_STAFF_STATIONS.length, 14);
+test('cafe dog staff appear in assigned extension scenes without using furniture slots', () => {
+  const stations = dogStaffStyles.DOG_STAFF_STATIONS;
+  assert.equal(stations.length, 14);
+  assert.deepEqual(
+    ['extension-1', 'extension-2', 'extension-3', 'extension-4', 'extension-5']
+      .map((areaId) => stations.filter((station) => station.areaId === areaId).length),
+    [3, 3, 3, 3, 2],
+    'all five extensions have dedicated dog staff stations',
+  );
+  assert.equal(typeof dogStaffStyles.getDogStaffStationAreaLabel, 'function');
+  assert.equal(dogStaffStyles.getDogStaffStationAreaLabel('extension-5'), '延伸區 5');
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  const page = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
   const imageEnd = scene.indexOf('</ImageBackground>');
-  const staffDock = scene.indexOf('testID="dog-staff-scene-dock"');
-  assert.ok(imageEnd >= 0 && staffDock > imageEnd, 'the staff dock is outside the furniture/background image layer');
+  const staffArea = scene.indexOf('testID={`dog-staff-scene-area-${areaId}`}');
+  assert.ok(imageEnd >= 0 && staffArea >= 0 && staffArea < imageEnd, 'assigned dogs render inside the selected extension image');
+  assert.doesNotMatch(scene, /dog-staff-scene-dock/);
   assert.match(scene, /sceneKey === 'cafe'/);
-  assert.match(scene, /DOG_STAFF_STATIONS\.map/);
+  assert.match(scene, /DOG_STAFF_STATIONS\s*\.filter/);
+  assert.match(scene, /station\.areaId === areaId/);
   assert.match(scene, /dogStaffPlacements\?\.\[station\.id\]/);
   assert.match(scene, /<AnimatedStaffDog/);
-  assert.match(scene, /14 個 · 獨立於 48 個佈置位置/);
+  assert.match(page, /areaId=\{selectedArea\}/);
+  assert.match(page, /setSelectedArea\(station\.areaId\)/);
 });
 
 const anchorSource = ts.transpileModule(

@@ -72,24 +72,61 @@ export interface DogStaffLook {
   accessoryId: string;
 }
 
+export type DogStaffExtensionAreaId = 'extension-1' | 'extension-2' | 'extension-3' | 'extension-4' | 'extension-5';
+export type DogStaffAreaId = 'main' | DogStaffExtensionAreaId;
+export type DogStaffAreaPlacements = Partial<Record<string, DogStaffAreaId>>;
+
+export const DOG_STAFF_ROUTES = [
+  { from: 7, to: 72, top: 78, duration: 14000 },
+  { from: 79, to: 19, top: 84, duration: 13200 },
+  { from: 18, to: 80, top: 89, duration: 15800 },
+  { from: 84, to: 16, top: 92, duration: 15100 },
+  { from: 10, to: 66, top: 81, duration: 16000 },
+  { from: 72, to: 25, top: 87, duration: 13600 },
+  { from: 24, to: 76, top: 93, duration: 16800 },
+  { from: 80, to: 8, top: 79, duration: 15400 },
+  { from: 6, to: 84, top: 86, duration: 17400 },
+  { from: 75, to: 20, top: 90, duration: 14500 },
+  { from: 15, to: 70, top: 83, duration: 15300 },
+  { from: 86, to: 30, top: 91, duration: 16500 },
+  { from: 31, to: 80, top: 88, duration: 14700 },
+  { from: 68, to: 12, top: 82, duration: 15900 },
+] as const;
+
+export function isDogStaffAreaId(value: unknown): value is DogStaffAreaId {
+  return value === 'main'
+    || value === 'extension-1'
+    || value === 'extension-2'
+    || value === 'extension-3'
+    || value === 'extension-4'
+    || value === 'extension-5';
+}
+
+export function getDogStaffAreaLabel(areaId: DogStaffAreaId): string {
+  return areaId === 'main' ? '主區' : `延伸區 ${areaId.slice('extension-'.length)}`;
+}
+
 export const DOG_STAFF_STATIONS = [
-  { id: 'entrance-greeting', label: '入口迎賓' },
-  { id: 'window-side', label: '窗邊座位' },
-  { id: 'counter-left', label: '櫃台左側' },
-  { id: 'counter-right', label: '櫃台右側' },
-  { id: 'cotton-candy-machine', label: '棉花糖機旁' },
-  { id: 'coffee-bar', label: '咖啡吧旁' },
-  { id: 'dessert-display', label: '甜點展示櫃' },
-  { id: 'center-seating', label: '中央座位' },
-  { id: 'lounge-left', label: '左側沙發' },
-  { id: 'lounge-right', label: '右側沙發' },
-  { id: 'garden-window', label: '花園窗邊' },
-  { id: 'event-corner', label: '活動角落' },
-  { id: 'kitchen-door', label: '後場入口' },
-  { id: 'photo-corner', label: '拍照小角落' },
+  { id: 'entrance-greeting', label: '入口迎賓', areaId: 'extension-1' },
+  { id: 'window-side', label: '窗邊座位', areaId: 'extension-1' },
+  { id: 'counter-left', label: '櫃台左側', areaId: 'extension-1' },
+  { id: 'counter-right', label: '櫃台右側', areaId: 'extension-2' },
+  { id: 'cotton-candy-machine', label: '棉花糖機旁', areaId: 'extension-2' },
+  { id: 'coffee-bar', label: '咖啡吧旁', areaId: 'extension-2' },
+  { id: 'dessert-display', label: '甜點展示櫃', areaId: 'extension-3' },
+  { id: 'center-seating', label: '中央座位', areaId: 'extension-3' },
+  { id: 'lounge-left', label: '左側沙發', areaId: 'extension-3' },
+  { id: 'lounge-right', label: '右側沙發', areaId: 'extension-4' },
+  { id: 'garden-window', label: '花園窗邊', areaId: 'extension-4' },
+  { id: 'event-corner', label: '活動角落', areaId: 'extension-4' },
+  { id: 'kitchen-door', label: '後場入口', areaId: 'extension-5' },
+  { id: 'photo-corner', label: '拍照小角落', areaId: 'extension-5' },
 ] as const;
 
 export type DogStaffStationId = typeof DOG_STAFF_STATIONS[number]['id'];
+export function getDogStaffStationAreaLabel(areaId: DogStaffExtensionAreaId): string {
+  return `延伸區 ${areaId.slice('extension-'.length)}`;
+}
 const outfitThemes = [
   '草莓雲朵',
   '莓果奶霜',

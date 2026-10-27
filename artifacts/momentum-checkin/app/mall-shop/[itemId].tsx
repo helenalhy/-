@@ -33,9 +33,9 @@ import {
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_PROFILES,
-  DOG_STAFF_STATIONS,
+  getDogStaffAreaLabel,
+  type DogStaffAreaId,
   type DogStaffLook,
-  type DogStaffStationId,
 } from '@/constants/dog-staff-customization';
 import { MALL_FLOORS, MALL_ITEM_BY_ID } from '@/constants/mall';
 import type { MallVisualCategory } from '@/constants/mall-visual-profile';
@@ -207,18 +207,18 @@ export default function MallShopInteriorScreen() {
     await updateShopInteriorDogLook(shop.id, dogDecorationId, look);
   }
 
-  async function arrangeDogStaff(dogDecorationId: string, stationId: DogStaffStationId) {
+  async function arrangeDogStaff(dogDecorationId: string, areaId: DogStaffAreaId) {
     if (!shop || !hasAccess || workingDecoration) return;
     const alreadyOwned = owned.has(dogDecorationId);
     setWorkingDecoration(dogDecorationId);
     setNotice('');
     try {
-      await placeShopInteriorDogStaff(shop.id, dogDecorationId, stationId);
+      await placeShopInteriorDogStaff(shop.id, dogDecorationId, areaId);
+      setSelectedArea(areaId);
       const dogName = DOG_STAFF_PROFILES.find(({ decorationId }) => decorationId === dogDecorationId)?.name ?? '狗狗店員';
-      const stationName = DOG_STAFF_STATIONS.find(({ id }) => id === stationId)?.label ?? '專屬站位';
       setNotice(alreadyOwned
-        ? `已免費將${dogName}移到${stationName}。`
-        : `已兌換${dogName}並安排在${stationName}，已扣除相應金幣；服裝與配飾免費附送。`);
+        ? `已免費將${dogName}安排到${getDogStaffAreaLabel(areaId)}，牠會在地面來回巡走。`
+        : `已兌換${dogName}並安排到${getDogStaffAreaLabel(areaId)}，已扣除相應金幣；服裝與配飾免費附送。`);
     } catch (error) {
       Alert.alert('店員安排未完成', error instanceof Error ? error.message : '請稍後再試。');
       throw error;
@@ -344,6 +344,7 @@ export default function MallShopInteriorScreen() {
               sceneKey={getShopInteriorSceneKey(shop.shopType, shop.id, shop.name)}
               shopName={shop.name}
               shopColor={shop.color}
+              areaId={selectedArea}
               areaLabel={getShopInteriorAreaLabel(selectedArea)}
               placements={areaPlacements}
               decorations={interiorDecorations}
@@ -403,10 +404,10 @@ export default function MallShopInteriorScreen() {
                 dogs={DOG_STAFF_PROFILES}
                 ownedDecorationIds={ownedDecorationIds}
                 looks={interior?.dogStaffLooks}
-                stationPlacements={interior?.dogStaffPlacements}
+                areaPlacements={interior?.dogStaffPlacements}
                 coins={coins}
                 busyDogId={workingDecoration}
-                onRedeem={(dogDecorationId, stationId) => arrangeDogStaff(dogDecorationId, stationId)}
+                onRedeem={(dogDecorationId, areaId) => arrangeDogStaff(dogDecorationId, areaId)}
                 onMoveDog={arrangeDogStaff}
                 onStoreDog={storeDogStaff}
                 onSelectLook={saveDogStaffLook}

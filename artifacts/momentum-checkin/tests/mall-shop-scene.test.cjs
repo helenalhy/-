@@ -18,6 +18,13 @@ function loadDogStaffStyles() {
   return module.exports;
 }
 const dogStaffStyles = loadDogStaffStyles();
+const dogFoodsSource = ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../constants/dog-staff-foods.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },
+).outputText;
+const dogFoodsModule = { exports: {} };
+new Function('module', 'exports', dogFoodsSource)(dogFoodsModule, dogFoodsModule.exports);
+const { DOG_STAFF_FOOD_OPTIONS } = dogFoodsModule.exports;
 const constantsSource = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-shop-interior.ts'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },
@@ -155,6 +162,26 @@ test('all fourteen dogs get distinct illustrated care colors and five-second act
   assert.match(scene, /testID="dog-care-icon-pet"/);
   assert.match(scene, /testID="dog-care-icon-ball"/);
   assert.match(scene, /每次互動約 5 秒/);
+});
+
+test('every café dog has five unique food choices including the requested chicken and beef', () => {
+  const profileKeys = dogStaffStyles.DOG_STAFF_PROFILES.map(({ key }) => key).sort();
+  assert.deepEqual(Object.keys(DOG_STAFF_FOOD_OPTIONS).sort(), profileKeys);
+  const everyFood = Object.values(DOG_STAFF_FOOD_OPTIONS).flat();
+  assert.equal(everyFood.length, 70);
+  assert.equal(new Set(everyFood.map(({ name }) => name)).size, 70, 'food names are distinct across all dogs');
+  for (const dogKey of profileKeys) {
+    const foods = DOG_STAFF_FOOD_OPTIONS[dogKey];
+    assert.equal(foods.length, 5, `${dogKey} has five food choices`);
+    assert.equal(new Set(foods.map(({ id }) => id)).size, 5, `${dogKey} has no repeated food IDs`);
+    assert.equal(new Set(foods.map(({ name }) => name)).size, 5, `${dogKey} has no repeated food names`);
+  }
+  assert.ok(DOG_STAFF_FOOD_OPTIONS['fluffy-staff-huahua'].some(({ name }) => name.includes('雞肉')));
+  assert.ok(DOG_STAFF_FOOD_OPTIONS['fluffy-staff-milkshake'].some(({ name }) => name.includes('牛肉')));
+  assert.match(
+    fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8'),
+    /每隻狗都有 5 款專屬小食/,
+  );
 });
 
 test('grooming and petting give the walking dog a closed-eye smile', () => {

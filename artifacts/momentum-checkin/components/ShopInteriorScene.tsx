@@ -16,6 +16,7 @@ import {
   type DogStaffLook,
   type DogStaffProfile,
 } from '@/constants/dog-staff-customization';
+import { DOG_STAFF_FOOD_OPTIONS, type DogStaffFoodOption } from '@/constants/dog-staff-foods';
 import { useColors } from '@/hooks/useColors';
 
 type DogStaffInteractionAction = 'groom' | 'pet' | 'feed' | 'play';
@@ -124,6 +125,7 @@ export function ShopInteriorScene({
   const [selectedDog, setSelectedDog] = useState<AreaDogStaff | null>(null);
   const [dogInteraction, setDogInteraction] = useState<DogStaffInteraction | null>(null);
   const [interactionMessage, setInteractionMessage] = useState('');
+  const [foodPickerOpen, setFoodPickerOpen] = useState(false);
   const interactionSequence = useRef(0);
   const merchandiseMotion = useRef(new Animated.Value(0)).current;
   const completeDogInteraction = useCallback((id: number) => {
@@ -153,6 +155,7 @@ export function ShopInteriorScene({
     setSelectedDog(null);
     setDogInteraction(null);
     setInteractionMessage('');
+    setFoodPickerOpen(false);
   }, [areaId]);
   useEffect(() => {
     if (!hasMerchandise) {
@@ -166,6 +169,24 @@ export function ShopInteriorScene({
     loop.start();
     return () => loop.stop();
   }, [hasMerchandise, merchandiseMotion]);
+  const startDogInteraction = (action: DogStaffInteractionAction, food?: DogStaffFoodOption) => {
+    if (!selectedDog) return;
+    interactionSequence.current += 1;
+    setDogInteraction({
+      dogDecorationId: selectedDog.dog.decorationId,
+      action,
+      id: interactionSequence.current,
+    });
+    const response = action === 'groom'
+      ? `${selectedDog.dog.name}舒服地享受梳毛，毛毛變得蓬鬆亮澤。`
+      : action === 'pet'
+        ? `${selectedDog.dog.name}舒服地瞇起眼睛，享受你的摸摸。`
+        : action === 'feed'
+          ? `${selectedDog.dog.name}開心地吃完${food?.name ?? '小點心'}，尾巴搖個不停。`
+          : `${selectedDog.dog.name}玩得很開心，蹦蹦跳跳地回來了。`;
+    setInteractionMessage(response);
+    setFoodPickerOpen(false);
+  };
   return (
     <View
       testID={testID}
@@ -298,7 +319,10 @@ export function ShopInteriorScene({
         visible={selectedDog !== null}
         transparent
         animationType="slide"
-        onRequestClose={() => setSelectedDog(null)}
+        onRequestClose={() => {
+          setSelectedDog(null);
+          setFoodPickerOpen(false);
+        }}
         statusBarTranslucent
       >
         <View style={styles.interactionBackdrop}>
@@ -306,7 +330,10 @@ export function ShopInteriorScene({
             testID="dog-staff-interaction-dismiss"
             accessibilityRole="button"
             accessibilityLabel="關閉狗狗互動"
-            onPress={() => setSelectedDog(null)}
+            onPress={() => {
+              setSelectedDog(null);
+              setFoodPickerOpen(false);
+            }}
             style={StyleSheet.absoluteFill}
           />
           {selectedDog && (
@@ -333,17 +360,63 @@ export function ShopInteriorScene({
                     testID="dog-staff-interaction-close"
                     accessibilityRole="button"
                     accessibilityLabel="關閉狗狗互動"
-                    onPress={() => setSelectedDog(null)}
+                    onPress={() => {
+                      setSelectedDog(null);
+                      setFoodPickerOpen(false);
+                    }}
                     style={[styles.interactionClose, { backgroundColor: colors.secondary }]}
                   >
                     <Feather name="x" size={18} color={colors.primary} />
                   </Pressable>
                 </View>
                 <Text style={[styles.interactionHelper, { color: colors.mutedForeground }]}>
-                  兌換後附送 · 每次互動約 5 秒，不耗金幣
+                  {foodPickerOpen
+                    ? '每隻狗都有 5 款專屬小食 · 選一款開始餵食'
+                    : '兌換後附送 · 每次互動約 5 秒，不耗金幣'}
                 </Text>
-                <View style={styles.interactionActions}>
-                  {DOG_STAFF_INTERACTIONS.map((action) => (
+                {foodPickerOpen ? (
+                  <>
+                    <View style={styles.foodPickerHeader}>
+                      <Pressable
+                        testID="dog-staff-food-picker-back"
+                        accessibilityRole="button"
+                        accessibilityLabel="返回狗狗互動"
+                        onPress={() => setFoodPickerOpen(false)}
+                        style={[styles.interactionClose, { backgroundColor: colors.secondary }]}
+                      >
+                        <Feather name="arrow-left" size={17} color={colors.primary} />
+                      </Pressable>
+                      <Text style={[styles.foodPickerTitle, { color: colors.foreground }]}>為{selectedDog.dog.name}選擇小食</Text>
+                    </View>
+                    <View testID="dog-staff-food-picker" style={styles.interactionActions}>
+                      {DOG_STAFF_FOOD_OPTIONS[selectedDog.dog.key].map((food) => (
+                        <Pressable
+                          key={food.id}
+                          testID={`dog-staff-food-${food.id}`}
+                          accessibilityRole="button"
+                          accessibilityLabel={`免費餵${selectedDog.dog.name}${food.name}，不耗金幣`}
+                          onPress={() => startDogInteraction('feed', food)}
+                          style={({ pressed }) => [
+                            styles.foodOption,
+                            {
+                              backgroundColor: pressed ? colors.secondary : colors.background,
+                              borderColor: colors.border,
+                            },
+                          ]}
+                        >
+                          <DogCareIllustration
+                            action="feed"
+                            color={getDogCareColor(selectedDog.dog.key, colors)}
+                            size={30}
+                          />
+                          <Text numberOfLines={2} style={[styles.foodOptionName, { color: colors.foreground }]}>{food.name}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.interactionActions}>
+                    {DOG_STAFF_INTERACTIONS.map((action) => (
                     <Pressable
                       key={action.id}
                       testID={`dog-staff-interaction-${selectedDog.dog.key}-${action.id}`}
@@ -352,20 +425,13 @@ export function ShopInteriorScene({
                         ? `免費摸摸${selectedDog.dog.name}，不耗金幣`
                         : `免費為${selectedDog.dog.name}${action.title}，不耗金幣`}
                       onPress={() => {
-                        interactionSequence.current += 1;
-                        setDogInteraction({
-                          dogDecorationId: selectedDog.dog.decorationId,
-                          action: action.id,
-                          id: interactionSequence.current,
-                        });
-                        const response = action.id === 'groom'
-                          ? `${selectedDog.dog.name}舒服地享受梳毛，毛毛變得蓬鬆亮澤。`
-                          : action.id === 'pet'
-                            ? `${selectedDog.dog.name}舒服地瞇起眼睛，享受你的摸摸。`
-                            : action.id === 'feed'
-                              ? `${selectedDog.dog.name}開心地吃完小點心，尾巴搖個不停。`
-                              : `${selectedDog.dog.name}玩得很開心，蹦蹦跳跳地回來了。`;
-                        setInteractionMessage(response);
+                        if (action.id === 'feed') {
+                          setDogInteraction(null);
+                          setInteractionMessage('');
+                          setFoodPickerOpen(true);
+                          return;
+                        }
+                        startDogInteraction(action.id);
                       }}
                       style={({ pressed }) => [
                         styles.interactionAction,
@@ -385,8 +451,9 @@ export function ShopInteriorScene({
                       <Text style={[styles.interactionActionTitle, { color: colors.foreground }]}>{action.title}</Text>
                       <Text style={[styles.interactionActionDescription, { color: colors.mutedForeground }]}>{action.description}</Text>
                     </Pressable>
-                  ))}
-                </View>
+                    ))}
+                  </View>
+                )}
                 {interactionMessage ? (
                   <Text
                     testID="dog-staff-interaction-feedback"
@@ -786,6 +853,10 @@ const styles = StyleSheet.create({
   interactionActionTitle: { fontSize: 12, fontWeight: '800' },
   interactionActionDescription: { minHeight: 23, fontSize: 8, lineHeight: 11, textAlign: 'center' },
   interactionFeedback: { minHeight: 18, fontSize: 11, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
+  foodPickerHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  foodPickerTitle: { flex: 1, fontSize: 13, fontWeight: '800', textAlign: 'center', marginRight: 38 },
+  foodOption: { width: '47%', minWidth: 0, minHeight: 78, borderWidth: 1, borderRadius: 16, paddingHorizontal: 8, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  foodOptionName: { fontSize: 11, lineHeight: 14, fontWeight: '700', textAlign: 'center' },
   careIllustration: { position: 'relative', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   combHead: { position: 'absolute', borderRadius: 4, justifyContent: 'center' },
   combShine: { position: 'absolute', top: 1, left: 3, width: '42%', height: 1.5, borderRadius: 2, opacity: 0.9 },

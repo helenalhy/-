@@ -1181,11 +1181,22 @@ test('redeemed cafe dogs walk, open free care actions, and stay outside the 48 i
   for (const [action, feedback] of [
     ['groom', '享受梳毛'],
     ['pet', '享受你的摸摸'],
-    ['feed', '小點心'],
+    ['feed', '雞肉小肉乾'],
     ['play', '玩得很開心'],
   ]) {
     await press(interactionTree, `dog-staff-interaction-fluffy-staff-huahua-${action}`);
     interactionTree = app.renderShopInteriorScene(interiorTree);
+    if (action === 'feed') {
+      const foodPicker = findByTestId(interactionTree, 'dog-staff-food-picker');
+      assert.ok(foodPicker, 'choosing feed opens the dog-specific food picker');
+      assert.equal(
+        findNodes(foodPicker, (node) => /^dog-staff-food-fluffy-staff-huahua-food-/.test(node.props?.testID ?? '')).length,
+        5,
+        'Huahua can choose from five foods',
+      );
+      await press(interactionTree, 'dog-staff-food-fluffy-staff-huahua-food-chicken-bites');
+      interactionTree = app.renderShopInteriorScene(interiorTree);
+    }
     assert.ok(textContent(findByTestId(interactionTree, 'dog-staff-interaction-feedback')).includes(feedback));
     assert.equal(app.contextExports.useHabits().coins, 40, `${action} is included and does not spend coins`);
     assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffPlacements[dogId], 'main');

@@ -1985,17 +1985,18 @@ test('6F 毛茸茸棉花糖cafe keeps 50 choices and adds fourteen redeemable do
   assert.ok(dogStaff.every((option) => option.price > 0 && option.itemKind === 'decoration'));
 });
 
-test('each cafe dog has 50 unique, dog-specific outfits and 50 unique accessories', () => {
+test('each cafe dog has unique dog-specific outfits and accessories, including the requested princess and skirt sets', () => {
   const allOutfitIds = new Set();
   const allAccessoryIds = new Set();
   for (const dog of dogStaffStyleCatalog.DOG_STAFF_PROFILES) {
     const catalog = dogStaffStyleCatalog.DOG_STAFF_STYLE_CATALOGS[dog.decorationId];
-    assert.equal(catalog.outfits.length, 50, `${dog.name} has exactly 50 outfits`);
+    const requestedSkirtDog = ['general-fluffy-staff-huahua', 'general-fluffy-staff-milkshake'].includes(dog.decorationId);
+    assert.equal(catalog.outfits.length, requestedSkirtDog ? 56 : 50, `${dog.name} retains its outfits and adds the requested set`);
     assert.equal(catalog.accessories.length, 50, `${dog.name} has exactly 50 accessories`);
-    assert.equal(new Set(catalog.outfits.map(({ id }) => id)).size, 50, `${dog.name}'s outfit IDs are unique`);
-    assert.equal(new Set(catalog.outfits.map(({ name }) => name)).size, 50, `${dog.name}'s outfit names are unique`);
+    assert.equal(new Set(catalog.outfits.map(({ id }) => id)).size, catalog.outfits.length, `${dog.name}'s outfit IDs are unique`);
+    assert.equal(new Set(catalog.outfits.map(({ name }) => name)).size, catalog.outfits.length, `${dog.name}'s outfit names are unique`);
     assert.equal(new Set(catalog.outfits.map(({ cut, color, accentColor, pattern }) =>
-      `${cut}|${color}|${accentColor}|${pattern}`)).size, 50, `${dog.name}'s outfit designs are unique`);
+      `${cut}|${color}|${accentColor}|${pattern}`)).size, catalog.outfits.length, `${dog.name}'s outfit designs are unique`);
     assert.equal(new Set(catalog.accessories.map(({ id }) => id)).size, 50, `${dog.name}'s accessory IDs are unique`);
     assert.equal(new Set(catalog.accessories.map(({ name }) => name)).size, 50, `${dog.name}'s accessory names are unique`);
     assert.equal(new Set(catalog.accessories.map(({ shape, color, accentColor, motif }) =>
@@ -2011,6 +2012,15 @@ test('each cafe dog has 50 unique, dog-specific outfits and 50 unique accessorie
       allAccessoryIds.add(choice.id);
     }
   }
-  assert.equal(allOutfitIds.size, 14 * 50);
+  assert.equal(allOutfitIds.size, 14 * 50 + 12);
   assert.equal(allAccessoryIds.size, 14 * 50);
+
+  for (const [dogId, expectedNames] of [
+    ['general-fluffy-staff-huahua', ['花花・粉紅色公主裙', ...Array.from({ length: 5 }, (_, i) => `花花・粉紅色小裙子 ${i + 1}`)]],
+    ['general-fluffy-staff-milkshake', ['奶昔・紫色公主裙', ...Array.from({ length: 5 }, (_, i) => `奶昔・紫色小裙子 ${i + 1}`)]],
+  ]) {
+    const extras = dogStaffStyleCatalog.DOG_STAFF_STYLE_CATALOGS[dogId].outfits.slice(-6);
+    assert.deepEqual(extras.map(({ name }) => name), expectedNames);
+    assert.ok(extras.every(({ cut }) => cut === 'princess' || cut === 'little-skirt'));
+  }
 });

@@ -215,6 +215,8 @@ export function DogAttendant({
     jacket: s.jacketOutfit,
     cape: s.capeOutfit,
     dress: s.dressOutfit,
+    princess: s.princessOutfit,
+    'little-skirt': s.littleSkirtOutfit,
   }[outfit.cut] : null;
   const accessoryShapeStyle = accessory ? {
     bow: s.bowAccessory,
@@ -312,6 +314,8 @@ const s = StyleSheet.create({
   jacketOutfit: { left: 14, bottom: 7, width: 23, height: 9, borderRadius: 5 },
   capeOutfit: { left: 11, bottom: 5, width: 28, height: 13, borderRadius: 8 },
   dressOutfit: { left: 11, bottom: 4, width: 28, height: 14, borderRadius: 7, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
+  princessOutfit: { left: 8, bottom: 3, width: 34, height: 16, borderRadius: 9, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
+  littleSkirtOutfit: { left: 12, bottom: 4, width: 26, height: 12, borderRadius: 7, borderBottomLeftRadius: 11, borderBottomRightRadius: 11 },
   outfitDetail: { position: 'absolute', left: 3, top: 3, width: 7, height: 2, borderRadius: 2 },
   outfitStripe: { width: 16, height: 2, left: 2, top: 4 },
   outfitCheck: { width: 6, height: 4, left: 4, top: 3 },

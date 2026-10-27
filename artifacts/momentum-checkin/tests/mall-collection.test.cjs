@@ -16,6 +16,10 @@ const checkInTransactionKey = 'momentum.checkin-transaction.v1';
 const dogId = 'general-fluffy-staff-huahua';
 const dogOutfits = [`${dogId}:outfit:01`, `${dogId}:outfit:02`];
 const dogAccessories = [`${dogId}:accessory:01`, `${dogId}:accessory:02`];
+const dogStations = [
+  { id: 'entrance-greeting', label: '入口迎賓' },
+  { id: 'window-side', label: '窗邊座位' },
+];
 
 async function mount(storage, { failWritesOnLoad = false, expectedStorageError = null } = {}) {
   const states = [];
@@ -81,6 +85,10 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       },
     };
     if (name === '@/constants/dog-staff-customization') return {
+      DOG_STAFF_PROFILE_BY_DECORATION_ID: {
+        [dogId]: { decorationId: dogId },
+      },
+      DOG_STAFF_STATIONS: dogStations,
       DOG_STAFF_STYLE_CATALOGS: {
         [dogId]: {
           outfits: dogOutfits.map((id) => ({ id })),
@@ -429,6 +437,8 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
     },
   });
   let app = await mount(storage);
+  assert.deepEqual(app.value.shopInteriors[shopId].placements, {}, 'legacy dog positions are removed from the 48 general slots');
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { 'entrance-greeting': dogId });
   app.setFailWriteKey(key);
   await assert.rejects(
     app.value.updateShopInteriorDogLook(shopId, dogId, {
@@ -444,7 +454,8 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
     accessoryId: dogAccessories[1],
   });
   assert.equal(app.value.coins, 100, 'changing an included look does not cost coins');
-  assert.deepEqual(app.value.shopInteriors[shopId].placements, { 'front-window': dogId });
+  assert.deepEqual(app.value.shopInteriors[shopId].placements, {});
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { 'entrance-greeting': dogId });
   assert.deepEqual(app.value.shopInteriors[shopId].dogStaffLooks[dogId], {
     outfitId: dogOutfits[1],
     accessoryId: dogAccessories[1],
@@ -455,6 +466,17 @@ test('redeemed cafe dog looks are free, restricted to that dog, and persist with
     outfitId: dogOutfits[1],
     accessoryId: dogAccessories[1],
   });
+  await app.value.placeShopInteriorDogStaff(shopId, dogId, 'window-side');
+  assert.equal(app.value.coins, 100, 'moving an owned dog between exclusive stations is free');
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, { 'window-side': dogId });
+  await app.value.storeShopInteriorDogStaff(shopId, dogId);
+  assert.equal(app.value.coins, 100, 'storing an owned dog does not refund or charge coins');
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffPlacements, {});
+  assert.ok(app.value.shopInteriors[shopId].ownedDecorations.includes(dogId), 'the dog remains owned in the collection');
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffLooks[dogId], {
+    outfitId: dogOutfits[1],
+    accessoryId: dogAccessories[1],
+  }, 'storing a dog preserves its saved look');
   await assert.rejects(
     app.value.updateShopInteriorDogLook(shopId, 'unowned-dog', {
       outfitId: dogOutfits[0],

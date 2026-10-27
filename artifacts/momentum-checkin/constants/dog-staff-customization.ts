@@ -32,7 +32,7 @@ export const DOG_STAFF_PROFILES: DogStaffProfile[] = [
   { decorationId: 'general-fluffy-staff-poppy', key: 'fluffy-staff-poppy', name: '波比', breed: '淺啡臘腸犬', description: '淺啡色臘腸波比會慢慢走到每個角落打招呼。', icon: 'heart', price: 95, color: c.candyCaramel, visual: 'dog-staff-poppy', kind: 'poppy' },
 ];
 
-export type DogOutfitCut = 'apron' | 'vest' | 'jacket' | 'cape' | 'dress';
+export type DogOutfitCut = 'apron' | 'vest' | 'jacket' | 'cape' | 'dress' | 'princess' | 'little-skirt';
 export type DogAccessoryShape = 'bow' | 'beret' | 'headband' | 'flower' | 'scarf';
 export type DogOutfitPattern = 'dots' | 'stripes' | 'checks' | 'stars' | 'flowers';
 
@@ -61,6 +61,24 @@ export interface DogStaffLook {
   accessoryId: string;
 }
 
+export const DOG_STAFF_STATIONS = [
+  { id: 'entrance-greeting', label: '入口迎賓' },
+  { id: 'window-side', label: '窗邊座位' },
+  { id: 'counter-left', label: '櫃台左側' },
+  { id: 'counter-right', label: '櫃台右側' },
+  { id: 'cotton-candy-machine', label: '棉花糖機旁' },
+  { id: 'coffee-bar', label: '咖啡吧旁' },
+  { id: 'dessert-display', label: '甜點展示櫃' },
+  { id: 'center-seating', label: '中央座位' },
+  { id: 'lounge-left', label: '左側沙發' },
+  { id: 'lounge-right', label: '右側沙發' },
+  { id: 'garden-window', label: '花園窗邊' },
+  { id: 'event-corner', label: '活動角落' },
+  { id: 'kitchen-door', label: '後場入口' },
+  { id: 'photo-corner', label: '拍照小角落' },
+] as const;
+
+export type DogStaffStationId = typeof DOG_STAFF_STATIONS[number]['id'];
 const outfitThemes = [
   '草莓雲朵',
   '莓果奶霜',
@@ -104,9 +122,12 @@ const styleColors = [
   c.candyCaramel,
 ];
 
+const specialSkirtAccents = [c.candyRose, c.candyCoral, c.candyLavender, c.candyLemon, c.candyMint];
+const specialSkirtPatterns: DogOutfitPattern[] = ['dots', 'stripes', 'checks', 'stars', 'flowers'];
+
 export const DOG_STAFF_STYLE_CATALOGS = Object.fromEntries(
   DOG_STAFF_PROFILES.map((dog, dogIndex) => {
-    const outfits = outfitThemes.flatMap((theme, themeIndex) =>
+    const standardOutfits = outfitThemes.flatMap((theme, themeIndex) =>
       outfitCuts.map((cut, cutIndex) => {
         const index = themeIndex * outfitCuts.length + cutIndex;
         return {
@@ -120,6 +141,50 @@ export const DOG_STAFF_STYLE_CATALOGS = Object.fromEntries(
         };
       }),
     );
+    const specialOutfits = dog.decorationId === 'general-fluffy-staff-huahua'
+      ? [
+        {
+          id: `${dog.decorationId}:outfit:special-pink-princess`,
+          name: '花花・粉紅色公主裙',
+          dogDecorationId: dog.decorationId,
+          color: c.candyPink,
+          accentColor: c.candyRose,
+          cut: 'princess' as const,
+          pattern: 'stars' as const,
+        },
+        ...specialSkirtAccents.map((accentColor, index) => ({
+          id: `${dog.decorationId}:outfit:special-pink-skirt-${index + 1}`,
+          name: `花花・粉紅色小裙子 ${index + 1}`,
+          dogDecorationId: dog.decorationId,
+          color: c.candyPink,
+          accentColor,
+          cut: 'little-skirt' as const,
+          pattern: specialSkirtPatterns[index],
+        })),
+      ]
+      : dog.decorationId === 'general-fluffy-staff-milkshake'
+        ? [
+          {
+            id: `${dog.decorationId}:outfit:special-purple-princess`,
+            name: '奶昔・紫色公主裙',
+            dogDecorationId: dog.decorationId,
+            color: c.candyLavender,
+            accentColor: c.candyLavenderDark,
+            cut: 'princess' as const,
+            pattern: 'stars' as const,
+          },
+          ...specialSkirtAccents.map((accentColor, index) => ({
+            id: `${dog.decorationId}:outfit:special-purple-skirt-${index + 1}`,
+            name: `奶昔・紫色小裙子 ${index + 1}`,
+            dogDecorationId: dog.decorationId,
+            color: c.candyLavender,
+            accentColor,
+            cut: 'little-skirt' as const,
+            pattern: specialSkirtPatterns[index],
+          })),
+        ]
+        : [];
+    const outfits = [...standardOutfits, ...specialOutfits];
     const accessories = accessoryMotifs.flatMap((motif, motifIndex) =>
       accessoryShapes.map((shape, shapeIndex) => {
         const index = motifIndex * accessoryShapes.length + shapeIndex;

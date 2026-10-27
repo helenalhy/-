@@ -30,8 +30,11 @@ import {
   type ShopInteriorSlotId,
 } from '@/constants/mall-shop-interior';
 import {
+  DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_PROFILES,
+  DOG_STAFF_STATIONS,
   type DogStaffLook,
+  type DogStaffStationId,
 } from '@/constants/dog-staff-customization';
 import { MALL_FLOORS, MALL_ITEM_BY_ID } from '@/constants/mall';
 import type { MallVisualCategory } from '@/constants/mall-visual-profile';
@@ -102,6 +105,8 @@ export default function MallShopInteriorScreen() {
     shopInteriors,
     placeShopInteriorDecoration,
     storeShopInteriorDecoration,
+    placeShopInteriorDogStaff,
+    storeShopInteriorDogStaff,
     updateShopInteriorDogLook,
   } = useHabits();
   const [selectedSlot, setSelectedSlot] = useState<ShopInteriorSlotId>(SHOP_INTERIOR_SLOTS[0].id);
@@ -116,8 +121,11 @@ export default function MallShopInteriorScreen() {
     () => getShopInteriorDecorations(shop?.shopType, shop?.id, shop?.name, ownedDecorationIds),
     [shop?.shopType, shop?.id, shop?.name, ownedDecorationKey],
   );
+  const interiorDecorations = useMemo(
+    () => decorations.filter(({ id }) => !DOG_STAFF_PROFILE_BY_DECORATION_ID[id]),
+    [decorations],
+  );
   const owned = new Set(interior?.ownedDecorations ?? []);
-  const ownedDogStaff = DOG_STAFF_PROFILES.filter(({ decorationId }) => owned.has(decorationId));
   const placements = interior?.placements ?? {};
   const areaPlacements = useMemo(
     () => getShopInteriorAreaPlacements(placements, selectedArea),
@@ -125,12 +133,12 @@ export default function MallShopInteriorScreen() {
   );
   const selectedPlacementId = getShopInteriorPlacementId(selectedArea, selectedSlot);
   const selectedDecorationId = areaPlacements[selectedSlot];
-  const selectedDecoration = decorations.find(({ id }) => id === selectedDecorationId);
+  const selectedDecoration = interiorDecorations.find(({ id }) => id === selectedDecorationId);
   const floor = shop ? MALL_FLOORS[shop.floor - 1] : MALL_FLOORS[0];
   const hasAccess = !!shop && shop.category === 'shop' && purchasedItems.includes(shop.id);
   const catalogPageSize = 10;
-  const catalogPageCount = Math.max(1, Math.ceil(decorations.length / catalogPageSize));
-  const visibleDecorations = decorations.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
+  const catalogPageCount = Math.max(1, Math.ceil(interiorDecorations.length / catalogPageSize));
+  const visibleDecorations = interiorDecorations.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
 
   async function placeDecoration(decorationId: string, price: number) {
     if (!shop || !hasAccess || workingDecoration) return;
@@ -153,6 +161,41 @@ export default function MallShopInteriorScreen() {
   async function saveDogStaffLook(dogDecorationId: string, look: DogStaffLook) {
     if (!shop) return;
     await updateShopInteriorDogLook(shop.id, dogDecorationId, look);
+  }
+
+  async function arrangeDogStaff(dogDecorationId: string, stationId: DogStaffStationId) {
+    if (!shop || !hasAccess || workingDecoration) return;
+    const alreadyOwned = owned.has(dogDecorationId);
+    setWorkingDecoration(dogDecorationId);
+    setNotice('');
+    try {
+      await placeShopInteriorDogStaff(shop.id, dogDecorationId, stationId);
+      const dogName = DOG_STAFF_PROFILES.find(({ decorationId }) => decorationId === dogDecorationId)?.name ?? '狗狗店員';
+      const stationName = DOG_STAFF_STATIONS.find(({ id }) => id === stationId)?.label ?? '專屬站位';
+      setNotice(alreadyOwned
+        ? `已免費將${dogName}移到${stationName}。`
+        : `已兌換${dogName}並安排在${stationName}，已扣除相應金幣；服裝與配飾免費附送。`);
+    } catch (error) {
+      Alert.alert('店員安排未完成', error instanceof Error ? error.message : '請稍後再試。');
+      throw error;
+    } finally {
+      setWorkingDecoration(null);
+    }
+  }
+
+  async function storeDogStaff(dogDecorationId: string) {
+    if (!shop || !hasAccess || workingDecoration) return;
+    setWorkingDecoration(dogDecorationId);
+    setNotice('');
+    try {
+      await storeShopInteriorDogStaff(shop.id, dogDecorationId);
+      setNotice('已將狗狗店員收進店員收藏，沒有退款或扣除金幣。');
+    } catch (error) {
+      Alert.alert('店員收納未完成', error instanceof Error ? error.message : '請稍後再試。');
+      throw error;
+    } finally {
+      setWorkingDecoration(null);
+    }
   }
 
   async function storeSelectedDecoration() {
@@ -259,7 +302,7 @@ export default function MallShopInteriorScreen() {
               shopColor={shop.color}
               areaLabel={getShopInteriorAreaLabel(selectedArea)}
               placements={areaPlacements}
-              decorations={decorations}
+              decorations={interiorDecorations}
               dogStaffLooks={interior?.dogStaffLooks}
               selectedSlot={selectedSlot}
               onSelectSlot={setSelectedSlot}
@@ -306,13 +349,15 @@ export default function MallShopInteriorScreen() {
 
             {shop.id === 'fluffy-marshmallow-cafe' && (
               <DogStaffCustomizer
-                dogs={ownedDogStaff}
+                dogs={DOG_STAFF_PROFILES}
+                ownedDecorationIds={ownedDecorationIds}
                 looks={interior?.dogStaffLooks}
-                placements={placements}
-                destinationPlacementId={selectedPlacementId}
-                destinationLabel={`${getShopInteriorAreaLabel(selectedArea)} · ${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label ?? '店內位置'}`}
-                busyDecorationId={workingDecoration}
-                onMoveDog={(dogDecorationId) => void placeDecoration(dogDecorationId, 0)}
+                stationPlacements={interior?.dogStaffPlacements}
+                coins={coins}
+                busyDogId={workingDecoration}
+                onRedeem={(dogDecorationId, stationId) => arrangeDogStaff(dogDecorationId, stationId)}
+                onMoveDog={arrangeDogStaff}
+                onStoreDog={storeDogStaff}
                 onSelectLook={saveDogStaffLook}
               />
             )}
@@ -334,7 +379,8 @@ export default function MallShopInteriorScreen() {
 
             <View style={[styles.decorationPager, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text testID="shop-decoration-page-count" style={[styles.pageCount, { color: colors.mutedForeground }]}>
-                第 {catalogPage} / {catalogPageCount} 頁 · 共 {decorations.length} 款
+                第 {catalogPage} / {catalogPageCount} 頁 · 共 {interiorDecorations.length} 款
+                {shop.id === 'fluffy-marshmallow-cafe' ? '（狗狗店員在專屬站位）' : ''}
               </Text>
               <View style={styles.pageActions}>
                 <Pressable

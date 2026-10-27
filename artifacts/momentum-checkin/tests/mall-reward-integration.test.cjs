@@ -874,7 +874,7 @@ test('cafe equipment is clearly labeled, illustrated, and purchased with earned 
   );
 });
 
-test('fluffy cafe dog staff can be redeemed with earned coins and placed inside the shop', async () => {
+test('fluffy cafe dog staff can be redeemed into exclusive stations outside the 48 interior slots', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
   assert.ok(shop);
@@ -892,30 +892,27 @@ test('fluffy cafe dog staff can be redeemed with earned coins and placed inside 
   app.renderProvider();
   app.setLocalSearchParams({ itemId: shop.id });
 
-  let interiorTree = app.renderShopInterior();
   const dogId = 'general-fluffy-staff-huahua';
-  for (let page = 0; page < 10 && !findNodes(interiorTree, (node) => node.props?.testID === `shop-decoration-${dogId}`).length; page += 1) {
-    await press(interiorTree, 'shop-decoration-page-next');
-    app.renderProvider();
-    interiorTree = app.renderShopInterior();
-  }
-
-  assert.equal(findNodes(interiorTree, (node) => node.props?.testID === `shop-decoration-${dogId}`).length, 1);
-  await press(interiorTree, `shop-decoration-place-${dogId}`);
+  let interiorTree = app.renderShopInterior();
+  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.ok(findByTestId(customizerTree, 'dog-staff-station-entrance-greeting'));
+  assert.ok(findByTestId(customizerTree, 'dog-staff-station-photo-corner'));
+  await press(customizerTree, 'dog-staff-redeem-fluffy-staff-huahua');
   app.renderProvider();
   interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
   const sceneTree = app.renderShopInteriorScene(interiorTree);
 
   assert.equal(app.contextExports.useHabits().coins, 40);
-  assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].placements['front-window'], dogId);
-  const installedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
-  assert.equal(
-    findNodes(installedSlot, (node) => node.type === 'MallObjectVisual')[0].props.id,
-    'dog-staff-huahua',
-  );
+  const cafe = app.contextExports.useHabits().shopInteriors[shop.id];
+  assert.equal(cafe.dogStaffPlacements['entrance-greeting'], dogId);
+  assert.deepEqual(cafe.placements, {}, 'dedicated dog staff do not consume any of the 48 decor positions');
+  assert.ok(cafe.ownedDecorations.includes(dogId));
+  assert.ok(!findNodes(sceneTree, (node) => node.type === 'MallObjectVisual' && node.props.id === 'dog-staff-huahua').length);
+  assert.ok(findByTestId(customizerTree, 'dog-staff-station-entrance-greeting'));
 });
 
-test('6F dog outfits and accessories are included, persist, render in the scene, and move to any interior area for free', async () => {
+test('dog outfits persist on dedicated station moves, while the 48 decor slots remain independent', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
   const dogId = 'general-fluffy-staff-huahua';
@@ -935,17 +932,15 @@ test('6F dog outfits and accessories are included, persist, render in the scene,
   app.setLocalSearchParams({ itemId: shop.id });
 
   let interiorTree = app.renderShopInterior();
-  for (let page = 0; page < 10 && !findByTestId(interiorTree, `shop-decoration-${dogId}`); page += 1) {
-    await press(interiorTree, 'shop-decoration-page-next');
-    app.renderProvider();
-    interiorTree = app.renderShopInterior();
-  }
-  await press(interiorTree, `shop-decoration-place-${dogId}`);
+  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, `dog-staff-redeem-fluffy-staff-huahua`);
   app.renderProvider();
   interiorTree = app.renderShopInterior();
-  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
   assert.ok(findByTestId(customizerTree, 'dog-staff-customizer'));
-  assert.match(textContent(customizerTree), /50 套服裝和 50 款配飾/);
+  assert.match(textContent(customizerTree), /服裝 56 款/);
+  assert.match(textContent(customizerTree), /配飾 50 款/);
+  assert.match(textContent(customizerTree), /不佔用一般店內 48 個位置/);
 
   await press(customizerTree, 'dog-staff-tab-accessory');
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
@@ -953,25 +948,30 @@ test('6F dog outfits and accessories are included, persist, render in the scene,
   app.renderProvider();
   interiorTree = app.renderShopInterior();
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-tab-outfit');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  for (let page = 1; page < 6; page += 1) {
+    await press(customizerTree, 'dog-staff-look-page-next');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+  assert.match(textContent(customizerTree), /花花・粉紅色公主裙/);
+  await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-53');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
   const savedLook = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId];
-  assert.equal(savedLook.outfitId, `${dogId}:outfit:01`);
+  assert.equal(savedLook.outfitId, `${dogId}:outfit:special-pink-skirt-2`);
   assert.equal(savedLook.accessoryId, `${dogId}:accessory:02`);
   assert.equal(app.contextExports.useHabits().coins, 40);
 
   let sceneTree = app.renderShopInteriorScene(interiorTree);
-  let installedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
-  let installedVisual = findNodes(installedSlot, (node) => node.type === 'MallObjectVisual')[0];
-  assert.equal(installedVisual.props.dogOutfitId, savedLook.outfitId);
-  assert.equal(installedVisual.props.dogAccessoryId, savedLook.accessoryId);
+  assert.ok(!findNodes(sceneTree, (node) => node.type === 'MallObjectVisual' && node.props.id === 'dog-staff-huahua').length);
+  const activeStation = findByTestId(customizerTree, 'dog-staff-station-entrance-greeting');
+  const stationDog = findNodes(activeStation, (node) => typeof node.type === 'function' && node.type.name === 'DogAttendant')[0];
+  assert.equal(stationDog.props.outfitId, savedLook.outfitId);
+  assert.equal(stationDog.props.accessoryId, savedLook.accessoryId);
 
-  for (let area = 0; area < 5; area += 1) {
-    interiorTree = app.renderShopInterior();
-    await press(interiorTree, 'shop-interior-area-next');
-  }
-  interiorTree = app.renderShopInterior();
-  sceneTree = app.renderShopInteriorScene(interiorTree);
-  await press(sceneTree, 'shop-interior-slot-right-table');
-  interiorTree = app.renderShopInterior();
+  await press(customizerTree, 'dog-staff-station-window-side');
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
   await press(customizerTree, `dog-staff-move-fluffy-staff-huahua`);
   app.renderProvider();
@@ -979,14 +979,18 @@ test('6F dog outfits and accessories are included, persist, render in the scene,
 
   const currentState = app.contextExports.useHabits();
   assert.equal(currentState.coins, 40, 'moving a redeemed dog is free');
-  assert.deepEqual(currentState.shopInteriors[shop.id].placements, {
-    'extension-5:right-table': dogId,
-  });
+  assert.deepEqual(currentState.shopInteriors[shop.id].placements, {});
+  assert.deepEqual(currentState.shopInteriors[shop.id].dogStaffPlacements, { 'window-side': dogId });
   assert.deepEqual(currentState.shopInteriors[shop.id].dogStaffLooks[dogId], savedLook);
-  sceneTree = app.renderShopInteriorScene(interiorTree);
-  installedSlot = findByTestId(sceneTree, 'shop-interior-slot-right-table');
-  installedVisual = findNodes(installedSlot, (node) => node.type === 'MallObjectVisual')[0];
-  assert.equal(installedVisual.props.dogAccessoryId, savedLook.accessoryId);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-store-fluffy-staff-huahua');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  const stored = app.contextExports.useHabits().shopInteriors[shop.id];
+  assert.deepEqual(stored.dogStaffPlacements, {});
+  assert.ok(stored.ownedDecorations.includes(dogId), 'storing the dog keeps its ownership');
+  assert.deepEqual(stored.dogStaffLooks[dogId], savedLook, 'storing the dog keeps its look');
+  assert.equal(app.contextExports.useHabits().coins, 40, 'storage is free and does not refund its redemption price');
 });
 
 test('long-pressing a goal only opens management actions; the plus button only checks in', async () => {

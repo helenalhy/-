@@ -19,10 +19,13 @@ import {
   type ShopInteriorPlacementId,
 } from '@/constants/mall-shop-interior';
 import {
+  DOG_STAFF_PROFILE_BY_DECORATION_ID,
+  DOG_STAFF_STATIONS,
   DOG_STAFF_STYLE_CATALOGS,
   resolveDogStaffLook,
   isValidDogStaffLook,
   type DogStaffLook,
+  type DogStaffStationId,
 } from '@/constants/dog-staff-customization';
 export { MALL_SLOT_IDS } from '@/constants/mall-layout';
 export type { MallSlotId } from '@/constants/mall-layout';
@@ -60,6 +63,7 @@ export interface ShopInteriorState {
   ownedDecorations: string[];
   placements: Partial<Record<ShopInteriorPlacementId, string>>;
   dogStaffLooks?: Record<string, DogStaffLook>;
+  dogStaffPlacements?: Partial<Record<DogStaffStationId, string>>;
 }
 
 export type ShopInteriorCollection = Record<string, ShopInteriorState>;
@@ -91,6 +95,8 @@ interface HabitsContextValue {
   grantTestCoins: (minimumBalance: number) => Promise<void>;
   placeShopInteriorDecoration: (shopId: string, decorationId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
   storeShopInteriorDecoration: (shopId: string, placementId: ShopInteriorPlacementId) => Promise<void>;
+  placeShopInteriorDogStaff: (shopId: string, dogDecorationId: string, stationId: DogStaffStationId) => Promise<void>;
+  storeShopInteriorDogStaff: (shopId: string, dogDecorationId: string) => Promise<void>;
   updateShopInteriorDogLook: (shopId: string, dogDecorationId: string, look: DogStaffLook) => Promise<void>;
 }
 
@@ -191,10 +197,38 @@ function normalizeShopInteriors(
     const assigned = new Set<string>();
     const placements: Partial<Record<ShopInteriorPlacementId, string>> = {};
     const dogStaffLooks: Record<string, DogStaffLook> = {};
+    const dogStaffPlacements: Partial<Record<DogStaffStationId, string>> = {};
+    const staffAssigned = new Set<string>();
+    const stationIds = new Set<string>(DOG_STAFF_STATIONS.map(({ id }) => id));
+    const isFluffyCafe = shopId === 'fluffy-marshmallow-cafe';
+    if (isFluffyCafe) {
+      for (const [stationId, dogDecorationId] of Object.entries(saved.dogStaffPlacements ?? {})) {
+        if (
+          stationIds.has(stationId)
+          && typeof dogDecorationId === 'string'
+          && DOG_STAFF_PROFILE_BY_DECORATION_ID[dogDecorationId]
+          && owned.has(dogDecorationId)
+          && !staffAssigned.has(dogDecorationId)
+        ) {
+          dogStaffPlacements[stationId as DogStaffStationId] = dogDecorationId;
+          staffAssigned.add(dogDecorationId);
+        }
+      }
+    }
     for (const [placementId, decorationId] of Object.entries(saved.placements ?? {})) {
+      if (typeof decorationId !== 'string') continue;
+      if (DOG_STAFF_PROFILE_BY_DECORATION_ID[decorationId]) {
+        if (isFluffyCafe && owned.has(decorationId) && !staffAssigned.has(decorationId)) {
+          const openStation = DOG_STAFF_STATIONS.find(({ id }) => !dogStaffPlacements[id]);
+          if (openStation) {
+            dogStaffPlacements[openStation.id] = decorationId;
+            staffAssigned.add(decorationId);
+          }
+        }
+        continue;
+      }
       if (
         placementIds.has(placementId)
-        && typeof decorationId === 'string'
         && owned.has(decorationId)
         && !assigned.has(decorationId)
       ) {
@@ -207,11 +241,12 @@ function normalizeShopInteriors(
       const look = resolveDogStaffLook(dogDecorationId, savedLook);
       if (look) dogStaffLooks[dogDecorationId] = look;
     }
-    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(dogStaffLooks).length > 0) {
+    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(dogStaffLooks).length > 0 || Object.keys(dogStaffPlacements).length > 0) {
       interiors[shopId] = {
         ownedDecorations,
         placements,
         ...(Object.keys(dogStaffLooks).length > 0 ? { dogStaffLooks } : {}),
+        ...(Object.keys(dogStaffPlacements).length > 0 ? { dogStaffPlacements } : {}),
       };
     }
   }
@@ -488,6 +523,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
     const decoration = SHOP_INTERIOR_DECORATION_BY_ID[decorationId];
     if (!decoration) throw new Error('找不到這款店內裝飾');
+    if (DOG_STAFF_PROFILE_BY_DECORATION_ID[decorationId]) throw new Error('狗狗店員請使用CAFE專屬站位');
     if (!(SHOP_INTERIOR_PLACEMENT_IDS as readonly string[]).includes(placementId)) throw new Error('這個店內位置不存在');
     const current = shopInteriors[shopId] ?? { ownedDecorations: [], placements: {} };
     const alreadyOwned = current.ownedDecorations.includes(decorationId);
@@ -535,6 +571,77 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         rewardTokens,
         placements: mallPlacements,
         shopInteriors: { ...shopInteriors, [shopId]: { ...current, placements } },
+      });
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
+  const placeShopInteriorDogStaff = useCallback(async (
+    shopId: string,
+    dogDecorationId: string,
+    stationId: DogStaffStationId,
+  ) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== 'fluffy-marshmallow-cafe') throw new Error('狗狗店員只能放在毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    if (!DOG_STAFF_PROFILE_BY_DECORATION_ID[dogDecorationId]) throw new Error('找不到這位狗狗店員');
+    if (!DOG_STAFF_STATIONS.some(({ id }) => id === stationId)) throw new Error('這個狗狗店員站位不存在');
+    const decoration = SHOP_INTERIOR_DECORATION_BY_ID[dogDecorationId];
+    if (!decoration) throw new Error('找不到這位狗狗店員的兌換資料');
+    const current = shopInteriors[shopId] ?? { ownedDecorations: [], placements: {} };
+    const alreadyOwned = current.ownedDecorations.includes(dogDecorationId);
+    const stationOccupant = current.dogStaffPlacements?.[stationId];
+    if (!alreadyOwned && stationOccupant && stationOccupant !== dogDecorationId) {
+      throw new Error('請先選擇空的狗狗店員站位');
+    }
+    if (!alreadyOwned && coins < decoration.price) throw new Error(`金幣還差 ${decoration.price - coins} 枚`);
+    actionLock.current = true;
+    try {
+      const dogStaffPlacements = Object.fromEntries(
+        Object.entries(current.dogStaffPlacements ?? {})
+          .filter(([currentStation, assignedDog]) => currentStation !== stationId && assignedDog !== dogDecorationId),
+      ) as Partial<Record<DogStaffStationId, string>>;
+      dogStaffPlacements[stationId] = dogDecorationId;
+      const nextInterior = {
+        ...current,
+        ownedDecorations: alreadyOwned ? current.ownedDecorations : [...current.ownedDecorations, dogDecorationId],
+        dogStaffPlacements,
+      };
+      await saveMall({
+        coins: alreadyOwned ? coins : coins - decoration.price,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: { ...shopInteriors, [shopId]: nextInterior },
+      });
+      if (alreadyOwned) await Haptics.selectionAsync();
+      else await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
+  const storeShopInteriorDogStaff = useCallback(async (shopId: string, dogDecorationId: string) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== 'fluffy-marshmallow-cafe') throw new Error('狗狗店員只能放在毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    const current = shopInteriors[shopId];
+    if (!current?.ownedDecorations.includes(dogDecorationId)) throw new Error('請先兌換這位狗狗店員');
+    if (!Object.values(current.dogStaffPlacements ?? {}).includes(dogDecorationId)) return;
+    actionLock.current = true;
+    try {
+      const dogStaffPlacements = Object.fromEntries(
+        Object.entries(current.dogStaffPlacements ?? {}).filter(([, assignedDog]) => assignedDog !== dogDecorationId),
+      ) as Partial<Record<DogStaffStationId, string>>;
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: { ...shopInteriors, [shopId]: { ...current, dogStaffPlacements } },
       });
     } finally {
       actionLock.current = false;
@@ -594,8 +701,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, updateShopInteriorDogLook,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, updateShopInteriorDogLook]);
+    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook,
+  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

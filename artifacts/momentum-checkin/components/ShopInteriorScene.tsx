@@ -564,6 +564,7 @@ function WalkingStaffDog({
               kind={dog.kind as DogAttendantKind}
               outfitId={look.outfitId}
               accessoryId={look.accessoryId}
+              happy={interaction?.action === 'groom'}
             />
           </View>
         </Animated.View>

@@ -154,6 +154,16 @@ test('all fourteen dogs get distinct illustrated care colors and five-second act
   assert.match(scene, /每次互動約 5 秒/);
 });
 
+test('grooming gives the walking dog a closed-eye smile', () => {
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  const dog = fs.readFileSync(path.join(__dirname, '../components/DogAttendant.tsx'), 'utf8');
+  assert.match(scene, /happy=\{interaction\?\.action === 'groom'\}/);
+  assert.match(dog, /happy = false/);
+  assert.match(dog, /happy \? s\.happyEye : s\.eye/);
+  assert.match(dog, /happy \? c\.candyPink : look\.marking/);
+  assert.match(dog, /happySmile/);
+});
+
 const anchorSource = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-shop-scene-anchors.ts'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },

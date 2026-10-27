@@ -197,10 +197,12 @@ export function DogAttendant({
   kind,
   outfitId,
   accessoryId,
+  happy = false,
 }: {
   kind: DogAttendantKind;
   outfitId?: string;
   accessoryId?: string;
+  happy?: boolean;
 }) {
   const look = dogLooks[kind];
   const outfit = outfitId ? DOG_STAFF_OUTFIT_BY_ID[outfitId] : undefined;
@@ -357,14 +359,14 @@ export function DogAttendant({
             <View style={[s.facePatch, s.rightFacePatch, { backgroundColor: look.marking }]} />
           </>
         )}
-        <View style={[s.eye, s.leftEye]} />
-        <View style={[s.eye, s.rightEye]} />
-        <View style={[s.cheek, s.leftCheek, { backgroundColor: look.marking }]} />
-        <View style={[s.cheek, s.rightCheek, { backgroundColor: look.marking }]} />
+        <View style={[happy ? s.happyEye : s.eye, s.leftEye]} />
+        <View style={[happy ? s.happyEye : s.eye, s.rightEye]} />
+        <View style={[s.cheek, happy && s.happyCheek, s.leftCheek, { backgroundColor: happy ? c.candyPink : look.marking }]} />
+        <View style={[s.cheek, happy && s.happyCheek, s.rightCheek, { backgroundColor: happy ? c.candyPink : look.marking }]} />
         <View style={[s.muzzle, { backgroundColor: look.muzzle }]}>
           {look.facePattern === 'schnauzer' && <View style={s.schnauzerBeard} />}
           <View style={s.nose} />
-          <View style={s.smile} />
+          <View style={[s.smile, happy && s.happySmile]} />
         </View>
       </View>
       <View style={[s.collar, { backgroundColor: look.collar }]}>
@@ -544,15 +546,18 @@ const s = StyleSheet.create({
   leftFacePatch: { left: 1 },
   rightFacePatch: { right: 1 },
   eye: { position: 'absolute', top: 8, width: 2.5, height: 3, borderRadius: 2, backgroundColor: c.candyInk },
+  happyEye: { position: 'absolute', top: 9, width: 5, height: 4, borderTopWidth: 1.3, borderTopColor: c.candyInk, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
   leftEye: { left: 6 },
   rightEye: { right: 6 },
   cheek: { position: 'absolute', top: 11, width: 5, height: 3, borderRadius: 4, opacity: 0.9 },
+  happyCheek: { width: 6, height: 3.5, opacity: 1 },
   leftCheek: { left: 1 },
   rightCheek: { right: 1 },
   muzzle: { position: 'absolute', width: 11, height: 7, left: 5.5, bottom: 1, borderRadius: 6, alignItems: 'center' },
   schnauzerBeard: { position: 'absolute', top: 2, width: 11, height: 6, borderRadius: 5, backgroundColor: c.candySky },
   nose: { position: 'absolute', top: 0.5, width: 3, height: 2, borderRadius: 2, backgroundColor: c.candyCaramelDark },
   smile: { position: 'absolute', top: 3, width: 4, height: 2, borderBottomWidth: 0.8, borderColor: c.candyCaramelDark, borderRadius: 4 },
+  happySmile: { width: 5, height: 2.5, borderBottomWidth: 1.2 },
   collar: { position: 'absolute', width: 16, height: 4, left: 18, bottom: 15, borderRadius: 3, zIndex: 3 },
   bell: { position: 'absolute', width: 3, height: 3, left: 6.5, top: 2, borderRadius: 2, backgroundColor: c.candyLemon },
   accessoryBase: { position: 'absolute', zIndex: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

@@ -27,7 +27,7 @@ test('floor guest counts, unique frame positions, routes, and sprite sheets stay
     GUESTS_PER_FLOOR,
   } = guestConstants.exports;
   assert.equal(GUESTS_PER_FLOOR, 10);
-  assert.deepEqual(GUEST_COUNTS_BY_FLOOR, [10, 10, 10, 12, 10, 10, 11, 13, 10, 10]);
+  assert.deepEqual(GUEST_COUNTS_BY_FLOOR, [10, 10, 10, 12, 11, 10, 11, 13, 10, 10]);
   assert.equal(GUEST_ROUTES.length, 13);
   assert.equal(GUEST_FRAME_CELLS.length, GUEST_ROUTES.length);
   assert.ok(GUEST_COUNTS_BY_FLOOR.every((count) => count <= GUEST_ROUTES.length));

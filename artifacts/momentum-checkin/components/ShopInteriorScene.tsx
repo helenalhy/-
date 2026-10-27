@@ -21,17 +21,44 @@ import { useColors } from '@/hooks/useColors';
 type DogStaffInteractionAction = 'groom' | 'feed' | 'play';
 type AreaDogStaff = { dog: DogStaffProfile; look: DogStaffLook; index: number };
 type DogStaffInteraction = { dogDecorationId: string; action: DogStaffInteractionAction; id: number };
+const DOG_STAFF_INTERACTION_DURATION_MS = 5000;
+type DogCareColorToken =
+  | 'candyPink' | 'candyLavender' | 'candyOrange' | 'candySky' | 'candyMint'
+  | 'candyCaramel'
+  | 'candyLemon' | 'candyCoral' | 'candyRose' | 'candyLavenderDark' | 'candyPeach'
+  | 'candyCaramelDark' | 'candyCream' | 'candyMintDark' | 'candySkyDark';
 
 const DOG_STAFF_INTERACTIONS: {
   id: DogStaffInteractionAction;
   title: string;
-  icon: keyof typeof Feather.glyphMap;
   description: string;
 }[] = [
-  { id: 'groom', title: '梳毛', icon: 'wind', description: '輕輕梳順蓬鬆毛毛' },
-  { id: 'feed', title: '餵食', icon: 'gift', description: '送上店裡準備的小點心' },
-  { id: 'play', title: '一起玩', icon: 'play', description: '陪狗狗開心玩一會' },
+  { id: 'groom', title: '梳毛', description: '輕輕梳順蓬鬆毛毛' },
+  { id: 'feed', title: '餵食', description: '送上店裡準備的小點心' },
+  { id: 'play', title: '一起玩', description: '陪狗狗開心玩一會' },
 ];
+
+const DOG_CARE_COLOR_TOKENS: Record<string, DogCareColorToken> = {
+  'fluffy-staff-huahua': 'candyPink',
+  'fluffy-staff-milkshake': 'candyLavender',
+  'fluffy-staff-pudding': 'candyOrange',
+  'fluffy-staff-xiaoniu': 'candySky',
+  'fluffy-staff-tangtang': 'candyMint',
+  'fluffy-staff-pipi': 'candyLemon',
+  'fluffy-staff-amber': 'candyCaramel',
+  'fluffy-staff-cloud': 'candyRose',
+  'fluffy-staff-wonton': 'candyLavenderDark',
+  'fluffy-staff-butter': 'candyPeach',
+  'fluffy-staff-sesame': 'candyCaramelDark',
+  'fluffy-staff-snowball': 'candyCream',
+  'fluffy-staff-maomao': 'candyMintDark',
+  'fluffy-staff-poppy': 'candySkyDark',
+};
+
+function getDogCareColor(dogKey: string, colors: ReturnType<typeof useColors>) {
+  const token = DOG_CARE_COLOR_TOKENS[dogKey];
+  return token ? colors[token] : colors.primary;
+}
 
 const SCENES: Record<ShopInteriorSceneKey, number> = {
   general: require('../assets/images/shop-room-gifts.jpg'),
@@ -290,7 +317,7 @@ export function ShopInteriorScene({
               >
                 <View style={[styles.interactionHandle, { backgroundColor: colors.border }]} />
                 <View style={styles.interactionHeader}>
-                  <View style={[styles.interactionDogPreview, { backgroundColor: colors.candyPeach }]}>
+                  <View style={[styles.interactionDogPreview, { backgroundColor: colors.secondary }]}>
                     <DogAttendant
                       kind={selectedDog.dog.kind as DogAttendantKind}
                       outfitId={selectedDog.look.outfitId}
@@ -312,7 +339,7 @@ export function ShopInteriorScene({
                   </Pressable>
                 </View>
                 <Text style={[styles.interactionHelper, { color: colors.mutedForeground }]}>
-                  兌換狗店員後附送 · 梳毛、餵食和玩耍都不耗金幣
+                  兌換後附送 · 每次互動約 5 秒，不耗金幣
                 </Text>
                 <View style={styles.interactionActions}>
                   {DOG_STAFF_INTERACTIONS.map((action) => (
@@ -343,8 +370,12 @@ export function ShopInteriorScene({
                         },
                       ]}
                     >
-                      <View style={[styles.interactionActionIcon, { backgroundColor: colors.candyPeach }]}>
-                        <Feather name={action.icon} size={19} color={colors.primary} />
+                      <View style={[styles.interactionActionIcon, { backgroundColor: colors.secondary, borderColor: getDogCareColor(selectedDog.dog.key, colors) }]}>
+                        <DogCareIllustration
+                          action={action.id}
+                          color={getDogCareColor(selectedDog.dog.key, colors)}
+                          size={38}
+                        />
                       </View>
                       <Text style={[styles.interactionActionTitle, { color: colors.foreground }]}>{action.title}</Text>
                       <Text style={[styles.interactionActionDescription, { color: colors.mutedForeground }]}>{action.description}</Text>
@@ -436,13 +467,21 @@ function WalkingStaffDog({
       return;
     }
     reaction.setValue(0);
-    const pulses = interaction.action === 'play' ? [1, 0, 1, 0] : [1, 0];
-    const animation = Animated.sequence(pulses.map((value) => Animated.timing(reaction, {
-      toValue: value,
-      duration: value ? 230 : 190,
-      easing: value ? Easing.out(Easing.quad) : Easing.inOut(Easing.quad),
-      useNativeDriver: native,
-    })));
+    const cycleDuration = interaction.action === 'feed' ? 1000 : 500;
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(reaction, {
+        toValue: 1,
+        duration: cycleDuration / 2,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: native,
+      }),
+      Animated.timing(reaction, {
+        toValue: 0,
+        duration: cycleDuration / 2,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: native,
+      }),
+    ]), { iterations: DOG_STAFF_INTERACTION_DURATION_MS / cycleDuration });
     animation.start(({ finished }) => {
       if (finished) onInteractionComplete(interaction.id);
     });
@@ -454,16 +493,32 @@ function WalkingStaffDog({
   const toX = Math.min(maxLeft, Math.max(0, route.to * width / 100));
   const top = Math.min(route.top * height / 100, Math.max(0, height - STAFF_DOG_HEIGHT - 7));
   const reactionRotate = reaction.interpolate({
-    inputRange: [0, 1],
+    inputRange: [0, 0.5, 1],
     outputRange: interaction?.action === 'groom'
-      ? ['0deg', '-10deg']
-      : interaction?.action === 'play' ? ['0deg', '8deg'] : ['0deg', '0deg'],
+      ? ['0deg', '-8deg', '6deg']
+      : interaction?.action === 'play'
+        ? ['0deg', '-6deg', '8deg']
+        : ['0deg', '-3deg', '3deg'],
   });
   const reactionLift = reaction.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, interaction?.action === 'play' ? -12 : interaction?.action === 'feed' ? -5 : -2],
+    inputRange: [0, 0.5, 1],
+    outputRange: interaction?.action === 'play'
+      ? [0, -13, 0]
+      : interaction?.action === 'feed' ? [0, -5, 0] : [0, -2, 0],
   });
-  const interactionIcon = DOG_STAFF_INTERACTIONS.find(({ id }) => id === interaction?.action)?.icon;
+  const interactionFloatX = reaction.interpolate({
+    inputRange: [0, 1],
+    outputRange: interaction?.action === 'groom' ? [-7, 7] : [0, 0],
+  });
+  const interactionFloatY = reaction.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: interaction?.action === 'play'
+      ? [6, -16, 6]
+      : interaction?.action === 'feed' ? [6, -7, 6] : [3, -3, 3],
+  });
+  const interactionOpacity = reaction.interpolate({ inputRange: [0, 0.12, 0.85, 1], outputRange: [0, 1, 1, 0] });
+  const interactionAction = interaction?.action;
+  const interactionColor = getDogCareColor(dog.key, colors);
   return (
     <Animated.View
       style={[
@@ -512,22 +567,20 @@ function WalkingStaffDog({
             />
           </View>
         </Animated.View>
-        {interactionIcon ? (
+        {interactionAction ? (
           <Animated.View
             pointerEvents="none"
             style={[
               styles.interactionFloat,
               {
                 backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: reaction,
-                transform: [{
-                  translateY: reaction.interpolate({ inputRange: [0, 1], outputRange: [7, -13] }),
-                }],
+                borderColor: interactionColor,
+                opacity: interactionOpacity,
+                transform: [{ translateX: interactionFloatX }, { translateY: interactionFloatY }],
               },
             ]}
           >
-            <Feather name={interactionIcon} size={12} color={colors.primary} />
+            <DogCareIllustration action={interactionAction} color={interactionColor} size={24} />
           </Animated.View>
         ) : null}
       </Pressable>
@@ -535,7 +588,64 @@ function WalkingStaffDog({
   );
 }
 
-const STAFF_DOG_WIDTH = 42;
+function DogCareIllustration({
+  action,
+  color,
+  size,
+}: {
+  action: DogStaffInteractionAction;
+  color: string;
+  size: number;
+}) {
+  const colors = useColors();
+  if (action === 'groom') {
+    return (
+      <View
+        testID="dog-care-icon-comb"
+        accessible={false}
+        style={[styles.careIllustration, { width: size, height: size }]}
+      >
+        <View style={[styles.combHead, { top: size * 0.14, left: size * 0.05, width: size * 0.78, height: size * 0.2, backgroundColor: color }]}>
+          <View style={[styles.combShine, { backgroundColor: colors.card }]} />
+        </View>
+        {Array.from({ length: 5 }, (_, index) => (
+          <View key={index} style={[styles.combTooth, { left: size * (0.14 + index * 0.12), top: size * 0.33, height: size * 0.2, backgroundColor: color }]} />
+        ))}
+        <View style={[styles.combHandle, { left: size * 0.48, top: size * 0.48, width: size * 0.17, height: size * 0.4, backgroundColor: color }]} />
+      </View>
+    );
+  }
+  if (action === 'feed') {
+    return (
+      <View
+        testID="dog-care-icon-food"
+        accessible={false}
+        style={[styles.careIllustration, { width: size, height: size }]}
+      >
+        <View style={[styles.foodBowl, { left: size * 0.12, top: size * 0.42, width: size * 0.76, height: size * 0.42, borderBottomLeftRadius: size * 0.32, borderBottomRightRadius: size * 0.32, backgroundColor: color }]} />
+        <View style={[styles.foodBowlRim, { left: size * 0.08, top: size * 0.38, width: size * 0.84, height: size * 0.12, borderRadius: size * 0.12, backgroundColor: colors.card, borderColor: color }]} />
+        {[0.32, 0.5, 0.68].map((left, index) => (
+          <View key={index} style={[styles.foodPiece, { left: size * left, top: size * (index === 1 ? 0.19 : 0.25), backgroundColor: color }]} />
+        ))}
+      </View>
+    );
+  }
+  return (
+    <View
+      testID="dog-care-icon-ball"
+      accessible={false}
+      style={[styles.careIllustration, { width: size, height: size }]}
+    >
+      <View style={[styles.toyBall, { left: size * 0.12, top: size * 0.12, width: size * 0.76, height: size * 0.76, borderRadius: size * 0.38, backgroundColor: color, borderColor: colors.card }]}>
+        <View style={[styles.ballStripe, { backgroundColor: colors.card }]} />
+        <View style={[styles.ballPatch, { backgroundColor: colors.card }]} />
+      </View>
+      <View style={[styles.ballSpark, { top: size * 0.04, right: size * 0.02, backgroundColor: color }]} />
+    </View>
+  );
+}
+
+const STAFF_DOG_WIDTH = 50;
 const STAFF_DOG_HEIGHT = 50;
 const OBJECT_H = 47;
 const HOTSPOT_W = 64;
@@ -644,8 +754,20 @@ const styles = StyleSheet.create({
   interactionHelper: { fontSize: 10, lineHeight: 15, textAlign: 'center' },
   interactionActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   interactionAction: { flex: 1, minWidth: 0, minHeight: 94, borderWidth: 1, borderRadius: 17, paddingHorizontal: 7, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  interactionActionIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  interactionActionIcon: { width: 48, height: 48, borderWidth: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   interactionActionTitle: { fontSize: 12, fontWeight: '800' },
   interactionActionDescription: { minHeight: 23, fontSize: 8, lineHeight: 11, textAlign: 'center' },
   interactionFeedback: { minHeight: 18, fontSize: 11, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
+  careIllustration: { position: 'relative', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
+  combHead: { position: 'absolute', borderRadius: 4, justifyContent: 'center' },
+  combShine: { position: 'absolute', top: 1, left: 3, width: '42%', height: 1.5, borderRadius: 2, opacity: 0.9 },
+  combTooth: { position: 'absolute', width: 2.5, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
+  combHandle: { position: 'absolute', borderRadius: 4, transform: [{ rotate: '-34deg' }] },
+  foodBowl: { position: 'absolute' },
+  foodBowlRim: { position: 'absolute', borderWidth: 1.5 },
+  foodPiece: { position: 'absolute', width: 3.5, height: 3.5, borderRadius: 2 },
+  toyBall: { position: 'absolute', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1.5 },
+  ballStripe: { position: 'absolute', width: '130%', height: 4, borderRadius: 4, transform: [{ rotate: '-38deg' }] },
+  ballPatch: { position: 'absolute', top: '18%', left: '18%', width: '25%', height: '25%', borderRadius: 20 },
+  ballSpark: { position: 'absolute', width: 4, height: 4, borderRadius: 3 },
 });

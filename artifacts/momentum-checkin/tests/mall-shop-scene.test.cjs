@@ -120,12 +120,38 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.match(scene, /testID=\{`dog-staff-walker-\$\{dog\.key\}`\}/);
   assert.match(scene, /reduceMotionChanged/);
   assert.match(scene, /dog-staff-interaction-sheet/);
-  assert.match(scene, /兌換狗店員後附送/);
+  assert.match(scene, /兌換後附送/);
   assert.match(scene, /onPress=\{onPress\}/);
   assert.match(page, /areaId=\{selectedArea\}/);
   assert.match(page, /setSelectedArea\(areaId\)/);
   assert.match(customizer, /SHOP_INTERIOR_AREAS\.map/);
   assert.match(customizer, /點擊梳毛、餵食或玩耍/);
+});
+
+test('all fourteen dogs get distinct illustrated care colors and five-second action animations', () => {
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  const colorBlock = scene.match(/const DOG_CARE_COLOR_TOKENS:[\s\S]*?\n};/)?.[0];
+  assert.ok(colorBlock, 'the dog-specific care color map exists');
+  const colors = [...colorBlock.matchAll(/'([^']+)': '([^']+)'/g)]
+    .map(([, dogKey, colorToken]) => [dogKey, colorToken]);
+  assert.equal(colors.length, 14);
+  assert.equal(new Set(colors.map(([, token]) => token)).size, 14, 'every dog uses a distinct color');
+  assert.deepEqual(
+    colors.map(([dogKey]) => dogKey).sort(),
+    dogStaffStyles.DOG_STAFF_PROFILES.map(({ key }) => key).sort(),
+    'every café dog has a dedicated color',
+  );
+  const colorByDog = Object.fromEntries(colors);
+  assert.equal(colorByDog['fluffy-staff-huahua'], 'candyPink');
+  assert.equal(colorByDog['fluffy-staff-milkshake'], 'candyLavender');
+  assert.equal(colorByDog['fluffy-staff-pudding'], 'candyOrange');
+  assert.equal(colorByDog['fluffy-staff-xiaoniu'], 'candySky');
+  assert.match(scene, /DOG_STAFF_INTERACTION_DURATION_MS = 5000/);
+  assert.match(scene, /iterations: DOG_STAFF_INTERACTION_DURATION_MS \/ cycleDuration/);
+  assert.match(scene, /testID="dog-care-icon-comb"/);
+  assert.match(scene, /testID="dog-care-icon-food"/);
+  assert.match(scene, /testID="dog-care-icon-ball"/);
+  assert.match(scene, /每次互動約 5 秒/);
 });
 
 const anchorSource = ts.transpileModule(

@@ -1,9 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth, useClerk, useUser } from '@clerk/expo';
+import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { getLocalDate, getStreak, useHabits } from '@/context/HabitsContext';
+import { useCloudSyncControls } from '@/context/ProgressSyncBridge';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
@@ -11,7 +14,12 @@ const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 export default function ProgressScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { habits, today } = useHabits();
+  const router = useRouter();
+  const { isSignedIn } = useAuth();
+  const { user, isLoaded: userLoaded } = useUser();
+  const { signOut } = useClerk();
+  const { retry } = useCloudSyncControls();
+  const { habits, today, cloudSyncStatus, cloudSyncMessage } = useHabits();
   const [quoteDate, setQuoteDate] = useState(today);
   useEffect(() => {
     const refreshQuoteDate = () => {
@@ -39,6 +47,26 @@ export default function ProgressScreen() {
   const longestStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today)));
   const mostConsistent = [...habits].sort((a, b) => b.checkIns.length - a.checkIns.length)[0];
   const maxBar = Math.max(1, ...week.map((item) => item.count));
+  const accountStatus = cloudSyncStatus === 'synced'
+    ? '進度已同步至帳戶'
+    : cloudSyncStatus === 'syncing'
+      ? '正在同步進度…'
+      : cloudSyncStatus === 'error'
+        ? '雲端同步暫停'
+        : '目前只保存在這台裝置';
+
+  const handleAccountAction = async () => {
+    if (!isSignedIn) {
+      router.push('/welcome');
+      return;
+    }
+    try {
+      await signOut();
+      router.replace('/welcome');
+    } catch {
+      // Keep the current session active if sign-out could not complete.
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -49,6 +77,54 @@ export default function ProgressScreen() {
         <Text style={[styles.eyebrow, { color: colors.primary }]}>YOUR JOURNEY</Text>
         <Text style={[styles.title, { color: colors.foreground }]}>進步，正在發生。</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>每一個小小的選擇，都值得被看見。</Text>
+
+        <View style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.accountIcon, { backgroundColor: isSignedIn ? colors.candyMint : colors.candyPink }]}>
+            <Feather name={isSignedIn ? 'cloud' : 'user'} size={18} color={colors.primary} />
+          </View>
+          <View style={styles.accountCopy}>
+            <Text style={[styles.accountTitle, { color: colors.foreground }]}>
+              {isSignedIn ? 'Google 帳戶' : '保存你的商場進度'}
+            </Text>
+            <Text numberOfLines={1} style={[styles.accountSubtitle, { color: colors.mutedForeground }]}>
+              {isSignedIn && userLoaded
+                ? user?.primaryEmailAddress?.emailAddress ?? '已登入'
+                : isSignedIn
+                  ? '正在載入帳戶…'
+                  : '登入後可在其他裝置還原目標、金幣和收藏'}
+            </Text>
+            <Text style={[styles.syncStatus, { color: cloudSyncStatus === 'error' ? '#B74760' : colors.primary }]}>
+              {accountStatus}
+            </Text>
+            {cloudSyncStatus === 'error' && cloudSyncMessage ? (
+              <Text style={[styles.accountError, { color: colors.mutedForeground }]}>{cloudSyncMessage}</Text>
+            ) : null}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isSignedIn ? '登出 Google 帳戶' : '使用 Google 登入同步進度'}
+            onPress={() => void handleAccountAction()}
+            style={({ pressed }) => [
+              styles.accountAction,
+              { backgroundColor: colors.secondary },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.accountActionText, { color: colors.primary }]}>
+              {isSignedIn ? '登出' : '登入'}
+            </Text>
+          </Pressable>
+          {isSignedIn && cloudSyncStatus === 'error' ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="重試雲端同步"
+              onPress={() => void retry()}
+              style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+            >
+              <Feather name="refresh-cw" size={14} color={colors.primary} />
+            </Pressable>
+          ) : null}
+        </View>
 
         <View style={styles.metricGrid}>
           <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -138,6 +214,17 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
   title: { fontSize: 26, fontWeight: '700', marginTop: 9, letterSpacing: -0.6 },
   subtitle: { fontSize: 13, marginTop: 7, lineHeight: 20 },
+  accountCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 18, padding: 12, gap: 10, marginTop: 18 },
+  accountIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  accountCopy: { flex: 1, minWidth: 0 },
+  accountTitle: { fontSize: 12, fontWeight: '700' },
+  accountSubtitle: { fontSize: 10, marginTop: 3 },
+  syncStatus: { fontSize: 10, fontWeight: '700', marginTop: 4 },
+  accountError: { fontSize: 10, lineHeight: 15, marginTop: 3 },
+  accountAction: { minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 11, paddingVertical: 8, borderRadius: 11 },
+  accountActionText: { fontSize: 11, fontWeight: '700' },
+  retryButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  pressed: { opacity: 0.72 },
   metricGrid: { flexDirection: 'row', gap: 11, marginTop: 22 },
   metricCard: { flex: 1, borderWidth: 1, borderRadius: 19, padding: 15, minHeight: 132 },
   metricIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

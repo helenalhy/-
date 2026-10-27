@@ -159,11 +159,22 @@ function getExpoPublicReplId() {
   return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
 }
 
+function getClerkExpoEnv(domain) {
+  const clerkProxyUrl = process.env.CLERK_PROXY_URL
+    ? `https://${domain}${process.env.CLERK_PROXY_URL}`
+    : '';
+  return {
+    EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || '',
+    EXPO_PUBLIC_CLERK_PROXY_URL: clerkProxyUrl,
+  };
+}
+
 function exportWebBuild(domain, expoPublicReplId) {
   const outputDir = path.join(projectRoot, 'static-build', 'web');
   const env = {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: domain,
+    ...getClerkExpoEnv(domain),
     ...(expoPublicReplId ? { EXPO_PUBLIC_REPL_ID: expoPublicReplId } : {}),
   };
 
@@ -210,6 +221,7 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
     EXPO_PUBLIC_REPL_ID: expoPublicReplId,
+    ...getClerkExpoEnv(expoPublicDomain),
   };
 
   if (expoPublicReplId) {

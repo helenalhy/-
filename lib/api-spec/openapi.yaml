@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: progress
+    description: Authenticated user progress synchronization
 paths:
   /healthz:
     get:
@@ -24,6 +26,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /progress:
+    get:
+      operationId: getProgress
+      tags: [progress]
+      summary: Get the signed-in user's saved progress
+      responses:
+        "200":
+          description: Current user's saved progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressRecord"
+        "401":
+          description: Authentication required
+    put:
+      operationId: saveProgress
+      tags: [progress]
+      summary: Save the signed-in user's progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressSnapshot"
+      responses:
+        "200":
+          description: Saved progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressRecord"
+        "400":
+          description: Invalid progress snapshot
+        "401":
+          description: Authentication required
 components:
   schemas:
     HealthStatus:
@@ -33,4 +70,38 @@ components:
           type: string
       required:
         - status
+    ProgressSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        schemaVersion:
+          type: integer
+          minimum: 1
+        habits:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        mall:
+          type: object
+          additionalProperties: true
+      required:
+        - schemaVersion
+        - habits
+        - mall
+    ProgressRecord:
+      type: object
+      additionalProperties: false
+      properties:
+        exists:
+          type: boolean
+        snapshot:
+          $ref: "#/components/schemas/ProgressSnapshot"
+        updatedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - exists
+        - snapshot
+        - updatedAt
 

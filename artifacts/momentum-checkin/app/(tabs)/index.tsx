@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import React, { useRef, useState } from 'react';
 import {
@@ -20,8 +20,6 @@ import {
   useHabits,
   type Habit,
 } from '@/context/HabitsContext';
-import MallScreen from './mall';
-
 const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
 
 function getWeek(todayKey: string) {
@@ -193,7 +191,7 @@ export function TodayScreen() {
             <Text style={[styles.date, { color: colors.mutedForeground }]}>{dateLabel} · 星期{weekday}</Text>
           </View>
           <View style={styles.headerActions}>
-            <Pressable style={[styles.coinPill, { backgroundColor: colors.secondary }]} onPress={() => router.navigate('/')} accessibilityRole="button" accessibilityLabel={`${coins} 金幣，前往商場`}>
+            <Pressable style={[styles.coinPill, { backgroundColor: colors.secondary }]} onPress={() => router.navigate('/mall')} accessibilityRole="button" accessibilityLabel={`${coins} 金幣，前往商場`}>
               <Feather name="shopping-bag" size={14} color={colors.primary} />
               <Text style={[styles.coinText, { color: colors.primary }]}>商場 {coins}</Text>
             </Pressable>
@@ -210,7 +208,7 @@ export function TodayScreen() {
 
         <Pressable
           style={[styles.mallShortcut, { backgroundColor: colors.secondary }]}
-          onPress={() => router.navigate('/')}
+          onPress={() => router.navigate('/mall')}
           accessibilityRole="button"
           accessibilityLabel="前往商場"
           testID="today-mall-shortcut"
@@ -417,7 +415,7 @@ export function TodayScreen() {
 }
 
 export default function IndexScreen() {
-  return <MallScreen />;
+  return <Redirect href="/welcome" />;
 }
 
 const styles = StyleSheet.create({

@@ -141,6 +141,12 @@ test('mall wing tabs keep browser focus and selection in sync', {
   skip: !fs.existsSync(chromiumPath) && !spawnSync('which', ['chromium'], { encoding: 'utf8' }).stdout.trim(),
   timeout: 300_000,
 }, async (t) => {
+  const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY;
+  if (!clerkPublishableKey) {
+    t.skip('Clerk publishable key is not available to this test process');
+    return;
+  }
+
   const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'momentum-wing-web-'));
   const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'momentum-wing-chrome-'));
   let server;
@@ -174,6 +180,10 @@ test('mall wing tabs keep browser focus and selection in sync', {
     encoding: 'utf8',
     maxBuffer: 10 * 1024 * 1024,
     timeout: 240_000,
+    env: {
+      ...process.env,
+      EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKey,
+    },
   });
   assert.equal(build.status, 0, `Expo web export failed:\n${build.stdout}\n${build.stderr}`);
 
@@ -211,6 +221,12 @@ test('mall wing tabs keep browser focus and selection in sync', {
   await devTools.send('Page.enable');
   await devTools.send('Runtime.enable');
   await devTools.send('Page.navigate', { url: appUrl });
+  await waitForBrowser(
+    devTools,
+    `Boolean(document.querySelector('[aria-label="先體驗，不登入"]'))`,
+    'the welcome screen guest option',
+  );
+  await devTools.evaluate(`document.querySelector('[aria-label="先體驗，不登入"]')?.click()`);
   await waitForBrowser(
     devTools,
     `Boolean(document.querySelector('[data-testid="mall-wing-tabs"] [data-testid="mall-wing-main"]'))`,

@@ -80,6 +80,14 @@ export interface ShopInteriorState {
 
 export type ShopInteriorCollection = Record<string, ShopInteriorState>;
 
+export interface ProgressSnapshot {
+  schemaVersion: 1;
+  habits: Habit[];
+  mall: CheckInTransaction['mall'];
+}
+
+export type CloudSyncStatus = 'local' | 'syncing' | 'synced' | 'error';
+
 export const REWARD_CATEGORY_LABELS: Record<RewardCategory, string> = {
   facility: '設施券',
   shop: '店鋪券',
@@ -90,6 +98,11 @@ interface HabitsContextValue {
   habits: Habit[];
   isLoading: boolean;
   storageError: string | null;
+  progressSnapshot: ProgressSnapshot;
+  cloudSyncStatus: CloudSyncStatus;
+  cloudSyncMessage: string | null;
+  setCloudSyncState: (status: CloudSyncStatus, message?: string | null) => void;
+  replaceProgressFromCloud: (snapshot: unknown) => Promise<void>;
   today: string;
   coins: number;
   purchasedItems: string[];
@@ -332,8 +345,14 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [rewardedCheckIns, setRewardedCheckIns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('local');
+  const [cloudSyncMessage, setCloudSyncMessage] = useState<string | null>(null);
   const actionLock = useRef(false);
   const [today, setToday] = useState(() => getLocalDate());
+  const setCloudSyncState = useCallback((status: CloudSyncStatus, message: string | null = null) => {
+    setCloudSyncStatus(status);
+    setCloudSyncMessage(message);
+  }, []);
   const getCheckInReward = useCallback((habitId: string) => (
     rewardedCheckIns.includes(`${habitId}:${today}`) ? 0 : CHECK_IN_REWARD
   ), [rewardedCheckIns, today]);
@@ -455,6 +474,92 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     } catch {
       setStorageError('商場資料儲存失敗，請檢查裝置空間後再試一次。');
       throw new Error('無法儲存商場資料');
+    }
+  }, []);
+
+  const replaceProgressFromCloud = useCallback(async (snapshot: unknown) => {
+    if (!snapshot || typeof snapshot !== 'object') throw new Error('雲端進度格式無效');
+    const source = snapshot as Record<string, unknown>;
+    if (!Array.isArray(source.habits) || !source.mall || typeof source.mall !== 'object') {
+      throw new Error('雲端進度格式無效');
+    }
+    const validHabits = source.habits.every((item) => (
+      item !== null
+      && typeof item === 'object'
+      && typeof (item as Record<string, unknown>).id === 'string'
+      && typeof (item as Record<string, unknown>).title === 'string'
+      && typeof (item as Record<string, unknown>).reason === 'string'
+      && typeof (item as Record<string, unknown>).icon === 'string'
+      && typeof (item as Record<string, unknown>).color === 'string'
+      && typeof (item as Record<string, unknown>).createdAt === 'string'
+      && Array.isArray((item as Record<string, unknown>).checkIns)
+      && ((item as Record<string, unknown>).checkIns as unknown[]).every((date) => typeof date === 'string')
+    ));
+    if (!validHabits) throw new Error('雲端目標資料格式無效');
+
+    const rawMall = source.mall as Record<string, unknown>;
+    const coins = rawMall.coins;
+    if (typeof coins !== 'number' || !Number.isFinite(coins) || coins < 0) {
+      throw new Error('雲端金幣資料格式無效');
+    }
+    const purchasedItems = Array.isArray(rawMall.purchasedItems)
+      ? rawMall.purchasedItems.filter((id): id is string => typeof id === 'string')
+      : [];
+    const rewardedCheckIns = Array.isArray(rawMall.rewardedCheckIns)
+      ? rawMall.rewardedCheckIns.filter((key): key is string => typeof key === 'string')
+      : [];
+    const rawRewardTokens = rawMall.rewardTokens && typeof rawMall.rewardTokens === 'object'
+      ? rawMall.rewardTokens as Partial<RewardTokens>
+      : {};
+    const nextRewardTokens: RewardTokens = {
+      facility: typeof rawRewardTokens.facility === 'number' ? rawRewardTokens.facility : 0,
+      shop: typeof rawRewardTokens.shop === 'number' ? rawRewardTokens.shop : 0,
+      decor: typeof rawRewardTokens.decor === 'number' ? rawRewardTokens.decor : 0,
+    };
+    const rawPlacements = rawMall.placements && typeof rawMall.placements === 'object'
+      ? rawMall.placements as Record<string, unknown>
+      : {};
+    const savedPlacements = Object.fromEntries(
+      Object.entries(rawPlacements).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    );
+    const rawInteriors = rawMall.shopInteriors && typeof rawMall.shopInteriors === 'object'
+      ? rawMall.shopInteriors as ShopInteriorCollection
+      : {};
+    const nextHabits = normalizeHabits(source.habits as Habit[]);
+    const nextPlacements = normalizeMallPlacements(
+      savedPlacements,
+      purchasedItems,
+      Number(rawMall.schemaVersion ?? 1),
+    );
+    const nextShopInteriors = normalizeShopInteriors(rawInteriors, purchasedItems);
+    const transaction: CheckInTransaction = {
+      version: 1,
+      habits: nextHabits,
+      mall: {
+        schemaVersion: MALL_SCHEMA_VERSION,
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens: nextRewardTokens,
+        placements: nextPlacements,
+        shopInteriors: nextShopInteriors,
+      },
+    };
+
+    try {
+      await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
+      await synchronizeCheckInTransaction(transaction);
+      setHabits(nextHabits);
+      setCoins(coins);
+      setPurchasedItems(purchasedItems);
+      setMallPlacements(nextPlacements);
+      setShopInteriors(nextShopInteriors);
+      setRewardedCheckIns(rewardedCheckIns);
+      setRewardTokens(nextRewardTokens);
+      setStorageError(null);
+    } catch {
+      setStorageError('雲端資料已讀取，但無法安全寫入裝置；原有進度未被覆蓋。');
+      throw new Error('無法還原雲端進度');
     }
   }, []);
 
@@ -824,9 +929,24 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
+  const progressSnapshot = useMemo<ProgressSnapshot>(() => ({
+    schemaVersion: 1,
+    habits,
+    mall: {
+      schemaVersion: MALL_SCHEMA_VERSION,
+      coins,
+      purchasedItems,
+      rewardedCheckIns,
+      rewardTokens,
+      placements: mallPlacements,
+      shopInteriors,
+    },
+  }), [habits, coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors]);
+
   const value = useMemo(() => ({
-    habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook,
-  }), [habits, isLoading, storageError, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
+    habits, isLoading, storageError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
+    today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook,
+  }), [habits, isLoading, storageError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

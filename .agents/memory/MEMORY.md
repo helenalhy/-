@@ -1,5 +1,6 @@
 - [商場場景要求](mall-scene-requirements.md) — 狗狗服飾兌換後免費；花花獅子、糖糖小熊，魔法少女指定色與蕾絲公主裙要求詳見主題。
 - [完全免費的金幣制度](free-economy.md) — 不課金、不儲值；只用完成目標獲得的金幣兌換，不能再要求獎勵券。
+- [訪客體驗與進度同步](account-sync.md) — 登入不是使用門檻；保留訪客本機進度，登入時避免靜默覆蓋帳戶資料。
 - [Expo 預覽快取](expo-preview-cache.md) — 舊頁或過早截圖會顯舊版／空圖；EADDRINUSE 時先檢查殘留 Expo 子程序。
 - [商場讀屏結果回饋](mall-accessibility-results.md) — 操作結果保持單一回饋；分區切換依平台使用一種禮貌公告機制。
 - [商場路由回歸測試](mall-navigation-tests.md) — 元件測試替身不會自動渲染巢狀元件；路由測試須明確推進堆疊並渲染實際路由入口。

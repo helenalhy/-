@@ -214,6 +214,7 @@ export function TodayScreen() {
           onPress={() => router.navigate('/')}
           accessibilityRole="button"
           accessibilityLabel="前往商場"
+          testID="today-mall-shortcut"
         >
           <View style={[styles.mallShortcutIcon, { backgroundColor: colors.candyLemon }]}>
             <Feather name="shopping-bag" size={18} color={colors.primary} />

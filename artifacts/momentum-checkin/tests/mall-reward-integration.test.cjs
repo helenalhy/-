@@ -245,6 +245,10 @@ function createHarness() {
     expoRouter.router.back();
   }
 
+  function navigateTo(route) {
+    expoRouter.router.navigate(route);
+  }
+
   async function runEffects(key) {
     for (const effect of effects.get(key) ?? []) effect();
     await new Promise((resolve) => setImmediate(resolve));
@@ -265,6 +269,7 @@ function createHarness() {
     navigation,
     navigationStack,
     goBack,
+    navigateTo,
     render,
     renderCurrentRoute,
     renderMall,
@@ -550,6 +555,61 @@ test('mall to today and back preserves the filtered catalog, purchase preview an
     new RegExp(previewItem.name),
     'the unconfirmed preview survives the route transition',
   );
+
+  const afterNavigation = app.contextExports.useHabits();
+  assert.equal(afterNavigation.coins, beforeNavigation.coins);
+  assert.deepEqual(afterNavigation.purchasedItems, beforeNavigation.purchasedItems);
+  assert.deepEqual(afterNavigation.mallPlacements, beforeNavigation.mallPlacements);
+  assert.equal(app.storage.get(storageKeys.mall), savedMallBeforeNavigation);
+});
+
+test('today mall shortcut returns to the same affordable category without changing saved mall data', async () => {
+  const app = createHarness();
+  const ownedItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'welcome-flowers');
+  assert.ok(ownedItem, 'the seeded owned item exists in the real catalog');
+
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 250,
+    purchasedItems: [ownedItem.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: { 'floor-1-left': ownedItem.id },
+  }));
+
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let mallTree = app.renderCurrentRoute();
+  await press(mallTree, 'mall-category-facility');
+  mallTree = app.renderCurrentRoute();
+  await press(mallTree, 'mall-affordable-toggle');
+  mallTree = app.renderCurrentRoute();
+
+  const beforeNavigation = app.contextExports.useHabits();
+  const savedMallBeforeNavigation = app.storage.get(storageKeys.mall);
+  const expectedAvailable = app.mallCatalog.MALL_ITEMS.filter((item) =>
+    item.floor === 1
+    && item.category === 'facility'
+    && item.price <= beforeNavigation.coins
+    && !beforeNavigation.purchasedItems.includes(item.id),
+  );
+  assert.equal(findByTestId(mallTree, 'mall-category-facility').props.accessibilityState.selected, true);
+  assert.equal(findByTestId(mallTree, 'mall-affordable-toggle').props.accessibilityState.selected, true);
+  assert.equal(findCatalogPager(mallTree).props.total, expectedAvailable.length);
+
+  app.navigateTo('/today');
+  assert.deepEqual(app.navigationStack, ['/today'], 'switching to Today uses tab navigation');
+  const todayTree = app.renderCurrentRoute();
+  assert.match(textContent(todayTree), /今天，先完成一小步。/, 'the Today tab renders its real screen');
+  await press(todayTree, 'today-mall-shortcut');
+  assert.deepEqual(app.navigationStack, ['/'], 'the mall shortcut navigates back to the mall tab');
+
+  mallTree = app.renderCurrentRoute();
+  assert.equal(findByTestId(mallTree, 'mall-category-facility').props.accessibilityState.selected, true);
+  assert.equal(findByTestId(mallTree, 'mall-affordable-toggle').props.accessibilityState.selected, true);
+  assert.equal(findCatalogPager(mallTree).props.total, expectedAvailable.length);
 
   const afterNavigation = app.contextExports.useHabits();
   assert.equal(afterNavigation.coins, beforeNavigation.coins);

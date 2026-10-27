@@ -56,6 +56,34 @@ export function ShopMerchandiseVisual({
             </View>
           </>
         )}
+        {product.illustration === 'ring' && (
+          <>
+            <View style={[styles.ringBand, { borderColor: product.color }]} />
+            <View style={[styles.ringStone, { backgroundColor: accent, borderColor: colors.candyCream }]} />
+            <View style={[styles.ringShine, { backgroundColor: colors.card }]} />
+          </>
+        )}
+        {product.illustration === 'wig' && (
+          <>
+            <View style={[styles.wigSideLock, styles.wigSideLockLeft, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.wigSideLock, styles.wigSideLockRight, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.wigBase, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]}>
+              <View style={[styles.wigFringe, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+              <View style={[styles.wigShine, { backgroundColor: colors.card }]} />
+            </View>
+          </>
+        )}
+        {product.illustration === 'cloak' && (
+          <>
+            <View style={[styles.cloakBody, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]}>
+              <View style={[styles.cloakPanel, { backgroundColor: accent }]} />
+              <View style={[styles.cloakCloud, { backgroundColor: colors.candyCoral }]}>
+                <Feather name="cloud" size={7} color={colors.candyCream} />
+              </View>
+            </View>
+            <View style={[styles.cloakCollar, { borderColor: colors.candyCaramelDark, backgroundColor: colors.candyCream }]} />
+          </>
+        )}
         {product.illustration === 'garment' && (
           <>
             <View style={[styles.hanger, { borderColor: colors.candyCaramelDark }]} />
@@ -211,6 +239,19 @@ const styles = StyleSheet.create({
   bottleLabelLine: { width: 8, height: 1, borderRadius: 1, opacity: 0.8 },
   bottleShine: { position: 'absolute', left: 3, top: 5, width: 2, height: 13, borderRadius: 2, opacity: 0.8 },
   bottleGem: { position: 'absolute', right: -2, top: 5, width: 5, height: 5, borderWidth: 0.6, borderRadius: 3 },
+  ringBand: { position: 'absolute', bottom: 9, width: 20, height: 20, borderWidth: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  ringStone: { position: 'absolute', top: 7, width: 8, height: 8, borderWidth: 1, borderRadius: 3, transform: [{ rotate: '45deg' }] },
+  ringShine: { position: 'absolute', top: 9, left: 19, width: 2, height: 6, borderRadius: 2, opacity: 0.9 },
+  wigBase: { position: 'absolute', bottom: 8, width: 26, height: 22, borderWidth: 1.2, borderTopLeftRadius: 14, borderTopRightRadius: 14, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+  wigFringe: { position: 'absolute', top: 9, left: 3, width: 18, height: 8, borderBottomWidth: 1, borderBottomLeftRadius: 10, borderBottomRightRadius: 6, transform: [{ rotate: '-8deg' }] },
+  wigShine: { position: 'absolute', top: 4, left: 5, width: 3, height: 8, borderRadius: 3, opacity: 0.75 },
+  wigSideLock: { position: 'absolute', bottom: 8, width: 7, height: 19, borderWidth: 1, borderRadius: 5 },
+  wigSideLockLeft: { left: 5, transform: [{ rotate: '8deg' }] },
+  wigSideLockRight: { right: 5, transform: [{ rotate: '-8deg' }] },
+  cloakBody: { position: 'absolute', bottom: 5, width: 27, height: 29, borderWidth: 1.2, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 13, borderBottomRightRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  cloakPanel: { position: 'absolute', top: 6, bottom: 4, width: 2, borderRadius: 2, opacity: 0.9 },
+  cloakCloud: { position: 'absolute', right: 2, top: 12, width: 10, height: 8, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  cloakCollar: { position: 'absolute', bottom: 31, width: 14, height: 7, borderWidth: 1, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
   hanger: { position: 'absolute', top: 3, width: 17, height: 9, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderBottomRightRadius: 8, zIndex: 2 },
   garment: { position: 'absolute', bottom: 5, width: 25, height: 29, borderWidth: 1.2, borderTopLeftRadius: 9, borderTopRightRadius: 9, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   garmentCollar: { position: 'absolute', top: 0, width: 10, height: 6, borderBottomWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },

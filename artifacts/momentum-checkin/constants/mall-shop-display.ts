@@ -7,6 +7,9 @@ export const SHOP_DISPLAY_SLOT_COUNT = 18;
 export type ShopProductIllustration =
   | 'bottle'
   | 'garment'
+  | 'cloak'
+  | 'wig'
+  | 'ring'
   | 'treat'
   | 'drink'
   | 'produce'
@@ -42,7 +45,14 @@ type ProductTheme =
   | 'craft'
   | 'general';
 
-type ProductSeed = { name: string; description: string; icon: string; color: string };
+type ProductSeed = {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  illustration?: ShopProductIllustration;
+};
+type FeaturedProductSeed = ProductSeed & { key: string };
 const c = palette.light;
 
 const productSeeds: Record<ProductTheme, ProductSeed[]> = {
@@ -303,6 +313,176 @@ const packageVariants = [
   { label: '珊瑚晚霞限定', color: c.candyCoral },
 ];
 
+const NARUTO_WARDROBE_FIXTURE_IDS = new Set([
+  'cosplay-limited-starlight-magician',
+  'cosplay-limited-galaxy-armor',
+  'cosplay-fairy-wing-costume',
+  'cosplay-hero-cape-collection',
+]);
+
+const narutoWardrobeProducts: FeaturedProductSeed[] = [
+  {
+    key: 'kakashi-jonin-vest',
+    name: '卡卡西・上忍綠色背心套裝',
+    description: '綠色多口袋背心搭配深藍內搭與護額風布帶的原創角色服。',
+    icon: 'shield',
+    color: c.candyMintDark,
+    illustration: 'garment',
+  },
+  {
+    key: 'naruto-seventh-hokage-cloak',
+    name: '鳴人・第七代火影橘黑斗篷',
+    description: '以橘黑拼色、高領和長斗篷輪廓設計的原創火影主題服。',
+    icon: 'wind',
+    color: c.candyCoral,
+    illustration: 'cloak',
+  },
+  {
+    key: 'naruto-classic-ninja-suit',
+    name: '鳴人・橘黑忍者服',
+    description: '橘色上衣配黑色細節與護額風髮帶的角色造型。',
+    icon: 'star',
+    color: c.candyCoral,
+    illustration: 'garment',
+  },
+  {
+    key: 'sasuke-high-collar-jacket',
+    name: '佐助・深藍高領忍者外套',
+    description: '深藍高領剪裁搭配淺色腰帶的角色服裝。',
+    icon: 'wind',
+    color: c.candySkyDark,
+    illustration: 'garment',
+  },
+  {
+    key: 'sakura-rose-ninja-dress',
+    name: '小櫻・玫瑰紅忍者裙裝',
+    description: '粉紅與莓紅拼色的短外套裙裝，加入俐落忍者風袖口。',
+    icon: 'heart',
+    color: c.candyRose,
+    illustration: 'garment',
+  },
+  {
+    key: 'itachi-crimson-travel-cloak',
+    name: '鼬・深色紅雲旅行斗篷',
+    description: '深色長斗篷搭配柔紅雲紋布章的原創角色造型。',
+    icon: 'cloud',
+    color: c.candyInk,
+    illustration: 'cloak',
+  },
+  {
+    key: 'gaara-desert-kage-robe',
+    name: '我愛羅・砂色風影長袍',
+    description: '砂金與珊瑚色層次構成的長袍造型。',
+    icon: 'sun',
+    color: c.candyCaramel,
+    illustration: 'cloak',
+  },
+  {
+    key: 'hinata-lilac-ninja-tunic',
+    name: '雛田・紫藤忍者束袖服',
+    description: '柔紫束袖上衣配奶油白護具與腰帶。',
+    icon: 'feather',
+    color: c.candyLavender,
+    illustration: 'garment',
+  },
+  {
+    key: 'jiraiya-sage-travel-coat',
+    name: '自來也・赤紅仙人旅行外袍',
+    description: '赤紅外袍配淺色內搭與寬鬆旅人輪廓。',
+    icon: 'wind',
+    color: c.candyCoral,
+    illustration: 'cloak',
+  },
+  {
+    key: 'tsunade-green-haori',
+    name: '綱手・薄荷綠忍者外套',
+    description: '薄荷綠外套搭配暖色腰帶與袖口細節。',
+    icon: 'star',
+    color: c.candyMint,
+    illustration: 'garment',
+  },
+];
+
+const akatsukiMembers = [
+  { key: 'pain-nagato', name: '佩恩・長門', color: c.candyCoral, hair: c.candyCaramel },
+  { key: 'konan', name: '小南', color: c.candyLavender, hair: c.candySky },
+  { key: 'itachi', name: '宇智波鼬', color: c.candyRose, hair: c.candyInk },
+  { key: 'kisame', name: '干柿鬼鮫', color: c.candySky, hair: c.candySkyDark },
+  { key: 'deidara', name: '迪達拉', color: c.candyLemon, hair: c.candyLemon },
+  { key: 'sasori', name: '蠍', color: c.candyCoral, hair: c.candyRose },
+  { key: 'hidan', name: '飛段', color: c.candyCream, hair: c.candyCream },
+  { key: 'kakuzu', name: '角都', color: c.candyMintDark, hair: c.candyInk },
+  { key: 'tobi-obito', name: '阿飛・帶土', color: c.candyPeach, hair: c.candyInk },
+  { key: 'zetsu', name: '絕', color: c.candyMint, hair: c.candyInk },
+  { key: 'orochimaru', name: '大蛇丸（前成員）', color: c.candyLavender, hair: c.candyCream },
+];
+
+const akatsukiWardrobeProducts: FeaturedProductSeed[] = akatsukiMembers.flatMap((member) => [
+  {
+    key: `${member.key}-ring`,
+    name: `曉・${member.name}角色戒指`,
+    description: `以${member.name}的角色色彩設計，配柔紅主題鑲飾的原創收藏戒指。`,
+    icon: 'circle',
+    color: member.color,
+    illustration: 'ring',
+  },
+  {
+    key: `${member.key}-wig`,
+    name: `曉・${member.name}造型假髮`,
+    description: `以${member.name}的髮型輪廓和代表色設計的 Cosplay 假髮。`,
+    icon: 'user',
+    color: member.hair,
+    illustration: 'wig',
+  },
+  {
+    key: `${member.key}-cloak`,
+    name: `曉・${member.name}紅雲長斗篷`,
+    description: `以${member.name}為靈感的深色長斗篷，配原創柔紅雲紋布章。`,
+    icon: 'cloud',
+    color: c.candyInk,
+    illustration: 'cloak',
+  },
+]);
+
+function createFeaturedProduct(
+  theme: ProductTheme,
+  seed: FeaturedProductSeed,
+  idPrefix: string,
+  variant: number,
+  color = seed.color,
+  suffix = '',
+): ShopDisplayProduct {
+  return {
+    id: `${idPrefix}-${seed.key}${suffix}`,
+    name: suffix ? `${seed.name}・${packageVariants[variant % packageVariants.length].label}配色` : seed.name,
+    description: suffix
+      ? `${seed.description}，採用柔和彩色主題重新搭配。`
+      : seed.description,
+    icon: seed.icon,
+    color,
+    theme,
+    illustration: seed.illustration ?? productIllustrationByTheme[theme],
+    variant,
+  };
+}
+
+function createAkatsukiWardrobeCatalog(): ShopDisplayProduct[] {
+  const base = akatsukiWardrobeProducts.map((seed, index) =>
+    createFeaturedProduct('cosplay', seed, 'display-cosplay-akatsuki', index),
+  );
+  const alternatePalettes = akatsukiWardrobeProducts.slice(0, 27).map((seed, index) =>
+    createFeaturedProduct(
+      'cosplay',
+      seed,
+      'display-cosplay-akatsuki',
+      index + 1,
+      packageVariants[index % packageVariants.length].color,
+      `-palette-${String(index + 1).padStart(2, '0')}`,
+    ),
+  );
+  return [...base, ...alternatePalettes];
+}
+
 const fixturePattern = /shelf|shelves|rack|showcase|display|display-case|display-cabinet|wardrobe|cabinet|pedestal|island|counter|陳列|展示|貨架|衣架|衣櫃|衣柜|收納架|櫥窗|櫃台|櫃|柜|架/i;
 
 export function canDisplayShopProducts(decoration: ShopInteriorDecoration): boolean {
@@ -343,7 +523,7 @@ export function getShopFixtureProductCatalog(
     id: `display-${theme}-${index + 1}`,
     ...seed,
     theme,
-    illustration,
+    illustration: seed.illustration ?? illustration,
     variant: index % packageVariants.length,
   }));
   for (let variantIndex = 0; variantIndex < packageVariants.length && catalog.length < 60; variantIndex += 1) {
@@ -357,10 +537,21 @@ export function getShopFixtureProductCatalog(
         icon: seed.icon,
         color: variant.color,
         theme,
-        illustration,
+        illustration: seed.illustration ?? illustration,
         variant: variantIndex + 1,
       });
     }
+  }
+  if (theme === 'cosplay' && decoration.id === 'cosplay-akatsuki-collection-wardrobe') {
+    return createAkatsukiWardrobeCatalog();
+  }
+  if (theme === 'cosplay' && NARUTO_WARDROBE_FIXTURE_IDS.has(decoration.id)) {
+    return [
+      ...catalog,
+      ...narutoWardrobeProducts.map((seed, index) =>
+        createFeaturedProduct('cosplay', seed, 'display-cosplay-naruto', catalog.length + index),
+      ),
+    ];
   }
   return catalog;
 }

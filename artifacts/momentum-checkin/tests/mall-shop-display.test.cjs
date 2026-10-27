@@ -87,6 +87,53 @@ test('cloud fragrance shop has fragrance bottles and diffuser stones', () => {
   assert.equal(new Set(products.map(({ id }) => id)).size, 60);
 });
 
+test('Naruto costume wardrobes add character-specific outfits without hiding existing choices', () => {
+  const products = getShopFixtureProductCatalog(
+    'cosplay-costume-studio',
+    'Cosplay服裝店',
+    'cosplay',
+    {
+      id: 'cosplay-hero-cape-collection',
+      name: '火影忍者卡卡西上衣衣櫃',
+      description: '展示角色服裝',
+    },
+  );
+  assert.equal(products.length, 70);
+  assert.deepEqual(products.slice(0, 60).map(({ id }) => id), Array.from(
+    { length: 60 },
+    (_, index) => `display-cosplay-${index + 1}`,
+  ));
+  const kakashiVest = products.find(({ name }) => name === '卡卡西・上忍綠色背心套裝');
+  const hokageCloak = products.find(({ name }) => name === '鳴人・第七代火影橘黑斗篷');
+  assert.equal(kakashiVest?.illustration, 'garment');
+  assert.equal(hokageCloak?.illustration, 'cloak');
+});
+
+test('Akatsuki wardrobe offers rings, wigs and cloaks for every member in a unique 60-item catalog', () => {
+  const products = getShopFixtureProductCatalog(
+    'cosplay-costume-studio',
+    'Cosplay服裝店',
+    'cosplay',
+    {
+      id: 'cosplay-akatsuki-collection-wardrobe',
+      name: '曉成員主題珍藏衣櫃',
+      description: '展示角色服裝、戒指和假髮',
+    },
+  );
+  const members = [
+    '佩恩・長門', '小南', '宇智波鼬', '干柿鬼鮫', '迪達拉', '蠍',
+    '飛段', '角都', '阿飛・帶土', '絕', '大蛇丸（前成員）',
+  ];
+  assert.equal(products.length, 60);
+  assert.equal(new Set(products.map(({ id }) => id)).size, 60);
+  assert.equal(new Set(products.map(({ name }) => name)).size, 60);
+  for (const member of members) {
+    assert.ok(products.some(({ name, illustration }) => name === `曉・${member}角色戒指` && illustration === 'ring'));
+    assert.ok(products.some(({ name, illustration }) => name === `曉・${member}造型假髮` && illustration === 'wig'));
+    assert.ok(products.some(({ name, illustration }) => name === `曉・${member}紅雲長斗篷` && illustration === 'cloak'));
+  }
+});
+
 test('fixture merchandise uses animated illustrations and paginated 18-slot arrangements', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const panel = fs.readFileSync(path.join(__dirname, '../components/ShopDisplayFixturePanel.tsx'), 'utf8');
@@ -103,6 +150,9 @@ test('fixture merchandise uses animated illustrations and paginated 18-slot arra
   assert.match(visual, /Animated\.View/);
   assert.match(visual, /product\.illustration === 'bottle'/);
   assert.match(visual, /product\.illustration === 'garment'/);
+  assert.match(visual, /product\.illustration === 'cloak'/);
+  assert.match(visual, /product\.illustration === 'wig'/);
+  assert.match(visual, /product\.illustration === 'ring'/);
   assert.match(route, /setShopInteriorFixtureProduct/);
   assert.match(route, /ShopDisplayFixturePanel/);
 });

@@ -197,8 +197,9 @@ filterCatalog.push({ ...filterCatalog[0], id: 'other-floor', name: '外層款式
 test('every shop type has 50 unique interior choices and clothing shops include wardrobes and character editions', () => {
   const optionsByType = shopInteriorCatalog.SHOP_INTERIOR_DECORATIONS;
   for (const [type, options] of Object.entries(optionsByType)) {
-    assert.equal(options.length, 50, `${type} should offer exactly 50 choices`);
-    assert.equal(new Set(options.map((option) => option.id)).size, 50, `${type} choices should have unique IDs`);
+    const expectedCount = type === 'cosplay' ? 51 : 50;
+    assert.equal(options.length, expectedCount, `${type} should offer ${expectedCount} choices`);
+    assert.equal(new Set(options.map((option) => option.id)).size, expectedCount, `${type} choices should have unique IDs`);
   }
 
   const womenswear = optionsByType.womenswear;
@@ -218,6 +219,11 @@ test('every shop type has 50 unique interior choices and clothing shops include 
   const cosplayCharacterEditions = cosplay.filter((option) => option.limitedEdition);
   assert.equal(cosplayCharacterEditions.length, 4);
   assert.ok(cosplayCharacterEditions.every((option) => option.name.includes('火影忍者')));
+  const akatsukiWardrobe = cosplay.find((option) => option.id === 'cosplay-akatsuki-collection-wardrobe');
+  assert.ok(akatsukiWardrobe, 'the Akatsuki wardrobe should be available in the cosplay shop');
+  assert.equal(akatsukiWardrobe.name, '曉成員主題珍藏衣櫃');
+  assert.equal(akatsukiWardrobe.price, 96);
+  assert.equal(akatsukiWardrobe.limitedEdition, false);
 
   const kimonoLimitedEditions = optionsByType.kimono.filter((option) => option.limitedEdition);
   assert.equal(kimonoLimitedEditions.length, 4);
@@ -231,7 +237,8 @@ test('every shop type has 50 unique interior choices and clothing shops include 
 test('shop interiors offer shop-specific equipment while keeping each default catalog at 50 choices', () => {
   for (const shopType of Object.keys(shopInteriorCatalog.SHOP_INTERIOR_DECORATIONS)) {
     const options = shopInteriorCatalog.getShopInteriorDecorations(shopType, `fixture-${shopType}`, '測試商店');
-    assert.equal(options.length, 50, `${shopType} catalog should remain at 50 choices`);
+    const expectedCount = shopType === 'cosplay' ? 51 : 50;
+    assert.equal(options.length, expectedCount, `${shopType} catalog should offer ${expectedCount} choices`);
     assert.equal(
       options.filter((option) => option.id.startsWith(`${shopType}-equipment-`)).length,
       shopType === 'general' ? 0 : 4,

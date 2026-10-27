@@ -16,12 +16,12 @@ import {
   type DogStaffLook,
   type DogStaffProfile,
 } from '@/constants/dog-staff-customization';
-import { DOG_STAFF_FOOD_OPTIONS, type DogStaffFoodOption } from '@/constants/dog-staff-foods';
+import { DOG_STAFF_FOOD_OPTIONS, type DogFoodIllustrationKind, type DogStaffFoodOption } from '@/constants/dog-staff-foods';
 import { useColors } from '@/hooks/useColors';
 
 type DogStaffInteractionAction = 'groom' | 'pet' | 'feed' | 'play';
 type AreaDogStaff = { dog: DogStaffProfile; look: DogStaffLook; index: number };
-type DogStaffInteraction = { dogDecorationId: string; action: DogStaffInteractionAction; id: number };
+type DogStaffInteraction = { dogDecorationId: string; action: DogStaffInteractionAction; id: number; food?: DogStaffFoodOption };
 const DOG_STAFF_INTERACTION_DURATION_MS = 5000;
 type DogCareColorToken =
   | 'candyPink' | 'candyLavender' | 'candyOrange' | 'candySky' | 'candyMint'
@@ -176,6 +176,7 @@ export function ShopInteriorScene({
       dogDecorationId: selectedDog.dog.decorationId,
       action,
       id: interactionSequence.current,
+      food,
     });
     const response = action === 'groom'
       ? `${selectedDog.dog.name}舒服地享受梳毛，毛毛變得蓬鬆亮澤。`
@@ -404,10 +405,11 @@ export function ShopInteriorScene({
                             },
                           ]}
                         >
-                          <DogCareIllustration
-                            action="feed"
-                            color={getDogCareColor(selectedDog.dog.key, colors)}
-                            size={30}
+                          <DogFoodIllustration
+                            food={food}
+                            dogColor={getDogCareColor(selectedDog.dog.key, colors)}
+                            size={34}
+                            testID={`dog-food-illustration-${food.id}`}
                           />
                           <Text numberOfLines={2} style={[styles.foodOptionName, { color: colors.foreground }]}>{food.name}</Text>
                         </Pressable>
@@ -658,7 +660,16 @@ function WalkingStaffDog({
               },
             ]}
           >
-            <DogCareIllustration action={interactionAction} color={interactionColor} size={24} />
+            {interactionAction === 'feed' && interaction?.food ? (
+              <DogFoodIllustration
+                food={interaction.food}
+                dogColor={interactionColor}
+                size={24}
+                testID="dog-care-selected-food"
+              />
+            ) : (
+              <DogCareIllustration action={interactionAction} color={interactionColor} size={24} />
+            )}
           </Animated.View>
         ) : null}
       </Pressable>
@@ -736,6 +747,260 @@ function DogCareIllustration({
         <View style={[styles.ballPatch, { backgroundColor: colors.card }]} />
       </View>
       <View style={[styles.ballSpark, { top: size * 0.04, right: size * 0.02, backgroundColor: color }]} />
+    </View>
+  );
+}
+
+function DogFoodIllustration({
+  food,
+  dogColor,
+  size,
+  testID,
+}: {
+  food: DogStaffFoodOption;
+  dogColor: string;
+  size: number;
+  testID: string;
+}) {
+  const colors = useColors();
+  const shape = (
+    key: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    fill: string,
+    rotate: `${number}deg` = '0deg',
+    radius = Math.min(width, height) * size * 0.38,
+    borderColor = dogColor,
+  ) => (
+    <View
+      key={key}
+      style={[
+        styles.foodShape,
+        {
+          left: size * x,
+          top: size * y,
+          width: size * width,
+          height: size * height,
+          borderRadius: radius,
+          borderColor,
+          backgroundColor: fill,
+          transform: [{ rotate }],
+        },
+      ]}
+    />
+  );
+  const dot = (key: string, x: number, y: number, diameter: number, fill: string) =>
+    shape(key, x, y, diameter, diameter, fill, '0deg', size * diameter * 0.5, fill);
+  const triangle = (key: string, x: number, y: number, fill: string, rotate: `${number}deg` = '0deg') => (
+    <View
+      key={key}
+      style={[
+        styles.foodTriangle,
+        {
+          left: size * x,
+          top: size * y,
+          borderLeftWidth: size * 0.12,
+          borderRightWidth: size * 0.12,
+          borderBottomWidth: size * 0.24,
+          borderLeftColor: 'transparent',
+          borderRightColor: 'transparent',
+          borderBottomColor: fill,
+          transform: [{ rotate }],
+        },
+      ]}
+    />
+  );
+  const stem = (key: string, x: number, y: number, width: number, height: number, fill: string, rotate: `${number}deg` = '0deg') =>
+    shape(key, x, y, width, height, fill, rotate, size * 0.08, fill);
+
+  let artwork: React.ReactNode;
+  switch (food.illustration) {
+    case 'chicken':
+      artwork = (
+        <>
+          {shape('chicken-meat', 0.3, 0.17, 0.56, 0.45, colors.candyCaramel, '-35deg')}
+          {shape('chicken-bone', 0.1, 0.55, 0.42, 0.14, colors.candyCream, '-35deg')}
+          {dot('chicken-bone-joint-a', 0.07, 0.49, 0.17, colors.candyCream)}
+          {dot('chicken-bone-joint-b', 0.18, 0.56, 0.17, colors.candyCream)}
+          {dot('chicken-glaze', 0.58, 0.28, 0.08, colors.candyLemon)}
+        </>
+      );
+      break;
+    case 'turkey':
+      artwork = (
+        <>
+          {shape('turkey-feather-left', 0.09, 0.28, 0.34, 0.42, colors.candyCaramel, '-24deg', size * 0.17)}
+          {shape('turkey-feather-right', 0.56, 0.28, 0.34, 0.42, colors.candyPeach, '24deg', size * 0.17)}
+          {shape('turkey-body', 0.24, 0.38, 0.52, 0.42, colors.candyCaramel, '0deg', size * 0.2)}
+          {dot('turkey-head', 0.58, 0.12, 0.21, colors.candyPeach)}
+          {triangle('turkey-beak', 0.76, 0.18, colors.candyOrange, '90deg')}
+          {stem('turkey-leg-left', 0.39, 0.76, 0.05, 0.16, colors.candyCaramelDark)}
+          {stem('turkey-leg-right', 0.59, 0.76, 0.05, 0.16, colors.candyCaramelDark)}
+        </>
+      );
+      break;
+    case 'duck':
+      artwork = (
+        <>
+          {shape('duck-body', 0.16, 0.38, 0.62, 0.36, colors.candyLemon, '-8deg', size * 0.17)}
+          {dot('duck-head', 0.56, 0.16, 0.28, colors.candyLemon)}
+          {triangle('duck-beak', 0.77, 0.27, colors.candyOrange, '90deg')}
+          {dot('duck-wing', 0.36, 0.43, 0.21, colors.candyCream)}
+          {dot('duck-eye', 0.69, 0.23, 0.045, colors.candyInk)}
+          {stem('duck-foot', 0.37, 0.75, 0.22, 0.05, colors.candyCaramelDark, '-10deg')}
+        </>
+      );
+      break;
+    case 'beef':
+      artwork = (
+        <>
+          {shape('beef-steak', 0.16, 0.2, 0.68, 0.62, colors.candyRose, '-8deg', size * 0.18)}
+          {shape('beef-marbled-a', 0.27, 0.36, 0.22, 0.08, colors.candyCream, '25deg', size * 0.04, colors.candyCream)}
+          {shape('beef-marbled-b', 0.55, 0.49, 0.22, 0.08, colors.candyCream, '-22deg', size * 0.04, colors.candyCream)}
+          {dot('beef-fat', 0.63, 0.28, 0.12, colors.candyCream)}
+        </>
+      );
+      break;
+    case 'fish':
+      artwork = (
+        <>
+          {shape('fish-body', 0.18, 0.3, 0.58, 0.4, colors.candySky, '0deg', size * 0.2)}
+          {triangle('fish-tail', 0.02, 0.34, colors.candyCoral, '-90deg')}
+          {triangle('fish-fin', 0.39, 0.18, colors.candyLavender, '0deg')}
+          {dot('fish-eye', 0.65, 0.4, 0.08, colors.candyInk)}
+          {stem('fish-gill', 0.53, 0.4, 0.035, 0.18, colors.card, '12deg')}
+        </>
+      );
+      break;
+    case 'pumpkin':
+      artwork = (
+        <>
+          {shape('pumpkin-left', 0.16, 0.31, 0.36, 0.48, colors.candyPeach, '-12deg', size * 0.17)}
+          {shape('pumpkin-center', 0.31, 0.25, 0.4, 0.58, colors.candyOrange, '0deg', size * 0.2)}
+          {shape('pumpkin-right', 0.51, 0.31, 0.34, 0.48, colors.candyPeach, '12deg', size * 0.17)}
+          {stem('pumpkin-stem', 0.46, 0.1, 0.13, 0.22, colors.candyMintDark, '-8deg')}
+        </>
+      );
+      break;
+    case 'carrot':
+      artwork = (
+        <>
+          {shape('carrot-body', 0.36, 0.24, 0.28, 0.63, colors.candyOrange, '22deg', size * 0.11)}
+          {stem('carrot-leaf-left', 0.2, 0.1, 0.28, 0.09, colors.candyMintDark, '-34deg')}
+          {stem('carrot-leaf-middle', 0.41, 0.04, 0.26, 0.09, colors.candyMint, '-8deg')}
+          {stem('carrot-leaf-right', 0.54, 0.12, 0.27, 0.09, colors.candyMintDark, '28deg')}
+          {stem('carrot-ridge-a', 0.39, 0.48, 0.13, 0.035, colors.candyPeach, '22deg')}
+          {stem('carrot-ridge-b', 0.42, 0.65, 0.1, 0.035, colors.candyPeach, '22deg')}
+        </>
+      );
+      break;
+    case 'apple':
+      artwork = (
+        <>
+          {shape('apple-body', 0.18, 0.24, 0.66, 0.64, colors.candyRose, '0deg', size * 0.28)}
+          {stem('apple-stem', 0.47, 0.08, 0.07, 0.21, colors.candyCaramelDark, '-8deg')}
+          {shape('apple-leaf', 0.54, 0.11, 0.25, 0.12, colors.candyMint, '-28deg', size * 0.08, colors.candyMintDark)}
+          {dot('apple-shine', 0.31, 0.4, 0.09, colors.card)}
+        </>
+      );
+      break;
+    case 'berry':
+      artwork = (
+        <>
+          {dot('berry-one', 0.2, 0.39, 0.33, colors.candyLavender)}
+          {dot('berry-two', 0.45, 0.25, 0.35, colors.candySky)}
+          {dot('berry-three', 0.48, 0.53, 0.34, colors.candyRose)}
+          {dot('berry-four', 0.21, 0.56, 0.28, colors.candyLavenderDark)}
+          {shape('berry-leaf', 0.34, 0.1, 0.32, 0.14, colors.candyMint, '-18deg', size * 0.09, colors.candyMintDark)}
+        </>
+      );
+      break;
+    case 'milk':
+      artwork = (
+        <>
+          {shape('milk-cup', 0.2, 0.31, 0.62, 0.53, colors.candyCream, '0deg', size * 0.1)}
+          {stem('milk-rim', 0.16, 0.28, 0.7, 0.09, colors.candyPeach)}
+          {stem('milk-straw', 0.58, 0.08, 0.06, 0.27, colors.candyRose, '-12deg')}
+          {shape('milk-label', 0.36, 0.48, 0.3, 0.18, colors.candyLavender, '0deg', size * 0.07, colors.candyLavender)}
+          {dot('milk-label-dot', 0.48, 0.52, 0.08, colors.card)}
+        </>
+      );
+      break;
+    case 'greens':
+      artwork = (
+        <>
+          {shape('greens-leaf-left', 0.1, 0.28, 0.47, 0.4, colors.candyMint, '-34deg', size * 0.18, colors.candyMintDark)}
+          {shape('greens-leaf-right', 0.44, 0.18, 0.47, 0.4, colors.candyMintDark, '32deg', size * 0.18)}
+          {shape('greens-leaf-bottom', 0.29, 0.48, 0.48, 0.34, colors.candyMint, '2deg', size * 0.15, colors.candyMintDark)}
+          {stem('greens-vein', 0.48, 0.37, 0.04, 0.4, colors.candyCream, '-5deg')}
+        </>
+      );
+      break;
+    case 'sweet-potato':
+      artwork = (
+        <>
+          {shape('sweet-potato-body', 0.1, 0.31, 0.8, 0.4, colors.candyCaramel, '-18deg', size * 0.18)}
+          {dot('sweet-potato-eye-a', 0.28, 0.44, 0.055, colors.candyCaramelDark)}
+          {dot('sweet-potato-eye-b', 0.62, 0.47, 0.06, colors.candyCaramelDark)}
+          {shape('sweet-potato-tip', 0.78, 0.42, 0.13, 0.2, colors.candyPeach, '20deg', size * 0.08, colors.candyPeach)}
+        </>
+      );
+      break;
+    case 'lamb':
+      artwork = (
+        <>
+          {shape('lamb-chop', 0.26, 0.2, 0.53, 0.55, colors.candyPeach, '-16deg', size * 0.2)}
+          {dot('lamb-bone-joint-a', 0.1, 0.57, 0.18, colors.candyCream)}
+          {dot('lamb-bone-joint-b', 0.17, 0.68, 0.15, colors.candyCream)}
+          {stem('lamb-bone', 0.19, 0.58, 0.34, 0.12, colors.candyCream, '-28deg')}
+          {dot('lamb-glaze', 0.52, 0.32, 0.08, colors.candyLemon)}
+        </>
+      );
+      break;
+    case 'venison':
+      artwork = (
+        <>
+          {shape('venison-steak', 0.22, 0.36, 0.59, 0.48, colors.candyCaramelDark, '4deg', size * 0.17)}
+          {stem('venison-antler-left', 0.25, 0.1, 0.06, 0.34, colors.candyCaramel, '-22deg')}
+          {stem('venison-antler-left-branch', 0.16, 0.13, 0.22, 0.05, colors.candyCaramel, '-42deg')}
+          {stem('venison-antler-right', 0.66, 0.1, 0.06, 0.34, colors.candyCaramel, '22deg')}
+          {stem('venison-antler-right-branch', 0.62, 0.13, 0.22, 0.05, colors.candyCaramel, '42deg')}
+          {dot('venison-glaze', 0.5, 0.49, 0.08, colors.candyPeach)}
+        </>
+      );
+      break;
+    case 'liver':
+      artwork = (
+        <>
+          {shape('liver-lobe-left', 0.16, 0.32, 0.44, 0.46, colors.candyCoral, '-18deg', size * 0.19)}
+          {shape('liver-lobe-right', 0.42, 0.29, 0.43, 0.47, colors.candyRose, '16deg', size * 0.19)}
+          {shape('liver-shine', 0.31, 0.42, 0.17, 0.06, colors.candyPeach, '-12deg', size * 0.03, colors.candyPeach)}
+        </>
+      );
+      break;
+    case 'banana':
+      artwork = (
+        <>
+          {shape('banana-outer', 0.14, 0.3, 0.72, 0.34, colors.candyLemon, '22deg', size * 0.16)}
+          {shape('banana-inner', 0.22, 0.35, 0.58, 0.15, colors.candyCream, '22deg', size * 0.07, colors.candyCream)}
+          {stem('banana-tip-a', 0.1, 0.29, 0.14, 0.1, colors.candyCaramelDark, '22deg')}
+          {stem('banana-tip-b', 0.79, 0.55, 0.14, 0.1, colors.candyCaramelDark, '22deg')}
+        </>
+      );
+      break;
+    default:
+      throw new Error(`No cartoon food illustration for ${food.name}`);
+  }
+
+  return (
+    <View
+      testID={testID}
+      accessible={false}
+      style={[styles.careIllustration, { width: size, height: size }]}
+    >
+      {artwork}
     </View>
   );
 }
@@ -858,6 +1123,8 @@ const styles = StyleSheet.create({
   foodOption: { width: '47%', minWidth: 0, minHeight: 78, borderWidth: 1, borderRadius: 16, paddingHorizontal: 8, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', gap: 5 },
   foodOptionName: { fontSize: 11, lineHeight: 14, fontWeight: '700', textAlign: 'center' },
   careIllustration: { position: 'relative', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
+  foodShape: { position: 'absolute', borderWidth: 1.2 },
+  foodTriangle: { position: 'absolute', width: 0, height: 0 },
   combHead: { position: 'absolute', borderRadius: 4, justifyContent: 'center' },
   combShine: { position: 'absolute', top: 1, left: 3, width: '42%', height: 1.5, borderRadius: 2, opacity: 0.9 },
   combTooth: { position: 'absolute', width: 2.5, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },

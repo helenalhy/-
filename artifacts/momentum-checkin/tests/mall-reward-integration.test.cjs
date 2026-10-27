@@ -1194,6 +1194,10 @@ test('redeemed cafe dogs walk, open free care actions, and stay outside the 48 i
         5,
         'Huahua can choose from five foods',
       );
+      assert.ok(
+        findByTestId(interactionTree, 'dog-food-illustration-fluffy-staff-huahua-food-chicken-bites'),
+        'the chicken option has its matching cartoon illustration',
+      );
       await press(interactionTree, 'dog-staff-food-fluffy-staff-huahua-food-chicken-bites');
       interactionTree = app.renderShopInteriorScene(interiorTree);
     }

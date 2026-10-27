@@ -170,18 +170,22 @@ test('every café dog has five unique food choices including the requested chick
   const everyFood = Object.values(DOG_STAFF_FOOD_OPTIONS).flat();
   assert.equal(everyFood.length, 70);
   assert.equal(new Set(everyFood.map(({ name }) => name)).size, 70, 'food names are distinct across all dogs');
+  assert.equal(new Set(everyFood.map(({ illustration }) => illustration)).size, 16, 'the menus use distinct matching cartoon food types');
   for (const dogKey of profileKeys) {
     const foods = DOG_STAFF_FOOD_OPTIONS[dogKey];
     assert.equal(foods.length, 5, `${dogKey} has five food choices`);
     assert.equal(new Set(foods.map(({ id }) => id)).size, 5, `${dogKey} has no repeated food IDs`);
     assert.equal(new Set(foods.map(({ name }) => name)).size, 5, `${dogKey} has no repeated food names`);
   }
-  assert.ok(DOG_STAFF_FOOD_OPTIONS['fluffy-staff-huahua'].some(({ name }) => name.includes('雞肉')));
-  assert.ok(DOG_STAFF_FOOD_OPTIONS['fluffy-staff-milkshake'].some(({ name }) => name.includes('牛肉')));
-  assert.match(
-    fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8'),
-    /每隻狗都有 5 款專屬小食/,
-  );
+  const huahuaChicken = DOG_STAFF_FOOD_OPTIONS['fluffy-staff-huahua'].find(({ name }) => name.includes('雞肉'));
+  const milkshakeBeef = DOG_STAFF_FOOD_OPTIONS['fluffy-staff-milkshake'].find(({ name }) => name.includes('牛肉'));
+  assert.equal(huahuaChicken?.illustration, 'chicken');
+  assert.equal(milkshakeBeef?.illustration, 'beef');
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  assert.match(scene, /每隻狗都有 5 款專屬小食/);
+  assert.match(scene, /food\.illustration/);
+  assert.match(scene, /dog-food-illustration-\$\{food\.id\}/);
+  assert.match(scene, /food=\{interaction\.food\}[\s\S]*?testID="dog-care-selected-food"/);
 });
 
 test('grooming and petting give the walking dog a closed-eye smile', () => {

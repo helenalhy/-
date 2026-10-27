@@ -1,7 +1,46 @@
+export type DogFoodIllustrationKind =
+  | 'chicken'
+  | 'turkey'
+  | 'duck'
+  | 'beef'
+  | 'fish'
+  | 'pumpkin'
+  | 'carrot'
+  | 'apple'
+  | 'berry'
+  | 'milk'
+  | 'greens'
+  | 'sweet-potato'
+  | 'lamb'
+  | 'venison'
+  | 'liver'
+  | 'banana';
+
 export type DogStaffFoodOption = {
   id: string;
   name: string;
+  illustration: DogFoodIllustrationKind;
 };
+
+function getFoodIllustrationKind(slug: string, name: string): DogFoodIllustrationKind {
+  if (slug.includes('liver') || name.includes('肝')) return 'liver';
+  if (name.startsWith('火雞')) return 'turkey';
+  if (name.startsWith('鴨')) return 'duck';
+  if (name.startsWith('雞')) return 'chicken';
+  if (name.startsWith('牛')) return 'beef';
+  if (name.startsWith('鮭魚') || name.startsWith('鱈魚') || name.startsWith('鮪魚')) return 'fish';
+  if (name.startsWith('羊肉')) return 'lamb';
+  if (name.startsWith('鹿肉')) return 'venison';
+  if (name.startsWith('南瓜')) return 'pumpkin';
+  if (name.startsWith('胡蘿蔔')) return 'carrot';
+  if (name.startsWith('蘋果')) return 'apple';
+  if (name.startsWith('藍莓')) return 'berry';
+  if (name.startsWith('香蕉')) return 'banana';
+  if (name.startsWith('羊奶')) return 'milk';
+  if (name.startsWith('西蘭花') || name.startsWith('菠菜')) return 'greens';
+  if (name.startsWith('地瓜') || name.startsWith('甜薯')) return 'sweet-potato';
+  throw new Error(`No cartoon illustration is mapped for dog food: ${name}`);
+}
 
 function foodMenu(
   dogKey: string,
@@ -10,6 +49,7 @@ function foodMenu(
   return items.map(([slug, name]) => ({
     id: `${dogKey}-food-${slug}`,
     name,
+    illustration: getFoodIllustrationKind(slug, name),
   }));
 }
 

@@ -910,6 +910,13 @@ test('fluffy cafe dog staff can be redeemed into exclusive stations outside the 
   assert.ok(cafe.ownedDecorations.includes(dogId));
   assert.ok(!findNodes(sceneTree, (node) => node.type === 'MallObjectVisual' && node.props.id === 'dog-staff-huahua').length);
   assert.ok(findByTestId(customizerTree, 'dog-staff-station-entrance-greeting'));
+  const sceneDock = findByTestId(sceneTree, 'dog-staff-scene-dock');
+  assert.ok(sceneDock, 'the separate staff positions are drawn inside the shop scene frame');
+  assert.equal(
+    findNodes(sceneDock, (node) => node.props?.testID?.startsWith('dog-staff-scene-station-')).length,
+    14,
+  );
+  assert.match(textContent(sceneDock), /花花/);
 });
 
 test('dog outfits persist on dedicated station moves, while the 48 decor slots remain independent', async () => {

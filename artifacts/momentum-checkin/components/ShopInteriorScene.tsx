@@ -1,10 +1,17 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
 import { classifyDecoration, mapCoverPoint, resolveObjectAnchor } from '@/constants/mall-shop-scene-anchors';
-import { resolveDogStaffLook, type DogStaffLook } from '@/constants/dog-staff-customization';
+import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
+import {
+  DOG_STAFF_PROFILE_BY_DECORATION_ID,
+  DOG_STAFF_STATIONS,
+  resolveDogStaffLook,
+  type DogStaffLook,
+  type DogStaffStationId,
+} from '@/constants/dog-staff-customization';
 import { useColors } from '@/hooks/useColors';
 
 const SCENES: Record<ShopInteriorSceneKey, number> = {
@@ -40,6 +47,7 @@ export function ShopInteriorScene({
   placements,
   decorations,
   dogStaffLooks,
+  dogStaffPlacements,
   selectedSlot,
   onSelectSlot,
 }: {
@@ -51,6 +59,7 @@ export function ShopInteriorScene({
   placements: Partial<Record<ShopInteriorSlotId, string>>;
   decorations: ShopInteriorDecoration[];
   dogStaffLooks?: Record<string, DogStaffLook>;
+  dogStaffPlacements?: Partial<Record<DogStaffStationId, string>>;
   selectedSlot: ShopInteriorSlotId;
   onSelectSlot: (slot: ShopInteriorSlotId) => void;
 }) {
@@ -68,7 +77,7 @@ export function ShopInteriorScene({
         },
       ]}
     >
-      <ImageBackground onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} source={SCENES[sceneKey]} resizeMode="cover" style={styles.image} imageStyle={styles.imageShape}>
+      <ImageBackground onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} source={SCENES[sceneKey]} resizeMode="cover" style={styles.imageStage} imageStyle={styles.imageShape}>
         <View style={styles.topScrim} pointerEvents="none" />
         <View style={[styles.namePlaque, { backgroundColor: colors.card, borderColor: shopColor }]} pointerEvents="none">
           <View style={[styles.plaqueDot, { backgroundColor: shopColor }]} />
@@ -126,7 +135,85 @@ export function ShopInteriorScene({
           );
         })}
       </ImageBackground>
+      {sceneKey === 'cafe' && (
+        <View
+          testID="dog-staff-scene-dock"
+          accessibilityLabel="CAFÉ 狗狗店員專屬站位區，不佔用一般佈置位置"
+          style={[styles.dogStaffDock, { backgroundColor: colors.candyCream, borderTopColor: shopColor }]}
+        >
+          <View style={styles.dogStaffDockHeading}>
+            <View style={[styles.dockHeadingDot, { backgroundColor: shopColor }]} />
+            <Text style={[styles.dogStaffDockTitle, { color: colors.foreground }]}>CAFÉ 店員專屬站位</Text>
+            <Text style={[styles.dogStaffDockCount, { color: colors.mutedForeground }]}>14 個 · 獨立於 48 個佈置位置</Text>
+          </View>
+          <View style={styles.dogStaffStationGrid}>
+            {DOG_STAFF_STATIONS.map((station, index) => {
+              const dogId = dogStaffPlacements?.[station.id];
+              const dog = dogId ? DOG_STAFF_PROFILE_BY_DECORATION_ID[dogId] : undefined;
+              const look = dogId && dog ? resolveDogStaffLook(dogId, dogStaffLooks?.[dogId]) : null;
+              return (
+                <View
+                  key={station.id}
+                  testID={`dog-staff-scene-station-${station.id}`}
+                  accessible
+                  accessibilityLabel={`${station.label}，${dog?.name ?? '空站位'}`}
+                  style={[
+                    styles.dogStaffStation,
+                    {
+                      backgroundColor: dog ? colors.card : 'rgba(255,255,255,0.48)',
+                      borderColor: dog ? shopColor : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.stationLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    {station.label}
+                  </Text>
+                  <View style={styles.stationDog}>
+                    {dog && look ? (
+                      <AnimatedStaffDog
+                        kind={dog.kind as DogAttendantKind}
+                        outfitId={look.outfitId}
+                        accessoryId={look.accessoryId}
+                      />
+                    ) : (
+                      <Feather name="user" size={13} color={colors.mutedForeground} />
+                    )}
+                  </View>
+                  <Text style={[styles.stationDogName, { color: dog ? colors.foreground : colors.mutedForeground }]} numberOfLines={1}>
+                    {dog?.name ?? `空位 ${index + 1}`}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
     </View>
+  );
+}
+
+function AnimatedStaffDog({
+  kind,
+  outfitId,
+  accessoryId,
+}: {
+  kind: DogAttendantKind;
+  outfitId: string;
+  accessoryId: string;
+}) {
+  const bob = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(bob, { toValue: -1.5, duration: 900, useNativeDriver: false }),
+      Animated.timing(bob, { toValue: 0, duration: 900, useNativeDriver: false }),
+    ]));
+    animation.start();
+    return () => animation.stop();
+  }, [bob]);
+  return (
+    <Animated.View style={[styles.animatedStationDog, { transform: [{ translateY: bob }, { scale: 0.5 }] }]}>
+      <DogAttendant kind={kind} outfitId={outfitId} accessoryId={accessoryId} />
+    </Animated.View>
   );
 }
 
@@ -136,9 +223,6 @@ const HOTSPOT_H = 50;
 
 const styles = StyleSheet.create({
   frame: {
-    aspectRatio: 0.94,
-    minHeight: 360,
-    maxHeight: 510,
     width: '100%',
     borderRadius: 25,
     borderWidth: 2,
@@ -147,7 +231,7 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 4,
   },
-  image: { flex: 1, justifyContent: 'flex-start' },
+  imageStage: { width: '100%', aspectRatio: 0.94, minHeight: 360, maxHeight: 510, justifyContent: 'flex-start' },
   imageShape: { width: '100%', height: '100%' },
   topScrim: {
     ...StyleSheet.absoluteFill,
@@ -218,4 +302,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   slotLabel: { maxWidth: '100%', fontSize: 8, lineHeight: 11, fontWeight: '800', textAlign: 'center' },
+  dogStaffDock: { width: '100%', borderTopWidth: 2, paddingHorizontal: 8, paddingTop: 7, paddingBottom: 8 },
+  dogStaffDockHeading: { minHeight: 18, flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 },
+  dockHeadingDot: { width: 6, height: 6, borderRadius: 4 },
+  dogStaffDockTitle: { fontSize: 9, fontWeight: '900' },
+  dogStaffDockCount: { marginLeft: 'auto', fontSize: 8, fontWeight: '700' },
+  dogStaffStationGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 5 },
+  dogStaffStation: { width: '13.4%', minHeight: 63, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2, paddingVertical: 3, gap: 1 },
+  stationLabel: { maxWidth: '100%', fontSize: 7, lineHeight: 9, fontWeight: '700', textAlign: 'center' },
+  stationDog: { width: '100%', height: 27, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+  animatedStationDog: { position: 'absolute', width: 50, height: 45, alignItems: 'center', justifyContent: 'center' },
+  stationDogName: { maxWidth: '100%', fontSize: 8, lineHeight: 10, fontWeight: '800', textAlign: 'center' },
 });

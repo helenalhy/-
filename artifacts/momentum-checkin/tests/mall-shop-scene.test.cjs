@@ -101,6 +101,19 @@ test('six areas each expose eight slots (48 total) and legacy/main placements re
   assert.equal(parseShopInteriorPlacementId('extension-3:unknown'), null);
 });
 
+test('cafe dog staff have a separate animated-scene dock below the furniture canvas', () => {
+  assert.equal(dogStaffStyles.DOG_STAFF_STATIONS.length, 14);
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  const imageEnd = scene.indexOf('</ImageBackground>');
+  const staffDock = scene.indexOf('testID="dog-staff-scene-dock"');
+  assert.ok(imageEnd >= 0 && staffDock > imageEnd, 'the staff dock is outside the furniture/background image layer');
+  assert.match(scene, /sceneKey === 'cafe'/);
+  assert.match(scene, /DOG_STAFF_STATIONS\.map/);
+  assert.match(scene, /dogStaffPlacements\?\.\[station\.id\]/);
+  assert.match(scene, /<AnimatedStaffDog/);
+  assert.match(scene, /14 個 · 獨立於 48 個佈置位置/);
+});
+
 const anchorSource = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-shop-scene-anchors.ts'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },

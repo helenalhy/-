@@ -304,6 +304,7 @@ export default function MallShopInteriorScreen() {
               placements={areaPlacements}
               decorations={interiorDecorations}
               dogStaffLooks={interior?.dogStaffLooks}
+              dogStaffPlacements={interior?.dogStaffPlacements}
               selectedSlot={selectedSlot}
               onSelectSlot={setSelectedSlot}
             />

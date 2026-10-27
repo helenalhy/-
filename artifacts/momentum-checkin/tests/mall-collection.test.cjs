@@ -327,6 +327,36 @@ test('checking out and completing the same goal again today only awards coins on
   assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
 });
 
+test('different goals completed on the same day each earn and persist their own 20-coin reward', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  let app = await mount(storage);
+  const today = app.value.today;
+  const firstRewardKey = `starter-walk:${today}`;
+  const secondRewardKey = `starter-read:${today}`;
+
+  assert.equal(app.value.coins, 0);
+  assert.equal(await app.value.toggleCheckIn('starter-walk'), 20);
+  assert.equal(app.value.coins, 20);
+
+  assert.equal(await app.value.toggleCheckIn('starter-read'), 20);
+  assert.equal(app.value.coins, 40, 'each different goal earns its own 20 coins today');
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-read').checkIns.includes(today));
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [firstRewardKey, secondRewardKey]);
+
+  app = await mount(storage);
+  assert.equal(app.value.coins, 40);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-read').checkIns.includes(today));
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [firstRewardKey, secondRewardKey]);
+});
+
 test('a failed write-ahead record leaves both the completion and coin balance unchanged', async () => {
   const storage = seed({
     schemaVersion: 3,

@@ -59,13 +59,14 @@ const OBJECT_ARTWORK: Partial<Record<MallObjectArchetype, ImageSourcePropType>> 
   'jewelry-case': require('../assets/images/mall-jewelry-case.png'),
 };
 
-export function MallObjectVisual({ id, itemId, color, icon, category, isActive = true, dogOutfitId, dogAccessoryId }: {
+export function MallObjectVisual({ id, itemId, color, icon, category, isActive = true, presentation = 'standard', dogOutfitId, dogAccessoryId }: {
   id: string;
   itemId?: string;
   color: string;
   icon: string;
   category: MallVisualCategory;
   isActive?: boolean;
+  presentation?: 'standard' | 'mall-storefront';
   dogOutfitId?: string;
   dogAccessoryId?: string;
 }) {
@@ -108,11 +109,17 @@ export function MallObjectVisual({ id, itemId, color, icon, category, isActive =
   const drawing = artwork
     ? <Image source={artwork} resizeMode="contain" fadeDuration={0} style={s.sceneSprite} />
     : <ThemedMallObject id={archetype} color={color} icon={icon} dogOutfitId={dogOutfitId} dogAccessoryId={dogAccessoryId} />;
+  const canvasPresentation = presentation === 'mall-storefront'
+    ? s.mallStorefrontCanvas
+    : undefined;
+  const motionPresentation = presentation === 'mall-storefront'
+    ? s.mallStorefrontMotion
+    : undefined;
 
   const sparkleScale = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.15] });
   return (
-    <View pointerEvents="none" style={s.illustrationCanvas}>
-      <Animated.View style={[s.illustrationMotion, { transform: [{ translateY: motion }] }]}>
+    <View pointerEvents="none" style={[s.illustrationCanvas, canvasPresentation]}>
+      <Animated.View style={[s.illustrationMotion, motionPresentation, { transform: [{ translateY: motion }] }]}>
         {drawing}
       </Animated.View>
       {isActive && (
@@ -147,6 +154,8 @@ export function MallAmbience({ floor = 1 }: { floor?: number }) {
 const s = StyleSheet.create({
   illustrationCanvas: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   illustrationMotion: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center' },
+  mallStorefrontCanvas: { width: 84, height: 63 },
+  mallStorefrontMotion: { width: 84, height: 63 },
   sceneSprite: { width: '100%', height: '100%' },
   objectSparkle: { position: 'absolute', right: 6, top: 4 },
   visitorLayer: { zIndex: 10, elevation: 10 },

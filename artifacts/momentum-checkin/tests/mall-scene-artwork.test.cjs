@@ -22,6 +22,17 @@ test('mall shops, facilities and decor use the matching illustrated scene assets
   assert.match(source, /Image source=\{artwork\} resizeMode="contain"/);
 });
 
+test('placed storefronts fill their mall bays and rest on a floor contact shadow', () => {
+  const mallSource = fs.readFileSync(path.join(appRoot, 'app/(tabs)/mall.tsx'), 'utf8');
+  const visualsSource = fs.readFileSync(visualsPath, 'utf8');
+
+  assert.match(mallSource, /const isStorefront = item\.category === 'shop'/);
+  assert.match(mallSource, /styles\.sceneStoreContactShadow/);
+  assert.match(mallSource, /presentation=\{isStorefront && !position\.plaza \? 'mall-storefront' : 'standard'\}/);
+  assert.match(mallSource, /sceneStoreName: \{[\s\S]*?backgroundColor: 'rgba\(255,248,239,0\.72\)'/);
+  assert.match(visualsSource, /mallStorefrontCanvas: \{ width: 84, height: 63 \}/);
+});
+
 test('mall customers render above placed objects without blocking touch input', () => {
   const source = fs.readFileSync(visualsPath, 'utf8');
 

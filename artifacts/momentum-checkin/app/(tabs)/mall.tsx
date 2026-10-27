@@ -162,6 +162,7 @@ function MallSceneSlot({
   }, [focusAfterResult, onFocusAfterResult]);
 
   if (item) {
+    const isStorefront = item.category === 'shop';
     return (
       <Pressable
         style={[
@@ -182,8 +183,17 @@ function MallSceneSlot({
       >
         <Animated.View style={[
           styles.sceneShopBadge,
-          { opacity: fadeIn, height: position.plaza ? 30 : 47, transform: [{ scale: Animated.multiply(popIn, position.scale) }] },
+          { opacity: fadeIn, height: position.plaza ? 30 : isStorefront ? 63 : 47, transform: [{ scale: Animated.multiply(popIn, position.scale) }] },
         ]}>
+          {isStorefront && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.sceneStoreContactShadow,
+                { bottom: position.plaza ? -8 : 2 },
+              ]}
+            />
+          )}
           <MallObjectVisual
             id={item.visual ?? item.id}
             itemId={item.id}
@@ -191,9 +201,14 @@ function MallSceneSlot({
             icon={item.icon}
             category={item.category}
             isActive={isSceneActive}
+            presentation={isStorefront && !position.plaza ? 'mall-storefront' : 'standard'}
           />
         </Animated.View>
-        <Text numberOfLines={1} style={[styles.sceneShopName, { color: palette.light.foreground, fontSize: position.plaza ? 7 : 8 }]}>{item.name}</Text>
+        <Text numberOfLines={1} style={[
+          styles.sceneShopName,
+          isStorefront && styles.sceneStoreName,
+          { color: palette.light.foreground, fontSize: position.plaza ? 7 : 8 },
+        ]}>{item.name}</Text>
         {isLocationHighlighted && <Text style={[styles.locationMarker, { color: colors.primary, backgroundColor: colors.secondary }]}>目前位置</Text>}
         {isPreview && !position.plaza && <Text style={[styles.sceneShopName, { color: colors.primary }]}>預覽</Text>}
       </Pressable>
@@ -1409,11 +1424,26 @@ const styles = StyleSheet.create({
   floorDescription: { fontSize: 11, lineHeight: 17, marginBottom: 10 },
   mallArtwork: { width: '100%', aspectRatio: 1 },
   mallArtworkImage: { width: '100%', height: '100%' },
-  sceneSlot: { position: 'absolute', height: '18%', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  sceneSlot: { position: 'absolute', height: '18%', alignItems: 'center', justifyContent: 'center', overflow: 'visible', zIndex: 2 },
   sceneSlotTarget: { borderWidth: 1, borderColor: palette.light.primary, borderStyle: 'dashed', borderRadius: 10, backgroundColor: palette.light.candyCream },
   locationMarker: { fontSize: 8, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, overflow: 'hidden' },
   sceneShopBadge: { alignItems: 'center', justifyContent: 'center' },
+  sceneStoreContactShadow: {
+    position: 'absolute',
+    width: '72%',
+    height: 4,
+    borderRadius: 99,
+    backgroundColor: 'rgba(92,60,60,0.18)',
+    transform: [{ scaleX: 1.08 }],
+  },
   sceneShopName: { fontSize: 8, fontWeight: '700', backgroundColor: palette.light.candyCream, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, maxWidth: '100%' },
+  sceneStoreName: {
+    backgroundColor: 'rgba(255,248,239,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    borderRadius: 7,
+    overflow: 'hidden',
+  },
   sceneEmptyBadge: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', opacity: 0.75 },
   sceneEmptyBadgeActive: { width: 30, height: 30, borderRadius: 15, opacity: 1 },
   placementBanner: { flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, padding: 12, marginBottom: 10 },

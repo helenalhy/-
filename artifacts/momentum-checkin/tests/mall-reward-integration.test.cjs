@@ -21,6 +21,8 @@ function createHarness() {
   const navigationStack = ['/'];
   let localSearchParams = {};
   const alerts = [];
+  const scheduledTimers = [];
+  const appStateListeners = new Set();
   const palette = { light: new Proxy({}, { get: (_, key) => String(key) }) };
   const mallContext = { currentValue: null };
   const contextProvider = { context: mallContext };
@@ -43,7 +45,7 @@ function createHarness() {
     useState(initial) {
       const frame = activeFrame;
       const index = frame.cursor++;
-      if (!(index in frame.states)) frame.states[index] = initial;
+      if (!(index in frame.states)) frame.states[index] = typeof initial === 'function' ? initial() : initial;
       return [frame.states[index], (next) => {
         frame.states[index] = typeof next === 'function' ? next(frame.states[index]) : next;
       }];
@@ -66,6 +68,12 @@ function createHarness() {
   };
 
   const native = {
+    AppState: {
+      addEventListener(_event, listener) {
+        appStateListeners.add(listener);
+        return { remove: () => appStateListeners.delete(listener) };
+      },
+    },
     ActivityIndicator: 'ActivityIndicator',
     Alert: { alert: (...args) => alerts.push(args) },
     AccessibilityInfo: {
@@ -250,9 +258,46 @@ function createHarness() {
   }
 
   async function runEffects(key) {
-    for (const effect of effects.get(key) ?? []) effect();
+    const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
+    global.setTimeout = (callback, delay) => {
+      const timer = { callback, delay, cleared: false };
+      scheduledTimers.push(timer);
+      return timer;
+    };
+    global.clearTimeout = (timer) => {
+      if (timer) timer.cleared = true;
+    };
+    try {
+      for (const effect of effects.get(key) ?? []) effect();
+    } finally {
+      global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
+    }
     await new Promise((resolve) => setImmediate(resolve));
     await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  function runNextTimer() {
+    const timer = scheduledTimers.find((candidate) => !candidate.cleared);
+    assert.ok(timer, 'a future local-midnight timer is scheduled');
+    timer.cleared = true;
+    const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
+    global.setTimeout = (callback, delay) => {
+      const nextTimer = { callback, delay, cleared: false };
+      scheduledTimers.push(nextTimer);
+      return nextTimer;
+    };
+    global.clearTimeout = (nextTimer) => {
+      if (nextTimer) nextTimer.cleared = true;
+    };
+    try {
+      timer.callback();
+    } finally {
+      global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
+    }
   }
 
   const contextExports = loadTsModule(path.join(appRoot, 'context/HabitsContext.tsx'));
@@ -279,6 +324,7 @@ function createHarness() {
     renderProvider,
     renderToday,
     runEffects,
+    runNextTimer,
     shopInteriorCatalog: loadTsModule(path.join(appRoot, 'constants/mall-shop-interior.ts')),
     storage,
     setLocalSearchParams: (params) => { localSearchParams = params; },
@@ -361,6 +407,71 @@ async function press(tree, testID) {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
 }
+
+test('today and first check-in reward roll over after local midnight without duplicate claims', async () => {
+  const OriginalDate = global.Date;
+  let clock = new OriginalDate(2026, 3, 1, 23, 59, 50);
+  global.Date = class ControlledDate extends OriginalDate {
+    constructor(...args) {
+      if (args.length === 0) super(clock.getTime());
+      else super(...args);
+    }
+
+    static now() {
+      return clock.getTime();
+    }
+  };
+
+  try {
+    const app = createHarness();
+    app.renderProvider();
+    await app.runEffects('provider');
+    app.renderProvider();
+
+    const yesterday = app.contextExports.getLocalDate();
+    assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 20);
+    app.renderProvider();
+
+    clock = new OriginalDate(2026, 3, 2, 0, 0, 1);
+    app.runNextTimer();
+    app.renderProvider();
+
+    const today = app.contextExports.getLocalDate();
+    assert.notEqual(today, yesterday);
+    assert.equal(app.contextExports.useHabits().today, today);
+    assert.equal(app.contextExports.useHabits().getCheckInReward('starter-walk'), 20);
+
+    const todayTree = app.renderToday();
+    const dateLabel = `${clock.getMonth() + 1} 月 ${clock.getDate()} 日`;
+    assert.ok(textContent(todayTree).includes(dateLabel), 'the Today screen shows the new local date');
+    const row = findNodes(todayTree, (node) =>
+      typeof node.type === 'function'
+      && node.type.name === 'HabitRow'
+      && node.props?.habit?.id === 'starter-walk',
+    )[0];
+    assert.ok(row, 'the existing goal remains visible on the new day');
+    assert.equal(row.props.done, false, 'yesterday’s completion does not mark today complete');
+    assert.equal(row.props.reward, 20, 'the new day shows its first-check-in reward');
+
+    assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 20);
+    app.renderProvider();
+    assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 0);
+    app.renderProvider();
+    assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 0);
+    app.renderProvider();
+
+    const state = app.contextExports.useHabits();
+    assert.equal(state.coins, 40, 'the goal earns once yesterday and once today');
+    assert.ok(state.habits[0].checkIns.includes(yesterday));
+    assert.ok(state.habits[0].checkIns.includes(today));
+    assert.deepEqual(
+      JSON.parse(app.storage.get(storageKeys.mall)).rewardedCheckIns,
+      [`starter-walk:${yesterday}`, `starter-walk:${today}`],
+    );
+  } finally {
+    global.Date = OriginalDate;
+  }
+});
 
 test('goal reward updates an active affordable catalog and survives provider reload', async () => {
   const app = createHarness();

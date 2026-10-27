@@ -10,6 +10,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import { AppState } from 'react-native';
 import palette from '@/constants/colors';
 import { MALL_SLOT_IDS, type MallSlotId } from '@/constants/mall-layout';
 import {
@@ -318,10 +319,40 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
   const actionLock = useRef(false);
-  const today = getLocalDate();
+  const [today, setToday] = useState(() => getLocalDate());
   const getCheckInReward = useCallback((habitId: string) => (
     rewardedCheckIns.includes(`${habitId}:${today}`) ? 0 : CHECK_IN_REWARD
   ), [rewardedCheckIns, today]);
+
+  useEffect(() => {
+    let active = true;
+    let midnightTimer: ReturnType<typeof setTimeout> | undefined;
+    const refreshDateAndScheduleMidnight = () => {
+      if (!active) return;
+      const now = new Date();
+      const currentDate = getLocalDate(now);
+      setToday((previousDateKey) => previousDateKey === currentDate ? previousDateKey : currentDate);
+
+      const nextMidnight = new Date(now);
+      nextMidnight.setHours(24, 0, 0, 0);
+      midnightTimer = setTimeout(
+        refreshDateAndScheduleMidnight,
+        Math.max(1, nextMidnight.getTime() - now.getTime()),
+      );
+    };
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      if (midnightTimer !== undefined) clearTimeout(midnightTimer);
+      refreshDateAndScheduleMidnight();
+    });
+
+    refreshDateAndScheduleMidnight();
+    return () => {
+      active = false;
+      if (midnightTimer !== undefined) clearTimeout(midnightTimer);
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -431,20 +462,23 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     actionLock.current = true;
     try {
       await recoverPendingCheckInTransaction();
+      const checkInDate = getLocalDate();
       const habit = habits.find((item) => item.id === id);
       if (!habit) return 0;
-      const alreadyDone = habit.checkIns.includes(today);
+      const alreadyDone = habit.checkIns.includes(checkInDate);
       const nextHabits = habits.map((item) => item.id !== id ? item : {
         ...item,
-        checkIns: alreadyDone ? item.checkIns.filter((date) => date !== today) : [...item.checkIns, today],
+        checkIns: alreadyDone
+          ? item.checkIns.filter((date) => date !== checkInDate)
+          : [...item.checkIns, checkInDate],
       });
       let reward = 0;
       if (!alreadyDone) {
-        const rewardKey = `${id}:${today}`;
+        const rewardKey = `${id}:${checkInDate}`;
         if (!rewardedCheckIns.includes(rewardKey)) reward = CHECK_IN_REWARD;
       }
       if (reward > 0) {
-        const rewardKey = `${id}:${today}`;
+        const rewardKey = `${id}:${checkInDate}`;
         const transaction: CheckInTransaction = {
           version: 1,
           habits: nextHabits,

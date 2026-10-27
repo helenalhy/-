@@ -48,8 +48,9 @@ export function ShopDisplayFixturePanel({
     return () => loop.stop();
   }, [productMotion, products.length, visible]);
   const catalogPageSize = 12;
-  const catalogPageCount = Math.max(1, Math.ceil(products.length / catalogPageSize));
-  const visibleProducts = products.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
+  const selectableProducts = products.filter(({ legacyOnly }) => !legacyOnly);
+  const catalogPageCount = Math.max(1, Math.ceil(selectableProducts.length / catalogPageSize));
+  const visibleProducts = selectableProducts.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
   const productsById = new Map(products.map((product) => [product.id, product]));
   const filledSlots = slots.filter(Boolean).length;
   const selectedProduct = productsById.get(slots[selectedSlot] ?? '');
@@ -98,7 +99,7 @@ export function ShopDisplayFixturePanel({
               </View>
 
               <Text style={[styles.helper, { color: colors.mutedForeground }]}>
-                18 個展示格 · 本店 60 款免費商品。選一格後陳列，商品不扣金幣。
+                18 個展示格 · 本櫃 {selectableProducts.length} 款免費商品。選一格後陳列，商品不扣金幣。
               </Text>
 
               <View style={styles.slotGrid}>
@@ -144,7 +145,7 @@ export function ShopDisplayFixturePanel({
                 <View>
                   <Text style={[styles.catalogTitle, { color: colors.foreground }]}>可陳列商品</Text>
                   <Text style={[styles.catalogCount, { color: colors.mutedForeground }]}>
-                    已放 {filledSlots} / {SHOP_DISPLAY_SLOT_COUNT} · {products.length} 款 · {selectedProduct ? `第 ${selectedSlot + 1} 格：${selectedProduct.name}` : `選取第 ${selectedSlot + 1} 格`}
+                    已放 {filledSlots} / {SHOP_DISPLAY_SLOT_COUNT} · {selectableProducts.length} 款 · {selectedProduct ? `第 ${selectedSlot + 1} 格：${selectedProduct.name}` : `選取第 ${selectedSlot + 1} 格`}
                   </Text>
                 </View>
                 {selectedProduct && (
@@ -209,7 +210,7 @@ export function ShopDisplayFixturePanel({
                   <Feather name="chevron-left" size={16} color={colors.primary} />
                 </Pressable>
                 <Text style={[styles.pageText, { color: colors.mutedForeground }]}>
-                  商品 {Math.min((catalogPage - 1) * catalogPageSize + 1, products.length)}–{Math.min(catalogPage * catalogPageSize, products.length)} · 第 {catalogPage} / {catalogPageCount} 頁
+                  商品 {Math.min((catalogPage - 1) * catalogPageSize + 1, selectableProducts.length)}–{Math.min(catalogPage * catalogPageSize, selectableProducts.length)} · 第 {catalogPage} / {catalogPageCount} 頁
                 </Text>
                 <Pressable
                   testID="shop-display-page-next"

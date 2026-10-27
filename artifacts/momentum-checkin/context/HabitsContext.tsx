@@ -658,11 +658,16 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     const fixture = getShopInteriorDecorations(shop.shopType, shopId, shop.name, current.ownedDecorations)
       .find(({ id }) => id === fixtureDecorationId);
     if (!fixture || !canDisplayShopProducts(fixture)) throw new Error('這個物件沒有商品展示位置');
-    if (
-      productId !== null
-      && !getShopFixtureProductCatalog(shopId, shop.name, shop.shopType, fixture).some(({ id }) => id === productId)
-    ) {
-      throw new Error('這款商品不屬於這間商店的展示目錄');
+    if (productId !== null) {
+      const product = getShopFixtureProductCatalog(shopId, shop.name, shop.shopType, fixture)
+        .find(({ id }) => id === productId);
+      if (
+        !product
+        || product.legacyOnly
+        || (product.fixtureIds && !product.fixtureIds.includes(fixtureDecorationId))
+      ) {
+        throw new Error('這款商品不屬於這間商店的展示目錄');
+      }
     }
     actionLock.current = true;
     try {

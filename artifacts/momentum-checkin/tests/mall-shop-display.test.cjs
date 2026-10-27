@@ -87,26 +87,47 @@ test('cloud fragrance shop has fragrance bottles and diffuser stones', () => {
   assert.equal(new Set(products.map(({ id }) => id)).size, 60);
 });
 
-test('Naruto costume wardrobes add character-specific outfits without hiding existing choices', () => {
-  const products = getShopFixtureProductCatalog(
+test('character outfits appear in their matching wardrobe while old displayed choices remain renderable', () => {
+  const wardrobeCases = [
+    ['cosplay-hero-cape-collection', ['卡卡西・上忍綠色背心套裝'], ['鳴人・第七代火影橘黑斗篷', '佐助・深藍高領忍者外套', '鼬・深色紅雲旅行斗篷', '小櫻・玫瑰紅忍者裙裝']],
+    ['cosplay-limited-starlight-magician', ['鳴人・第七代火影橘黑斗篷', '鳴人・橘黑忍者服'], ['卡卡西・上忍綠色背心套裝', '佐助・深藍高領忍者外套', '鼬・深色紅雲旅行斗篷', '小櫻・玫瑰紅忍者裙裝']],
+    ['cosplay-sasuke-character-wardrobe', ['佐助・深藍高領忍者外套'], ['鳴人・第七代火影橘黑斗篷', '卡卡西・上忍綠色背心套裝', '鼬・深色紅雲旅行斗篷', '小櫻・玫瑰紅忍者裙裝']],
+    ['cosplay-itachi-character-wardrobe', ['鼬・深色紅雲旅行斗篷'], ['鳴人・第七代火影橘黑斗篷', '佐助・深藍高領忍者外套', '卡卡西・上忍綠色背心套裝', '小櫻・玫瑰紅忍者裙裝']],
+    ['cosplay-fairy-wing-costume', ['小櫻・玫瑰紅忍者裙裝'], ['鳴人・第七代火影橘黑斗篷', '佐助・深藍高領忍者外套', '鼬・深色紅雲旅行斗篷', '卡卡西・上忍綠色背心套裝']],
+  ];
+
+  for (const [fixtureId, expectedNames, misplacedNames] of wardrobeCases) {
+    const products = getShopFixtureProductCatalog(
+      'cosplay-costume-studio',
+      'Cosplay服裝店',
+      'cosplay',
+      { id: fixtureId, name: '角色衣櫃', description: '展示角色服裝' },
+    );
+    assert.equal(products.length, 70);
+    assert.deepEqual(products.slice(0, 60).map(({ id }) => id), Array.from(
+      { length: 60 },
+      (_, index) => `display-cosplay-${index + 1}`,
+    ));
+    const selectable = products.filter(({ legacyOnly }) => !legacyOnly);
+    for (const name of expectedNames) {
+      assert.ok(selectable.some((product) => product.name === name), `${name} should be selectable in ${fixtureId}`);
+    }
+    for (const name of misplacedNames) {
+      assert.ok(products.some((product) => product.name === name && product.legacyOnly), `${name} should not be newly selected in ${fixtureId}`);
+    }
+  }
+
+  const kakashiProducts = getShopFixtureProductCatalog(
     'cosplay-costume-studio',
     'Cosplay服裝店',
     'cosplay',
-    {
-      id: 'cosplay-hero-cape-collection',
-      name: '火影忍者卡卡西上衣衣櫃',
-      description: '展示角色服裝',
-    },
+    { id: 'cosplay-hero-cape-collection', name: '卡卡西衣櫃', description: '展示角色服裝' },
   );
-  assert.equal(products.length, 70);
-  assert.deepEqual(products.slice(0, 60).map(({ id }) => id), Array.from(
-    { length: 60 },
-    (_, index) => `display-cosplay-${index + 1}`,
-  ));
-  const kakashiVest = products.find(({ name }) => name === '卡卡西・上忍綠色背心套裝');
-  const hokageCloak = products.find(({ name }) => name === '鳴人・第七代火影橘黑斗篷');
+  const kakashiVest = kakashiProducts.find(({ name }) => name === '卡卡西・上忍綠色背心套裝');
+  const hokageCloak = kakashiProducts.find(({ name }) => name === '鳴人・第七代火影橘黑斗篷');
   assert.equal(kakashiVest?.illustration, 'garment');
   assert.equal(hokageCloak?.illustration, 'cloak');
+  assert.equal(hokageCloak?.legacyOnly, true);
 });
 
 test('Akatsuki wardrobe offers rings, wigs and cloaks for every member in a unique 60-item catalog', () => {
@@ -138,6 +159,7 @@ test('fixture merchandise uses animated illustrations and paginated 18-slot arra
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const panel = fs.readFileSync(path.join(__dirname, '../components/ShopDisplayFixturePanel.tsx'), 'utf8');
   const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
+  const context = fs.readFileSync(path.join(__dirname, '../context/HabitsContext.tsx'), 'utf8');
   const route = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
   assert.match(scene, /onOpenDisplayFixture\(decoration\.id\)/);
   assert.match(scene, /displayedProductsRow/);
@@ -147,12 +169,15 @@ test('fixture merchandise uses animated illustrations and paginated 18-slot arra
   assert.match(panel, /商品不扣金幣/);
   assert.match(panel, /catalogPageSize = 12/);
   assert.match(panel, /shop-display-page-next/);
+  assert.match(panel, /products\.filter\(\(\{ legacyOnly \}\) => !legacyOnly\)/);
   assert.match(visual, /Animated\.View/);
   assert.match(visual, /product\.illustration === 'bottle'/);
   assert.match(visual, /product\.illustration === 'garment'/);
   assert.match(visual, /product\.illustration === 'cloak'/);
   assert.match(visual, /product\.illustration === 'wig'/);
   assert.match(visual, /product\.illustration === 'ring'/);
+  assert.match(context, /product\.legacyOnly/);
+  assert.match(context, /product\.fixtureIds\.includes\(fixtureDecorationId\)/);
   assert.match(route, /setShopInteriorFixtureProduct/);
   assert.match(route, /ShopDisplayFixturePanel/);
 });

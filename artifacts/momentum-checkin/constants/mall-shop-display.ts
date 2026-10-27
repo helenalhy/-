@@ -28,6 +28,8 @@ export interface ShopDisplayProduct {
   theme: ProductTheme;
   illustration: ShopProductIllustration;
   variant: number;
+  fixtureIds?: string[];
+  legacyOnly?: boolean;
 }
 
 type ProductTheme =
@@ -51,6 +53,7 @@ type ProductSeed = {
   icon: string;
   color: string;
   illustration?: ShopProductIllustration;
+  fixtureIds?: string[];
 };
 type FeaturedProductSeed = ProductSeed & { key: string };
 const c = palette.light;
@@ -313,11 +316,14 @@ const packageVariants = [
   { label: '珊瑚晚霞限定', color: c.candyCoral },
 ];
 
-const NARUTO_WARDROBE_FIXTURE_IDS = new Set([
+const NARUTO_CHARACTER_FIXTURE_IDS = new Set([
   'cosplay-limited-starlight-magician',
   'cosplay-limited-galaxy-armor',
   'cosplay-fairy-wing-costume',
   'cosplay-hero-cape-collection',
+  'cosplay-sasuke-character-wardrobe',
+  'cosplay-itachi-character-wardrobe',
+  'cosplay-hero-costume-wardrobe',
 ]);
 
 const narutoWardrobeProducts: FeaturedProductSeed[] = [
@@ -328,6 +334,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'shield',
     color: c.candyMintDark,
     illustration: 'garment',
+    fixtureIds: ['cosplay-hero-cape-collection'],
   },
   {
     key: 'naruto-seventh-hokage-cloak',
@@ -336,6 +343,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'wind',
     color: c.candyCoral,
     illustration: 'cloak',
+    fixtureIds: ['cosplay-limited-starlight-magician'],
   },
   {
     key: 'naruto-classic-ninja-suit',
@@ -344,6 +352,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'star',
     color: c.candyCoral,
     illustration: 'garment',
+    fixtureIds: ['cosplay-limited-starlight-magician'],
   },
   {
     key: 'sasuke-high-collar-jacket',
@@ -352,6 +361,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'wind',
     color: c.candySkyDark,
     illustration: 'garment',
+    fixtureIds: ['cosplay-sasuke-character-wardrobe'],
   },
   {
     key: 'sakura-rose-ninja-dress',
@@ -360,6 +370,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'heart',
     color: c.candyRose,
     illustration: 'garment',
+    fixtureIds: ['cosplay-fairy-wing-costume'],
   },
   {
     key: 'itachi-crimson-travel-cloak',
@@ -368,6 +379,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'cloud',
     color: c.candyInk,
     illustration: 'cloak',
+    fixtureIds: ['cosplay-itachi-character-wardrobe'],
   },
   {
     key: 'gaara-desert-kage-robe',
@@ -376,6 +388,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'sun',
     color: c.candyCaramel,
     illustration: 'cloak',
+    fixtureIds: ['cosplay-hero-costume-wardrobe'],
   },
   {
     key: 'hinata-lilac-ninja-tunic',
@@ -384,6 +397,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'feather',
     color: c.candyLavender,
     illustration: 'garment',
+    fixtureIds: ['cosplay-hero-costume-wardrobe'],
   },
   {
     key: 'jiraiya-sage-travel-coat',
@@ -392,6 +406,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'wind',
     color: c.candyCoral,
     illustration: 'cloak',
+    fixtureIds: ['cosplay-hero-costume-wardrobe'],
   },
   {
     key: 'tsunade-green-haori',
@@ -400,6 +415,7 @@ const narutoWardrobeProducts: FeaturedProductSeed[] = [
     icon: 'star',
     color: c.candyMint,
     illustration: 'garment',
+    fixtureIds: ['cosplay-hero-costume-wardrobe'],
   },
 ];
 
@@ -463,6 +479,7 @@ function createFeaturedProduct(
     theme,
     illustration: seed.illustration ?? productIllustrationByTheme[theme],
     variant,
+    ...(seed.fixtureIds ? { fixtureIds: seed.fixtureIds } : {}),
   };
 }
 
@@ -545,12 +562,16 @@ export function getShopFixtureProductCatalog(
   if (theme === 'cosplay' && decoration.id === 'cosplay-akatsuki-collection-wardrobe') {
     return createAkatsukiWardrobeCatalog();
   }
-  if (theme === 'cosplay' && NARUTO_WARDROBE_FIXTURE_IDS.has(decoration.id)) {
+  if (theme === 'cosplay' && NARUTO_CHARACTER_FIXTURE_IDS.has(decoration.id)) {
     return [
       ...catalog,
-      ...narutoWardrobeProducts.map((seed, index) =>
-        createFeaturedProduct('cosplay', seed, 'display-cosplay-naruto', catalog.length + index),
-      ),
+      ...narutoWardrobeProducts.map((seed, index) => {
+        const product = createFeaturedProduct('cosplay', seed, 'display-cosplay-naruto', catalog.length + index);
+        return {
+          ...product,
+          legacyOnly: !!seed.fixtureIds && !seed.fixtureIds.includes(decoration.id),
+        };
+      }),
     ];
   }
   return catalog;

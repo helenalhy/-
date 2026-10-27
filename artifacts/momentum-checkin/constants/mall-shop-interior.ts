@@ -491,6 +491,8 @@ const signatureDecorations: Partial<Record<MallShopType, DecorationSeed[]>> = {
   ],
   cosplay: [
     { key: 'akatsuki-collection-wardrobe', name: '曉成員主題珍藏衣櫃', description: '以紅黑柔彩配色展示曉成員靈感斗篷、假髮與戒指。', icon: 'shopping-bag', price: 96, color: c.candyRose, visual: 'clothing-wardrobe' },
+    { key: 'sasuke-character-wardrobe', name: '佐助・深藍忍者服衣櫃', description: '專門展示佐助靈感的高領忍者服與深藍外套。', icon: 'shopping-bag', price: 94, color: c.candySky, visual: 'clothing-wardrobe' },
+    { key: 'itachi-character-wardrobe', name: '鼬・暗紅角色服衣櫃', description: '專門展示鼬靈感的暗紅斗篷與角色服裝。', icon: 'shopping-bag', price: 94, color: c.candyRose, visual: 'clothing-wardrobe' },
     { key: 'limited-starlight-magician', name: '限定款・火影忍者鳴人忍者服衣櫃', description: '以鳴人的橘色忍者服和護額元素構思的服裝展示。', icon: 'shopping-bag', price: 88, color: c.candyCoral, visual: 'clothing-wardrobe', limitedEdition: true },
     { key: 'limited-galaxy-armor', name: '限定款・火影忍者佐助服裝展示台', description: '以佐助的深藍配色和忍者服輪廓為靈感。', icon: 'user', price: 92, color: c.candySky, visual: 'dress-display', limitedEdition: true },
     { key: 'fairy-wing-costume', name: '限定款・火影忍者小櫻裙裝衣櫃', description: '以小櫻的粉色造型為靈感設計的裙裝收藏。', icon: 'shopping-bag', price: 64, color: c.candyPink, visual: 'clothing-wardrobe', limitedEdition: true },

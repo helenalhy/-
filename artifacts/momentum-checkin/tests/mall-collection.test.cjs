@@ -327,6 +327,39 @@ test('checking out and completing the same goal again today only awards coins on
   assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
 });
 
+test('rapid duplicate check-ins for one goal award and persist the daily reward only once', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  let app = await mount(storage);
+  const today = app.value.today;
+  const rewardKey = `starter-walk:${today}`;
+
+  const results = await Promise.all([
+    app.value.toggleCheckIn('starter-walk'),
+    app.value.toggleCheckIn('starter-walk'),
+    app.value.toggleCheckIn('starter-walk'),
+    app.value.toggleCheckIn('starter-walk'),
+  ]);
+
+  assert.deepEqual(results, [20, 0, 0, 0], 'only the first in-flight request should run');
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+  assert.equal(JSON.parse(storage[key]).coins, 20);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.ok(JSON.parse(storage[habitsKey]).find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(storage[checkInTransactionKey], undefined, 'the committed transaction is fully mirrored');
+
+  app = await mount(storage);
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+});
+
 test('different goals completed on the same day each earn and persist their own 20-coin reward', async () => {
   const storage = seed({
     schemaVersion: 3,

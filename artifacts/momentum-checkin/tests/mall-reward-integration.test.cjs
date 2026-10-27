@@ -946,6 +946,7 @@ test('dog outfits persist on dedicated station moves, while the 48 decor slots r
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
   assert.ok(findByTestId(customizerTree, 'dog-staff-customizer'));
   assert.match(textContent(customizerTree), /服裝 56 款/);
+  assert.match(textContent(customizerTree), /節日主題 50 款/);
   assert.match(textContent(customizerTree), /配飾 50 款/);
   assert.match(textContent(customizerTree), /不佔用一般店內 48 個位置/);
 
@@ -966,8 +967,20 @@ test('dog outfits persist on dedicated station moves, while the 48 decor slots r
   app.renderProvider();
   interiorTree = app.renderShopInterior();
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId].outfitId, `${dogId}:outfit:special-pink-skirt-2`);
+  await press(customizerTree, 'dog-staff-tab-theme');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  for (let page = 1; page < 5; page += 1) {
+    await press(customizerTree, 'dog-staff-look-page-next');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+  assert.match(textContent(customizerTree), /森林精靈葉片披風/);
+  await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-theme-50');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
   const savedLook = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId];
-  assert.equal(savedLook.outfitId, `${dogId}:outfit:special-pink-skirt-2`);
+  assert.equal(savedLook.outfitId, `${dogId}:outfit:festival:forest:5`);
   assert.equal(savedLook.accessoryId, `${dogId}:accessory:02`);
   assert.equal(app.contextExports.useHabits().coins, 40);
 

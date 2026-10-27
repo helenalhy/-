@@ -1,4 +1,4 @@
-- [商場場景要求](mall-scene-requirements.md) — 咖啡店狗狗站位需顯示在場景獨立底座，不得重疊 48 個佈置位置。
+- [商場場景要求](mall-scene-requirements.md) — 咖啡店店員服飾需免費附送；花花公主裙有蕾絲，14 狗各有 50 套節慶主題服裝。
 - [完全免費的金幣制度](free-economy.md) — 不課金、不儲值；只用完成目標獲得的金幣兌換，不能再要求獎勵券。
 - [Expo 預覽快取](expo-preview-cache.md) — 舊頁或過早截圖會顯舊版／空圖；EADDRINUSE 時先檢查殘留 Expo 子程序。
 - [商場讀屏結果回饋](mall-accessibility-results.md) — 操作結果保持單一回饋；分區切換依平台使用一種禮貌公告機制。

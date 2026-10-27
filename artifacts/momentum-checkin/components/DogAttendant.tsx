@@ -217,6 +217,16 @@ export function DogAttendant({
     dress: s.dressOutfit,
     princess: s.princessOutfit,
     'little-skirt': s.littleSkirtOutfit,
+    'santa-coat': s.santaCoatOutfit,
+    'snowflake-cape': s.snowflakeCapeOutfit,
+    'pumpkin-dress': s.pumpkinDressOutfit,
+    'ghost-poncho': s.ghostPonchoOutfit,
+    'moon-rabbit': s.moonRabbitOutfit,
+    'sakura-kimono': s.sakuraKimonoOutfit,
+    'tropical-sailor': s.tropicalSailorOutfit,
+    'lion-dance': s.lionDanceOutfit,
+    'star-fairy': s.starFairyOutfit,
+    'forest-leaf': s.forestLeafOutfit,
   }[outfit.cut] : null;
   const accessoryShapeStyle = accessory ? {
     bow: s.bowAccessory,
@@ -253,6 +263,16 @@ export function DogAttendant({
             { backgroundColor: outfit.accentColor },
           ]} />
           <View style={[s.outfitButton, { backgroundColor: outfit.accentColor }]} />
+            {outfit.lace && (
+              <View style={[s.laceTrim, { borderTopColor: outfit.accentColor }]}>
+                {Array.from({ length: 7 }, (_, index) => (
+                  <View
+                    key={index}
+                    style={[s.laceScallop, { backgroundColor: c.candyCream, borderColor: outfit.accentColor }]}
+                  />
+                ))}
+              </View>
+            )}
         </View>
       )}
       <View style={[s.legs, look.bodyStyle === 'low' && s.lowLegs, look.bodyStyle === 'long' && s.longLegs]}>
@@ -316,12 +336,24 @@ const s = StyleSheet.create({
   dressOutfit: { left: 11, bottom: 4, width: 28, height: 14, borderRadius: 7, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
   princessOutfit: { left: 8, bottom: 3, width: 34, height: 16, borderRadius: 9, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
   littleSkirtOutfit: { left: 12, bottom: 4, width: 26, height: 12, borderRadius: 7, borderBottomLeftRadius: 11, borderBottomRightRadius: 11 },
+  santaCoatOutfit: { left: 11, bottom: 4, width: 28, height: 15, borderRadius: 7, borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
+  snowflakeCapeOutfit: { left: 9, bottom: 4, width: 32, height: 14, borderRadius: 8, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 },
+  pumpkinDressOutfit: { left: 8, bottom: 3, width: 34, height: 17, borderRadius: 13, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
+  ghostPonchoOutfit: { left: 9, bottom: 5, width: 32, height: 14, borderRadius: 10, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  moonRabbitOutfit: { left: 10, bottom: 3, width: 30, height: 16, borderRadius: 9, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 },
+  sakuraKimonoOutfit: { left: 10, bottom: 4, width: 30, height: 15, borderTopLeftRadius: 9, borderTopRightRadius: 5, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
+  tropicalSailorOutfit: { left: 12, bottom: 6, width: 26, height: 12, borderRadius: 5, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+  lionDanceOutfit: { left: 8, bottom: 3, width: 34, height: 17, borderRadius: 12, borderBottomLeftRadius: 15, borderBottomRightRadius: 15 },
+  starFairyOutfit: { left: 8, bottom: 4, width: 34, height: 15, borderRadius: 8, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 },
+  forestLeafOutfit: { left: 9, bottom: 4, width: 32, height: 14, borderRadius: 8, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
   outfitDetail: { position: 'absolute', left: 3, top: 3, width: 7, height: 2, borderRadius: 2 },
   outfitStripe: { width: 16, height: 2, left: 2, top: 4 },
   outfitCheck: { width: 6, height: 4, left: 4, top: 3 },
   outfitStar: { width: 4, height: 4, left: 5, top: 2, borderRadius: 4 },
   outfitFlower: { width: 5, height: 5, left: 4, top: 2, borderRadius: 4 },
   outfitButton: { position: 'absolute', width: 2, height: 2, right: 4, top: 3, borderRadius: 2 },
+  laceTrim: { position: 'absolute', left: 1, right: 1, bottom: 0, height: 4, borderTopWidth: 0.7, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around' },
+  laceScallop: { width: 4, height: 4, borderRadius: 3, borderWidth: 0.6 },
   chest: { position: 'absolute', width: 9, height: 14, left: 2, top: 0, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
   saddlePatch: { position: 'absolute', right: 1, top: 2, width: 11, height: 9, borderRadius: 6, backgroundColor: c.candyCream },
   legs: { position: 'absolute', left: 16, bottom: 0, flexDirection: 'row', gap: 8 },

@@ -32,7 +32,10 @@ export const DOG_STAFF_PROFILES: DogStaffProfile[] = [
   { decorationId: 'general-fluffy-staff-poppy', key: 'fluffy-staff-poppy', name: '波比', breed: '淺啡臘腸犬', description: '淺啡色臘腸波比會慢慢走到每個角落打招呼。', icon: 'heart', price: 95, color: c.candyCaramel, visual: 'dog-staff-poppy', kind: 'poppy' },
 ];
 
-export type DogOutfitCut = 'apron' | 'vest' | 'jacket' | 'cape' | 'dress' | 'princess' | 'little-skirt';
+export type DogOutfitCut =
+  | 'apron' | 'vest' | 'jacket' | 'cape' | 'dress' | 'princess' | 'little-skirt'
+  | 'santa-coat' | 'snowflake-cape' | 'pumpkin-dress' | 'ghost-poncho' | 'moon-rabbit'
+  | 'sakura-kimono' | 'tropical-sailor' | 'lion-dance' | 'star-fairy' | 'forest-leaf';
 export type DogAccessoryShape = 'bow' | 'beret' | 'headband' | 'flower' | 'scarf';
 export type DogOutfitPattern = 'dots' | 'stripes' | 'checks' | 'stars' | 'flowers';
 
@@ -44,6 +47,8 @@ export interface DogStaffOutfit {
   accentColor: string;
   cut: DogOutfitCut;
   pattern: DogOutfitPattern;
+  theme?: string;
+  lace?: boolean;
 }
 
 export interface DogStaffAccessory {
@@ -124,6 +129,37 @@ const styleColors = [
 
 const specialSkirtAccents = [c.candyRose, c.candyCoral, c.candyLavender, c.candyLemon, c.candyMint];
 const specialSkirtPatterns: DogOutfitPattern[] = ['dots', 'stripes', 'checks', 'stars', 'flowers'];
+const festivalVariantLabels = ['繽紛款 1', '繽紛款 2', '繽紛款 3', '繽紛款 4', '繽紛款 5'];
+const festivalThemes: { id: string; label: string; cut: DogOutfitCut; hue: number }[] = [
+  { id: 'christmas', label: '聖誕節雪花大衣', cut: 'santa-coat', hue: 350 },
+  { id: 'winter', label: '冰雪節雪晶斗篷', cut: 'snowflake-cape', hue: 205 },
+  { id: 'halloween', label: '萬聖節南瓜蓬蓬裙', cut: 'pumpkin-dress', hue: 40 },
+  { id: 'ghost', label: '夜光幽靈斗篷', cut: 'ghost-poncho', hue: 280 },
+  { id: 'moon-rabbit', label: '中秋月兔套裝', cut: 'moon-rabbit', hue: 65 },
+  { id: 'sakura', label: '櫻花祭和風服', cut: 'sakura-kimono', hue: 325 },
+  { id: 'tropical', label: '夏日海灘水手服', cut: 'tropical-sailor', hue: 175 },
+  { id: 'new-year', label: '新年舞獅慶典服', cut: 'lion-dance', hue: 15 },
+  { id: 'star-fairy', label: '星空仙子禮服', cut: 'star-fairy', hue: 255 },
+  { id: 'forest', label: '森林精靈葉片披風', cut: 'forest-leaf', hue: 120 },
+];
+
+function hslToHex(hue: number, saturation: number, lightness: number) {
+  const h = ((hue % 360) + 360) % 360;
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const chroma = (1 - Math.abs(2 * l - 1)) * s;
+  const section = h / 60;
+  const x = chroma * (1 - Math.abs((section % 2) - 1));
+  const [r, g, b] = section < 1 ? [chroma, x, 0]
+    : section < 2 ? [x, chroma, 0]
+      : section < 3 ? [0, chroma, x]
+        : section < 4 ? [0, x, chroma]
+          : section < 5 ? [x, 0, chroma]
+            : [chroma, 0, x];
+  const m = l - chroma / 2;
+  return `#${[r, g, b].map((channel) =>
+    Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('')}`;
+}
 
 export const DOG_STAFF_STYLE_CATALOGS = Object.fromEntries(
   DOG_STAFF_PROFILES.map((dog, dogIndex) => {
@@ -151,6 +187,7 @@ export const DOG_STAFF_STYLE_CATALOGS = Object.fromEntries(
           accentColor: c.candyRose,
           cut: 'princess' as const,
           pattern: 'stars' as const,
+          lace: true,
         },
         ...specialSkirtAccents.map((accentColor, index) => ({
           id: `${dog.decorationId}:outfit:special-pink-skirt-${index + 1}`,
@@ -184,7 +221,22 @@ export const DOG_STAFF_STYLE_CATALOGS = Object.fromEntries(
           })),
         ]
         : [];
-    const outfits = [...standardOutfits, ...specialOutfits];
+    const festivalOutfits = festivalThemes.flatMap((theme, themeIndex) =>
+      festivalVariantLabels.map((variantLabel, variantIndex) => {
+        const hue = theme.hue + variantIndex * 4.2 + dogIndex * 0.35;
+        return {
+          id: `${dog.decorationId}:outfit:festival:${theme.id}:${variantIndex + 1}`,
+          name: `${dog.name}・${theme.label} ${variantLabel}`,
+          dogDecorationId: dog.decorationId,
+          color: hslToHex(hue, 64 + (variantIndex % 2) * 6, 66 + (variantIndex % 3) * 3),
+          accentColor: hslToHex(hue + 154 + themeIndex * 2, 58, 80 - (variantIndex % 3) * 3),
+          cut: theme.cut,
+          pattern: outfitPatterns[(dogIndex + themeIndex + variantIndex) % outfitPatterns.length],
+          theme: theme.id,
+        };
+      }),
+    );
+    const outfits = [...standardOutfits, ...specialOutfits, ...festivalOutfits];
     const accessories = accessoryMotifs.flatMap((motif, motifIndex) =>
       accessoryShapes.map((shape, shapeIndex) => {
         const index = motifIndex * accessoryShapes.length + shapeIndex;

@@ -13,7 +13,7 @@ import {
 } from '@/constants/dog-staff-customization';
 import { useColors } from '@/hooks/useColors';
 
-type LookTab = 'outfit' | 'accessory';
+type LookTab = 'outfit' | 'theme' | 'accessory';
 const LOOKS_PER_PAGE = 10;
 
 export function DogStaffCustomizer({
@@ -68,7 +68,11 @@ export function DogStaffCustomizer({
   const alreadyAtStation = currentStationId === selectedStationId;
   const stationOccupiedByOtherDog = !!stationOccupantId && stationOccupantId !== activeDog.decorationId;
   const canRedeem = coins >= activeDog.price;
-  const choices = activeTab === 'outfit' ? catalog.outfits : catalog.accessories;
+  const basicOutfits = catalog.outfits.filter(({ theme }) => !theme);
+  const themedOutfits = catalog.outfits.filter(({ theme }) => !!theme);
+  const choices = activeTab === 'accessory'
+    ? catalog.accessories
+    : activeTab === 'theme' ? themedOutfits : basicOutfits;
   const pageCount = Math.ceil(choices.length / LOOKS_PER_PAGE);
   const visibleChoices = choices.slice((page - 1) * LOOKS_PER_PAGE, page * LOOKS_PER_PAGE);
 
@@ -107,9 +111,9 @@ export function DogStaffCustomizer({
 
   async function chooseLook(choiceId: string) {
     if (savingLook || !isOwned) return;
-    const nextLook: DogStaffLook = activeTab === 'outfit'
-      ? { ...currentLook, outfitId: choiceId }
-      : { ...currentLook, accessoryId: choiceId };
+    const nextLook: DogStaffLook = activeTab === 'accessory'
+      ? { ...currentLook, accessoryId: choiceId }
+      : { ...currentLook, outfitId: choiceId };
     if (nextLook.outfitId === currentLook.outfitId && nextLook.accessoryId === currentLook.accessoryId) return;
     setSavingLook(true);
     setNotice('');
@@ -312,7 +316,8 @@ export function DogStaffCustomizer({
           <Text style={[styles.subheading, { color: colors.foreground }]}>免費附送造型</Text>
           <View style={styles.tabs}>
             {([
-              ['outfit', `服裝 ${catalog.outfits.length} 款`],
+              ['outfit', `服裝 ${basicOutfits.length} 款`],
+              ['theme', `節日主題 ${themedOutfits.length} 款`],
               ['accessory', `配飾 ${catalog.accessories.length} 款`],
             ] as const).map(([tab, label]) => {
               const selected = activeTab === tab;
@@ -367,12 +372,12 @@ export function DogStaffCustomizer({
 
           <View style={styles.lookGrid}>
             {visibleChoices.map((choice, index) => {
-              const selected = activeTab === 'outfit'
-                ? currentLook.outfitId === choice.id
-                : currentLook.accessoryId === choice.id;
-              const candidateLook = activeTab === 'outfit'
-                ? { ...currentLook, outfitId: choice.id }
-                : { ...currentLook, accessoryId: choice.id };
+              const selected = activeTab === 'accessory'
+                ? currentLook.accessoryId === choice.id
+                : currentLook.outfitId === choice.id;
+              const candidateLook = activeTab === 'accessory'
+                ? { ...currentLook, accessoryId: choice.id }
+                : { ...currentLook, outfitId: choice.id };
               return (
                 <Pressable
                   key={choice.id}
@@ -405,7 +410,7 @@ export function DogStaffCustomizer({
         </>
       ) : (
         <Text style={[styles.copy, { color: colors.mutedForeground }]}>
-          兌換後即可使用該狗狗專屬服裝與配飾；花花和奶昔另有粉紅／紫色公主裙及小裙子。
+          兌換後免費解鎖專屬服裝、配飾及 50 套不同顏色的節日／主題服裝，選穿造型不扣金幣。花花的粉紅公主裙有蕾絲邊。
         </Text>
       )}
 

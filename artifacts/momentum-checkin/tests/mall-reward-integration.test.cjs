@@ -1373,6 +1373,11 @@ test('today shows only an unclaimed first-check-in reward and hides it after ear
   const initialRow = getStarterRow(app.renderToday());
   assert.equal(initialRow.props.reward, 20);
   let rowTree = renderHabitRow(app, initialRow);
+  assert.equal(
+    findByTestId(rowTree, 'habit-info-starter-walk').props.accessibilityLabel,
+    '編輯散步 20 分鐘，今日首次打卡可獲得 20 金幣',
+    'the accessible goal button announces its available first-check-in reward',
+  );
   assert.match(textContent(findByTestId(rowTree, 'habit-reward-starter-walk')), /首次打卡 \+20 金幣/);
 
   assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 20);
@@ -1381,6 +1386,11 @@ test('today shows only an unclaimed first-check-in reward and hides it after ear
   assert.equal(rewardedRow.props.done, true);
   assert.equal(rewardedRow.props.reward, 0);
   rowTree = renderHabitRow(app, rewardedRow);
+  assert.equal(
+    findByTestId(rowTree, 'habit-info-starter-walk').props.accessibilityLabel,
+    '編輯散步 20 分鐘',
+    'a completed goal does not announce a repeatable reward',
+  );
   assert.equal(findByTestId(rowTree, 'habit-reward-starter-walk'), undefined);
 
   assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 0);
@@ -1389,7 +1399,13 @@ test('today shows only an unclaimed first-check-in reward and hides it after ear
   assert.equal(uncheckedRow.props.done, false);
   assert.equal(uncheckedRow.props.reward, 0, 'a reward already earned today is not offered again');
   assert.equal(app.contextExports.useHabits().coins, 20);
-  assert.equal(findByTestId(renderHabitRow(app, uncheckedRow), 'habit-reward-starter-walk'), undefined);
+  rowTree = renderHabitRow(app, uncheckedRow);
+  assert.equal(
+    findByTestId(rowTree, 'habit-info-starter-walk').props.accessibilityLabel,
+    '編輯散步 20 分鐘',
+    'an already-claimed reward is not announced after unchecking the goal',
+  );
+  assert.equal(findByTestId(rowTree, 'habit-reward-starter-walk'), undefined);
 });
 
 test('deleting a goal confirms lost check-in history and preserves earned coins after reload', async () => {

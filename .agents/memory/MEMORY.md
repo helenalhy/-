@@ -4,3 +4,4 @@
 - [商場讀屏結果回饋](mall-accessibility-results.md) — 操作結果保持單一回饋；分區切換依平台使用一種禮貌公告機制。
 - [商場路由回歸測試](mall-navigation-tests.md) — 元件測試替身不會自動渲染巢狀元件；路由測試須明確推進堆疊並渲染實際路由入口。
 - [打卡與金幣原子性](checkin-atomicity.md) — 一次打卡同時更新完成狀態與金幣時，以單筆可恢復交易記錄避免跨儲存項目部分成功。
+- [巢狀讀屏標籤](nested-screenreader-labels.md) — 外層可按元件指定 accessibilityLabel 時，巢狀資訊須合併到外層標籤才會可靠播報。

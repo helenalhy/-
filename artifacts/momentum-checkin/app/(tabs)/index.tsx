@@ -71,7 +71,7 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
         }}
         delayLongPress={450}
         accessibilityRole="button"
-        accessibilityLabel={`編輯${habit.title}`}
+        accessibilityLabel={`編輯${habit.title}${!done && reward > 0 ? `，今日首次打卡可獲得 ${reward} 金幣` : ''}`}
         accessibilityHint="長按可開啟修改或刪除選項"
         testID={`habit-info-${habit.id}`}
       >
@@ -80,7 +80,6 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
         {!done && reward > 0 && (
           <View
             style={[styles.rewardHint, { backgroundColor: colors.candyLemon }]}
-            accessibilityLabel={`今日首次打卡可獲得 ${reward} 金幣`}
             testID={`habit-reward-${habit.id}`}
           >
             <Feather name="circle" size={11} color={colors.candyCaramelDark} />

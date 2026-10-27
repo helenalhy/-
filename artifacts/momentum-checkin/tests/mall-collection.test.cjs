@@ -64,7 +64,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       ],
     };
     if (name === '@/constants/mall-shop-interior') return {
-      SHOP_INTERIOR_DECORATION_IDS: ['general-display-shelf', 'general-warm-lamp'],
+      SHOP_INTERIOR_DECORATION_IDS: ['general-display-shelf', 'general-warm-lamp', dogId],
       SHOP_INTERIOR_SLOT_IDS: [
         'front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table',
       ],
@@ -77,7 +77,26 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       SHOP_INTERIOR_DECORATION_BY_ID: {
         'general-display-shelf': { id: 'general-display-shelf', price: 20 },
         'general-warm-lamp': { id: 'general-warm-lamp', price: 25 },
+        [dogId]: { id: dogId, price: 80 },
       },
+    };
+    if (name === '@/constants/dog-staff-customization') return {
+      DOG_STAFF_STYLE_CATALOGS: {
+        [dogId]: {
+          outfits: dogOutfits.map((id) => ({ id })),
+          accessories: dogAccessories.map((id) => ({ id })),
+        },
+      },
+      resolveDogStaffLook: (decorationId, look) => {
+        if (decorationId !== dogId) return null;
+        return {
+          outfitId: dogOutfits.includes(look?.outfitId) ? look.outfitId : dogOutfits[0],
+          accessoryId: dogAccessories.includes(look?.accessoryId) ? look.accessoryId : dogAccessories[0],
+        };
+      },
+      isValidDogStaffLook: (decorationId, look) => decorationId === dogId
+        && dogOutfits.includes(look?.outfitId)
+        && dogAccessories.includes(look?.accessoryId),
     };
     if (name === 'expo-haptics') return {
       selectionAsync: async () => {},
@@ -392,6 +411,63 @@ test('five interior extensions accept eight-position placement keys and preserve
   await assert.rejects(
     app.value.placeShopInteriorDecoration('a', 'general-warm-lamp', 'extension-6:center'),
     /不存在/,
+  );
+});
+
+test('redeemed cafe dog looks are free, restricted to that dog, and persist with its placement', async () => {
+  const shopId = 'fluffy-marshmallow-cafe';
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 100,
+    purchasedItems: [shopId],
+    placements: {},
+    shopInteriors: {
+      [shopId]: {
+        ownedDecorations: [dogId],
+        placements: { 'front-window': dogId },
+      },
+    },
+  });
+  let app = await mount(storage);
+  app.setFailWriteKey(key);
+  await assert.rejects(
+    app.value.updateShopInteriorDogLook(shopId, dogId, {
+      outfitId: dogOutfits[1],
+      accessoryId: dogAccessories[1],
+    }),
+    /無法儲存商場資料/,
+  );
+  assert.equal(app.value.shopInteriors[shopId].dogStaffLooks, undefined, 'a failed save keeps the previous look');
+  app.setFailWriteKey(null);
+  await app.value.updateShopInteriorDogLook(shopId, dogId, {
+    outfitId: dogOutfits[1],
+    accessoryId: dogAccessories[1],
+  });
+  assert.equal(app.value.coins, 100, 'changing an included look does not cost coins');
+  assert.deepEqual(app.value.shopInteriors[shopId].placements, { 'front-window': dogId });
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffLooks[dogId], {
+    outfitId: dogOutfits[1],
+    accessoryId: dogAccessories[1],
+  });
+
+  app = await mount(storage);
+  assert.deepEqual(app.value.shopInteriors[shopId].dogStaffLooks[dogId], {
+    outfitId: dogOutfits[1],
+    accessoryId: dogAccessories[1],
+  });
+  await assert.rejects(
+    app.value.updateShopInteriorDogLook(shopId, 'unowned-dog', {
+      outfitId: dogOutfits[0],
+      accessoryId: dogAccessories[0],
+    }),
+    /先兌換/,
+  );
+  await assert.rejects(
+    app.value.updateShopInteriorDogLook(shopId, dogId, {
+      outfitId: 'another-dogs-outfit',
+      accessoryId: dogAccessories[0],
+    }),
+    /不屬於/,
   );
 });
 

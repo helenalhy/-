@@ -33,6 +33,7 @@ function loadTsModule(filename) {
 }
 const mallCatalog = loadTsModule(path.join(__dirname, '../constants/mall.ts'));
 const shopInteriorCatalog = loadTsModule(path.join(__dirname, '../constants/mall-shop-interior.ts'));
+const dogStaffStyleCatalog = loadTsModule(path.join(__dirname, '../constants/dog-staff-customization.ts'));
 const layoutModule = { exports: {} };
 new Function('exports', ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-layout.ts'), 'utf8'),
@@ -1638,6 +1639,11 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
       SHOP_INTERIOR_SLOT_IDS: ['test-interior-slot'],
       SHOP_INTERIOR_DECORATION_BY_ID: { 'test-decoration': { price: 10 } },
     };
+    if (name === '@/constants/dog-staff-customization') return {
+      DOG_STAFF_STYLE_CATALOGS: {},
+      resolveDogStaffLook: () => null,
+      isValidDogStaffLook: () => false,
+    };
     throw new Error(`Unexpected HabitsContext dependency: ${name}`);
   };
   const filename = path.join(__dirname, '../context/HabitsContext.tsx');
@@ -1972,9 +1978,39 @@ test('6F 毛茸茸棉花糖cafe keeps 50 choices and adds fourteen redeemable do
       ['芝麻・黑白西施店員', 'dog-staff-sesame'],
       ['雪球・白色迷你雪納瑞店員', 'dog-staff-snowball'],
       ['毛毛・白色薩摩耶店員', 'dog-staff-maomao'],
-      ['波比・淺啡臘腸店員', 'dog-staff-poppy'],
+      ['波比・淺啡臘腸犬店員', 'dog-staff-poppy'],
     ],
   );
   assert.equal(dogStaff.length, 14);
   assert.ok(dogStaff.every((option) => option.price > 0 && option.itemKind === 'decoration'));
+});
+
+test('each cafe dog has 50 unique, dog-specific outfits and 50 unique accessories', () => {
+  const allOutfitIds = new Set();
+  const allAccessoryIds = new Set();
+  for (const dog of dogStaffStyleCatalog.DOG_STAFF_PROFILES) {
+    const catalog = dogStaffStyleCatalog.DOG_STAFF_STYLE_CATALOGS[dog.decorationId];
+    assert.equal(catalog.outfits.length, 50, `${dog.name} has exactly 50 outfits`);
+    assert.equal(catalog.accessories.length, 50, `${dog.name} has exactly 50 accessories`);
+    assert.equal(new Set(catalog.outfits.map(({ id }) => id)).size, 50, `${dog.name}'s outfit IDs are unique`);
+    assert.equal(new Set(catalog.outfits.map(({ name }) => name)).size, 50, `${dog.name}'s outfit names are unique`);
+    assert.equal(new Set(catalog.outfits.map(({ cut, color, accentColor, pattern }) =>
+      `${cut}|${color}|${accentColor}|${pattern}`)).size, 50, `${dog.name}'s outfit designs are unique`);
+    assert.equal(new Set(catalog.accessories.map(({ id }) => id)).size, 50, `${dog.name}'s accessory IDs are unique`);
+    assert.equal(new Set(catalog.accessories.map(({ name }) => name)).size, 50, `${dog.name}'s accessory names are unique`);
+    assert.equal(new Set(catalog.accessories.map(({ shape, color, accentColor, motif }) =>
+      `${shape}|${color}|${accentColor}|${motif}`)).size, 50, `${dog.name}'s accessory designs are unique`);
+    for (const choice of catalog.outfits) {
+      assert.equal(choice.dogDecorationId, dog.decorationId);
+      assert.equal(allOutfitIds.has(choice.id), false);
+      allOutfitIds.add(choice.id);
+    }
+    for (const choice of catalog.accessories) {
+      assert.equal(choice.dogDecorationId, dog.decorationId);
+      assert.equal(allAccessoryIds.has(choice.id), false);
+      allAccessoryIds.add(choice.id);
+    }
+  }
+  assert.equal(allOutfitIds.size, 14 * 50);
+  assert.equal(allAccessoryIds.size, 14 * 50);
 });

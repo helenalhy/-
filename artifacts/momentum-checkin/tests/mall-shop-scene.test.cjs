@@ -4,13 +4,31 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 
+function loadDogStaffStyles() {
+  const source = ts.transpileModule(
+    fs.readFileSync(path.join(__dirname, '../constants/dog-staff-customization.ts'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },
+  ).outputText;
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', source)(
+    (name) => name === './colors' ? { light: new Proxy({}, { get: () => '#f0f0f0' }) } : require(name),
+    module,
+    module.exports,
+  );
+  return module.exports;
+}
+const dogStaffStyles = loadDogStaffStyles();
 const constantsSource = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../constants/mall-shop-interior.ts'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },
 ).outputText;
 const constantsModule = { exports: {} };
 new Function('require', 'module', 'exports', constantsSource)(
-  (name) => name === './colors' ? { light: new Proxy({}, { get: () => '#f0f0f0' }) } : require(name),
+  (name) => {
+    if (name === './colors') return { light: new Proxy({}, { get: () => '#f0f0f0' }) };
+    if (name === './dog-staff-customization') return dogStaffStyles;
+    return require(name);
+  },
   constantsModule,
   constantsModule.exports,
 );

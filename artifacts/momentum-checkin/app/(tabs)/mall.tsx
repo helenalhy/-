@@ -33,6 +33,7 @@ import { SHOP_INTERIOR_DECORATIONS } from '@/constants/mall-shop-interior';
 import { CatalogPager } from '@/components/CatalogPager';
 import { getMallSlotFloor, getMallSlotPosition, MALL_POSITIONS_PER_FLOOR, type MallWing } from '@/constants/mall-layout';
 import { MallWingPager } from '@/components/MallWingPager';
+import { MallElevatorPanel } from '@/components/MallElevatorPanel';
 
 const CATALOG_PAGE_SIZE = 10;
 const IS_DEVELOPMENT_PREVIEW = typeof __DEV__ !== 'undefined' && __DEV__;
@@ -43,6 +44,7 @@ const MAX_INTERIOR_CATALOG_COST = Math.max(
 );
 const PREVIEW_TEST_COIN_BALANCE = MALL_ITEMS.reduce((total, item) => total + item.price, 0)
   + MALL_ITEMS.filter((item) => item.category === 'shop').length * MAX_INTERIOR_CATALOG_COST;
+const MALL_ELEVATOR_FLOORS = MALL_FLOORS.map((floor, index) => ({ floor: index + 1, title: floor.title }));
 
 const CATEGORIES: { id: 'all' | RewardCategory; label: string }[] = [
   { id: 'all', label: '全部' },
@@ -266,6 +268,7 @@ export default function MallScreen() {
   const locationFocusRequestId = useRef(0);
   const [category, setCategory] = useState<'all' | RewardCategory>('all');
   const [currentFloor, setCurrentFloor] = useState(1);
+  const [elevatorVisible, setElevatorVisible] = useState(false);
   const [catalogPage, setCatalogPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -489,12 +492,13 @@ export default function MallScreen() {
     setFocusRestoreActionItemId(null);
   }
 
-  function changeFloor(direction: number) {
+  function changeFloor(direction: number, elevatorArrival = false) {
     if (operationLock.current || purchasing) return;
     const nextFloor = Math.min(MALL_FLOOR_COUNT, Math.max(1, currentFloor + direction));
     if (nextFloor === currentFloor) return;
     setPreviewSlotId(null);
     if (previewSlotId) announcePlacement(`已切換至 ${nextFloor}F，試擺預覽已清除，尚未兌換或扣除金幣。請重新選擇位置。`);
+    else if (elevatorArrival) announcePlacement(`電梯已抵達 ${nextFloor}F · ${MALL_FLOORS[nextFloor - 1].title}。`);
     setCurrentFloor(nextFloor);
     setCatalogPage(1);
     sceneOpacity.setValue(0.45);
@@ -868,6 +872,28 @@ export default function MallScreen() {
               <Feather name="chevron-right" size={25} color={floorTheme.accent} />
             </Pressable>
           </View>
+          <Pressable
+            testID="mall-open-elevator"
+            onPress={() => setElevatorVisible(true)}
+            disabled={isLoading || purchasing !== null}
+            accessibilityRole="button"
+            accessibilityLabel={`開啟電梯樓層選擇，可直達 1F 至 ${MALL_FLOOR_COUNT}F`}
+            accessibilityHint="打開電梯按鍵頁後，點選樓層即可前往"
+            accessibilityState={{ disabled: isLoading || purchasing !== null }}
+            style={({ pressed }) => [
+              styles.elevatorShortcut,
+              {
+                backgroundColor: colors.secondary,
+                borderColor: colors.border,
+                opacity: isLoading || purchasing !== null ? 0.5 : pressed ? 0.72 : 1,
+              },
+            ]}
+          >
+            <Feather name="layers" size={17} color={colors.primary} />
+            <Text style={[styles.elevatorShortcutText, { color: colors.primary }]}>電梯直達樓層</Text>
+            <Text style={[styles.elevatorShortcutRange, { color: colors.mutedForeground }]}>1F–20F</Text>
+            <Feather name="chevron-right" size={16} color={colors.primary} />
+          </Pressable>
           <Text testID="floor-description" style={[styles.floorDescription, { color: colors.mutedForeground }]}>{floorTheme.description}</Text>
           {placementIntent && isFloorFull && (
             <View testID="mall-floor-full" style={[styles.fullFloorNotice, { backgroundColor: colors.secondary, borderColor: colors.primary }]}>
@@ -1395,6 +1421,14 @@ export default function MallScreen() {
         </View>
         <CatalogPager id="catalog-bottom" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
       </ScrollView>
+      <MallElevatorPanel
+        visible={elevatorVisible}
+        currentFloor={currentFloor}
+        floors={MALL_ELEVATOR_FLOORS}
+        disabled={isLoading || purchasing !== null}
+        onClose={() => setElevatorVisible(false)}
+        onSelectFloor={(floor) => changeFloor(floor - currentFloor, true)}
+      />
     </SafeAreaView>
   );
 }
@@ -1447,6 +1481,9 @@ const styles = StyleSheet.create({
   floorNumber: { fontSize: 17, fontWeight: '700' },
   floorCaption: { fontSize: 10, marginTop: 2 },
   floorDescription: { fontSize: 11, lineHeight: 17, marginBottom: 10 },
+  elevatorShortcut: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  elevatorShortcutText: { fontSize: 12, fontWeight: '700', flex: 1 },
+  elevatorShortcutRange: { fontSize: 10, fontWeight: '600' },
   mallArtwork: { width: '100%', aspectRatio: 1 },
   mallArtworkImage: { width: '100%', height: '100%' },
   sceneSlot: { position: 'absolute', height: '18%', alignItems: 'center', justifyContent: 'center', overflow: 'visible', zIndex: 2 },

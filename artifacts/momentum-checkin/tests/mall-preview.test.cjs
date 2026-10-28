@@ -136,6 +136,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     if (name === '@/constants/mall-layout') return layoutModule.exports;
     if (name === '@/constants/mall-shop-interior') return shopInteriorCatalog;
     if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
+    if (name === '@/components/MallElevatorPanel') return { MallElevatorPanel: 'MallElevatorPanel' };
     if (name === '@/constants/mall') return {
       MALL_ITEMS: items, MALL_ITEM_BY_ID: Object.fromEntries(items.map((entry) => [entry.id, entry])),
       MALL_FLOORS: floorThemes,
@@ -689,6 +690,40 @@ test('floor arrows reach the new rooftop and stop at both ends', async () => {
   for (let floor = 20; floor > 1; floor -= 1) await app.press('floor-previous');
   assert.match(textContent(app.find('floor-current')), /1F · 糖果迎賓街/);
   assert.equal(app.find('floor-previous').props.disabled, true);
+});
+
+test('elevator opens a direct 20-floor selector and changes floors without touching mall data', async () => {
+  const app = mount();
+  const coinsBefore = app.habits.coins;
+  const ownershipBefore = [...app.habits.purchasedItems];
+  const placementsBefore = { ...app.habits.mallPlacements };
+  let panel = app.nodes().find((node) => node.type === 'MallElevatorPanel');
+
+  assert.ok(panel, 'the mall renders the elevator panel component');
+  assert.equal(panel.props.visible, false);
+  assert.equal(panel.props.floors.length, 20);
+  assert.equal(panel.props.floors[0].title, '糖果迎賓街');
+  assert.equal(panel.props.floors[19].title, '天空花園');
+
+  await app.press('mall-open-elevator');
+  panel = app.nodes().find((node) => node.type === 'MallElevatorPanel');
+  assert.equal(panel.props.visible, true);
+  assert.equal(panel.props.currentFloor, 1);
+  assert.equal(panel.props.disabled, false);
+
+  panel.props.onSelectFloor(18);
+  app.render();
+  assert.match(textContent(app.find('floor-current')), /18F · 積木創想樂園/);
+  assert.ok(app.announcements.some((message) => message.includes('電梯已抵達 18F')));
+  assert.deepEqual(app.calls, [], 'elevator travel must never redeem, move or store items');
+  assert.equal(app.habits.coins, coinsBefore);
+  assert.deepEqual(app.habits.purchasedItems, ownershipBefore);
+  assert.deepEqual(app.habits.mallPlacements, placementsBefore);
+
+  panel.props.onClose();
+  app.render();
+  panel = app.nodes().find((node) => node.type === 'MallElevatorPanel');
+  assert.equal(panel.props.visible, false);
 });
 
 test('real catalog covers twenty distinct themes and includes ten specialized shop types on their assigned floors', () => {

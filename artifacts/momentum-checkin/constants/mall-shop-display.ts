@@ -11,6 +11,7 @@ export type ShopProductIllustration =
   | 'wig'
   | 'ring'
   | 'treat'
+  | 'croissant'
   | 'drink'
   | 'produce'
   | 'device'
@@ -113,7 +114,7 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '草莓奶油小蛋糕', description: '擺上新鮮草莓的奶油蛋糕', icon: 'heart', color: c.candyPink },
     { name: '奶油菠蘿包', description: '剛出爐的金黃色麵包', icon: 'sun', color: c.candyLemon },
     { name: '星星糖霜曲奇', description: '星形糖霜餅乾', icon: 'star', color: c.candyLavender },
-    { name: '蜂蜜可頌', description: '外層酥脆的蜂蜜可頌', icon: 'gift', color: c.candyPeach },
+    { name: '蜂蜜可頌', description: '外層酥脆的蜂蜜可頌', icon: 'gift', color: c.candyPeach, illustration: 'croissant' },
     { name: '藍莓小塔', description: '盛著藍莓餡的小塔', icon: 'circle', color: c.candySky },
     { name: '雲朵棉花糖麵包', description: '鬆軟的雲朵造型甜麵包', icon: 'cloud', color: c.candyMint },
     { name: '巧克力甜甜圈', description: '淋上巧克力糖衣的甜甜圈', icon: 'circle', color: c.candyCaramel },

@@ -38,7 +38,7 @@ export function ShopDisplayFixturePanel({
   const [catalogPage, setCatalogPage] = useState(1);
   const productMotion = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (!visible || products.length === 0) {
+    if (!visible || products.length === 0 || reduceMotion !== false) {
       productMotion.setValue(0);
       return;
     }
@@ -48,7 +48,7 @@ export function ShopDisplayFixturePanel({
     ]));
     loop.start();
     return () => loop.stop();
-  }, [productMotion, products.length, visible]);
+  }, [productMotion, products.length, reduceMotion, visible]);
   const catalogPageSize = 12;
   const selectableProducts = products.filter(({ legacyOnly }) => !legacyOnly);
   const catalogPageCount = Math.max(1, Math.ceil(selectableProducts.length / catalogPageSize));

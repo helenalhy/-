@@ -1,8 +1,33 @@
 import { Feather } from '@expo/vector-icons';
 import React from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
+import type { ShopDisplayProduct, ShopProductIllustration } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
+
+type MerchandiseMotionProfile = {
+  lift: number;
+  tilt: number;
+  scale: number;
+  sparkle: number;
+};
+
+const MERCHANDISE_MOTION_PROFILES: Record<ShopProductIllustration, MerchandiseMotionProfile> = {
+  bottle: { lift: 1.2, tilt: 3, scale: 1.04, sparkle: 0.78 },
+  garment: { lift: 0.8, tilt: 4, scale: 1.025, sparkle: 0.58 },
+  cloak: { lift: 1.1, tilt: 6, scale: 1.04, sparkle: 0.72 },
+  wig: { lift: 0.9, tilt: 7, scale: 1.03, sparkle: 0.7 },
+  ring: { lift: 0.5, tilt: 10, scale: 1.14, sparkle: 1 },
+  treat: { lift: 1.7, tilt: 2, scale: 1.055, sparkle: 0.82 },
+  croissant: { lift: 2.3, tilt: 4, scale: 1.075, sparkle: 0.96 },
+  drink: { lift: 1.4, tilt: 3, scale: 1.06, sparkle: 0.86 },
+  produce: { lift: 1.2, tilt: 6, scale: 1.05, sparkle: 0.76 },
+  device: { lift: 0.3, tilt: 0, scale: 1.09, sparkle: 0.92 },
+  book: { lift: 0.6, tilt: 3, scale: 1.035, sparkle: 0.62 },
+  flower: { lift: 1, tilt: 8, scale: 1.045, sparkle: 0.82 },
+  gift: { lift: 1.4, tilt: 3, scale: 1.065, sparkle: 0.88 },
+  jewel: { lift: 0.5, tilt: 9, scale: 1.13, sparkle: 1 },
+};
 
 export function ShopMerchandiseVisual({
   product,
@@ -16,6 +41,7 @@ export function ShopMerchandiseVisual({
   index?: number;
 }) {
   const colors = useColors();
+  const reducedMotion = useReducedMotion() !== false;
   const accents = [
     colors.candyRose,
     colors.candyPeach,
@@ -27,18 +53,26 @@ export function ShopMerchandiseVisual({
   ];
   const accent = accents[(product.variant + index) % accents.length];
   const garmentStyle = product.variant % 3;
-  const lift = motion.interpolate({
+  const animation = MERCHANDISE_MOTION_PROFILES[product.illustration];
+  const direction = (product.variant + index) % 2 === 0 ? 1 : -1;
+  const lift = reducedMotion ? 0 : motion.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, index % 3 === 0 ? -1.8 : -1.1],
+    outputRange: [0, -(animation.lift + (index % 3) * 0.15)],
   });
-  const shimmer = motion.interpolate({ inputRange: [0, 1], outputRange: [0.22, 0.92] });
+  const tilt = reducedMotion ? '0deg' : motion.interpolate({
+    inputRange: [0, 1],
+    outputRange: [`${-animation.tilt * direction}deg`, `${animation.tilt * direction}deg`],
+  });
+  const pulse = reducedMotion ? 1 : motion.interpolate({ inputRange: [0, 1], outputRange: [1, animation.scale] });
+  const shimmer = reducedMotion ? 0.2 : motion.interpolate({ inputRange: [0, 1], outputRange: [0.18, animation.sparkle] });
+  const steamLift = reducedMotion ? 0 : motion.interpolate({ inputRange: [0, 1], outputRange: [2, -3] });
 
   return (
     <Animated.View
       testID={`shop-merchandise-visual-${product.id}`}
       accessible={false}
       importantForAccessibility="no"
-      style={[styles.canvas, { width: size, height: size, transform: [{ translateY: lift }] }]}
+      style={[styles.canvas, { width: size, height: size, transform: [{ translateY: lift }, { rotate: tilt }, { scale: pulse }] }]}
     >
       <View pointerEvents="none" style={[styles.softHalo, { backgroundColor: product.color }]} />
       <View pointerEvents="none" style={[styles.drawing, { transform: [{ scale: size / 42 }] }]}>
@@ -128,6 +162,31 @@ export function ShopMerchandiseVisual({
               <View style={[styles.treatStripe, { backgroundColor: colors.candyCream }]} />
             </View>
             <View style={[styles.treatPlate, { backgroundColor: colors.candyCream, borderColor: colors.candyCaramel }]} />
+          </>
+        )}
+        {product.illustration === 'croissant' && (
+          <>
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.croissantSteam, styles.croissantSteamLeft, { opacity: reducedMotion ? 0 : shimmer, transform: [{ translateY: steamLift }] }]}
+            >
+              <Feather name="wind" size={9} color={colors.candyCaramel} />
+            </Animated.View>
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.croissantSteam, styles.croissantSteamRight, { opacity: reducedMotion ? 0 : shimmer, transform: [{ translateY: steamLift }] }]}
+            >
+              <Feather name="wind" size={8} color={colors.candyPeach} />
+            </Animated.View>
+            <View style={[styles.croissantPlate, { backgroundColor: colors.candyCream, borderColor: colors.candyCaramel }]} />
+            <View style={[styles.croissantBody, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]}>
+              <View style={[styles.croissantRoll, styles.croissantRollLeft, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+              <View style={[styles.croissantRoll, styles.croissantRollCenter, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+              <View style={[styles.croissantRoll, styles.croissantRollRight, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+              <View style={[styles.croissantSeam, styles.croissantSeamLeft, { backgroundColor: colors.candyCream }]} />
+              <View style={[styles.croissantSeam, styles.croissantSeamRight, { backgroundColor: colors.candyCream }]} />
+              <Feather name="star" size={6} color={colors.candyLemon} />
+            </View>
           </>
         )}
         {product.illustration === 'drink' && (
@@ -220,8 +279,8 @@ export function ShopMerchandiseVisual({
         )}
         <View style={[styles.groundShadow, { backgroundColor: colors.candyCaramel }]} />
       </View>
-      <Animated.View pointerEvents="none" style={[styles.sparkle, { opacity: shimmer }]}>
-        <Feather name="star" size={7} color={colors.candyLemon} />
+      <Animated.View pointerEvents="none" style={[styles.sparkle, { opacity: shimmer, transform: [{ translateY: lift }] }]}>
+        <Feather name={product.illustration === 'croissant' ? 'sun' : product.illustration === 'drink' ? 'droplet' : 'star'} size={7} color={colors.candyLemon} />
       </Animated.View>
     </Animated.View>
   );
@@ -276,6 +335,18 @@ const styles = StyleSheet.create({
   treatBase: { position: 'absolute', bottom: 6, width: 19, height: 12, borderWidth: 1, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, alignItems: 'center' },
   treatStripe: { width: 2, height: 9, opacity: 0.75 },
   treatPlate: { position: 'absolute', bottom: 3, width: 30, height: 5, borderWidth: 1, borderRadius: 10 },
+  croissantSteam: { position: 'absolute', top: 1, zIndex: 2 },
+  croissantSteamLeft: { left: 10 },
+  croissantSteamRight: { right: 10, top: 4 },
+  croissantPlate: { position: 'absolute', bottom: 3, width: 31, height: 5, borderWidth: 1, borderRadius: 10 },
+  croissantBody: { position: 'absolute', bottom: 8, width: 29, height: 18, borderWidth: 1.2, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  croissantRoll: { position: 'absolute', bottom: 0, width: 10, height: 15, borderWidth: 0.8, borderRadius: 7 },
+  croissantRollLeft: { left: 1, transform: [{ rotate: '-31deg' }] },
+  croissantRollCenter: { bottom: 3, width: 11, height: 16, borderRadius: 8 },
+  croissantRollRight: { right: 1, transform: [{ rotate: '31deg' }] },
+  croissantSeam: { position: 'absolute', top: 2, width: 2, height: 10, borderRadius: 2, opacity: 0.9 },
+  croissantSeamLeft: { left: 8, transform: [{ rotate: '-15deg' }] },
+  croissantSeamRight: { right: 8, transform: [{ rotate: '15deg' }] },
   drinkLid: { position: 'absolute', bottom: 30, width: 22, height: 5, borderWidth: 1, borderRadius: 4 },
   drinkCup: { position: 'absolute', bottom: 5, width: 20, height: 25, borderWidth: 1, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, alignItems: 'center', justifyContent: 'center' },
   drinkFoam: { width: 14, height: 11, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginTop: 2 },

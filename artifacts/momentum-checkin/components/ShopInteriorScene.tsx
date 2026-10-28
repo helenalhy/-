@@ -177,7 +177,7 @@ export function ShopInteriorScene({
     setFoodPickerOpen(false);
   }, [areaId]);
   useEffect(() => {
-    if (!hasMerchandise) {
+    if (!hasMerchandise || reducedMotion) {
       merchandiseMotion.setValue(0);
       return;
     }
@@ -187,7 +187,7 @@ export function ShopInteriorScene({
     ]));
     loop.start();
     return () => loop.stop();
-  }, [hasMerchandise, merchandiseMotion]);
+  }, [hasMerchandise, merchandiseMotion, reducedMotion]);
   useEffect(() => {
     if (reducedMotion) {
       themeMotion.setValue(0);

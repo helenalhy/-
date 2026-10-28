@@ -87,6 +87,28 @@ test('cloud fragrance shop has fragrance bottles and diffuser stones', () => {
   assert.equal(new Set(products.map(({ id }) => id)).size, 60);
 });
 
+test('bakery croissants have a matching animated pastry illustration', () => {
+  const products = getShopFixtureProductCatalog(
+    'strawberry-bakery',
+    '草莓烘焙屋',
+    'general',
+    displayFixture,
+  );
+  const croissant = products.find(({ name }) => name === '蜂蜜可頌');
+  const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
+  const interior = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  const panel = fs.readFileSync(path.join(__dirname, '../components/ShopDisplayFixturePanel.tsx'), 'utf8');
+  assert.equal(croissant?.illustration, 'croissant');
+  assert.match(visual, /product\.illustration === 'croissant'/);
+  assert.match(visual, /croissantBody/);
+  assert.match(visual, /croissantRollCenter/);
+  assert.match(visual, /croissantSteam/);
+  assert.match(visual, /croissant: \{ lift: 2\.3, tilt: 4, scale: 1\.075/);
+  assert.match(interior, /if \(!hasMerchandise \|\| reducedMotion\)/);
+  assert.match(panel, /reduceMotion !== false/);
+  assert.match(visual, /const reducedMotion = useReducedMotion\(\) !== false/);
+});
+
 test('character outfits appear in their matching wardrobe while old displayed choices remain renderable', () => {
   const wardrobeCases = [
     ['cosplay-hero-cape-collection', ['卡卡西・上忍綠色背心套裝'], ['鳴人・第七代火影橘黑斗篷', '佐助・深藍高領忍者外套', '鼬・深色紅雲旅行斗篷', '小櫻・玫瑰紅忍者裙裝']],
@@ -176,6 +198,7 @@ test('fixture merchandise uses animated illustrations and paginated 18-slot arra
   assert.match(visual, /product\.illustration === 'cloak'/);
   assert.match(visual, /product\.illustration === 'wig'/);
   assert.match(visual, /product\.illustration === 'ring'/);
+  assert.match(visual, /MERCHANDISE_MOTION_PROFILES: Record<ShopProductIllustration, MerchandiseMotionProfile>/);
   assert.match(context, /product\.legacyOnly/);
   assert.match(context, /product\.fixtureIds\.includes\(fixtureDecorationId\)/);
   assert.match(route, /setShopInteriorFixtureProduct/);

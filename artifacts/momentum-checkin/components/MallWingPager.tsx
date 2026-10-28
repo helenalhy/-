@@ -179,6 +179,11 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
           return (
             <View
               key={wing.id}
+              ref={(node) => {
+                if (Platform.OS === 'web' && node) {
+                  (node as unknown as HTMLElement).inert = !active;
+                }
+              }}
               testID={`mall-wing-content-${wing.id}`}
               style={{ width, height: width }}
               accessibilityElementsHidden={!active}

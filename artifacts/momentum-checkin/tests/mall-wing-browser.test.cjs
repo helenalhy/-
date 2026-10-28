@@ -272,6 +272,11 @@ test('mall wing tabs keep browser focus and selection in sync', {
         selected: tab.getAttribute('aria-selected'),
         tabIndex: tab.getAttribute('tabindex'),
       })),
+      panels: Array.from(document.querySelectorAll('[data-testid^="mall-wing-content-"]')).map((panel) => ({
+        id: panel.dataset.testid,
+        hidden: panel.getAttribute('aria-hidden') === 'true',
+        inert: panel.inert,
+      })),
       focused: document.activeElement?.dataset?.testid ?? null,
       tabScroller: {
         left: list.getBoundingClientRect().left,
@@ -297,6 +302,11 @@ test('mall wing tabs keep browser focus and selection in sync', {
     assert.equal(state.focused, `mall-wing-${wingId}`, `${wingId} should own browser focus`);
     assert.equal(state.tabs.filter((tab) => tab.selected === 'true').length, 1);
     assert.equal(state.tabs.filter((tab) => tab.tabIndex === '0').length, 1);
+    for (const panel of state.panels) {
+      const isActive = panel.id === `mall-wing-content-${wingId}`;
+      assert.equal(panel.hidden, !isActive, `${panel.id} should match the selected wing's visibility`);
+      assert.equal(panel.inert, !isActive, `${panel.id} should only allow focus in the selected wing`);
+    }
   };
 
   let state = await getState();
@@ -305,9 +315,40 @@ test('mall wing tabs keep browser focus and selection in sync', {
   assert.ok(state.tabs.every((tab) => tab.selected === 'false' || tab.selected === 'true'));
   await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-main"]').focus()`);
   await assertSelectedAndFocused('main');
+  let reachedActiveWingControl = false;
+  for (let index = 0; index < 40; index += 1) {
+    await sendKey(devTools, 'Tab', 'Tab', 9);
+    const focusState = await devTools.evaluate(`(() => {
+      const focused = document.activeElement;
+      const hiddenPanel = focused?.closest('[data-testid^="mall-wing-content-"][aria-hidden="true"]');
+      return {
+        focusedId: focused?.dataset?.testid ?? null,
+        isInsideActivePanel: Boolean(focused?.closest('[data-testid="mall-wing-content-main"]')),
+        isInsideHiddenPanel: Boolean(hiddenPanel),
+      };
+    })()`);
+    assert.equal(focusState.isInsideHiddenPanel, false, 'Tab should never focus a control in a hidden wing');
+    if (focusState.isInsideActivePanel) {
+      reachedActiveWingControl = true;
+      break;
+    }
+  }
+  assert.equal(reachedActiveWingControl, true, 'Tab should still reach controls in the active wing');
+  await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-main"]').focus()`);
   await sendKey(devTools, 'ArrowRight', 'ArrowRight', 39);
   await assertSelectedAndFocused('annex');
+  const annexControlFocus = await devTools.evaluate(`(() => {
+    const control = document.querySelector('[data-testid="mall-wing-content-annex"] [data-testid^="mall-slot-"]');
+    control?.focus();
+    return {
+      focusedControl: document.activeElement === control,
+      activePanelIsNotInert: !document.querySelector('[data-testid="mall-wing-content-annex"]').inert,
+    };
+  })()`);
+  assert.equal(annexControlFocus.focusedControl, true, 'the active wing control should remain keyboard-focusable after switching');
+  assert.equal(annexControlFocus.activePanelIsNotInert, true);
 
+  await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-annex"]').focus()`);
   await sendKey(devTools, 'ArrowLeft', 'ArrowLeft', 37);
   await assertSelectedAndFocused('main');
 

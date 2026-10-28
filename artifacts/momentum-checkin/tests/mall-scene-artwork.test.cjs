@@ -11,7 +11,7 @@ test('mall shops, facilities and decor use the matching illustrated scene assets
   const assetNames = [...source.matchAll(/require\('\.\.\/assets\/images\/(mall-[^']+\.png)'\)/g)]
     .map((match) => match[1]);
 
-  assert.equal(assetNames.length, 40, 'forty unique mall and shop fixtures have mapped artwork');
+  assert.equal(assetNames.length, 44, 'four storefront illustrations and forty mall/shop fixtures have mapped artwork');
   assert.equal(new Set(assetNames).size, assetNames.length, 'each mapped artwork path is unique');
   for (const assetName of assetNames) {
     const assetPath = path.join(appRoot, 'assets/images', assetName);
@@ -22,14 +22,20 @@ test('mall shops, facilities and decor use the matching illustrated scene assets
   assert.match(source, /Image source=\{artwork\} resizeMode="contain"/);
 });
 
-test('storefront animations use a floor-themed, item-specific illustration instead of shared storefront images', () => {
+test('storefront animations preserve the original illustrated facades with floor and shop details', () => {
   const source = fs.readFileSync(visualsPath, 'utf8');
+  for (const image of ['mall-shop-classic.png', 'mall-shop-arched.png', 'mall-shop-wide.png', 'mall-shop-corner.png']) {
+    assert.match(source, new RegExp(`assets/images/${image.replaceAll('.', '\\.')}`));
+  }
   assert.match(source, /<MallStorefrontArt itemId=\{animationSeed\} itemName=\{itemName \?\? '特色小店'\} itemIcon=\{icon\} floor=\{floor\} itemColor=\{color\}/);
   assert.match(source, /testID=\{`mall-storefront-art-\$\{floor\}-\$\{itemId\}`\}/);
+  assert.match(source, /source=\{facade\}[\s\S]*?style=\{s\.storefrontArtworkImage\}/);
+  assert.match(source, /SHOP_FACADE_ARTWORK\[art\.variant % SHOP_FACADE_ARTWORK\.length\]/);
   assert.match(source, /getMallFloorArtProfile\(floor, itemId\)/);
-  assert.match(source, /style=\{\[s\.storefrontRoof, roofShape, \{ backgroundColor: art\.accent/);
+  assert.match(source, /style=\{\[s\.storefrontFloorEmblem, \{ backgroundColor: art\.accent/);
   assert.match(source, /storefrontSignText:[\s\S]*?fontWeight: '900'/);
-  assert.match(source, /storefrontAwning:[\s\S]*?flexDirection: 'row'/);
+  assert.match(source, /storefrontDisplayTagLeft/);
+  assert.match(source, /storefrontDisplayTagRight/);
   assert.match(source, /useReducedMotion\(\) !== false/);
   assert.match(source, /if \(!isActive \|\| reducedMotion\)/);
 });

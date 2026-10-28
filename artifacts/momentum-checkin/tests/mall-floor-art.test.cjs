@@ -19,6 +19,26 @@ new Function('require', 'module', 'exports', helperSource)(
 );
 const { getMallFloorArtProfile, MALL_FLOOR_ART_TITLES } = helperModule.exports;
 
+const catalogModuleCache = new Map();
+function loadCatalogTsModule(filename) {
+  const resolved = path.resolve(filename.endsWith('.ts') ? filename : `${filename}.ts`);
+  if (catalogModuleCache.has(resolved)) return catalogModuleCache.get(resolved).exports;
+  const loadedModule = { exports: {} };
+  catalogModuleCache.set(resolved, loadedModule);
+  const output = ts.transpileModule(fs.readFileSync(resolved, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
+  }).outputText;
+  const mockRequire = (request) => {
+    const dependency = path.resolve(path.dirname(resolved), request);
+    if (fs.existsSync(`${dependency}.ts`)) return loadCatalogTsModule(`${dependency}.ts`);
+    if (fs.existsSync(dependency)) return dependency;
+    throw new Error(`Unexpected catalog dependency: ${request}`);
+  };
+  new Function('require', 'module', 'exports', output)(mockRequire, loadedModule, loadedModule.exports);
+  return loadedModule.exports;
+}
+const mallCatalog = loadCatalogTsModule(path.join(appRoot, 'constants/mall.ts'));
+
 test('all twenty floors have their own theme name and emblem', () => {
   const profiles = Array.from({ length: 20 }, (_, index) => getMallFloorArtProfile(index + 1, 'theme-check'));
   assert.equal(new Set(MALL_FLOOR_ART_TITLES).size, 20);
@@ -46,6 +66,32 @@ test('shop illustrations use stable but item-specific storefront and interior va
   );
 });
 
+test('every redeemable shop has a unique, stable facade design for its floor', () => {
+  const shops = mallCatalog.MALL_ITEMS.filter(({ category }) => category === 'shop');
+  const signatures = shops.map(({ id, floor }) => {
+    const art = getMallFloorArtProfile(floor, id);
+    return [
+      floor,
+      art.variant,
+      art.roofStyle,
+      art.canopyStyle,
+      art.signStyle,
+      art.windowStyle,
+      art.displayStyle,
+      art.trimStyle,
+    ].join('|');
+  });
+  assert.ok(shops.length > 1000, 'test the complete redeemable-shop catalog, not a small sample');
+  assert.equal(new Set(signatures).size, shops.length, 'each shop must get a non-repeating illustrated facade composition');
+  for (const shop of shops) {
+    assert.deepEqual(
+      getMallFloorArtProfile(shop.floor, shop.id),
+      getMallFloorArtProfile(shop.floor, shop.id),
+      `the facade for ${shop.name} must remain stable after navigating away and back`,
+    );
+  }
+});
+
 test('mall and interior screens pass each store floor into theme-aware animated art', () => {
   const mall = fs.readFileSync(path.join(appRoot, 'app/(tabs)/mall.tsx'), 'utf8');
   const page = fs.readFileSync(path.join(appRoot, 'app/mall-shop/[itemId].tsx'), 'utf8');
@@ -57,6 +103,9 @@ test('mall and interior screens pass each store floor into theme-aware animated 
   assert.match(page, /shopId=\{shop\.id\}[\s\S]*?floor=\{shop\.floor\}/);
   assert.match(visuals, /<MallStorefrontArt itemId=\{animationSeed\} itemName=\{itemName/);
   assert.match(visuals, /getMallFloorArtProfile\(floor, itemId\)/);
+  assert.match(visuals, /storefrontRoofAccent/);
+  assert.match(visuals, /storefrontCanopyStripe/);
+  assert.match(visuals, /storefrontDisplayProduct/);
   assert.match(interior, /getMallFloorArtProfile\(floor, shopId\)/);
   assert.match(interior, /testID=\{`shop-interior-floor-theme-\$\{floor\}-\$\{shopId\}`\}/);
   assert.match(interior, /Animated\.loop\(Animated\.sequence\(\[[\s\S]*?themeMotion/);

@@ -13,11 +13,17 @@ export interface MallFloorArtProfile {
   variant: number;
   pattern: number;
   displayMark: number;
+  roofStyle: number;
+  canopyStyle: number;
+  signStyle: number;
+  windowStyle: number;
+  displayStyle: number;
+  trimStyle: number;
   ornament: string;
   secondaryOrnament: string;
 }
 
-const FLOOR_ART: readonly Omit<MallFloorArtProfile, 'variant' | 'pattern' | 'displayMark' | 'ornament' | 'secondaryOrnament' | 'shopAccent' | 'shopSoft'>[] = [
+const FLOOR_ART: readonly Omit<MallFloorArtProfile, 'variant' | 'pattern' | 'displayMark' | 'roofStyle' | 'canopyStyle' | 'signStyle' | 'windowStyle' | 'displayStyle' | 'trimStyle' | 'ornament' | 'secondaryOrnament' | 'shopAccent' | 'shopSoft'>[] = [
   { title: '糖果迎賓街', emblem: 'sun', accent: c.candyRose, secondary: c.candyPeach, soft: c.candyPink },
   { title: '森林花園', emblem: 'feather', accent: c.candyMintDark, secondary: c.candyLemon, soft: c.candyMint },
   { title: '慢讀書廊', emblem: 'book-open', accent: c.candyLavenderDark, secondary: c.candyCaramel, soft: c.candyLavender },
@@ -44,11 +50,17 @@ const ORNAMENTS = ['star', 'circle', 'heart', 'triangle', 'moon', 'sun', 'plus',
 const SHOP_ACCENTS = [c.candyPink, c.candyLavender, c.candyMint, c.candySky, c.candyCoral, c.candyPeach, c.candyLemon, c.candyRose] as const;
 
 function stableHash(value: string): number {
-  let hash = 0;
+  let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
   }
-  return hash;
+  hash += hash << 13;
+  hash ^= hash >>> 7;
+  hash += hash << 3;
+  hash ^= hash >>> 17;
+  hash += hash << 5;
+  return hash >>> 0;
 }
 
 /** Produces a stable, floor-specific and item-specific illustrated identity. */
@@ -60,9 +72,15 @@ export function getMallFloorArtProfile(floor: number, itemId: string): MallFloor
     ...base,
     shopAccent: SHOP_ACCENTS[stableHash(`${key}:accent`) % SHOP_ACCENTS.length],
     shopSoft: SHOP_ACCENTS[stableHash(`${key}:soft`) % SHOP_ACCENTS.length],
-    variant: stableHash(`${key}:roof`) % 5,
+    variant: stableHash(`${key}:art-0`) % 4,
+    roofStyle: stableHash(`${key}:art-1`) % 6,
+    canopyStyle: stableHash(`${key}:art-2`) % 8,
+    signStyle: stableHash(`${key}:art-3`) % 9,
+    windowStyle: stableHash(`${key}:art-4`) % 10,
+    displayStyle: stableHash(`${key}:art-5`) % 11,
+    trimStyle: stableHash(`${key}:art-6`) % 12,
     pattern: stableHash(`${key}:pattern`) % 8,
-    displayMark: stableHash(`${key}:mark`) % 97,
+    displayMark: stableHash(`${key}:mark`) % 997,
     ornament: ORNAMENTS[stableHash(`${key}:ornament`) % ORNAMENTS.length],
     secondaryOrnament: ORNAMENTS[stableHash(`${key}:secondary`) % ORNAMENTS.length],
   };

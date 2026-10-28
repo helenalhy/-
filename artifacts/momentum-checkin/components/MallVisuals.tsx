@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, Platform, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+import { Animated, Image, Platform, StyleSheet, Text, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import palette from '@/constants/colors';
 import { getShopFacadeVariant, resolveMallObjectArchetype, type MallObjectArchetype, type MallVisualCategory } from '@/constants/mall-visual-profile';
 import { getMallFloorArtProfile } from '@/constants/mall-floor-art';
@@ -10,6 +10,35 @@ import { MallCustomers } from './MallCustomers';
 
 const c = palette.light;
 const useNativeDriver = Platform.OS !== 'web';
+
+const SHOP_FACADE_ARTWORK: readonly ImageSourcePropType[] = [
+  require('../assets/images/mall-shop-classic.png'),
+  require('../assets/images/mall-shop-arched.png'),
+  require('../assets/images/mall-shop-wide.png'),
+  require('../assets/images/mall-shop-corner.png'),
+];
+
+const STOREFRONT_ROOF_GEOMETRIES: ViewStyle[] = [
+  { left: '15%', width: '70%', top: '20%', height: 5, borderTopLeftRadius: 9, borderTopRightRadius: 9 },
+  { left: '20%', width: '60%', top: '22%', height: 4, borderRadius: 2 },
+  { left: '12%', width: '76%', top: '24%', height: 5, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+  { left: '18%', width: '64%', top: '18%', height: 6, borderTopLeftRadius: 8, borderTopRightRadius: 3 },
+  { left: '23%', width: '54%', top: '25%', height: 4, borderRadius: 8 },
+  { left: '10%', width: '80%', top: '21%', height: 5, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+];
+
+const STOREFRONT_WINDOW_ARRANGEMENTS: ViewStyle[] = [
+  { left: '18%', right: '18%', top: '56%' },
+  { left: '22%', right: '16%', top: '53%' },
+  { left: '16%', right: '22%', top: '59%' },
+  { left: '20%', right: '20%', top: '51%' },
+  { left: '14%', right: '18%', top: '57%' },
+  { left: '21%', right: '14%', top: '61%' },
+  { left: '17%', right: '21%', top: '54%' },
+  { left: '24%', right: '17%', top: '58%' },
+  { left: '15%', right: '24%', top: '52%' },
+  { left: '19%', right: '15%', top: '60%' },
+];
 
 const OBJECT_ARTWORK: Partial<Record<MallObjectArchetype, ImageSourcePropType>> = {
   'cloud-walk': require('../assets/images/mall-cloud-walk.png'),
@@ -138,58 +167,91 @@ function MallStorefrontArt({ itemId, itemName, itemIcon, floor, itemColor }: {
   itemColor: string;
 }) {
   const art = getMallFloorArtProfile(floor, itemId);
-  const roofShape = [
-    { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-    { borderTopLeftRadius: 7, borderTopRightRadius: 7 },
-    { borderTopLeftRadius: 28, borderTopRightRadius: 28 },
-    { borderTopLeftRadius: 4, borderTopRightRadius: 17 },
-    { borderTopLeftRadius: 13, borderTopRightRadius: 13 },
-  ][art.variant];
   const signShape = [
-    { borderRadius: 6 },
-    { borderRadius: 14 },
-    { borderRadius: 4 },
-    { borderRadius: 9 },
-    { borderRadius: 18 },
-  ][art.pattern % 5];
+    { borderRadius: 3, borderTopLeftRadius: 7 },
+    { borderRadius: 8 },
+    { borderRadius: 2 },
+    { borderRadius: 5, borderBottomRightRadius: 9 },
+    { borderRadius: 9, borderTopRightRadius: 2 },
+    { borderRadius: 4, borderBottomLeftRadius: 1 },
+    { borderRadius: 6, borderTopLeftRadius: 1 },
+    { borderRadius: 2, borderTopRightRadius: 8 },
+    { borderRadius: 10, borderBottomRightRadius: 2 },
+  ][art.signStyle];
+  const roofGeometry = STOREFRONT_ROOF_GEOMETRIES[art.roofStyle];
+  const windowArrangement = STOREFRONT_WINDOW_ARRANGEMENTS[art.windowStyle];
+  const facade = SHOP_FACADE_ARTWORK[art.variant % SHOP_FACADE_ARTWORK.length];
+  const canopyStripes = 3 + (art.canopyStyle % 5);
+  const windowDisplayCount = 1 + (art.displayStyle % 3);
+  const railRadius = [2, 4, 8, 12, 1, 6, 10, 3, 14, 5, 9, 7][art.trimStyle];
 
   return (
     <View testID={`mall-storefront-art-${floor}-${itemId}`} style={s.storefrontArt}>
-      <View style={[s.storefrontRoof, roofShape, { backgroundColor: art.accent, borderColor: art.secondary }]}>
-        <View style={s.storefrontRoofLine} />
-        <View style={s.storefrontRoofIcons}>
-          <Feather name={art.emblem as keyof typeof Feather.glyphMap} size={9} color={palette.light.card} />
-          <View style={[s.storefrontRoofGem, { backgroundColor: art.secondary }]} />
-          <Text style={s.storefrontMark}>{String(art.displayMark).padStart(2, '0')}</Text>
-        </View>
-      </View>
-      <View style={[s.storefrontShell, { borderColor: art.shopAccent, backgroundColor: art.shopSoft }]}>
-        <View style={[s.storefrontSign, signShape, { backgroundColor: palette.light.card, borderColor: art.shopAccent }]}>
-          <Feather name={itemIcon as keyof typeof Feather.glyphMap} size={9} color={art.shopAccent} />
-          <Text numberOfLines={1} style={[s.storefrontSignText, { color: art.shopAccent }]}>{itemName}</Text>
-        </View>
-        <View style={s.storefrontWindowRow}>
-          <View style={[s.storefrontWindow, { borderColor: art.shopAccent, backgroundColor: palette.light.card }]}>
-            <View style={[s.storefrontWindowShine, { backgroundColor: art.secondary }]} />
-            <View style={[s.storefrontWindowShelf, { backgroundColor: art.shopAccent }]} />
-            <Feather name={art.ornament as keyof typeof Feather.glyphMap} size={10} color={art.shopAccent} />
-          </View>
-          <View style={[s.storefrontDoor, { borderColor: art.shopAccent, backgroundColor: itemColor }]}>
-            <View style={[s.storefrontDoorGlass, { backgroundColor: palette.light.card }]} />
-            <View style={[s.storefrontDoorKnob, { backgroundColor: art.accent }]} />
-          </View>
-          <View style={[s.storefrontWindow, { borderColor: art.shopAccent, backgroundColor: palette.light.card }]}>
-            <View style={[s.storefrontWindowShine, { backgroundColor: art.secondary }]} />
-            <Feather name={art.secondaryOrnament as keyof typeof Feather.glyphMap} size={9} color={art.shopAccent} />
-          </View>
-        </View>
-        <View style={[s.storefrontAwning, { backgroundColor: art.secondary, borderColor: art.shopAccent }]}>
-          {Array.from({ length: 4 + (art.pattern % 4) }, (_, index) => (
-            <View key={index} style={[s.storefrontAwningStripe, { backgroundColor: (index + art.displayMark) % 2 ? art.shopAccent : palette.light.card }]} />
+      <View style={[s.storefrontThemeGlow, { backgroundColor: art.shopSoft }]} />
+      <Image
+        testID={`mall-storefront-base-art-${floor}-${itemId}`}
+        source={facade}
+        resizeMode="contain"
+        fadeDuration={0}
+        style={s.storefrontArtworkImage}
+      />
+      <View pointerEvents="none" style={s.storefrontDetails}>
+        <View style={[s.storefrontRoofAccent, roofGeometry, { backgroundColor: art.shopAccent, borderColor: art.secondary }]}>
+          {Array.from({ length: canopyStripes }, (_, index) => (
+            <View
+              key={`canopy-${index}`}
+              style={[
+                s.storefrontCanopyStripe,
+                {
+                  backgroundColor: (index + art.canopyStyle) % 2 === 0 ? art.shopSoft : art.secondary,
+                  width: `${Math.max(8, 100 / canopyStripes - 2)}%`,
+                },
+              ]}
+            />
           ))}
         </View>
+        <View style={[s.storefrontFloorEmblem, { backgroundColor: art.accent, borderColor: art.secondary }]}>
+          <Feather name={art.emblem as keyof typeof Feather.glyphMap} size={6} color={palette.light.card} />
+        </View>
+        <View style={[s.storefrontSign, signShape, { backgroundColor: art.shopSoft, borderColor: art.shopAccent }]}>
+          <Feather name={itemIcon as keyof typeof Feather.glyphMap} size={5} color={art.shopAccent} />
+          <Text numberOfLines={1} style={[s.storefrontSignText, { color: art.shopAccent }]}>{itemName}</Text>
+        </View>
+        <View style={[s.storefrontDisplayTag, s.storefrontDisplayTagLeft, { left: windowArrangement.left, top: windowArrangement.top, backgroundColor: art.shopSoft, borderColor: art.shopAccent }]}>
+          <Feather name={art.ornament as keyof typeof Feather.glyphMap} size={5} color={art.shopAccent} />
+          <View style={[s.storefrontDisplayDot, { backgroundColor: itemColor }]} />
+        </View>
+        <View style={[s.storefrontDisplayTag, s.storefrontDisplayTagRight, { right: windowArrangement.right, top: windowArrangement.top, backgroundColor: art.shopSoft, borderColor: art.shopAccent }]}>
+          <Feather name={art.secondaryOrnament as keyof typeof Feather.glyphMap} size={5} color={art.accent} />
+          <View style={[s.storefrontDisplayDot, { backgroundColor: art.secondary }]} />
+        </View>
+        <View style={[s.storefrontDisplayRow, { bottom: `${12 + (art.displayStyle % 4)}%` }]}>
+          {Array.from({ length: windowDisplayCount }, (_, index) => (
+            <View
+              key={`display-${index}`}
+              style={[
+                s.storefrontDisplayProduct,
+                {
+                  backgroundColor: index % 2 ? art.shopSoft : itemColor,
+                  borderColor: art.shopAccent,
+                  height: 4 + ((art.displayStyle + index) % 4),
+                },
+              ]}
+            >
+              <Feather
+                name={(index + art.displayStyle) % 2 ? art.ornament as keyof typeof Feather.glyphMap : itemIcon as keyof typeof Feather.glyphMap}
+                size={4}
+                color={art.shopAccent}
+              />
+            </View>
+          ))}
+        </View>
+        <View style={[s.storefrontFloorRail, { backgroundColor: art.accent, borderRadius: railRadius, borderColor: art.secondary }]}>
+          <Feather name={art.emblem as keyof typeof Feather.glyphMap} size={5} color={palette.light.card} />
+          <Text style={s.storefrontMark}>{floor}F · {String(art.displayMark).padStart(3, '0')}</Text>
+          <View style={[s.storefrontRailGem, { backgroundColor: art.secondary }]} />
+        </View>
       </View>
-      <View style={[s.storefrontBase, { backgroundColor: art.accent }]} />
     </View>
   );
 }
@@ -220,25 +282,24 @@ const s = StyleSheet.create({
   mallStorefrontCanvas: { width: 84, height: 63 },
   mallStorefrontMotion: { width: 84, height: 63 },
   sceneSprite: { width: '100%', height: '100%' },
-  storefrontArt: { width: 82, height: 62, justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 4, overflow: 'visible' },
-  storefrontRoof: { position: 'absolute', zIndex: 2, top: 1, width: 73, height: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  storefrontRoofLine: { position: 'absolute', left: 0, right: 0, bottom: 2, height: 2, backgroundColor: 'rgba(255,255,255,0.55)' },
-  storefrontRoofIcons: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  storefrontRoofGem: { width: 4, height: 4, borderRadius: 3, transform: [{ rotate: '45deg' }] },
-  storefrontMark: { color: palette.light.card, fontSize: 5, fontWeight: '900' },
-  storefrontShell: { width: 70, height: 47, borderWidth: 1.5, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomWidth: 2, alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9 },
-  storefrontSign: { position: 'absolute', zIndex: 2, top: 3, width: '83%', minHeight: 13, paddingHorizontal: 3, borderWidth: 0.8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 },
-  storefrontSignText: { maxWidth: 46, fontSize: 5.5, lineHeight: 7, fontWeight: '900' },
-  storefrontWindowRow: { width: '93%', height: 23, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 2 },
-  storefrontWindow: { width: 17, height: 18, borderWidth: 1, borderRadius: 4, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  storefrontWindowShine: { position: 'absolute', top: 1, left: 2, width: 3, height: 11, borderRadius: 2, opacity: 0.7 },
-  storefrontWindowShelf: { position: 'absolute', left: 0, right: 0, bottom: 3, height: 1.5 },
-  storefrontDoor: { width: 17, height: 20, borderWidth: 1, borderTopLeftRadius: 7, borderTopRightRadius: 7, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 2 },
-  storefrontDoorGlass: { position: 'absolute', top: 2, width: 10, height: 8, borderRadius: 4, opacity: 0.8 },
-  storefrontDoorKnob: { position: 'absolute', right: 2, bottom: 4, width: 2, height: 2, borderRadius: 2 },
-  storefrontAwning: { width: '100%', height: 7, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-around', overflow: 'hidden' },
-  storefrontAwningStripe: { width: 10, height: '100%', borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
-  storefrontBase: { width: 76, height: 3, borderRadius: 3 },
+  storefrontArt: { width: 82, height: 62, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
+  storefrontThemeGlow: { position: 'absolute', top: 5, width: 72, height: 50, borderRadius: 28, opacity: 0.28 },
+  storefrontArtworkImage: { position: 'absolute', width: '100%', height: '100%' },
+  storefrontDetails: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  storefrontRoofAccent: { position: 'absolute', borderWidth: 0.6, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', overflow: 'hidden', zIndex: 2 },
+  storefrontCanopyStripe: { height: '55%', borderRadius: 3, opacity: 0.9 },
+  storefrontFloorEmblem: { position: 'absolute', top: '5%', alignSelf: 'center', width: 10, height: 10, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  storefrontSign: { position: 'absolute', top: '31%', left: '31%', width: '38%', height: 8, borderWidth: 0.8, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1, overflow: 'hidden', zIndex: 3 },
+  storefrontSignText: { maxWidth: 22, fontSize: 3.8, lineHeight: 5, fontWeight: '900' },
+  storefrontDisplayTag: { position: 'absolute', top: '56%', width: 9, height: 9, borderWidth: 0.7, borderRadius: 4, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  storefrontDisplayTagLeft: { transform: [{ rotate: '-8deg' }] },
+  storefrontDisplayTagRight: { transform: [{ rotate: '8deg' }] },
+  storefrontDisplayDot: { position: 'absolute', bottom: 0, right: 0, width: 3, height: 3, borderRadius: 2 },
+  storefrontDisplayRow: { position: 'absolute', left: '42%', right: '42%', height: 9, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 1, zIndex: 2 },
+  storefrontDisplayProduct: { minWidth: 4, borderWidth: 0.5, borderTopLeftRadius: 3, borderTopRightRadius: 3, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  storefrontFloorRail: { position: 'absolute', bottom: '7%', alignSelf: 'center', minHeight: 8, borderWidth: 0.6, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, zIndex: 3 },
+  storefrontMark: { color: palette.light.card, fontSize: 4, fontWeight: '900' },
+  storefrontRailGem: { width: 3, height: 3, borderRadius: 2, transform: [{ rotate: '45deg' }] },
   objectSparkle: { position: 'absolute', right: 6, top: 4 },
   visitorLayer: { zIndex: 10, elevation: 10 },
   sparkle: { position: 'absolute' },

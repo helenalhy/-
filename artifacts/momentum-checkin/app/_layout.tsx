@@ -59,6 +59,18 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  React.useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+
+    // Opt the browser out of automatic darkening; the web app should match
+    // the light candy palette used by the Replit preview.
+    document.documentElement.style.colorScheme = 'only light';
+    document.documentElement.style.backgroundColor = palette.light.background;
+    if (document.body) {
+      document.body.style.backgroundColor = palette.light.background;
+    }
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ReducedMotionProvider>

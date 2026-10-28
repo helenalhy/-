@@ -143,7 +143,21 @@ export function ShopInteriorScene({
     { borderRadius: 15 },
     { borderRadius: 5 },
     { borderRadius: 18 },
-  ][floorArt.variant];
+  ][floorArt.signStyle % 5];
+  const shopPlaqueShape = [
+    { borderRadius: 13 },
+    { borderRadius: 7, borderTopLeftRadius: 17 },
+    { borderRadius: 18, borderBottomRightRadius: 5 },
+    { borderRadius: 5 },
+    { borderRadius: 15, borderTopRightRadius: 4 },
+    { borderRadius: 9, borderBottomLeftRadius: 3 },
+    { borderRadius: 20, borderTopLeftRadius: 5 },
+    { borderRadius: 4, borderBottomRightRadius: 16 },
+    { borderRadius: 11, borderTopRightRadius: 2 },
+  ][floorArt.signStyle];
+  const displayCount = 2 + (floorArt.displayStyle % 5);
+  const canopyLights = 3 + (floorArt.canopyStyle % 6);
+  const displayTop = 68 + (floorArt.roofStyle * 2);
   const completeDogInteraction = useCallback((id: number) => {
     setDogInteraction((current) => current?.id === id ? null : current);
   }, []);
@@ -219,7 +233,16 @@ export function ShopInteriorScene({
     >
       <ImageBackground onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} source={SCENES[sceneKey]} resizeMode="cover" style={styles.imageStage} imageStyle={styles.imageShape}>
         <View style={styles.topScrim} pointerEvents="none" />
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: floorArt.soft, opacity: 0.12 }]} />
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: floorArt.shopSoft,
+              opacity: 0.06 + (floorArt.displayStyle % 9) * 0.01,
+            },
+          ]}
+        />
         <View
           testID={`shop-interior-floor-theme-${floor}-${shopId}`}
           pointerEvents="none"
@@ -227,6 +250,20 @@ export function ShopInteriorScene({
         >
           {Array.from({ length: 5 + floorArt.pattern }, (_, index) => (
             <View key={index} style={[styles.themeRailMark, { backgroundColor: index % 2 ? floorArt.secondary : floorArt.soft }]} />
+          ))}
+        </View>
+        <View pointerEvents="none" style={[styles.interiorCornice, { backgroundColor: floorArt.shopAccent, height: 3 + (floorArt.roofStyle % 4) }]}>
+          {Array.from({ length: canopyLights }, (_, index) => (
+            <View
+              key={`cornice-${index}`}
+              style={[
+                styles.interiorCorniceMark,
+                {
+                  backgroundColor: index % 2 ? floorArt.secondary : floorArt.shopSoft,
+                  width: `${Math.max(5, 100 / canopyLights - 2)}%`,
+                },
+              ]}
+            />
           ))}
         </View>
         <Animated.View
@@ -242,13 +279,59 @@ export function ShopInteriorScene({
           ]}
         >
           <Feather name={floorArt.emblem as keyof typeof Feather.glyphMap} size={11} color={floorArt.accent} />
-          <Text style={[styles.themeBadgeText, { color: floorArt.accent }]}>{floor}F · {floorArt.title} · {String(floorArt.displayMark).padStart(2, '0')}</Text>
+          <Text style={[styles.themeBadgeText, { color: floorArt.accent }]}>{floor}F · {floorArt.title} · {String(floorArt.displayMark).padStart(3, '0')}</Text>
           <Feather name={floorArt.ornament as keyof typeof Feather.glyphMap} size={9} color={floorArt.shopAccent} />
         </Animated.View>
-        <View style={[styles.namePlaque, { backgroundColor: colors.card, borderColor: shopColor }]} pointerEvents="none">
-          <View style={[styles.plaqueDot, { backgroundColor: shopColor }]} />
+        <View
+          testID={`shop-interior-identity-${floor}-${shopId}`}
+          style={[
+            styles.namePlaque,
+            shopPlaqueShape,
+            { backgroundColor: floorArt.shopSoft, borderColor: floorArt.shopAccent },
+          ]}
+          pointerEvents="none"
+        >
+          <Feather name={floorArt.ornament as keyof typeof Feather.glyphMap} size={11} color={floorArt.shopAccent} />
           <Text numberOfLines={1} style={[styles.nameText, { color: colors.foreground }]}>{shopName}</Text>
+          <Feather name={floorArt.secondaryOrnament as keyof typeof Feather.glyphMap} size={10} color={floorArt.accent} />
         </View>
+        <Animated.View
+          testID={`shop-interior-display-${floor}-${shopId}`}
+          pointerEvents="none"
+          style={[
+            styles.interiorWallDisplay,
+            {
+              top: displayTop,
+              marginLeft: (floorArt.windowStyle % 5) * 2,
+              borderColor: floorArt.shopAccent,
+              backgroundColor: floorArt.shopSoft,
+              opacity: themeMotion.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }),
+              transform: [{ translateY: themeMotion.interpolate({ inputRange: [0, 1], outputRange: [0, -1.5] }) }],
+            },
+          ]}
+        >
+          {Array.from({ length: displayCount }, (_, index) => {
+            const icon = index % 3 === 0
+              ? floorArt.emblem
+              : index % 3 === 1 ? floorArt.ornament : floorArt.secondaryOrnament;
+            return (
+              <View
+                key={`wall-display-${index}`}
+                style={[
+                  styles.interiorDisplayItem,
+                  {
+                    backgroundColor: index % 2 ? floorArt.soft : colors.card,
+                    borderColor: floorArt.secondary,
+                    height: 13 + ((floorArt.trimStyle + index) % 8),
+                  },
+                ]}
+              >
+                <Feather name={icon as keyof typeof Feather.glyphMap} size={8} color={floorArt.shopAccent} />
+              </View>
+            );
+          })}
+          <View style={[styles.interiorDisplayShelf, { backgroundColor: floorArt.accent }]} />
+        </Animated.View>
         {SHOP_INTERIOR_SLOTS.map((slot) => {
           const decoration = decorations.find(({ id }) => id === placements[slot.id]);
           const dogLook = decoration ? resolveDogStaffLook(decoration.id, dogStaffLooks?.[decoration.id]) : null;
@@ -1068,6 +1151,8 @@ const styles = StyleSheet.create({
   imageShape: { width: '100%', height: '100%' },
   themeRail: { position: 'absolute', left: 0, right: 0, top: 0, height: 7, zIndex: 1, flexDirection: 'row', justifyContent: 'space-around', overflow: 'hidden' },
   themeRailMark: { width: 20, height: 7, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  interiorCornice: { position: 'absolute', left: 0, right: 0, top: 7, zIndex: 1, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', overflow: 'hidden' },
+  interiorCorniceMark: { height: '55%', borderRadius: 3, opacity: 0.9 },
   themeBadge: { position: 'absolute', top: 48, right: 9, minHeight: 23, zIndex: 1, borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#74575D', shadowOpacity: 0.1, shadowRadius: 3, elevation: 1 },
   themeBadgeText: { fontSize: 8, lineHeight: 11, fontWeight: '900' },
   topScrim: {
@@ -1093,6 +1178,9 @@ const styles = StyleSheet.create({
   },
   plaqueDot: { width: 7, height: 7, borderRadius: 4 },
   nameText: { fontSize: 11, fontWeight: '800' },
+  interiorWallDisplay: { position: 'absolute', left: '8%', zIndex: 1, minWidth: 94, minHeight: 29, borderWidth: 1, borderRadius: 5, paddingHorizontal: 4, paddingTop: 3, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 3, shadowColor: '#74575D', shadowOpacity: 0.12, shadowRadius: 3, elevation: 1 },
+  interiorDisplayItem: { width: 16, borderWidth: 0.8, borderTopLeftRadius: 5, borderTopRightRadius: 5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  interiorDisplayShelf: { position: 'absolute', left: -1, right: -1, bottom: -2, height: 3, borderRadius: 2 },
   hotspot: {
     position: 'absolute',
     width: HOTSPOT_W,

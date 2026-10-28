@@ -81,8 +81,21 @@ test('every redeemable shop has a unique, stable facade design for its floor', (
       art.trimStyle,
     ].join('|');
   });
+  const interiorSignatures = shops.map(({ id, floor }) => {
+    const art = getMallFloorArtProfile(floor, id);
+    return [
+      floor,
+      art.signStyle,
+      art.roofStyle,
+      art.canopyStyle,
+      art.windowStyle,
+      art.displayStyle,
+      art.trimStyle,
+    ].join('|');
+  });
   assert.ok(shops.length > 1000, 'test the complete redeemable-shop catalog, not a small sample');
   assert.equal(new Set(signatures).size, shops.length, 'each shop must get a non-repeating illustrated facade composition');
+  assert.equal(new Set(interiorSignatures).size, shops.length, 'each shop must get a non-repeating floor-aware interior composition');
   for (const shop of shops) {
     assert.deepEqual(
       getMallFloorArtProfile(shop.floor, shop.id),

@@ -93,6 +93,21 @@ test('interior page retains accessible slots and routes placement operations thr
   assert.match(scene, /accessibilityState=\{\{ selected \}\}/);
 });
 
+test('every shop interior keeps its specialty illustration and adds a unique floor-aware design', () => {
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  assert.match(scene, /source=\{SCENES\[sceneKey\]\}/, 'keep the correct illustrated room for each shop category');
+  assert.match(scene, /getMallFloorArtProfile\(floor, shopId\)/, 'use the shop identity and its actual floor');
+  assert.match(scene, /testID=\{`shop-interior-identity-\$\{floor\}-\$\{shopId\}`\}/);
+  assert.match(scene, /testID=\{`shop-interior-display-\$\{floor\}-\$\{shopId\}`\}/);
+  assert.match(scene, /floorArt\.signStyle/);
+  assert.match(scene, /floorArt\.roofStyle/);
+  assert.match(scene, /floorArt\.canopyStyle/);
+  assert.match(scene, /floorArt\.windowStyle/);
+  assert.match(scene, /floorArt\.displayStyle/);
+  assert.match(scene, /floorArt\.trimStyle/);
+  assert.match(scene, /pointerEvents="none"[\s\S]*?styles\.interiorWallDisplay/);
+});
+
 test('six areas each expose eight slots (48 total) and legacy/main placements remain backward compatible', () => {
   assert.equal(SHOP_INTERIOR_AREAS.length, 6);
   assert.equal(SHOP_INTERIOR_SLOTS.length, 8);

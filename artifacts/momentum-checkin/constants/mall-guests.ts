@@ -12,6 +12,16 @@ export const GUEST_SHEETS: ImageSourcePropType[] = [
   require('../assets/images/guests-floor-7.png'),
   require('../assets/images/guests-floor-8.png'),
   require('../assets/images/guests-floor-9.png'),
+  require('../assets/images/guests-floor-10-carnival.png'),
+  require('../assets/images/guests-floor-11.png'),
+  require('../assets/images/guests-floor-12.png'),
+  require('../assets/images/guests-floor-13.png'),
+  require('../assets/images/guests-floor-14.png'),
+  require('../assets/images/guests-floor-15.png'),
+  require('../assets/images/guests-floor-16.png'),
+  require('../assets/images/guests-floor-17.png'),
+  require('../assets/images/guests-floor-18.png'),
+  require('../assets/images/guests-floor-19.png'),
   require('../assets/images/guests-floor-10.png'),
 ];
 
@@ -21,7 +31,12 @@ export const GUEST_ROWS = 3;
 export const GUEST_ATLAS_FRAME_WIDTH = 192;
 export const GUEST_FRAME_WIDTH = 48;
 export const GUEST_FRAME_HEIGHT = 64;
-export const GUEST_COUNTS_BY_FLOOR = [10, 10, 10, 12, 11, 10, 11, 13, 10, 10] as const;
+export const GUEST_FRAME_SIZES_BY_FLOOR = Array.from({ length: 20 }, (_, index) =>
+  index >= 9 && index <= 18
+    ? { width: 51.2, height: 1024 / 3 / 4 }
+    : { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT },
+);
+export const GUEST_COUNTS_BY_FLOOR = [10, 10, 10, 12, 11, 10, 11, 13, 10, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 10] as const;
 
 export const GUEST_FRAME_CELLS: ReadonlyArray<{ column: number; row: number }> = [
   { column: 0, row: 0 },

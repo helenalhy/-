@@ -2,7 +2,6 @@ import type { ImageSourcePropType } from 'react-native';
 import type { RewardCategory } from '@/context/HabitsContext';
 import palette from './colors';
 import { createExpandedItems } from './mall-expansion';
-import { createNewFloorItems } from './mall-new-floor-catalogs';
 
 const c = palette.light;
 

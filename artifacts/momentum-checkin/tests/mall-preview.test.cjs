@@ -130,8 +130,8 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     if (name === '@/constants/colors') return { light: {} };
     if (name === '@/hooks/useColors') return { useColors: () => ({}) };
     if (name === '@/context/HabitsContext') return {
-      useHabits: () => ({ ...habits, grantTestCoins: habits.grantTestCoins ?? (async () => {}) }), MALL_FLOOR_COUNT: 10,
-      MALL_SLOT_IDS: slotIds ?? Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
+      useHabits: () => ({ ...habits, grantTestCoins: habits.grantTestCoins ?? (async () => {}) }), MALL_FLOOR_COUNT: 20,
+      MALL_SLOT_IDS: slotIds ?? Array.from({ length: 20 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
     };
     if (name === '@/constants/mall-layout') return layoutModule.exports;
     if (name === '@/constants/mall-shop-interior') return shopInteriorCatalog;
@@ -679,19 +679,31 @@ test('search floor filters expose headings, selected options, horizontal control
   assert.deepEqual(android.announcements, [], 'Android uses the polite live region instead of a second announcement');
 });
 
-test('real catalog is fully searchable and includes ten specialized shop types on their assigned floors', () => {
+test('floor arrows reach the new rooftop and stop at both ends', async () => {
+  const app = mount();
+  assert.match(textContent(app.find('floor-current')), /1F · 糖果迎賓街/);
+  for (let floor = 1; floor < 20; floor += 1) await app.press('floor-next');
+  assert.match(textContent(app.find('floor-current')), /20F · 天空花園/);
+  assert.equal(app.find('floor-next').props.disabled, true);
+  assert.equal(app.find('floor-previous').props.disabled, false);
+  for (let floor = 20; floor > 1; floor -= 1) await app.press('floor-previous');
+  assert.match(textContent(app.find('floor-current')), /1F · 糖果迎賓街/);
+  assert.equal(app.find('floor-previous').props.disabled, true);
+});
+
+test('real catalog covers twenty distinct themes and includes ten specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 1511);
-  assert.equal(MALL_FLOORS.length, 10);
+  assert.equal(MALL_ITEMS.length, 3011);
+  assert.equal(MALL_FLOORS.length, 20);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
-    ['糖果迎賓街', '森林花園', '慢讀書廊', '海洋奇遇', '像素遊樂城', '雲朵療癒館', '彩虹藝術廊', '星際觀測站', '世界美食集', '天空花園'],
+    ['糖果迎賓街', '森林花園', '慢讀書廊', '海洋奇遇', '像素遊樂城', '雲朵療癒館', '彩虹藝術廊', '星際觀測站', '世界美食集', '巡遊嘉年華大街', '影視製片夢工場', '冰晶雪國', '古文明探險館', '魔法學院', '櫻花溫泉小町', '復古中世紀石板城', '音樂舞台街', '積木創想樂園', '毛茸茸寵物樂園', '天空花園'],
   );
   assert.deepEqual(
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 511, facility: 500, decor: 500 },
+    { shop: 1011, facility: 1000, decor: 1000 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(
@@ -702,13 +714,24 @@ test('real catalog is fully searchable and includes ten specialized shop types o
       ['kimono-house', 3, 'kimono'],
       ['evening-gown-salon', 7, 'eveningwear'],
       ['sunny-supermarket', 9, 'supermarket'],
-      ['bridal-gown-house', 10, 'bridal'],
+      ['bridal-gown-house', 20, 'bridal'],
       ['blue-tide-swimwear', 4, 'swimwear'],
       ['cosplay-costume-studio', 5, 'cosplay'],
       ['little-circuit-electronics', 6, 'electronics'],
       ['starlight-luxury-boutique', 8, 'boutique'],
     ],
   );
+  for (let floor = 10; floor <= 19; floor += 1) {
+    assert.deepEqual(
+      Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
+        category, MALL_ITEMS.filter((item) => item.floor === floor && item.category === category).length,
+      ])),
+      { shop: 50, facility: 50, decor: 50 },
+      `${floor}F has fifty choices in every category`,
+    );
+  }
+  assert.equal(MALL_ITEMS.find((item) => item.id === 'skyline-tea')?.floor, 20, 'the existing Sky Garden item keeps its ID and moves to the rooftop');
+  assert.equal(MALL_ITEMS.find((item) => item.id === 'collection-10-shop-1')?.floor, 20, 'legacy catalog IDs remain stable after the theme moves');
 
   const app = mount({ purchasedItems: [], mallPlacements: {} }, MALL_ITEMS);
   for (const item of MALL_ITEMS) {
@@ -1770,7 +1793,7 @@ for (const mirrorKey of ['momentum.habits.v1', 'momentum.mall.v1']) {
 test('AsyncStorage mall write failures preserve ownership, coins and placement after reload', async () => {
   const mallKey = 'momentum.mall.v1';
   const initialMall = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     coins: 100,
     purchasedItems: ['owned'],
     rewardedCheckIns: [],
@@ -2063,12 +2086,12 @@ test('a full floor lists actual vacancies and can jump floors without spending o
 
 test('when all floors are full purchase and restore explain how to free space without charging', async () => {
   const placements = Object.fromEntries(
-    Array.from({ length: 10 }, (_, i) => ['left', 'center', 'right'].map((column) => [`floor-${i + 1}-${column}`, 'occupied'])).flat(),
+    Array.from({ length: 20 }, (_, i) => ['left', 'center', 'right'].map((column) => [`floor-${i + 1}-${column}`, 'occupied'])).flat(),
   );
   const app = mount({ mallPlacements: placements });
   await app.press('build-test-planter');
   const notice = textContent(app.find('mall-floor-full'));
-  assert.match(notice, /十層都已放滿/);
+  assert.match(notice, /二十層都已放滿/);
   assert.match(notice, /先取消擺放.*存入倉庫/);
   assert.match(notice, /尚未扣除金幣/);
   assert.equal(app.find('mall-available-floor-2'), undefined);
@@ -2079,7 +2102,7 @@ test('when all floors are full purchase and restore explain how to free space wi
   app.render();
   await app.press('collection-tab');
   await app.press('restore-owned');
-  assert.match(textContent(app.find('mall-floor-full')), /十層都已放滿/);
+  assert.match(textContent(app.find('mall-floor-full')), /二十層都已放滿/);
   assert.equal(app.calls.length, 0);
 });
 

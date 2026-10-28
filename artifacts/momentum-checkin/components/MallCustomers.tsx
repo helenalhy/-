@@ -5,6 +5,7 @@ import {
   GUEST_FRAME_CELLS,
   GUEST_FRAME_HEIGHT,
   GUEST_FRAME_WIDTH,
+  GUEST_FRAME_SIZES_BY_FLOOR,
   GUEST_ROUTES,
   GUEST_ROWS,
   GUEST_SHEETS,
@@ -20,6 +21,9 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
   const stride = useRef(new Animated.Value(0)).current;
   const facing = useRef(new Animated.Value(route.to > route.from ? 1 : -1)).current;
   const native = Platform.OS !== 'web';
+  const frameSize = GUEST_FRAME_SIZES_BY_FLOOR[floor - 1] ?? { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT };
+  const frameWidth = frameSize.width;
+  const frameHeight = frameSize.height;
   useEffect(() => {
     if (reducedMotion) return;
     function walk(to: number) {
@@ -52,7 +56,7 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
   return (
     <Animated.View testID={`mall-guest-${floor}-${index}`} style={[
       s.guest,
-      { left: `${route.from}%`, top: Math.min(route.top * width / 100, Math.max(0, width - GUEST_FRAME_HEIGHT)), zIndex: route.top, transform: [
+      { left: `${route.from}%`, top: Math.min(route.top * width / 100, Math.max(0, width - frameHeight)), zIndex: route.top, width: frameWidth, height: frameHeight, transform: [
         { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, (route.to - route.from) * width / 100] }) },
         { translateY: bob },
       ] },
@@ -62,14 +66,16 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
         { scaleX: facing },
         { rotate: stride.interpolate({ inputRange: [-1, 1], outputRange: ['-1.5deg', '1.5deg'] }) },
       ] }}>
-        <View style={s.spriteWindow}>
+        <View style={[s.spriteWindow, { width: frameWidth, height: frameHeight }]}>
           <Image
             source={sheet}
             resizeMode="stretch"
             fadeDuration={0}
             style={[s.spriteSheet, {
-              left: -frameCell.column * GUEST_FRAME_WIDTH,
-              top: -frameCell.row * GUEST_FRAME_HEIGHT,
+              left: -frameCell.column * frameWidth,
+              top: -frameCell.row * frameHeight,
+              width: frameWidth * GUEST_COLUMNS,
+              height: frameHeight * GUEST_ROWS,
             }]}
           />
         </View>
@@ -96,8 +102,8 @@ export function MallCustomers({ floor }: { floor: number }) {
 }
 
 const s = StyleSheet.create({
-  guest: { position: 'absolute', width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT },
+  guest: { position: 'absolute' },
   shadow: { position: 'absolute', bottom: 7, left: 10, width: 28, height: 4, borderRadius: 12, opacity: 0.15 },
-  spriteWindow: { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT, overflow: 'hidden' },
-  spriteSheet: { position: 'absolute', width: GUEST_FRAME_WIDTH * GUEST_COLUMNS, height: GUEST_FRAME_HEIGHT * GUEST_ROWS },
+  spriteWindow: { overflow: 'hidden' },
+  spriteSheet: { position: 'absolute' },
 });

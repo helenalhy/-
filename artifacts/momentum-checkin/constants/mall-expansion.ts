@@ -105,7 +105,7 @@ function buildCollections(collections: Record<RewardCategory, string[]>[], theme
           : `${theme.title}專屬${category === 'facility' ? '設施' : '裝修'}，讓${name}成為你的日常風景。`,
         category,
         icon: visual ? VISUAL_ICONS[visual] : SHOP_ICONS[index % SHOP_ICONS.length],
-        color: SWATCHES[(floorIndex + categoryIndex + index) % SWATCHES.length],
+        color: SWATCHES[(collectionIndex + categoryIndex + index) % SWATCHES.length],
         price,
         ticketCost: 0,
         visual,

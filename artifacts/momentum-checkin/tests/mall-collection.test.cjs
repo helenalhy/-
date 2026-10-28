@@ -55,7 +55,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
     if (name === '@/constants/colors') return { light: {} };
     if (name === '@/constants/mall-layout') return {
       MALL_SLOT_IDS: [
-        ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
+         ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
           ['left', 'center', 'right'].map((column) => `floor-${floor}-${column}`)),
         ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
           [1, 2, 3].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-plaza-${row}-${column}`))),
@@ -67,6 +67,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
           [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension3-${row}-${column}`))),
         ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
           [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension4-${row}-${column}`))),
+        'floor-20-left',
       ],
     };
     if (name === '@/constants/mall-shop-interior') return {
@@ -98,6 +99,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       MALL_ITEM_BY_ID: {
         a: { id: 'a', name: '雲朵香氛館', category: 'shop', shopType: 'general' },
         b: { id: 'b', name: '一般商店', category: 'shop', shopType: 'general' },
+        'skyline-tea': { id: 'skyline-tea', floor: 20, category: 'shop' },
       },
     };
     if (name === '@/constants/mall-shop-display') return {
@@ -201,9 +203,23 @@ test('legacy migration preserves positions and assigns only missing legacy purch
   assert.deepEqual(app.value.mallPlacements, {
     'floor-1-left': 'a', 'floor-3-right': 'b', 'floor-3-left': 'c',
   });
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 4);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 5);
   const noPositions = await mount(seed({ placements: undefined }));
   assert.deepEqual(noPositions.value.mallPlacements, { 'floor-3-left': 'a', 'floor-3-center': 'b' });
+});
+
+test('legacy Sky Garden placements move to the rooftop while other floor-ten objects stay put', async () => {
+  const storage = seed({
+    schemaVersion: 4,
+    purchasedItems: ['a', 'skyline-tea'],
+    placements: { 'floor-10-left': 'skyline-tea', 'floor-10-center': 'a' },
+  });
+  const app = await mount(storage);
+  assert.deepEqual(app.value.mallPlacements, {
+    'floor-20-left': 'skyline-tea',
+    'floor-10-center': 'a',
+  });
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 5);
 });
 
 test('store, reload, reward, restore on another floor, swap and reload preserve ownership and balances', async () => {
@@ -218,7 +234,7 @@ test('store, reload, reward, restore on another floor, swap and reload preserve 
   app = await mount(storage);
   assert.deepEqual(app.value.mallPlacements, { 'floor-3-right': 'b' });
   await app.value.toggleCheckIn('starter-walk');
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 4);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 5);
   app = await mount(storage);
   assert.equal(Object.values(app.value.mallPlacements).includes('a'), false);
   const before = { coins: app.value.coins, tokens: { ...app.value.rewardTokens } };
@@ -259,11 +275,11 @@ test('legacy overflow retains every purchase and does not refill a deliberately 
   const items = Array.from({ length: 570 }, (_, index) => `item-${index}`);
   const storage = seed({ purchasedItems: items, placements: undefined });
   let app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 560);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 561);
   assert.equal(app.value.purchasedItems.length, 570);
   await app.value.storeMallItem('item-0');
   app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 559);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 560);
   assert.equal(app.value.purchasedItems.length, 570);
   assert.equal(Object.values(app.value.mallPlacements).includes('item-0'), false);
 });
@@ -655,7 +671,7 @@ test('legacy dedicated dog stations migrate into their matching extension areas'
 });
 
 test('existing versioned habits and mall hydrate without any startup writes on a full device', async () => {
-  const storage = seed({ schemaVersion: 4, placements: { 'floor-1-left': 'a' } });
+  const storage = seed({ schemaVersion: 5, placements: { 'floor-1-left': 'a' } });
   const habits = [{
     id: 'saved-habit', title: '已儲存目標', reason: '保留我的紀錄',
     icon: 'activity', rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: ['2026-10-20'],

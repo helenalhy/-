@@ -242,10 +242,7 @@ function createHarness() {
   function renderCurrentRoute() {
     const route = navigationStack.at(-1);
     if (route === '/today') return renderToday();
-    if (route === '/') {
-      const routeElement = todayModule.default();
-      return render('mall', () => routeElement.type(routeElement.props));
-    }
+    if (route === '/' || route === '/mall') return renderMall();
     throw new Error(`Unexpected route in test harness: ${route}`);
   }
 
@@ -303,7 +300,6 @@ function createHarness() {
   const contextExports = loadTsModule(path.join(appRoot, 'context/HabitsContext.tsx'));
   const mallScreen = loadTsModule(path.join(appRoot, 'app/(tabs)/mall.tsx'));
   const shopInteriorScreen = loadTsModule(path.join(appRoot, 'app/mall-shop/[itemId].tsx'));
-  const todayModule = loadTsModule(path.join(appRoot, 'app/(tabs)/index.tsx'));
   const todayRouteModule = loadTsModule(path.join(appRoot, 'app/(tabs)/today.tsx'));
   const mallCatalog = loadTsModule(path.join(appRoot, 'constants/mall.ts'));
 
@@ -735,7 +731,7 @@ test('mall to today and back keeps purchase confirmation actionable', async () =
   assert.deepEqual(app.navigationStack, ['/today'], 'switching to Today keeps the mall screen mounted');
   const todayTree = app.renderCurrentRoute();
   await press(todayTree, 'today-mall-shortcut');
-  assert.deepEqual(app.navigationStack, ['/'], 'the Today shortcut returns to the mall tab');
+  assert.deepEqual(app.navigationStack, ['/mall'], 'the Today shortcut returns to the mall tab');
 
   mallTree = app.renderCurrentRoute();
   assert.ok(findByTestId(mallTree, 'mall-purchase-preview'), 'the same preview returns with the mall route');
@@ -798,7 +794,7 @@ test('today mall shortcut returns to the same affordable category without changi
   const todayTree = app.renderCurrentRoute();
   assert.match(textContent(todayTree), /今天，先完成一小步。/, 'the Today tab renders its real screen');
   await press(todayTree, 'today-mall-shortcut');
-  assert.deepEqual(app.navigationStack, ['/'], 'the mall shortcut navigates back to the mall tab');
+  assert.deepEqual(app.navigationStack, ['/mall'], 'the mall shortcut navigates back to the mall tab');
 
   mallTree = app.renderCurrentRoute();
   assert.equal(findByTestId(mallTree, 'mall-category-facility').props.accessibilityState.selected, true);

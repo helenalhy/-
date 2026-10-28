@@ -995,6 +995,66 @@ test('search cards follow saved moves, show warehouse state after storage, and s
   assert.equal(app.contextExports.useHabits().coins, 20, 'movement and free placement do not spend coins');
 });
 
+test('both search cards show their new locations after an exchange without changing ownership or coins', async () => {
+  const app = createHarness();
+  const movingItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'flower-shop');
+  const displacedItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'colorful-planter');
+  assert.ok(movingItem && displacedItem, 'both searchable owned items exist in the catalog');
+  const purchasedItems = [movingItem.id, displacedItem.id];
+  const startingCoins = 19;
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: startingCoins,
+    purchasedItems,
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {
+      'floor-1-left': movingItem.id,
+      'floor-2-annex-1-right': displacedItem.id,
+    },
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let mallTree = app.renderMall();
+  findByTestId(mallTree, 'mall-search-input').props.onChangeText('花');
+  mallTree = app.renderMall();
+  const searchLocation = (tree, itemId) => findByTestId(tree, `search-item-location-${itemId}`);
+  assert.match(textContent(searchLocation(mallTree, movingItem.id)), /1F · 主商場 · 店面區左側/);
+  assert.match(textContent(searchLocation(mallTree, displacedItem.id)), /2F · 延伸區 · 延伸區店面區右側/);
+
+  await press(mallTree, `search-select-${movingItem.id}`);
+  mallTree = app.renderMall();
+  const wingPager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
+  assert.ok(wingPager, 'the mall renders the destination floor sections');
+  const annex = wingPager.props.renderWing('annex', true);
+  const occupiedSlot = findNodes(annex, (node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-2-annex-1-right',
+  )[0];
+  assert.ok(occupiedSlot, 'the selected item can target the other item in the annex');
+  occupiedSlot.props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  app.renderProvider();
+  mallTree = app.renderMall();
+
+  assert.match(textContent(searchLocation(mallTree, movingItem.id)), /2F · 延伸區 · 延伸區店面區右側/);
+  assert.match(textContent(searchLocation(mallTree, displacedItem.id)), /1F · 主商場 · 店面區左側/);
+  const state = app.contextExports.useHabits();
+  assert.deepEqual(state.mallPlacements, {
+    'floor-2-annex-1-right': movingItem.id,
+    'floor-1-left': displacedItem.id,
+  });
+  assert.deepEqual(state.purchasedItems, purchasedItems, 'the exchange keeps both items owned');
+  assert.equal(state.coins, startingCoins, 'the exchange does not spend coins');
+  const savedMall = JSON.parse(app.storage.get(storageKeys.mall));
+  assert.deepEqual(savedMall.placements, state.mallPlacements, 'both exchanged locations are persisted together');
+  assert.deepEqual(savedMall.purchasedItems, purchasedItems, 'persisted ownership is unchanged');
+  assert.equal(savedMall.coins, startingCoins, 'persisted coins are unchanged');
+});
+
 test('shop interior page shows its matching decor catalog and charges only goal-earned coins', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');

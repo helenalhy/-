@@ -593,6 +593,46 @@ test('search filters keep original floor separate from the current mall placemen
   assert.equal(app.calls.length, 0, 'filtering never starts a move, restore, or redemption');
 });
 
+test('filtered empty search shows each active location condition and clears them without losing the query', async () => {
+  const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'shop');
+  const items = [
+    { ...base, id: 'origin-floor-one', floor: 1, name: '花園甲' },
+    { ...base, id: 'origin-floor-two', floor: 2, name: '花園乙' },
+  ];
+  const app = mount(
+    { coins: 10000, purchasedItems: [], mallPlacements: {
+      'floor-2-extension3-1-left': 'origin-floor-one',
+      'floor-1-annex-1-left': 'origin-floor-two',
+    } },
+    items,
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+  app.find('mall-search-input').props.onChangeText('花園');
+  app.render();
+  await app.press('mall-affordable-toggle');
+  await app.press('mall-search-floor-1');
+  await app.press('mall-search-placement-floor-2');
+  await app.press('mall-search-wing-main');
+
+  assert.equal(pager(app).props.total, 0);
+  assert.ok(app.find('mall-search-filter-empty'));
+  assert.equal(app.find('mall-affordable-empty'), undefined, 'an active affordable filter does not hide the actual location cause');
+  assert.equal(app.find('mall-search-empty'), undefined);
+  assert.equal(
+    textContent(app.find('mall-search-active-filters')),
+    '原屬樓層：1F · 目前擺放樓層：2F · 目前擺放分區：主商場',
+  );
+  assert.equal(app.find('mall-search-empty-clear-filters').props.accessibilityLabel, '清除樓層與分區篩選，恢復搜尋結果');
+
+  await app.press('mall-search-empty-clear-filters');
+  assert.equal(pager(app).props.total, 2, 'clearing location filters restores matches for the current query');
+  assert.equal(app.find('mall-search-input').props.value, '花園');
+  assert.equal(app.find('mall-search-filter-empty'), undefined);
+  assert.equal(app.find('mall-search-clear-filters'), undefined);
+  assert.deepEqual(app.calls, [], 'clearing filters never changes mall items or rewards');
+});
+
 test('search floor filters expose headings, selected options, horizontal controls, and one platform result update', async () => {
   const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'shop');
   const items = [

@@ -352,6 +352,21 @@ export default function MallScreen() {
       if (wingFilter === 'unplaced') return !slotId;
       return slotId !== undefined && getSlotPosition(slotId).wing === wingFilter;
     }).length;
+  const activeSearchLocationFilters = [
+    searchFloor !== null ? `原屬樓層：${searchFloor}F` : null,
+    searchPlacementFloor !== null ? `目前擺放樓層：${searchPlacementFloor}F` : null,
+    searchWing !== null
+      ? `目前擺放分區：${searchWing === 'unplaced' ? '尚未擺放' : WING_NAMES[searchWing]}`
+      : null,
+  ].filter((filter): filter is string => filter !== null);
+  const hasSearchLocationFilters = activeSearchLocationFilters.length > 0;
+  const searchResultsWithoutLocationFilters = hasSearchLocationFilters
+    ? getSearchResultCount(null, null, null)
+    : 0;
+  const isSearchEmptyBecauseOfLocationFilters = isSearching
+    && visibleItems.length === 0
+    && hasSearchLocationFilters
+    && searchResultsWithoutLocationFilters > 0;
   const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
   const floorSlots = MALL_SLOT_IDS.filter((slotId) => slotId.startsWith(`floor-${currentFloor}-`));
   const floorItemCount = floorSlots.filter((slotId) => mallPlacements[slotId]).length;
@@ -1289,7 +1304,7 @@ export default function MallScreen() {
 
         <CatalogPager id="catalog-top" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
         <View style={styles.catalogList}>
-          {filteringAffordable && visibleItems.length === 0 && (
+          {filteringAffordable && visibleItems.length === 0 && !isSearchEmptyBecauseOfLocationFilters && (
             <View style={styles.affordableEmpty}>
               <Text testID="mall-affordable-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>目前沒有符合條件、金幣足夠且未擁有的款式。完成目標賺取更多金幣，再來挑選吧！也可切換分類、清除搜尋或查看本層完整清單；已兌換的物件可到倉庫免費重擺。</Text>
               <Pressable
@@ -1305,8 +1320,28 @@ export default function MallScreen() {
               </Pressable>
             </View>
           )}
-          {!filteringAffordable && isSearching && visibleItems.length === 0 && (
-            <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有同時符合「{searchQuery.trim()}」所有關鍵字的選物，試試其他名稱或描述關鍵字、切換「全部」分類或清除搜尋。</Text>
+          {isSearching && visibleItems.length === 0 && (isSearchEmptyBecauseOfLocationFilters || !filteringAffordable) && (
+            isSearchEmptyBecauseOfLocationFilters ? (
+              <View testID="mall-search-filter-empty" style={styles.searchEmpty}>
+                <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>
+                  「{searchQuery.trim()}」符合 {searchResultsWithoutLocationFilters} 款，但目前位置篩選沒有符合的結果：
+                </Text>
+                <Text testID="mall-search-active-filters" accessibilityRole="text" style={[styles.collectionEmpty, styles.searchActiveFilters, { color: colors.foreground }]}>
+                  {activeSearchLocationFilters.join(' · ')}
+                </Text>
+                <Pressable
+                  testID="mall-search-empty-clear-filters"
+                  accessibilityRole="button"
+                  accessibilityLabel="清除樓層與分區篩選，恢復搜尋結果"
+                  onPress={() => applySearchLocationFilters(null, null, null)}
+                  style={styles.searchFilterClear}
+                >
+                  <Text style={[styles.filterText, { color: colors.primary }]}>清除樓層與分區篩選</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Text testID="mall-search-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>沒有同時符合「{searchQuery.trim()}」所有關鍵字的選物，試試其他名稱或描述關鍵字、切換「全部」分類或清除搜尋。</Text>
+            )
           )}
           {!isSearching && showCollection && visibleItems.length === 0 && (
             <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>{collectionItems.length === 0 ? '倉庫暫時沒有物件。點選商場中的舊商店、設施或裝修，再按「存入倉庫」，就能騰出位置換新；之後可免費取出。' : '這個分類暫時沒有存倉物件，試試其他分類。'}</Text>
@@ -1538,6 +1573,8 @@ const styles = StyleSheet.create({
   recentSearchRemove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   recentSearchStorageError: { fontSize: 11, lineHeight: 16, marginBottom: 10 },
   searchLocationFilters: { gap: 11, marginBottom: 14 },
+  searchEmpty: { gap: 2 },
+  searchActiveFilters: { paddingTop: 0, fontWeight: '600' },
   searchFilterTitle: { fontSize: 11, fontWeight: '600', marginBottom: 6 },
   searchFilterOptions: { flexDirection: 'row', gap: 7, paddingRight: 4 },
   searchFilterClear: { minHeight: 36, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 4 },

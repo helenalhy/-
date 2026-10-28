@@ -251,16 +251,16 @@ test('shop interiors offer shop-specific equipment while keeping each default ca
 
   const cafe = shopInteriorCatalog.getShopInteriorDecorations('general', 'sunny-cafe', '暖陽咖啡館');
   assert.equal(cafe.length, 50);
-  assert.ok(cafe.some((option) => option.name === '雙頭咖啡機'));
-  assert.ok(cafe.some((option) => option.name === '綿滑雪糕機'));
-  assert.ok(cafe.some((option) => option.name === '雲朵棉花糖機'));
+  assert.ok(cafe.some((option) => option.name.includes('雙頭咖啡機')));
+  assert.ok(cafe.some((option) => option.name.includes('綿滑雪糕機')));
+  assert.ok(cafe.some((option) => option.name.includes('雲朵棉花糖機')));
   assert.ok(cafe.some((option) => option.visual === 'coffee-machine'));
 
   const candyShop = shopInteriorCatalog.getShopInteriorDecorations('general', 'candy-gift-shop', '糖果禮物店');
   assert.equal(candyShop.length, 50);
-  assert.ok(candyShop.some((option) => option.name === '彩糖分格展示櫃'));
-  assert.ok(candyShop.some((option) => option.name === '棒棒糖旋轉展示架'));
-  assert.ok(candyShop.some((option) => option.name === '夢幻棉花糖機'));
+  assert.ok(candyShop.some((option) => option.name.includes('彩糖分格展示櫃')));
+  assert.ok(candyShop.some((option) => option.name.includes('棒棒糖旋轉展示架')));
+  assert.ok(candyShop.some((option) => option.name.includes('夢幻棉花糖機')));
 
   const seasonalBakery = shopInteriorCatalog.getShopInteriorDecorations('general', 'strawberry-bakery', '草莓烘焙屋');
   assert.ok(seasonalBakery.some((option) => option.name === '奶油色旋風烤爐'));
@@ -278,7 +278,7 @@ test('shop interiors offer shop-specific equipment while keeping each default ca
   );
 });
 
-test('general shops receive forty distinct decor variants for their specialty, including the 15F onsen shop', () => {
+test('each individual shop receives a unique 50-item catalog while general shops retain theme-specific fixtures', () => {
   const specialtyCases = [
     ['cafe', '暖陽咖啡館'],
     ['candy', '糖果禮物店'],
@@ -295,13 +295,16 @@ test('general shops receive forty distinct decor variants for their specialty, i
   const signatures = [];
 
   for (const [specialty, name] of specialtyCases) {
+    const shopId = `theme-${specialty}-store`;
     const options = shopInteriorCatalog.getShopInteriorDecorations(
       'general',
-      `theme-${specialty}-store`,
+      shopId,
       name,
     );
     assert.equal(options.length, 50, `${name} should retain its 50-choice catalog`);
-    const themedFixtures = options.filter(({ id }) => id.startsWith(`general-${specialty}-`));
+    assert.equal(new Set(options.map(({ id }) => id)).size, 50, `${name} should have unique item IDs`);
+    assert.equal(new Set(options.map(({ name: itemName }) => itemName)).size, 50, `${name} should have unique item names`);
+    const themedFixtures = options.filter(({ id }) => id.includes(`general-${specialty}-`));
     assert.equal(themedFixtures.length, 40, `${name} should have ten fixtures in four finishes`);
     signatures.push(themedFixtures.map(({ name: fixtureName }) => fixtureName).join('|'));
   }
@@ -311,16 +314,32 @@ test('general shops receive forty distinct decor variants for their specialty, i
   const onsenStore = mallCatalog.MALL_ITEMS.find((item) => item.name === '櫻花暖湯紀念店');
   assert.ok(onsenStore, 'the floor catalog should include the Sakura Hot Spring shop');
   const onsen = shopInteriorCatalog.getShopInteriorDecorations('general', onsenStore.id, onsenStore.name);
-  assert.ok(onsen.some((item) => item.name === '櫻花露天暖湯池' && item.visual === 'onsen-bath'));
-  assert.ok(onsen.some((item) => item.name === '溫泉用品玻璃展示櫃' && item.visual === 'onsen-supplies'));
-  assert.ok(onsen.some((item) => item.name === '柚香蒸氣暖浴器' && item.visual === 'onsen-steamer'));
-  assert.ok(onsen.some((item) => item.name === '浴衣與腰帶整理架' && item.visual === 'onsen-yukata-rack'));
+  assert.ok(onsen.some((item) => item.name.includes('櫻花露天暖湯池') && item.visual === 'onsen-bath'));
+  assert.ok(onsen.some((item) => item.name.includes('溫泉用品玻璃展示櫃') && item.visual === 'onsen-supplies'));
+  assert.ok(onsen.some((item) => item.name.includes('柚香蒸氣暖浴器') && item.visual === 'onsen-steamer'));
+  assert.ok(onsen.some((item) => item.name.includes('浴衣與腰帶整理架') && item.visual === 'onsen-yukata-rack'));
 
-  const previouslyAvailableGeneralItem = shopInteriorCatalog.getShopInteriorDecorations(
+  const secondOnsenShop = shopInteriorCatalog.getShopInteriorDecorations(
     'general',
-    'unclassified-store',
-    '小店',
-  )[6];
+    'theme-floor-15-shop-2',
+    '櫻花暖湯服飾舖',
+  );
+  assert.equal(secondOnsenShop.length, 50);
+  assert.ok(
+    onsen.every(({ id }) => !secondOnsenShop.some((other) => other.id === id)),
+    'two shops with the same specialty should still receive separate item IDs',
+  );
+  assert.ok(
+    onsen.every(({ name }) => !secondOnsenShop.some((other) => other.name === name)),
+    'each shop should have individually named decor styles',
+  );
+  assert.notDeepEqual(
+    onsen.map(({ color, visual }) => [color, visual]),
+    secondOnsenShop.map(({ color, visual }) => [color, visual]),
+    'store-specific palettes and visual variants should change actual objects',
+  );
+
+  const previouslyAvailableGeneralItem = shopInteriorCatalog.SHOP_INTERIOR_DECORATIONS.general[6];
   const onsenWithArchivedItem = shopInteriorCatalog.getShopInteriorDecorations(
     'general',
     onsenStore.id,

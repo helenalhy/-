@@ -980,6 +980,88 @@ export const SHOP_INTERIOR_DECORATION_BY_ID = Object.fromEntries(
 
 export const SHOP_INTERIOR_DECORATION_IDS = Object.keys(SHOP_INTERIOR_DECORATION_BY_ID);
 
+const SHOP_INTERIOR_STORE_SWATCHES = [
+  c.candyPink,
+  c.candyMint,
+  c.candySky,
+  c.candyLavender,
+  c.candyPeach,
+  c.candyLemon,
+  c.candyCoral,
+  c.candyRose,
+  c.candyCaramel,
+  c.candyCream,
+  c.candyMintDark,
+  c.candySkyDark,
+  c.candyLavenderDark,
+  c.candyCaramelDark,
+];
+
+const SHOP_INTERIOR_VISUAL_VARIANTS: Record<string, string[]> = {
+  'spice-display': ['spice-display', 'candy-display', 'flower-station'],
+  'candy-display': ['candy-display', 'spice-display', 'flower-station'],
+  'flower-station': ['flower-station', 'colorful-planter', 'aroma-diffuser'],
+  'colorful-planter': ['colorful-planter', 'flower-station', 'aroma-diffuser'],
+  'garden-lights': ['garden-lights', 'shell-lantern', 'starlight-mobile'],
+  'shell-lantern': ['shell-lantern', 'garden-lights', 'starlight-mobile'],
+  'starlight-mobile': ['starlight-mobile', 'shell-lantern', 'neon-sign'],
+  'neon-sign': ['neon-sign', 'gallery-frames', 'garden-lights'],
+  'wooden-bench': ['wooden-bench', 'rest-pavilion', 'tasting-court'],
+  'rest-pavilion': ['rest-pavilion', 'wooden-bench', 'tasting-court'],
+  'tasting-court': ['tasting-court', 'craft-station', 'food-prep'],
+  'craft-station': ['craft-station', 'food-prep', 'tasting-court'],
+  'food-prep': ['food-prep', 'craft-station', 'tasting-court'],
+  'clothing-rack': ['clothing-rack', 'clothing-wardrobe', 'dress-display'],
+  'clothing-wardrobe': ['clothing-wardrobe', 'clothing-rack', 'dress-display'],
+  'dress-display': ['dress-display', 'clothing-wardrobe', 'clothing-rack'],
+  'book-carousel': ['book-carousel', 'gallery-frames', 'spice-display'],
+  'capsule-machine': ['capsule-machine', 'candy-display', 'sculpture-plaza'],
+};
+
+function stableStoreHash(value: string): number {
+  let hash = 2166136261;
+  for (const character of value) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createStoreSpecificDecorations(
+  decorations: ShopInteriorDecoration[],
+  shopId: string,
+  shopName: string,
+): ShopInteriorDecoration[] {
+  const hash = stableStoreHash(shopId);
+  const slug = shopId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'store';
+  const namespace = `store-${slug}-${hash.toString(36)}`;
+  const storeLabel = shopName.trim() || '特色商店';
+
+  return decorations.map((decoration) => {
+    // Dog attendant IDs are consumed by the cafe's separate walking/interaction system.
+    if (decoration.id.startsWith('general-fluffy-staff-')) return decoration;
+
+    const id = `${namespace}-${decoration.id}`;
+    const variants = decoration.visual
+      ? SHOP_INTERIOR_VISUAL_VARIANTS[decoration.visual]
+      : undefined;
+    const colorVariant = stableStoreHash(`${shopId}:${decoration.id}:color`) % SHOP_INTERIOR_STORE_SWATCHES.length;
+    const visualVariant = variants
+      ? stableStoreHash(`${shopId}:${decoration.id}:visual`) % variants.length
+      : 0;
+    const personalized: ShopInteriorDecoration = {
+      ...decoration,
+      id,
+      name: `${storeLabel}專屬・${decoration.name}`,
+      description: `${storeLabel}限定款。${decoration.description}`,
+      color: SHOP_INTERIOR_STORE_SWATCHES[colorVariant],
+      visual: variants?.[visualVariant] ?? decoration.visual,
+    };
+    SHOP_INTERIOR_DECORATION_BY_ID[id] = personalized;
+    return personalized;
+  });
+}
+
 export function getShopInteriorDecorations(
   shopType?: MallShopType,
   shopId?: string,
@@ -1001,12 +1083,15 @@ export function getShopInteriorDecorations(
       ...fluffyMarshmallowCafeStaff,
     ]
     : active;
-  const activeIds = new Set(shopActive.map(({ id }) => id));
+  const personalized = shopId
+    ? createStoreSpecificDecorations(shopActive, shopId, shopName ?? getShopTypeLabel(type))
+    : shopActive;
+  const activeIds = new Set(personalized.map(({ id }) => id));
   const ownedLegacy = ownedDecorationIds
     .filter((id) => !activeIds.has(id))
     .map((id) => SHOP_INTERIOR_DECORATION_BY_ID[id])
     .filter((decoration): decoration is ShopInteriorDecoration => !!decoration);
-  return [...shopActive, ...ownedLegacy];
+  return [...personalized, ...ownedLegacy];
 }
 
 export function getShopTypeLabel(shopType?: MallShopType): string {

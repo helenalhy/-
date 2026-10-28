@@ -312,16 +312,25 @@ function normalizeShopInteriors(
   savedInteriors: ShopInteriorCollection | undefined,
   purchasedItems: string[],
 ): ShopInteriorCollection {
-  const decorationIds = new Set(SHOP_INTERIOR_DECORATION_IDS);
   const placementIds = new Set<string>(SHOP_INTERIOR_PLACEMENT_IDS);
   const interiors: ShopInteriorCollection = {};
   for (const [shopId, saved] of Object.entries(savedInteriors ?? {})) {
     if (!purchasedItems.includes(shopId) || !saved || typeof saved !== 'object') continue;
-    const ownedDecorations = [...new Set((saved.ownedDecorations ?? []).filter(
-      (id): id is string => typeof id === 'string' && decorationIds.has(id),
-    ))];
-    const owned = new Set(ownedDecorations);
     const shopItem = MALL_ITEM_BY_ID[shopId];
+    const savedDecorationIds = (saved.ownedDecorations ?? []).filter(
+      (id): id is string => typeof id === 'string',
+    );
+    const currentCatalog = shopItem?.category === 'shop'
+      ? getShopInteriorDecorations(shopItem.shopType, shopId, shopItem.name, savedDecorationIds)
+      : [];
+    const decorationIds = new Set([
+      ...SHOP_INTERIOR_DECORATION_IDS,
+      ...currentCatalog.map(({ id }) => id),
+    ]);
+    const ownedDecorations = [...new Set(
+      savedDecorationIds.filter((id) => decorationIds.has(id)),
+    )];
+    const owned = new Set(ownedDecorations);
     const shopDecorations = shopItem?.category === 'shop'
       ? getShopInteriorDecorations(shopItem.shopType, shopId, shopItem.name, ownedDecorations)
       : [];

@@ -22,3 +22,9 @@ React Native Web 的 `accessibilityState.selected` 不會自動輸出分頁控�
 **Why:** React Native Web 的 `findNodeHandle` 會直接丟出執行期錯誤；這類錯誤只在商場移動或存倉等成功結果後觸發，單純載入頁面不一定會重現。
 
 **How to apply:** 商場焦點回饋改動時，分別測試網頁上的搬動與存倉成功路徑，並保持 iOS／Android 的原生焦點行為。
+
+窄版網頁分區標籤列移動焦點時，應以標籤與實際捲動容器的邊界計算 DOM `scrollLeft`，不要只依賴 React Native Web 的 `ScrollView.scrollTo` 或通用 `scrollIntoView`。
+
+**Why:** Chromium 回歸測試中，焦點與 aria-selected 已更新，但上述捲動呼叫仍讓目前標籤留在可視範圍外；直接更新實際捲動容器的 `scrollLeft` 才能可靠顯示目標。
+
+**How to apply:** 新增或修改網頁上的水平分頁列時，在窄視窗真實瀏覽器中同時檢查焦點、選取狀態、單一 Tab 停駐點及標籤邊界是否落在捲動容器內。

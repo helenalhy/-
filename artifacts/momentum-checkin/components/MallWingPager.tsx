@@ -59,6 +59,19 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   }
 
   function scrollTabsToWing(wing: MallWing, animated = true) {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const scroller = document.querySelector<HTMLElement>('[data-testid="mall-wing-tabs"]');
+      const tab = document.querySelector<HTMLElement>(`[data-testid="mall-wing-${wing}"]`);
+      if (scroller && tab) {
+        const scrollerRect = scroller.getBoundingClientRect();
+        const tabRect = tab.getBoundingClientRect();
+        let targetOffset = scroller.scrollLeft;
+        if (tabRect.left < scrollerRect.left) targetOffset -= scrollerRect.left - tabRect.left;
+        if (tabRect.right > scrollerRect.right) targetOffset += tabRect.right - scrollerRect.right;
+        scroller.scrollLeft = targetOffset;
+        return;
+      }
+    }
     const index = WINGS.findIndex((page) => page.id === wing);
     tabs.current?.scrollTo({ x: Math.max(0, index * 112 - 224), animated });
   }

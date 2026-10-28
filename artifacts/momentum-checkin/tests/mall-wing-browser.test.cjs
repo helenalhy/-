@@ -114,6 +114,21 @@ async function waitForBrowser(devTools, expression, description) {
     body: document.body?.innerText?.slice(0, 400) ?? '',
     wingTabs: document.querySelectorAll('[data-testid^="mall-wing-"]').length,
     selectedWing: document.querySelector('[data-testid="mall-wing-tabs"] [aria-selected="true"]')?.dataset.testid,
+    tabScroller: (() => {
+      const list = document.querySelector('[data-testid="mall-wing-tabs"]');
+      return list && {
+        left: list.getBoundingClientRect().left,
+        right: list.getBoundingClientRect().right,
+        scrollLeft: list.scrollLeft,
+        clientWidth: list.clientWidth,
+        scrollWidth: list.scrollWidth,
+        tabs: Array.from(list.querySelectorAll('[role="tab"]')).map((tab) => ({
+          id: tab.dataset.testid,
+          left: tab.getBoundingClientRect().left,
+          right: tab.getBoundingClientRect().right,
+        })),
+      };
+    })(),
     pager: (() => {
       const node = document.querySelector('[data-testid="mall-wing-pager"]');
       return node && { left: node.scrollLeft, width: node.clientWidth, contentWidth: node.scrollWidth };
@@ -220,6 +235,12 @@ test('mall wing tabs keep browser focus and selection in sync', {
   devTools = await DevTools.connect(targetUrl);
   await devTools.send('Page.enable');
   await devTools.send('Runtime.enable');
+  await devTools.send('Emulation.setDeviceMetricsOverride', {
+    width: 320,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
   await devTools.send('Page.navigate', { url: appUrl });
   await waitForBrowser(
     devTools,
@@ -234,8 +255,9 @@ test('mall wing tabs keep browser focus and selection in sync', {
   );
   await waitForBrowser(
     devTools,
-    `document.querySelector('[data-testid="mall-wing-pager"]')?.clientWidth > 360`,
-    'the mall pager to finish measuring the browser viewport',
+    `document.querySelector('[data-testid="mall-wing-pager"]')?.clientWidth > 0
+      && document.querySelector('[data-testid="mall-wing-pager"]')?.clientWidth < 400`,
+    'the mall pager to finish measuring the narrow browser viewport',
   );
   await devTools.evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
 
@@ -251,9 +273,22 @@ test('mall wing tabs keep browser focus and selection in sync', {
         tabIndex: tab.getAttribute('tabindex'),
       })),
       focused: document.activeElement?.dataset?.testid ?? null,
+      tabScroller: {
+        left: list.getBoundingClientRect().left,
+        right: list.getBoundingClientRect().right,
+        scrollLeft: list.scrollLeft,
+      },
     };
   })()`);
   const assertSelectedAndFocused = async (wingId) => {
+    await waitForBrowser(devTools, `(() => {
+      const list = document.querySelector('[data-testid="mall-wing-tabs"]');
+      const tab = list?.querySelector('[data-testid="mall-wing-${wingId}"]');
+      if (!list || !tab) return false;
+      const listRect = list.getBoundingClientRect();
+      const tabRect = tab.getBoundingClientRect();
+      return tabRect.left >= listRect.left - 1 && tabRect.right <= listRect.right + 1;
+    })()`, `${wingId} tab to be visible in the narrow tab scroller`);
     const state = await getState();
     const active = state.tabs.find((tab) => tab.id === `mall-wing-${wingId}`);
     assert.equal(state.listRole, 'tablist');
@@ -265,11 +300,24 @@ test('mall wing tabs keep browser focus and selection in sync', {
   };
 
   let state = await getState();
+  assert.ok(state.tabScroller.right - state.tabScroller.left < 400, 'the browser test should use a narrow tab viewport');
   assert.equal(state.tabs.length, 5);
   assert.ok(state.tabs.every((tab) => tab.selected === 'false' || tab.selected === 'true'));
   await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-main"]').focus()`);
   await assertSelectedAndFocused('main');
   await sendKey(devTools, 'ArrowRight', 'ArrowRight', 39);
+  await assertSelectedAndFocused('annex');
+
+  await sendKey(devTools, 'ArrowLeft', 'ArrowLeft', 37);
+  await assertSelectedAndFocused('main');
+
+  await sendKey(devTools, 'ArrowRight', 'ArrowRight', 39);
+  await assertSelectedAndFocused('annex');
+
+  await sendKey(devTools, 'ArrowRight', 'ArrowRight', 39);
+  await assertSelectedAndFocused('extension');
+
+  await sendKey(devTools, 'ArrowLeft', 'ArrowLeft', 37);
   await assertSelectedAndFocused('annex');
 
   await sendKey(devTools, 'ArrowLeft', 'ArrowLeft', 37);

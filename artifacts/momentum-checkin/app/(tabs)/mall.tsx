@@ -1063,6 +1063,7 @@ export default function MallScreen() {
           <TextInput
             testID="mall-search-input"
             accessibilityLabel={`搜尋全部 ${MALL_ITEMS.length} 款選物名稱或描述`}
+            allowFontScaling
             placeholder="搜尋所有樓層的商店、設施、裝修"
             placeholderTextColor={colors.mutedForeground}
             value={searchQuery}
@@ -1094,7 +1095,7 @@ export default function MallScreen() {
             style={styles.searchClear}
           ><Feather name="x" size={18} color={colors.primary} /></Pressable>}
         </View>
-        <Text testID="mall-search-hint" style={[styles.searchHint, { color: colors.mutedForeground }]}>跨二十層搜尋名稱或描述；以空格分隔多個關鍵字，每個詞都需符合 · 可配合分類 · 搜尋及換層不扣金幣</Text>
+        <Text testID="mall-search-hint" allowFontScaling style={[styles.searchHint, { color: colors.mutedForeground }]}>跨二十層搜尋名稱或描述；以空格分隔多個關鍵字，每個詞都需符合 · 可配合分類 · 搜尋及換層不扣金幣</Text>
 
         {!showCollection && !isSearching && recentSearches.length > 0 && (
           <View testID="mall-recent-searches" style={styles.recentSearches}>
@@ -1146,9 +1147,9 @@ export default function MallScreen() {
         )}
 
         {isSearching && (
-          <View style={styles.searchLocationFilters}>
+          <View testID="mall-search-location-filters" style={styles.searchLocationFilters}>
             <View>
-              <Text testID="mall-search-floor-heading" accessibilityRole="header" style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>原屬樓層</Text>
+              <Text testID="mall-search-floor-heading" accessibilityRole="header" allowFontScaling style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>原屬樓層</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-floor-filters">
                 {[null, ...MALL_FLOORS.map((_, index) => index + 1)].map((floor) => {
                   const selected = searchFloor === floor;
@@ -1161,16 +1162,16 @@ export default function MallScreen() {
                       accessibilityLabel={floor === null ? '篩選全部原屬樓層' : `篩選原屬樓層 ${floor}F`}
                       accessibilityState={{ selected }}
                       onPress={() => applySearchLocationFilters(floor, searchPlacementFloor, searchWing)}
-                      style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
+                      style={[styles.filterPill, styles.searchFilterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
                     >
-                      <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
+                      <Text allowFontScaling style={[styles.filterText, styles.searchFilterOptionText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
                     </Pressable>
                   );
                 })}
               </ScrollView>
             </View>
             <View>
-              <Text testID="mall-search-placement-floor-heading" accessibilityRole="header" style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放樓層</Text>
+              <Text testID="mall-search-placement-floor-heading" accessibilityRole="header" allowFontScaling style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放樓層</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-placement-floor-filters">
                 {[null, ...MALL_FLOORS.map((_, index) => index + 1)].map((floor) => {
                   const selected = searchPlacementFloor === floor;
@@ -1183,16 +1184,16 @@ export default function MallScreen() {
                       accessibilityLabel={floor === null ? '篩選全部目前擺放樓層' : `篩選目前擺放於 ${floor}F`}
                       accessibilityState={{ selected }}
                       onPress={() => applySearchLocationFilters(searchFloor, floor, searchWing)}
-                      style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
+                      style={[styles.filterPill, styles.searchFilterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
                     >
-                      <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
+                      <Text allowFontScaling style={[styles.filterText, styles.searchFilterOptionText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{label}</Text>
                     </Pressable>
                   );
                 })}
               </ScrollView>
             </View>
             <View>
-              <Text testID="mall-search-wing-heading" accessibilityRole="header" style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放分區</Text>
+              <Text testID="mall-search-wing-heading" accessibilityRole="header" allowFontScaling style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>目前擺放分區</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.searchFilterOptions} testID="mall-search-wing-filters">
                 {[{ id: null, label: '全部' }, ...SEARCH_WING_FILTERS].map((filter) => {
                   const selected = searchWing === filter.id;
@@ -1209,9 +1210,9 @@ export default function MallScreen() {
                       accessibilityLabel={accessibilityLabel}
                       accessibilityState={{ selected }}
                       onPress={() => applySearchLocationFilters(searchFloor, searchPlacementFloor, filter.id)}
-                      style={[styles.filterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
+                      style={[styles.filterPill, styles.searchFilterPill, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}
                     >
-                      <Text style={[styles.filterText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label}</Text>
+                      <Text allowFontScaling style={[styles.filterText, styles.searchFilterOptionText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>{filter.label}</Text>
                     </Pressable>
                   );
                 })}
@@ -1225,7 +1226,7 @@ export default function MallScreen() {
                 onPress={() => applySearchLocationFilters(null, null, null)}
                 style={styles.searchFilterClear}
               >
-                <Text style={[styles.filterText, { color: colors.primary }]}>清除樓層與分區篩選</Text>
+                <Text allowFontScaling style={[styles.filterText, styles.searchFilterOptionText, { color: colors.primary }]}>清除樓層與分區篩選</Text>
               </Pressable>
             )}
             {searchFilterResultMessage.length > 0 && (
@@ -1233,7 +1234,8 @@ export default function MallScreen() {
                 testID="mall-search-filter-result"
                 accessibilityRole="text"
                 accessibilityLiveRegion={Platform.OS === 'ios' ? 'none' : 'polite'}
-                style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}
+                allowFontScaling
+                style={[styles.searchFilterResultText, { color: colors.mutedForeground }]}
               >
                 {searchFilterResultMessage}
               </Text>
@@ -1266,7 +1268,7 @@ export default function MallScreen() {
                 <Text style={[styles.filterText, { color: priceAscending ? colors.primaryForeground : colors.mutedForeground }]}>{priceAscending ? '金幣：由低至高 ✓' : '金幣：由低至高'}</Text>
               </Pressable>
             </View>
-            <Text testID="mall-filter-results" accessibilityLiveRegion="polite" style={[styles.sceneSub, { color: colors.mutedForeground }]}>
+            <Text testID="mall-filter-results" accessibilityLiveRegion="polite" allowFontScaling style={[styles.sceneSub, { color: colors.mutedForeground }]}>
               {filteringAffordable ? `目前 ${coins} 金幣 · 本分類換得到 ${visibleItems.length} 款（不含已擁有）` : `目前 ${coins} 金幣 · 本分類共 ${visibleItems.length} 款`}
             </Text>
             <Pressable
@@ -1575,9 +1577,12 @@ const styles = StyleSheet.create({
   searchLocationFilters: { gap: 11, marginBottom: 14 },
   searchEmpty: { gap: 2 },
   searchActiveFilters: { paddingTop: 0, fontWeight: '600' },
-  searchFilterTitle: { fontSize: 11, fontWeight: '600', marginBottom: 6 },
+  searchFilterTitle: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
   searchFilterOptions: { flexDirection: 'row', gap: 7, paddingRight: 4 },
-  searchFilterClear: { minHeight: 36, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 4 },
+  searchFilterPill: { minHeight: 44, justifyContent: 'center' },
+  searchFilterOptionText: { fontSize: 13 },
+  searchFilterClear: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 8 },
+  searchFilterResultText: { fontSize: 13, lineHeight: 20 },
   redemptionControls: { gap: 9, marginBottom: 12 },
   redemptionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   redemptionOption: { minHeight: 44, justifyContent: 'center' },

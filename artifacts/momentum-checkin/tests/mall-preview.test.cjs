@@ -58,6 +58,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
   const announcementOptions = [];
   const alerts = [];
   const keyboardDismissals = [];
+  let createdStyles;
   const storage = new Map(Object.entries(options.initialStorage ?? {}));
   const storageCalls = [];
   const asyncStorage = {
@@ -120,7 +121,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
         return 1;
       },
       Keyboard: { dismiss: () => keyboardDismissals.push(true) },
-      Alert: { alert: (...args) => alerts.push(args) }, StyleSheet: { create: (s) => s }, Platform: { OS: platformOS },
+      Alert: { alert: (...args) => alerts.push(args) }, StyleSheet: { create: (s) => (createdStyles = s) }, Platform: { OS: platformOS },
       ...Object.fromEntries(['ImageBackground', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View'].map((key) => [key, key])),
     };
     if (name === '@expo/vector-icons') return { Feather: 'Feather' };
@@ -163,7 +164,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
   }
   render();
   return {
-    habits, calls, announcements, announcementOptions, alerts, storage, storageCalls, keyboardDismissals, render, find, nodes: (node = tree) => nodes(node),
+    habits, calls, announcements, announcementOptions, alerts, storage, storageCalls, keyboardDismissals, styles: createdStyles, render, find, nodes: (node = tree) => nodes(node),
     async settle() {
       await new Promise((resolve) => setImmediate(resolve));
       render();
@@ -485,6 +486,63 @@ test('multi-keyword search requires every term across names and descriptions and
   assert.equal(pager(app).props.total, 16, 'clearing search returns to the current-floor catalog');
   assert.equal(pager(app).props.page, 1);
   assert.equal(app.find('mall-search-floor-2'), undefined);
+});
+
+test('search filters stay scalable, scrollable and reachable with readable result feedback', async () => {
+  for (const platformOS of ['ios', 'android']) {
+    const app = mount({ coins: 100, purchasedItems: [], mallPlacements: {} }, filterCatalog, platformOS);
+    app.find('mall-search-input').props.onChangeText('款式');
+    app.render();
+
+    const filterContainer = app.find('mall-search-location-filters');
+    assert.ok(filterContainer, `${platformOS}: search location filters should have a stable container`);
+    assert.equal(app.find('mall-search-input').props.allowFontScaling, true);
+    assert.equal(app.styles.searchLocationFilters.flexDirection, undefined, 'filter titles and option rows stay vertically separated');
+    assert.ok(app.styles.searchLocationFilters.gap > 0, 'filter sections keep visible spacing when text grows');
+    const headings = [
+      'mall-search-floor-heading',
+      'mall-search-placement-floor-heading',
+      'mall-search-wing-heading',
+    ].map((id) => app.find(id));
+    assert.ok(headings.every((heading) => heading.props.accessibilityRole === 'header'));
+    assert.ok(headings.every((heading) => heading.props.allowFontScaling === true));
+
+    const horizontalRows = app.nodes(filterContainer).filter((node) => node.type === 'ScrollView');
+    assert.equal(horizontalRows.length, 3);
+    assert.ok(horizontalRows.every((row) => row.props.horizontal === true));
+    assert.equal(app.styles.searchFilterPill.minHeight, 44, 'scaled filter labels keep a 44-point minimum touch height');
+    assert.equal(app.styles.searchFilterOptions.flexDirection, 'row', 'options remain in a horizontally scrollable row');
+    assert.equal(app.styles.searchFilterTitle.fontSize, 13);
+    assert.equal(app.styles.searchFilterOptionText.fontSize, 13);
+    assert.equal(app.styles.searchFilterResultText.fontSize, 13);
+    assert.ok(!('height' in app.styles.searchFilterPill), 'filter pills have no fixed height that could clip enlarged text');
+    assert.ok(!('height' in app.styles.searchFilterClear), 'the clear control can grow with enlarged text');
+
+    const filterLabels = horizontalRows.flatMap((row) => app.nodes(row).filter((node) => node.type === 'Text'));
+    assert.ok(filterLabels.length > 0);
+    assert.ok(filterLabels.every((label) => label.props.allowFontScaling === true));
+
+    await app.press('mall-search-floor-2');
+    const clearFilters = app.find('mall-search-clear-filters');
+    assert.ok(clearFilters);
+    assert.equal(clearFilters.props.style, app.styles.searchFilterClear);
+    assert.equal(clearFilters.props.accessibilityRole, 'button');
+    assert.equal(app.styles.searchFilterClear.minHeight, 44, 'the clear control remains reachable at large text sizes');
+    assert.ok(app.nodes(clearFilters).some((node) => node.type === 'Text' && node.props.allowFontScaling === true));
+
+    const result = app.find('mall-search-filter-result');
+    assert.ok(result);
+    assert.match(textContent(result), /共 1 款/, 'the feedback explains the filtered count in words');
+    assert.equal(result.props.allowFontScaling, true);
+    assert.equal(result.props.accessibilityLiveRegion, platformOS === 'ios' ? 'none' : 'polite');
+    if (platformOS === 'ios') {
+      assert.ok(app.announcements.some((message) => /共 1 款/.test(message)), 'iOS announces the updated count');
+    }
+
+    await app.press('mall-search-clear-filters');
+    assert.equal(app.find('mall-search-clear-filters'), undefined, 'clearing location filters removes the clear control');
+    assert.equal(pager(app).props.total, 61, 'clearing filters restores all matching search results');
+  }
 });
 
 test('warehouse detour preserves search and filters while showing only owned unplaced items', async () => {

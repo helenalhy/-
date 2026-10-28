@@ -253,7 +253,7 @@ export default function MallScreen() {
   const mallSceneY = useRef(0);
   const sceneOpacity = useRef(new Animated.Value(1)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
-  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, isLoading } = useHabits();
+  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, mallLoadError, isLoading } = useHabits();
   const [showCollection, setShowCollection] = useState(false);
   const [warehouseNotice, setWarehouseNotice] = useState<string | null>(null);
   const [placementAnnouncement, setPlacementAnnouncement] = useState('');
@@ -705,6 +705,31 @@ export default function MallScreen() {
       operationLock.current = false;
       setPurchasing(null);
     }
+  }
+
+  if (mallLoadError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: Platform.OS === 'web' ? 67 : 12, paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 28 },
+          ]}
+        >
+          <View
+            testID="mall-load-error"
+            accessibilityRole="alert"
+            style={[styles.mallLoadErrorBox, { backgroundColor: colors.candyPink, borderColor: colors.destructive }]}
+          >
+            <Feather name="alert-circle" size={22} color={colors.destructive} />
+            <View style={styles.mallLoadErrorCopy}>
+              <Text style={[styles.mallLoadErrorTitle, { color: colors.destructive }]}>商場資料無法讀取</Text>
+              <Text style={[styles.storageErrorText, { color: colors.destructive }]}>{mallLoadError}</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -1458,6 +1483,9 @@ const styles = StyleSheet.create({
   mapFooterText: { fontSize: 10 },
   storageError: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 10, borderRadius: 12, marginTop: 12 },
   storageErrorText: { fontSize: 11, flex: 1 },
+  mallLoadErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 16, borderWidth: 1, borderRadius: 16, marginTop: 16 },
+  mallLoadErrorCopy: { flex: 1, gap: 6 },
+  mallLoadErrorTitle: { fontSize: 16, fontWeight: '700' },
   catalogHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 26, marginBottom: 12 },
   categoryFilters: { flexDirection: 'row', gap: 7, marginBottom: 11 },
   searchBar: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, paddingLeft: 12, gap: 8, minHeight: 48 },

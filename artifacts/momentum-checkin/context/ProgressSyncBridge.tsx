@@ -62,6 +62,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, userId } = useAuth();
   const {
     isLoading,
+    mallLoadError,
     progressSnapshot,
     replaceProgressFromCloud,
     setCloudSyncState,
@@ -107,6 +108,10 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !userId) {
       setCloudSyncState('local');
+      return;
+    }
+    if (mallLoadError) {
+      setCloudSyncState('error', '無法讀取本機商場資料；為避免覆蓋進度，雲端同步已暫停。');
       return;
     }
     if (isLoading || progressQuery.isPending || progressQuery.isFetching) {
@@ -164,6 +169,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     isSignedIn,
     userId,
     isLoading,
+    mallLoadError,
     progressQuery.isPending,
     progressQuery.isFetching,
     progressQuery.isError,
@@ -183,6 +189,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
       || !isSignedIn
       || !userId
       || isLoading
+      || mallLoadError
       || readyUserId !== userId
       || cloudSyncStatus === 'error'
       || snapshotKey === lastSyncedSnapshotRef.current
@@ -214,6 +221,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     isSignedIn,
     userId,
     isLoading,
+    mallLoadError,
     readyUserId,
     cloudSyncStatus,
     snapshotKey,
@@ -224,6 +232,10 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
 
   const retry = useCallback(async () => {
     if (!isSignedIn || !userId) return;
+    if (mallLoadError) {
+      setCloudSyncState('error', '無法讀取本機商場資料；請先修復資料並重新開啟 App。');
+      return;
+    }
     setCloudSyncState('syncing');
     try {
       if (readyUserId === userId && progressQuery.data && !reconcilePendingRef.current) {
@@ -245,6 +257,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
   }, [
     isSignedIn,
     userId,
+    mallLoadError,
     readyUserId,
     progressQuery.data,
     progressQuery.refetch,

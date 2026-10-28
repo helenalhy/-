@@ -98,6 +98,7 @@ interface HabitsContextValue {
   habits: Habit[];
   isLoading: boolean;
   storageError: string | null;
+  mallLoadError: string | null;
   progressSnapshot: ProgressSnapshot;
   cloudSyncStatus: CloudSyncStatus;
   cloudSyncMessage: string | null;
@@ -134,6 +135,100 @@ const MALL_SCHEMA_VERSION = 4;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
 const IS_DEVELOPMENT_BUILD = typeof __DEV__ !== 'undefined' && __DEV__;
+const MALL_READ_ERROR_MESSAGE = '無法讀取商場資料；原始資料未被更改，也不會顯示成空商場。請修復資料後重新開啟 App。';
+
+type StoredMallData = {
+  schemaVersion?: number;
+  coins: number;
+  purchasedItems: string[];
+  rewardedCheckIns?: string[];
+  rewardTokens?: Partial<RewardTokens>;
+  placements?: Record<string, string>;
+  shopInteriors?: ShopInteriorCollection;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'string');
+}
+
+function parseMallData(value: string): StoredMallData {
+  const parsed: unknown = JSON.parse(value);
+  if (!isRecord(parsed)) throw new Error('商場資料必須是物件');
+  if (
+    typeof parsed.coins !== 'number'
+    || !Number.isFinite(parsed.coins)
+    || parsed.coins < 0
+    || !isStringArray(parsed.purchasedItems)
+  ) {
+    throw new Error('商場金幣或所有權資料格式無效');
+  }
+  if (
+    parsed.schemaVersion !== undefined
+    && (!Number.isInteger(parsed.schemaVersion)
+      || (parsed.schemaVersion as number) < 1
+      || (parsed.schemaVersion as number) > MALL_SCHEMA_VERSION)
+  ) {
+    throw new Error('商場資料版本不受支援');
+  }
+  if (parsed.rewardedCheckIns !== undefined && !isStringArray(parsed.rewardedCheckIns)) {
+    throw new Error('商場獎勵紀錄格式無效');
+  }
+  if (parsed.placements !== undefined && !isStringRecord(parsed.placements)) {
+    throw new Error('商場位置資料格式無效');
+  }
+  if (parsed.rewardTokens !== undefined) {
+    if (!isRecord(parsed.rewardTokens)) throw new Error('商場獎勵券格式無效');
+    for (const category of ['facility', 'shop', 'decor'] as const) {
+      const count = parsed.rewardTokens[category];
+      if (count !== undefined && (typeof count !== 'number' || !Number.isFinite(count) || count < 0)) {
+        throw new Error('商場獎勵券格式無效');
+      }
+    }
+  }
+  if (parsed.shopInteriors !== undefined) {
+    if (!isRecord(parsed.shopInteriors)) throw new Error('店內佈置資料格式無效');
+    for (const interior of Object.values(parsed.shopInteriors)) {
+      if (!isRecord(interior)) throw new Error('店內佈置資料格式無效');
+      if (interior.ownedDecorations !== undefined && !isStringArray(interior.ownedDecorations)) {
+        throw new Error('店內裝飾所有權格式無效');
+      }
+      if (interior.placements !== undefined && !isStringRecord(interior.placements)) {
+        throw new Error('店內裝飾位置格式無效');
+      }
+      if (interior.fixtureContents !== undefined) {
+        if (!isRecord(interior.fixtureContents)
+          || Object.values(interior.fixtureContents).some((contents) => (
+            !Array.isArray(contents)
+            || contents.some((productId) => productId !== null && typeof productId !== 'string')
+          ))) {
+          throw new Error('店內商品展示格式無效');
+        }
+      }
+      if (interior.dogStaffLooks !== undefined) {
+        if (!isRecord(interior.dogStaffLooks)
+          || Object.values(interior.dogStaffLooks).some((look) => (
+            !isRecord(look)
+            || typeof look.outfitId !== 'string'
+            || typeof look.accessoryId !== 'string'
+          ))) {
+          throw new Error('店員造型格式無效');
+        }
+      }
+      if (interior.dogStaffPlacements !== undefined && !isStringRecord(interior.dogStaffPlacements)) {
+        throw new Error('店員位置格式無效');
+      }
+    }
+  }
+  return parsed as StoredMallData;
+}
 
 function parseCheckInTransaction(value: string | null): CheckInTransaction | null {
   if (value === null) return null;
@@ -345,9 +440,11 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [rewardedCheckIns, setRewardedCheckIns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [mallLoadError, setMallLoadError] = useState<string | null>(null);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('local');
   const [cloudSyncMessage, setCloudSyncMessage] = useState<string | null>(null);
   const actionLock = useRef(false);
+  const mallLoadErrorRef = useRef(false);
   const [today, setToday] = useState(() => getLocalDate());
   const setCloudSyncState = useCallback((status: CloudSyncStatus, message: string | null = null) => {
     setCloudSyncStatus(status);
@@ -390,6 +487,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     async function load() {
+      let mallDataLoaded = false;
       try {
         const [saved, savedMall, savedCheckInTransaction] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
@@ -399,14 +497,15 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         const checkInTransaction = parseCheckInTransaction(savedCheckInTransaction);
         const initialHabits = checkInTransaction?.habits
           ?? (saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]));
+        if (active) setHabits(initialHabits);
         const initialMall = checkInTransaction?.mall ?? (savedMall === null
           ? { coins: 0, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
-          : JSON.parse(savedMall) as { schemaVersion?: number; coins?: number; purchasedItems?: string[]; rewardedCheckIns?: string[]; rewardTokens?: Partial<RewardTokens>; placements?: Record<string, string>; shopInteriors?: ShopInteriorCollection });
+          : parseMallData(savedMall));
         const initialPurchasedItems = initialMall.purchasedItems ?? [];
         const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems, initialMall.schemaVersion);
         const initialShopInteriors = normalizeShopInteriors(initialMall.shopInteriors, initialPurchasedItems);
+        mallDataLoaded = true;
         if (active) {
-          setHabits(initialHabits);
           setCoins(initialMall.coins ?? 0);
           setPurchasedItems(initialPurchasedItems);
           setMallPlacements(initialPlacements);
@@ -439,7 +538,15 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch {
-        if (active) setStorageError('目前無法讀取已儲存的紀錄，請重新開啟 App。');
+        if (active) {
+          if (!mallDataLoaded) {
+            mallLoadErrorRef.current = true;
+            setMallLoadError(MALL_READ_ERROR_MESSAGE);
+            setStorageError(MALL_READ_ERROR_MESSAGE);
+          } else {
+            setStorageError('目前無法讀取已儲存的紀錄，請重新開啟 App。');
+          }
+        }
       } finally {
         if (active) setIsLoading(false);
       }
@@ -461,6 +568,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens; placements: Record<string, string>; shopInteriors: ShopInteriorCollection }) => {
+    if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
     try {
       await recoverPendingCheckInTransaction();
       await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify({ ...next, schemaVersion: MALL_SCHEMA_VERSION }));
@@ -478,6 +586,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const replaceProgressFromCloud = useCallback(async (snapshot: unknown) => {
+    if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
     if (!snapshot || typeof snapshot !== 'object') throw new Error('雲端進度格式無效');
     const source = snapshot as Record<string, unknown>;
     if (!Array.isArray(source.habits) || !source.mall || typeof source.mall !== 'object') {
@@ -580,6 +689,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (actionLock.current) return 0;
     actionLock.current = true;
     try {
+      if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
       await recoverPendingCheckInTransaction();
       const checkInDate = getLocalDate();
       const habit = habits.find((item) => item.id === id);
@@ -944,9 +1054,9 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }), [habits, coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
+    habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
     today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook,
-  }), [habits, isLoading, storageError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

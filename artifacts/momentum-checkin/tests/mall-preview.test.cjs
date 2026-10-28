@@ -76,7 +76,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
   const items = catalog ?? [item, owned];
   const habits = {
     coins: 100, purchasedItems: ['owned'], mallPlacements: { 'floor-1-right': 'owned' },
-    isLoading: false,
+    isLoading: false, mallLoadError: null,
     purchaseMallItem: async (...args) => { calls.push(['purchase', ...args]); },
     moveMallItem: async (...args) => { calls.push(['move', ...args]); },
     storeMallItem: async (...args) => { calls.push(['store', ...args]); },
@@ -1563,6 +1563,19 @@ test('failed confirmation keeps preview available for retry; move and restore re
   assert.equal(app.find('mall-purchase-preview'), undefined);
 });
 
+test('mall data read failure shows a clear error instead of an empty mall', () => {
+  const app = mount({
+    mallLoadError: '無法讀取商場資料；原始資料未被更改，也不會顯示成空商場。',
+  });
+  const error = app.find('mall-load-error');
+  assert.ok(error);
+  assert.equal(error.props.accessibilityRole, 'alert');
+  assert.match(textContent(error), /商場資料無法讀取.*原始資料未被更改/);
+  assert.equal(app.find('mall-slot-floor-1-left'), undefined);
+  assert.equal(app.find('floor-catalog-title'), undefined);
+  assert.equal(app.find('mall-purchase-preview'), undefined);
+});
+
 const fullFirstFloor = {
   'floor-1-left': 'owned',
   'floor-1-center': 'other-center',
@@ -1805,6 +1818,63 @@ test('AsyncStorage mall write failures preserve ownership, coins and placement a
   assert.equal(habits.coins, 100, 'reload shows the pre-failure coin balance');
   assert.deepEqual(habits.purchasedItems, ['owned'], 'reload preserves the previously redeemed item');
   assert.deepEqual(habits.mallPlacements, { 'floor-1-right': 'owned' }, 'reload restores the pre-failure position');
+});
+
+for (const [label, brokenMallData] of [
+  ['invalid JSON', '{not-json'],
+  ['a mismatched mall shape', JSON.stringify({ coins: 100, purchasedItems: 'owned', placements: { 'floor-1-right': 'owned' } })],
+]) {
+  test(`unreadable ${label} is reported without changing saved data`, async () => {
+    const mallKey = 'momentum.mall.v1';
+    const habitsKey = 'momentum.habits.v1';
+    const storage = new Map([
+      [habitsKey, JSON.stringify([{ id: 'saved-habit', title: '保留目標', reason: '保留原因', icon: 'activity', color: '#0f0', createdAt: '2026-01-01', checkIns: [] }])],
+      [mallKey, brokenMallData],
+    ]);
+    const before = [...storage.entries()];
+    const app = mountHabitsContext(storage);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const habits = app.render();
+    assert.equal(habits.isLoading, false);
+    assert.match(habits.mallLoadError, /無法讀取商場資料/);
+    assert.match(habits.storageError, /原始資料未被更改/);
+    assert.equal(habits.habits[0].id, 'saved-habit');
+    assert.deepEqual([...storage.entries()], before, 'loading an unreadable mall must not write or remove any saved key');
+    assert.equal(app.storageCalls.some(([operation]) => operation === 'set' || operation === 'remove'), false);
+    await assert.rejects(habits.toggleCheckIn('saved-habit'), /無法儲存打卡紀錄/);
+    assert.deepEqual([...storage.entries()], before, 'check-in actions must not replace unreadable mall data');
+  });
+}
+
+test('repairing unreadable mall JSON and reopening restores ownership, coins and saved position', async () => {
+  const mallKey = 'momentum.mall.v1';
+  const storage = new Map([[mallKey, '{damaged']]);
+  const app = mountHabitsContext(storage);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(app.render().mallLoadError, /無法讀取商場資料/);
+  assert.equal(storage.get(mallKey), '{damaged');
+
+  storage.set(mallKey, JSON.stringify({
+    schemaVersion: 4,
+    coins: 145,
+    purchasedItems: ['owned-shop', 'owned-decor'],
+    rewardedCheckIns: ['starter-walk:2026-10-27'],
+    rewardTokens: { facility: 2, shop: 1, decor: 3 },
+    placements: { 'floor-2-center': 'owned-shop' },
+    shopInteriors: {},
+  }));
+  const recovered = mountHabitsContext(storage);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const habits = recovered.render();
+  assert.equal(habits.isLoading, false);
+  assert.equal(habits.mallLoadError, null);
+  assert.equal(habits.coins, 145);
+  assert.deepEqual(habits.purchasedItems, ['owned-shop', 'owned-decor']);
+  assert.deepEqual(habits.mallPlacements, { 'floor-2-center': 'owned-shop' });
+  assert.deepEqual(habits.progressSnapshot.mall.rewardedCheckIns, ['starter-walk:2026-10-27']);
+  assert.deepEqual(habits.rewardTokens, { facility: 2, shop: 1, decor: 3 });
 });
 
 function textContent(node) {

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 import {
   getStreak,
   useHabits,
@@ -111,6 +112,7 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
 
 export function TodayScreen() {
   const colors = useColors();
+  const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { habits, isLoading, storageError, today, coins, getCheckInReward, toggleCheckIn, deleteHabit } = useHabits();
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
@@ -316,7 +318,7 @@ export function TodayScreen() {
         testID="habit-action-modal"
         visible={selectedHabit !== null}
         transparent
-        animationType="fade"
+        animationType={reduceMotion === false ? 'fade' : 'none'}
         onRequestClose={closeHabitActions}
       >
         <View style={styles.actionBackdrop}>

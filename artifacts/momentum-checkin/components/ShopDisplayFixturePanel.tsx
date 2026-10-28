@@ -6,6 +6,7 @@ import type { ShopInteriorDecoration } from '@/constants/mall-shop-interior';
 import { SHOP_DISPLAY_SLOT_COUNT, type ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
 import { ShopMerchandiseVisual } from '@/components/ShopMerchandiseVisual';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 
 export function ShopDisplayFixturePanel({
   visible,
@@ -33,6 +34,7 @@ export function ShopDisplayFixturePanel({
   onClose: () => void;
 }) {
   const colors = useColors();
+  const reduceMotion = useReducedMotion();
   const [catalogPage, setCatalogPage] = useState(1);
   const productMotion = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -59,7 +61,7 @@ export function ShopDisplayFixturePanel({
     <Modal
       visible={visible && fixture !== null}
       transparent
-      animationType="slide"
+      animationType={reduceMotion === false ? 'slide' : 'none'}
       onRequestClose={onClose}
       statusBarTranslucent
     >

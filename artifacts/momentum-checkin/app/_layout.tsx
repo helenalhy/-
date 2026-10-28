@@ -11,6 +11,7 @@ import { tokenCache } from '@clerk/expo/token-cache';
 import { setAuthTokenGetter, setBaseUrl } from '@workspace/api-client-react';
 import { HabitsProvider } from '@/context/HabitsContext';
 import { ProgressSyncBridge } from '@/context/ProgressSyncBridge';
+import { ReducedMotionProvider, getMotionAwareAnimation, useReducedMotion } from '@/context/ReducedMotionContext';
 import palette from '@/constants/colors';
 
 const queryClient = new QueryClient();
@@ -29,13 +30,17 @@ function AuthTokenBridge() {
 }
 
 function RootLayoutNav() {
+  const reduceMotion = useReducedMotion();
   return (
     <Stack screenOptions={{ headerBackTitle: 'Back' }}>
       <Stack.Screen name="welcome" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="mall-shop/[itemId]"
-        options={{ headerShown: false, animation: 'slide_from_right' }}
+        options={{
+          headerShown: false,
+          animation: getMotionAwareAnimation(reduceMotion, 'slide_from_right'),
+        }}
       />
       <Stack.Screen
         name="habit-editor"
@@ -46,6 +51,7 @@ function RootLayoutNav() {
           headerStyle: { backgroundColor: palette.light.background },
           headerTintColor: palette.light.foreground,
           presentation: 'modal',
+          ...(reduceMotion === null || reduceMotion ? { animation: 'none' as const } : {}),
         }}
       />
     </Stack>
@@ -55,28 +61,30 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
-        <ClerkProvider
-          publishableKey={clerkPublishableKey}
-          tokenCache={tokenCache}
-          proxyUrl={clerkProxyUrl}
-        >
-          <ClerkLoaded>
-            <QueryClientProvider client={queryClient}>
-              <AuthTokenBridge />
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
-                  <HabitsProvider>
-                    <ProgressSyncBridge>
-                      <RootLayoutNav />
-                    </ProgressSyncBridge>
-                  </HabitsProvider>
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </QueryClientProvider>
-          </ClerkLoaded>
-        </ClerkProvider>
-      </ErrorBoundary>
+      <ReducedMotionProvider>
+        <ErrorBoundary>
+          <ClerkProvider
+            publishableKey={clerkPublishableKey}
+            tokenCache={tokenCache}
+            proxyUrl={clerkProxyUrl}
+          >
+            <ClerkLoaded>
+              <QueryClientProvider client={queryClient}>
+                <AuthTokenBridge />
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <HabitsProvider>
+                      <ProgressSyncBridge>
+                        <RootLayoutNav />
+                      </ProgressSyncBridge>
+                    </HabitsProvider>
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </QueryClientProvider>
+            </ClerkLoaded>
+          </ClerkProvider>
+        </ErrorBoundary>
+      </ReducedMotionProvider>
     </SafeAreaProvider>
   );
 }

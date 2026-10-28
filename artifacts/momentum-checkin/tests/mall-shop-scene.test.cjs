@@ -125,7 +125,7 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.match(scene, /DOG_STAFF_PROFILES/);
   assert.match(scene, /dogStaffPlacements\?\.\[dog\.decorationId\] !== areaId/);
   assert.match(scene, /testID=\{`dog-staff-walker-\$\{dog\.key\}`\}/);
-  assert.match(scene, /reduceMotionChanged/);
+  assert.match(scene, /useReducedMotion/);
   assert.match(scene, /dog-staff-interaction-sheet/);
   assert.match(scene, /兌換後附送/);
   assert.match(scene, /onPress=\{onPress\}/);

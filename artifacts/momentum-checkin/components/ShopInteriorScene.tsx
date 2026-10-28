@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, ImageBackground, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, ImageBackground, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorAreaId, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
@@ -18,6 +18,7 @@ import {
 } from '@/constants/dog-staff-customization';
 import { DOG_STAFF_FOOD_OPTIONS, type DogFoodIllustrationKind, type DogStaffFoodOption } from '@/constants/dog-staff-foods';
 import { useColors } from '@/hooks/useColors';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 
 type DogStaffInteractionAction = 'groom' | 'pet' | 'feed' | 'play';
 type AreaDogStaff = { dog: DogStaffProfile; look: DogStaffLook; index: number };
@@ -121,7 +122,8 @@ export function ShopInteriorScene({
 }) {
   const colors = useColors();
   const [size, setSize] = useState({ width: 360, height: 383 });
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const systemReduceMotion = useReducedMotion();
+  const reducedMotion = systemReduceMotion !== false;
   const [selectedDog, setSelectedDog] = useState<AreaDogStaff | null>(null);
   const [dogInteraction, setDogInteraction] = useState<DogStaffInteraction | null>(null);
   const [interactionMessage, setInteractionMessage] = useState('');
@@ -140,17 +142,6 @@ export function ShopInteriorScene({
         return look ? [{ dog, look, index }] : [];
       })
     : [];
-  useEffect(() => {
-    let active = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (active) setReducedMotion(enabled);
-    });
-    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReducedMotion);
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, []);
   useEffect(() => {
     setSelectedDog(null);
     setDogInteraction(null);
@@ -319,7 +310,7 @@ export function ShopInteriorScene({
       <Modal
         visible={selectedDog !== null}
         transparent
-        animationType="slide"
+        animationType={systemReduceMotion === false ? 'slide' : 'none'}
         onRequestClose={() => {
           setSelectedDog(null);
           setFoodPickerOpen(false);

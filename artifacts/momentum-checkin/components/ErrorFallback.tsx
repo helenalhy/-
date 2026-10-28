@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { Feather } from '@expo/vector-icons';
 import { reloadAppAsync } from 'expo';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -20,6 +21,7 @@ export type ErrorFallbackProps = {
 
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const colors = useColors();
+  const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -98,7 +100,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
       {__DEV__ ? (
         <Modal
           visible={isModalVisible}
-          animationType="slide"
+          animationType={reduceMotion === false ? 'slide' : 'none'}
           transparent={true}
           onRequestClose={() => setIsModalVisible(false)}
         >

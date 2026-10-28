@@ -40,6 +40,7 @@ type ProductTheme =
   | 'candy'
   | 'icecream'
   | 'bakery'
+  | 'onsen'
   | 'tea'
   | 'food'
   | 'flower'
@@ -79,6 +80,16 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '彩色貼紙包', description: '為手帳添上亮眼圖案', icon: 'image', color: c.candyLavender },
     { name: '月亮吊飾', description: '掛在包袋上的小吊飾', icon: 'moon', color: c.candyCoral },
     { name: '迷你花束', description: '以柔和彩紙包好的花束', icon: 'feather', color: c.candyRose },
+  ],
+  onsen: [
+    { name: '櫻花入浴鹽小罐', description: '帶有淡淡櫻花香氣的泡湯入浴鹽', icon: 'droplet', color: c.candyPink, illustration: 'bottle' },
+    { name: '柚子暖湯香包', description: '泡澡時散發柚子香氣的溫泉香包', icon: 'sun', color: c.candyLemon, illustration: 'gift' },
+    { name: '檜木香氛沐浴露', description: '以柔和檜木香調製成的沐浴露', icon: 'wind', color: c.candyCaramel, illustration: 'bottle' },
+    { name: '溫泉旅館毛巾組', description: '柔軟吸水的浴巾與小毛巾組合', icon: 'heart', color: c.candySky, illustration: 'garment' },
+    { name: '櫻花紋浴衣', description: '印有柔粉櫻花圖案的輕柔浴衣', icon: 'feather', color: c.candyRose, illustration: 'garment' },
+    { name: '泡湯竹木按摩梳', description: '適合沐浴後梳理頭髮的竹木梳', icon: 'star', color: c.candyMint, illustration: 'gift' },
+    { name: '雪見泡腳木桶組', description: '可愛迷你的木桶與足浴用品組', icon: 'package', color: c.candyPeach, illustration: 'gift' },
+    { name: '草本蒸氣眼罩', description: '以溫熱草本香氣陪伴泡湯後休息', icon: 'moon', color: c.candyLavender, illustration: 'garment' },
   ],
   cafe: [
     { name: '星星拿鐵', description: '奶泡上有小星星圖案', icon: 'coffee', color: c.candyPeach },
@@ -289,6 +300,7 @@ const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> 
   candy: 'treat',
   icecream: 'treat',
   bakery: 'treat',
+  onsen: 'gift',
   tea: 'drink',
   food: 'treat',
   flower: 'flower',
@@ -515,6 +527,7 @@ function resolveProductTheme(
   const identity = `${shopId} ${shopName}`;
   if (/fragrance|aroma|diffuser|香氛|香薰|擴香|扩香|香氣|香气/i.test(identity)) return 'fragrance';
   if (shopType && shopType !== 'general') return shopType;
+  if (/溫泉|櫻花暖湯|湯宿|湯煙|泡湯|浴衣|onsen|hot.?spring/i.test(identity)) return 'onsen';
   if (/咖啡|coffee|cafe|烘豆/i.test(identity)) return 'cafe';
   if (/糖果|軟糖|棉花糖|彩糖|糖藝|糖霜|candy|sweets/i.test(identity)) return 'candy';
   if (/雪糕|冰淇淋|冰棒|冰沙|gelato|ice.?cream|smoothie/i.test(identity)) return 'icecream';

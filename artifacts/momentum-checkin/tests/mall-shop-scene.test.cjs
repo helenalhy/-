@@ -61,6 +61,7 @@ test('shop type and all inferred general specialties resolve to stable scene var
     ['little-bookshop', '慢讀書屋', 'book'],
     ['toy-capsule-shop', '扭蛋玩具店', 'toy'],
     ['ceramic-studio', '陶土小店', 'craft'],
+    ['theme-floor-15-shop-1', '櫻花暖湯紀念店', 'kimono'],
   ];
   for (const [id, name, expected] of specialtyCases) {
     assert.equal(getShopInteriorSceneKey('general', id, name), expected, `${id} uses ${expected} room`);
@@ -238,6 +239,11 @@ test('equipment classification: espresso is tabletop, oven/cabinets/staff are fl
   assert.ok(classifyDecoration({ id: 'x-espresso-machine', visual: 'coffee-machine' }).scale <= 0.85, 'coffee machine is not enlarged');
   assert.equal(classifyDecoration({ id: 'bakery-oven', visual: 'bakery-oven' }).cls, 'floor');
   assert.equal(classifyDecoration({ id: 'ice-cream-freezer', visual: 'ice-cream-machine' }).cls, 'floor');
+  assert.equal(
+    classifyDecoration({ id: 'general-equipment-onsen-sakura-onsen-pool', visual: 'onsen-bath' }).cls,
+    'floor',
+    'the hot spring basin should occupy floor space rather than a shelf',
+  );
   assert.equal(classifyDecoration({ id: 'fluffy-staff-butter', visual: 'dog-staff-butter' }).cls, 'floor');
   assert.equal(classifyDecoration({ id: 'picture-wall', name: '手繪商品畫框組', visual: 'gallery-frames' }).cls, 'wall');
   assert.equal(classifyDecoration({ id: 'tops-wardrobe', visual: 'clothing-wardrobe' }).cls, 'floor');

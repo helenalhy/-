@@ -124,6 +124,63 @@ export function ThemedMallObject({
     case 'jewelry-case':
       drawing = <JewelryCase color={color} />;
       break;
+    case 'onsen-bath':
+      drawing = (
+        <>
+          <Feather name="wind" size={11} color={c.candySky} style={s.onsenSteamIcon} />
+          <View style={[s.onsenBathRim, { backgroundColor: c.candyCaramel, borderColor: c.candyCaramelDark }]}>
+            <View style={[s.onsenBathWater, { backgroundColor: color }]}>
+              {[0, 1, 2].map((petal) => (
+                <View
+                  key={petal}
+                  style={[
+                    s.onsenPetal,
+                    petal === 0 ? s.onsenPetalLeft : petal === 1 ? s.onsenPetalCenter : s.onsenPetalRight,
+                    { backgroundColor: c.candyPink },
+                  ]}
+                />
+              ))}
+              <View style={[s.onsenWaterRipple, { backgroundColor: c.candyCream }]} />
+            </View>
+          </View>
+          <View style={[s.onsenBathBase, { backgroundColor: c.candyCaramelDark }]} />
+        </>
+      );
+      break;
+    case 'onsen-supplies':
+      drawing = (
+        <>
+          <View style={[s.onsenSupplyCabinet, { backgroundColor: color, borderColor: c.candyCaramelDark }]}>
+            <View style={[s.onsenSupplyGlass, { backgroundColor: c.candyCream, borderColor: c.candySky }]}>
+              {[c.candyPink, c.candyLemon, c.candyLavender].map((bottleColor, index) => (
+                <View key={index} style={[s.onsenSupplyBottle, { backgroundColor: bottleColor }]}>
+                  <View style={s.onsenSupplyBottleCap} />
+                </View>
+              ))}
+              <View style={[s.onsenSupplyTowel, { backgroundColor: c.candyPeach }]} />
+              <View style={[s.onsenSupplyTowel, s.onsenSupplyTowelSecond, { backgroundColor: c.candySky }]} />
+            </View>
+            <View style={[s.onsenSupplyShelf, { backgroundColor: c.candyCaramelDark }]} />
+          </View>
+          <View style={[s.onsenBathBase, { backgroundColor: c.candyCaramelDark }]} />
+        </>
+      );
+      break;
+    case 'onsen-steamer':
+      drawing = (
+        <>
+          <Feather name="wind" size={13} color={c.candySky} style={s.onsenSteamIcon} />
+          <View style={[s.onsenSteamerBody, { backgroundColor: color, borderColor: c.candyCaramelDark }]}>
+            <View style={[s.onsenSteamerWindow, { backgroundColor: c.candyCream }]} />
+            <Feather name="sun" size={10} color={c.candyRoseDark} />
+          </View>
+          <View style={[s.onsenBathBase, { backgroundColor: c.candyCaramelDark }]} />
+        </>
+      );
+      break;
+    case 'onsen-yukata-rack':
+      drawing = <ClothingRack color={color} />;
+      break;
     case 'dog-staff-huahua':
       drawing = <DogAttendant kind="huahua" outfitId={dogOutfitId} accessoryId={dogAccessoryId} />;
       break;
@@ -568,6 +625,24 @@ const s = StyleSheet.create({
   jewelryCase: { width: 52, height: 34, borderWidth: 2, borderRadius: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' },
   jewelryGem: { width: 8, height: 9, borderRadius: 4, borderWidth: 1, borderColor: c.card },
   jewelryShelf: { position: 'absolute', bottom: 5, left: 3, right: 3, height: 3 },
+  onsenSteamIcon: { position: 'absolute', top: 0, left: 10 },
+  onsenBathRim: { width: 54, height: 27, borderWidth: 3, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  onsenBathWater: { width: 44, height: 17, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  onsenPetal: { position: 'absolute', width: 5, height: 3, borderRadius: 3, top: 5 },
+  onsenPetalLeft: { left: 8, transform: [{ rotate: '-22deg' }] },
+  onsenPetalCenter: { left: 19, top: 9 },
+  onsenPetalRight: { right: 8, transform: [{ rotate: '22deg' }] },
+  onsenWaterRipple: { position: 'absolute', left: 13, bottom: 2, width: 20, height: 1, borderRadius: 1, opacity: 0.8 },
+  onsenBathBase: { width: 56, height: 5, borderRadius: 3 },
+  onsenSupplyCabinet: { width: 52, height: 35, borderWidth: 2, borderTopLeftRadius: 6, borderTopRightRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  onsenSupplyGlass: { width: 44, height: 26, borderWidth: 1, borderRadius: 3, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' },
+  onsenSupplyBottle: { width: 6, height: 13, borderRadius: 2, alignItems: 'center', justifyContent: 'flex-start' },
+  onsenSupplyBottleCap: { width: 4, height: 3, backgroundColor: c.candyCaramelDark, borderTopLeftRadius: 1, borderTopRightRadius: 1 },
+  onsenSupplyTowel: { position: 'absolute', bottom: 2, right: 3, width: 8, height: 5, borderRadius: 2 },
+  onsenSupplyTowelSecond: { right: 12, bottom: 2 },
+  onsenSupplyShelf: { position: 'absolute', left: 2, right: 2, top: 16, height: 2 },
+  onsenSteamerBody: { width: 31, height: 31, borderWidth: 2, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  onsenSteamerWindow: { position: 'absolute', top: 4, width: 8, height: 3, borderRadius: 2 },
   rainbow: { width: 60, height: 45 },
   rainbowBand: { position: 'absolute', borderWidth: 5, borderBottomWidth: 0, borderTopLeftRadius: 40, borderTopRightRadius: 40 },
   rackScene: { width: 57, height: 46, alignItems: 'center', justifyContent: 'flex-end' },

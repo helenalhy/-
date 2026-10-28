@@ -522,7 +522,8 @@ type GeneralShopSpecialty =
   | 'flower'
   | 'book'
   | 'toy'
-  | 'craft';
+  | 'craft'
+  | 'onsen';
 
 const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
   cafe: [
@@ -584,6 +585,12 @@ const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
     { key: 'mini-kiln', name: '糖果色迷你窯爐', description: '為陶作和小型工藝提供燒製空間。', icon: 'sun', price: 62, color: c.candyCoral, visual: 'bakery-oven' },
     { key: 'sewing-machine', name: '桌上型縫紉機', description: '縫製布藝、玩偶衣服和小型手作。', icon: 'settings', price: 54, color: c.candyMint, visual: 'sewing-machine' },
     { key: 'display-turntable', name: '手作品旋轉展示台', description: '轉動展示剛完成的獨一無二作品。', icon: 'star', price: 42, color: c.candyLavender, visual: 'sculpture-plaza' },
+  ],
+  onsen: [
+    { key: 'sakura-onsen-pool', name: '櫻花露天暖湯池', description: '在櫻花木格旁擺放一座冒著暖霧的溫泉池。', icon: 'droplet', price: 92, color: c.candySky, visual: 'onsen-bath' },
+    { key: 'onsen-supply-case', name: '溫泉用品玻璃展示櫃', description: '分格展示入浴鹽、香皂、浴巾與泡湯小物。', icon: 'grid', price: 58, color: c.candyPink, visual: 'onsen-supplies' },
+    { key: 'yuzu-steam-kettle', name: '柚香蒸氣暖浴器', description: '以柚子與木香蒸氣營造暖湯氣氛。', icon: 'wind', price: 64, color: c.candyLemon, visual: 'onsen-steamer' },
+    { key: 'yukata-care-rack', name: '浴衣與腰帶整理架', description: '掛放浴衣、腰帶與乾爽替換衣物。', icon: 'shopping-bag', price: 56, color: c.candyLavender, visual: 'onsen-yukata-rack' },
   ],
 };
 
@@ -651,6 +658,7 @@ const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> 
 };
 
 const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
+  ['onsen', /溫泉|櫻花暖湯|湯宿|湯煙|泡湯|onsen|hot.?spring/i],
   ['cafe', /咖啡|coffee|cafe|烘豆/i],
   ['candy', /糖果|軟糖|棉花糖|彩糖|糖藝|糖霜|candy|sweets/i],
   ['icecream', /雪糕|冰淇淋|冰棒|冰沙|gelato|ice.?cream|smoothie/i],
@@ -662,6 +670,151 @@ const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
   ['toy', /扭蛋|玩偶|玩具|遊戲|模型|積木|卡牌|街機|toy|capsule|arcade/i],
   ['craft', /工房|工藝|陶|畫室|畫作|手作|編織|刺繡|玻璃|皮革|craft|studio|atelier|ceramic/i],
 ];
+
+const specialtyFixture = (
+  specialty: GeneralShopSpecialty,
+  key: string,
+  name: string,
+  description: string,
+  icon: string,
+  price: number,
+  visual: string,
+): DecorationFixture => ({ key: `${specialty}-${key}`, name, description, icon, price, visual });
+
+const GENERAL_SPECIALTY_FIXTURES: Record<GeneralShopSpecialty, DecorationFixture[]> = {
+  cafe: [
+    specialtyFixture('cafe', 'bean-wall', '產地咖啡豆玻璃罐牆', '依烘焙深淺陳列不同產地的咖啡豆。', 'grid', 34, 'spice-display'),
+    specialtyFixture('cafe', 'latte-art-board', '拉花咖啡展示畫板', '展示每日更新的奶泡拉花圖案。', 'image', 29, 'gallery-frames'),
+    specialtyFixture('cafe', 'cup-rack', '手繪咖啡杯吊架', '把馬克杯和外帶杯整齊掛放。', 'coffee', 31, 'spice-display'),
+    specialtyFixture('cafe', 'pastry-pairing-case', '咖啡甜點搭配櫃', '將小蛋糕與手沖咖啡搭配陳列。', 'gift', 40, 'tasting-court'),
+    specialtyFixture('cafe', 'syrup-station', '風味糖漿小吧台', '整理香草、焦糖與果香糖漿。', 'package', 32, 'food-prep'),
+    specialtyFixture('cafe', 'roast-sign', '今日烘豆霓虹牌', '標示今天的咖啡豆與推薦風味。', 'zap', 28, 'neon-sign'),
+    specialtyFixture('cafe', 'coffee-seat', '窗邊咖啡雙人座', '留一個能慢慢喝咖啡的窗邊位置。', 'heart', 35, 'wooden-bench'),
+    specialtyFixture('cafe', 'filter-display', '手沖濾杯收藏架', '展示不同材質與形狀的手沖器具。', 'coffee', 30, 'gallery-frames'),
+    specialtyFixture('cafe', 'cafe-plant', '咖啡樹盆栽角', '用一株小咖啡樹點綴店內角落。', 'feather', 25, 'colorful-planter'),
+    specialtyFixture('cafe', 'bean-scent-mobile', '咖啡香氣吊飾', '以咖啡果實與星點裝飾天花板。', 'wind', 26, 'starlight-mobile'),
+  ],
+  candy: [
+    specialtyFixture('candy', 'gummy-color-wall', '水果軟糖彩色分格牆', '按果味和顏色排列一格格軟糖。', 'grid', 34, 'candy-display'),
+    specialtyFixture('candy', 'lollipop-carousel', '棒棒糖旋轉陳列台', '讓繽紛棒棒糖在店中央緩緩轉動。', 'star', 38, 'sculpture-plaza'),
+    specialtyFixture('candy', 'sugar-jar-shelf', '手作糖果玻璃罐架', '展示手工硬糖與水果糖罐。', 'package', 31, 'spice-display'),
+    specialtyFixture('candy', 'marshmallow-cloud', '棉花糖雲朵展示台', '用柔軟雲朵造型展示不同口味棉花糖。', 'cloud', 36, 'cotton-candy-machine'),
+    specialtyFixture('candy', 'chocolate-counter', '巧克力切片小櫃檯', '排列不同可可口味的巧克力薄片。', 'gift', 33, 'tasting-court'),
+    specialtyFixture('candy', 'sweet-menu', '糖果口味插畫牌', '介紹今日新做的糖果口味。', 'image', 27, 'gallery-frames'),
+    specialtyFixture('candy', 'candy-arch', '糖果包裝迎賓拱門', '以糖果色紙包裝裝飾店門入口。', 'sunrise', 39, 'rainbow-arch'),
+    specialtyFixture('candy', 'gumball-corner', '彩珠糖果轉轉角', '陳列可愛的轉珠糖罐和糖球。', 'circle', 35, 'capsule-machine'),
+    specialtyFixture('candy', 'sweet-lamp', '糖霜玻璃吊燈', '用糖霜紋樣映出柔和的彩色光。', 'sun', 29, 'shell-lantern'),
+    specialtyFixture('candy', 'gift-wrap-table', '糖果禮盒包裝桌', '準備彩紙、緞帶與小型禮盒。', 'gift', 34, 'craft-station'),
+  ],
+  icecream: [
+    specialtyFixture('icecream', 'scoop-freezer', '雪糕球口味冷凍櫃', '分格展示當日供應的雪糕口味。', 'droplet', 42, 'coral-aquarium'),
+    specialtyFixture('icecream', 'cone-rack', '脆皮甜筒收納架', '把新鮮烘好的甜筒分類放好。', 'package', 32, 'spice-display'),
+    specialtyFixture('icecream', 'topping-bar', '雪糕配料自選台', '擺放莓果、巧克力粒與糖針。', 'grid', 39, 'candy-display'),
+    specialtyFixture('icecream', 'sundae-menu', '繽紛聖代口味牌', '用插畫介紹店內人氣聖代組合。', 'image', 27, 'gallery-frames'),
+    specialtyFixture('icecream', 'popsicle-freezer', '水果冰棒直立冷櫃', '展示各種水果形狀的冰棒。', 'droplet', 40, 'coral-aquarium'),
+    specialtyFixture('icecream', 'waffle-maker', '迷你鬆餅甜筒烤台', '烘烤剛出爐的鬆餅與甜筒。', 'sun', 44, 'bakery-oven'),
+    specialtyFixture('icecream', 'sundae-table', '雙人雪糕分享桌', '讓客人坐下分享一杯雙球雪糕。', 'heart', 35, 'tasting-court'),
+    specialtyFixture('icecream', 'scoop-sign', '雪花霓虹招牌', '用雪花圖案點亮冰品櫃上方。', 'star', 30, 'neon-sign'),
+    specialtyFixture('icecream', 'sprinkle-mobile', '糖針星星吊飾', '用彩色糖針和小雪花點綴空間。', 'star', 26, 'starlight-mobile'),
+    specialtyFixture('icecream', 'flavor-planter', '薄荷冰品花盆', '為冰品角落添上清爽薄荷葉。', 'feather', 24, 'colorful-planter'),
+  ],
+  bakery: [
+    specialtyFixture('bakery', 'croissant-case', '現烤可頌玻璃展示櫃', '陳列剛出爐的可頌與酥皮點心。', 'shopping-bag', 40, 'bakery-oven'),
+    specialtyFixture('bakery', 'bread-wall', '每日麵包木層架', '按出爐時間擺放麵包與小餐包。', 'package', 35, 'spice-display'),
+    specialtyFixture('bakery', 'cookie-jars', '糖霜曲奇玻璃罐架', '展示手工餅乾與季節糖霜造型。', 'gift', 33, 'candy-display'),
+    specialtyFixture('bakery', 'dough-table', '麵糰揉製工作桌', '準備麵粉、麵糰和烘焙工具。', 'grid', 38, 'food-prep'),
+    specialtyFixture('bakery', 'cooling-rack', '蛋糕出爐冷卻架', '讓小蛋糕和派塔在架上放涼。', 'grid', 31, 'gallery-frames'),
+    specialtyFixture('bakery', 'pie-podium', '每日派塔展示台', '把季節水果派放在店內焦點位置。', 'star', 36, 'tasting-court'),
+    specialtyFixture('bakery', 'recipe-board', '手寫烘焙食譜牆', '展示店主每日使用的烘焙配方。', 'edit-3', 28, 'gallery-frames'),
+    specialtyFixture('bakery', 'jam-shelf', '果醬與奶油搭配架', '陳列自製果醬與抹醬小罐。', 'package', 30, 'spice-display'),
+    specialtyFixture('bakery', 'oven-lamp', '奶油色麵包暖燈', '為新鮮麵包櫃提供柔和暖光。', 'sun', 26, 'garden-lights'),
+    specialtyFixture('bakery', 'bakery-bench', '麵包香休息長椅', '讓等候出爐的客人坐一會兒。', 'heart', 32, 'wooden-bench'),
+  ],
+  tea: [
+    specialtyFixture('tea', 'tea-jar-wall', '茶葉香氣玻璃罐牆', '展示焙茶、烏龍與花草茶葉。', 'grid', 34, 'spice-display'),
+    specialtyFixture('tea', 'teapot-showcase', '手作茶壺展示櫃', '陳列不同釉色的泡茶壺與茶海。', 'coffee', 38, 'gallery-frames'),
+    specialtyFixture('tea', 'cup-display', '茶杯與茶托收藏架', '把茶杯和茶托依色系配成一組。', 'coffee', 32, 'spice-display'),
+    specialtyFixture('tea', 'tea-ceremony-table', '小型品茶茶席', '為試飲與品茶留一張矮桌。', 'grid', 40, 'tasting-court'),
+    specialtyFixture('tea', 'tea-menu', '手繪茶香風味牌', '標示茶葉產地、香氣與沖泡方式。', 'image', 28, 'gallery-frames'),
+    specialtyFixture('tea', 'tea-bloom-case', '花草茶乾燥花展示瓶', '展示可沖泡的乾燥花與香草。', 'feather', 29, 'flower-station'),
+    specialtyFixture('tea', 'bamboo-divider', '竹編茶室隔屏', '為茶席留出安靜的半開放角落。', 'columns', 36, 'clothing-wardrobe'),
+    specialtyFixture('tea', 'tea-steam-lamp', '茶煙暖光吊燈', '讓暖茶蒸氣映出柔和燈影。', 'sun', 30, 'shell-lantern'),
+    specialtyFixture('tea', 'tea-mobile', '茶花風鈴吊飾', '以茶花和小鈴鐺點綴天花板。', 'wind', 25, 'starlight-mobile'),
+    specialtyFixture('tea', 'tea-seat', '窗邊品茶長椅', '提供一處安靜喝茶的小座位。', 'heart', 33, 'wooden-bench'),
+  ],
+  food: [
+    specialtyFixture('food', 'noodle-counter', '暖湯麵食備餐檯', '整理麵條、湯碗與熱食配料。', 'coffee', 41, 'food-prep'),
+    specialtyFixture('food', 'dumpling-steamer', '手作點心蒸籠架', '展示熱騰騰的包子與蒸點。', 'sun', 43, 'bakery-oven'),
+    specialtyFixture('food', 'spice-shelf', '各地香料玻璃罐牆', '依料理風味排列香料與調味罐。', 'package', 34, 'spice-display'),
+    specialtyFixture('food', 'bento-case', '當日便當保鮮櫃', '陳列每日新鮮製作的餐盒。', 'grid', 40, 'coral-aquarium'),
+    specialtyFixture('food', 'pizza-board', '手工披薩口味展示板', '介紹每日現做的披薩口味。', 'image', 28, 'gallery-frames'),
+    specialtyFixture('food', 'sauce-station', '自選醬料小站', '收納辣醬、香草醬與沾醬。', 'droplet', 31, 'candy-display'),
+    specialtyFixture('food', 'produce-basket', '料理新鮮食材籃', '把每日使用的蔬菜與香草擺好。', 'feather', 28, 'colorful-planter'),
+    specialtyFixture('food', 'menu-sign', '今日熱食燈牌', '標示現做餐點和每日套餐。', 'zap', 30, 'neon-sign'),
+    specialtyFixture('food', 'family-table', '家庭共享餐桌', '為一起用餐的客人準備座位。', 'grid', 39, 'tasting-court'),
+    specialtyFixture('food', 'market-lamp', '市集暖香路燈', '為熱食攤位添上一盞暖色小燈。', 'sun', 26, 'garden-lights'),
+  ],
+  flower: [
+    specialtyFixture('flower', 'bouquet-wall', '季節花束展示牆', '按花色展示每日新鮮花束。', 'feather', 37, 'flower-station'),
+    specialtyFixture('flower', 'seedling-rack', '小苗與種子木架', '排列盆栽幼苗、種子與栽培小包。', 'grid', 32, 'colorful-planter'),
+    specialtyFixture('flower', 'vase-case', '手作花瓶展示櫃', '展示不同釉色和形狀的小花器。', 'gift', 35, 'gallery-frames'),
+    specialtyFixture('flower', 'wrap-table', '花束緞帶包裝桌', '準備花紙、緞帶與花剪。', 'gift', 38, 'craft-station'),
+    specialtyFixture('flower', 'hanging-planter', '藤蔓垂掛花盆架', '讓小型垂吊植物沿牆生長。', 'feather', 31, 'starlight-mobile'),
+    specialtyFixture('flower', 'watering-station', '園藝澆水工具站', '收好小水壺、噴霧器和園藝手套。', 'droplet', 30, 'flower-station'),
+    specialtyFixture('flower', 'petal-lamp', '花瓣玻璃柔光燈', '投映像花瓣般柔和的燈影。', 'sun', 27, 'shell-lantern'),
+    specialtyFixture('flower', 'floral-menu', '花語插畫畫框組', '用畫框介紹不同花束的花語。', 'image', 28, 'gallery-frames'),
+    specialtyFixture('flower', 'arrangement-table', '迷你插花體驗桌', '為客人留一張體驗插花的小桌。', 'grid', 39, 'tasting-court'),
+    specialtyFixture('flower', 'garden-seat', '花園休憩長椅', '讓客人坐在花香旁慢慢挑選。', 'heart', 33, 'wooden-bench'),
+  ],
+  book: [
+    specialtyFixture('book', 'new-release-shelf', '本週新書推薦架', '展示本週剛上架的精選新書。', 'book-open', 36, 'book-carousel'),
+    specialtyFixture('book', 'bookmark-case', '手作書籤收藏櫃', '陳列布藝、紙藝與壓花書籤。', 'gift', 29, 'gallery-frames'),
+    specialtyFixture('book', 'reading-lamp', '暖光閱讀立燈', '照亮安靜閱讀的小角落。', 'sun', 28, 'garden-lights'),
+    specialtyFixture('book', 'return-cart', '圖書歸還整理車', '把歸還書籍分類後送回書架。', 'book-open', 35, 'book-carousel'),
+    specialtyFixture('book', 'quote-wall', '每日一句文字畫牆', '展示讓人停下來想一想的句子。', 'image', 30, 'gallery-frames'),
+    specialtyFixture('book', 'author-table', '作家簽書小桌', '為新書分享和簽名活動預留位置。', 'edit-3', 38, 'tasting-court'),
+    specialtyFixture('book', 'paper-goods-rack', '紙品與明信片層架', '陳列明信片、手帳與紙膠帶。', 'grid', 32, 'spice-display'),
+    specialtyFixture('book', 'story-chair', '繪本故事閱讀椅', '為親子閱讀時光準備舒適座位。', 'heart', 36, 'wooden-bench'),
+    specialtyFixture('book', 'book-mobile', '書頁星月吊飾', '以書頁和星月點綴閱讀空間。', 'moon', 25, 'starlight-mobile'),
+    specialtyFixture('book', 'book-scent', '紙木香氣擴香角', '為書架旁添上淡淡紙木香。', 'wind', 31, 'aroma-diffuser'),
+  ],
+  toy: [
+    specialtyFixture('toy', 'plush-wall', '毛絨玩偶展示牆', '把不同大小的玩偶排成一面笑臉牆。', 'gift', 36, 'gallery-frames'),
+    specialtyFixture('toy', 'capsule-corner', '迷你扭蛋機集合台', '展示不同主題的扭蛋小機台。', 'circle', 40, 'capsule-machine'),
+    specialtyFixture('toy', 'block-play-table', '彩色積木體驗桌', '讓客人現場拼出小小積木造型。', 'grid', 39, 'tasting-court'),
+    specialtyFixture('toy', 'boardgame-shelf', '桌遊盒與卡牌展示架', '收納適合朋友同玩的桌遊與卡牌。', 'package', 34, 'spice-display'),
+    specialtyFixture('toy', 'toy-car-track', '迷你玩具車軌道台', '讓小車沿著繽紛軌道繞一圈。', 'activity', 42, 'sculpture-plaza'),
+    specialtyFixture('toy', 'mystery-boxes', '驚喜盲盒陳列櫃', '展示各種主題的收藏盲盒。', 'gift', 35, 'candy-display'),
+    specialtyFixture('toy', 'prize-light', '玩具星光展示燈', '為人氣收藏玩具加上一圈柔光。', 'sun', 28, 'garden-lights'),
+    specialtyFixture('toy', 'toy-sign', '歡樂玩具店霓虹牌', '以繽紛圖案迎接來逛店的小朋友。', 'zap', 30, 'neon-sign'),
+    specialtyFixture('toy', 'plush-seat', '熊熊造型休息椅', '準備一張像玩偶般柔軟的小椅子。', 'heart', 37, 'wooden-bench'),
+    specialtyFixture('toy', 'collectible-stand', '模型收藏旋轉展示台', '讓模型從不同角度都能被看見。', 'star', 34, 'sculpture-plaza'),
+  ],
+  craft: [
+    specialtyFixture('craft', 'pottery-wheel', '手作陶藝體驗轉盤', '留出一張桌面體驗捏陶和拉坯。', 'refresh-cw', 42, 'craft-station'),
+    specialtyFixture('craft', 'yarn-wall', '彩線與毛線收納牆', '按色系排列編織用毛線和線軸。', 'grid', 34, 'spice-display'),
+    specialtyFixture('craft', 'painting-easel', '水彩小畫架展示區', '展示正在完成的水彩與插畫。', 'image', 33, 'gallery-frames'),
+    specialtyFixture('craft', 'tool-board', '手作工具分類板', '將剪刀、刻刀和量尺掛放整齊。', 'tool', 32, 'craft-station'),
+    specialtyFixture('craft', 'ceramic-shelf', '釉彩陶器作品架', '陳列杯盤和小型手作陶器。', 'package', 36, 'gallery-frames'),
+    specialtyFixture('craft', 'color-palette-table', '顏料調色體驗桌', '擺放顏料盤、畫筆與試色卡。', 'droplet', 38, 'tasting-court'),
+    specialtyFixture('craft', 'woven-lamp', '編織藤線吊燈', '用手編藤線投下溫暖的光影。', 'sun', 30, 'shell-lantern'),
+    specialtyFixture('craft', 'mini-kiln', '手作陶品迷你窯', '為小件陶作和釉彩作品準備窯爐。', 'sun', 44, 'bakery-oven'),
+    specialtyFixture('craft', 'craft-kit-case', '手作材料工具展示櫃', '陳列刺繡線、珠子和小型工具包。', 'gift', 35, 'candy-display'),
+    specialtyFixture('craft', 'artist-seat', '創作靈感休息長椅', '讓創作者坐下來整理新的靈感。', 'heart', 33, 'wooden-bench'),
+  ],
+  onsen: [
+    specialtyFixture('onsen', 'sakura-partition', '櫻花木格屏風', '用木格與櫻花圖樣分隔泡湯休息區。', 'columns', 38, 'clothing-wardrobe'),
+    specialtyFixture('onsen', 'stone-lantern', '湯宿石燈籠', '在暖湯旁點亮柔和的庭園燈影。', 'sun', 33, 'shell-lantern'),
+    specialtyFixture('onsen', 'sakura-branch', '櫻花暖湯掛枝', '以粉色花枝裝飾溫泉小町的牆面。', 'feather', 28, 'colorful-planter'),
+    specialtyFixture('onsen', 'bathhouse-noren', '暖湯入口布簾', '用櫻花紋布簾標示泡湯區入口。', 'image', 30, 'gallery-frames'),
+    specialtyFixture('onsen', 'wooden-bucket-stand', '檜木澡桶與木杓架', '展示木桶、木杓和泡湯用品。', 'package', 32, 'spice-display'),
+    specialtyFixture('onsen', 'footbath-bench', '足湯休息木椅', '讓客人坐著享受溫熱足湯時光。', 'heart', 36, 'wooden-bench'),
+    specialtyFixture('onsen', 'bamboo-stool-set', '檜木浴椅與洗浴盆', '擺放傳統木浴椅和圓形洗浴盆。', 'grid', 34, 'tasting-court'),
+    specialtyFixture('onsen', 'sakura-aroma-lamp', '櫻花蒸氣柔光燈', '把櫻花色光影映在暖湯木格上。', 'sun', 31, 'garden-lights'),
+    specialtyFixture('onsen', 'onsen-menu-board', '湯屋泡湯禮儀牌', '以親切圖示介紹泡湯小提醒。', 'image', 25, 'neon-sign'),
+    specialtyFixture('onsen', 'rain-chain-mobile', '湯煙竹簾風鈴', '讓竹簾和小鈴隨風輕輕搖曳。', 'wind', 27, 'starlight-mobile'),
+  ],
+};
 
 function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpecialty | undefined {
   const text = `${shopId} ${shopName}`;
@@ -684,6 +837,7 @@ const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorScene
   book: 'book',
   toy: 'toy',
   craft: 'craft',
+  onsen: 'kimono',
 };
 
 /** One shared illustrated room per shop type/specialty; names and placements remain store-specific. */
@@ -722,8 +876,12 @@ const specialtyEquipment = (type: MallShopType, specialty?: GeneralShopSpecialty
   return seedDecorations(type, shopEquipment[type], 'equipment');
 };
 
-const variantDecorations = (type: MallShopType, fixtureLimit?: number): ShopInteriorDecoration[] => {
-  const allFixtures = type === 'general' ? generalFixtures : shopFixtures[type];
+const variantDecorations = (
+  type: MallShopType,
+  fixtureLimit?: number,
+  themedFixtures?: DecorationFixture[],
+): ShopInteriorDecoration[] => {
+  const allFixtures = themedFixtures ?? (type === 'general' ? generalFixtures : shopFixtures[type]);
   const fixtures = fixtureLimit === undefined ? allFixtures : allFixtures.slice(0, fixtureLimit);
   return fixtures.flatMap((fixture) =>
     finishes[type].map((finish) =>
@@ -740,6 +898,9 @@ const variantDecorations = (type: MallShopType, fixtureLimit?: number): ShopInte
     ),
   );
 };
+
+const specialtyVariantDecorations = (specialty: GeneralShopSpecialty) =>
+  variantDecorations('general', 10, GENERAL_SPECIALTY_FIXTURES[specialty]);
 
 const featureDecorations = (type: MallShopType): ShopInteriorDecoration[] =>
   (signatureDecorations[type] ?? []).map((seed) =>
@@ -770,7 +931,7 @@ const fluffyMarshmallowCafeStaff: ShopInteriorDecoration[] = DOG_STAFF_PROFILES.
 );
 
 const fluffyCafeReplacedDecorationIds = new Set(
-  variantDecorations('general', 10)
+  specialtyVariantDecorations('cafe')
     .slice(-fluffyMarshmallowCafeStaff.length)
     .map(({ id }) => id),
 );
@@ -807,6 +968,9 @@ export const SHOP_INTERIOR_DECORATION_BY_ID = Object.fromEntries(
   [
     ...Object.values(previousShopInteriorDecorations).flat(),
     ...Object.values(SHOP_INTERIOR_DECORATIONS).flat(),
+    ...Object.values(GENERAL_SPECIALTY_FIXTURES).flatMap((fixtures) =>
+      variantDecorations('general', 10, fixtures),
+    ),
     ...fluffyMarshmallowCafeStaff,
     ...Object.entries(generalShopEquipment).flatMap(([specialty, seeds]) =>
       seedDecorations('general', seeds, `equipment-${specialty}`),
@@ -827,7 +991,7 @@ export function getShopInteriorDecorations(
   const active = type === 'general' && specialty
     ? [
       ...legacyDecorations.general,
-      ...variantDecorations('general', 10),
+      ...specialtyVariantDecorations(specialty),
       ...specialtyEquipment('general', specialty),
     ]
     : SHOP_INTERIOR_DECORATIONS[type];

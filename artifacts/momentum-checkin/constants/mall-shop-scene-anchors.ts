@@ -68,6 +68,7 @@ export function classifyDecoration(d: { id: string; name?: string; icon?: string
   const visual = (d.visual ?? '').toLowerCase();
   const icon = (d.icon ?? '').toLowerCase();
   const text = `${id} ${visual} ${(d.name ?? '').toLowerCase()}`;
+  if (/onsen-bath|溫泉池|暖湯池/.test(text)) return { cls: 'floor', scale: 1.18 };
   // Staff and large appliances/furniture stand on the floor, even when the
   // artwork id contains "machine" or "oven".
   if (/staff/.test(text) || /freezer|warmer|steamer|kiln|wardrobe|oven-large/.test(id)) return { cls: 'floor', scale: 1.2 };

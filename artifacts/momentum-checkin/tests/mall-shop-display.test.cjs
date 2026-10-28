@@ -87,6 +87,27 @@ test('cloud fragrance shop has fragrance bottles and diffuser stones', () => {
   assert.equal(new Set(products.map(({ id }) => id)).size, 60);
 });
 
+test('Sakura Hot Spring display cabinet offers a unique 60-item bath-goods catalog', () => {
+  const suppliesCabinet = {
+    id: 'general-equipment-onsen-onsen-supply-case',
+    name: '溫泉用品玻璃展示櫃',
+    description: '分格展示入浴鹽、香皂、浴巾與泡湯小物。',
+  };
+  assert.equal(canDisplayShopProducts(suppliesCabinet), true);
+  const products = getShopFixtureProductCatalog(
+    'theme-floor-15-shop-1',
+    '櫻花暖湯紀念店',
+    'general',
+    suppliesCabinet,
+  );
+  assert.equal(products.length, 60);
+  assert.equal(new Set(products.map(({ id }) => id)).size, 60);
+  assert.ok(products.every(({ theme }) => theme === 'onsen'));
+  assert.ok(products.some(({ name }) => name === '櫻花入浴鹽小罐'));
+  assert.ok(products.some(({ name }) => name === '溫泉旅館毛巾組'));
+  assert.ok(products.some(({ name }) => name === '櫻花紋浴衣'));
+});
+
 test('bakery croissants have a matching animated pastry illustration', () => {
   const products = getShopFixtureProductCatalog(
     'strawberry-bakery',

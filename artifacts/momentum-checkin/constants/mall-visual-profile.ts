@@ -40,6 +40,10 @@ export type MallObjectArchetype =
   | 'sewing-machine'
   | 'electronics-bench'
   | 'jewelry-case'
+  | 'onsen-bath'
+  | 'onsen-supplies'
+  | 'onsen-steamer'
+  | 'onsen-yukata-rack'
   | 'dog-staff-huahua'
   | 'dog-staff-milkshake'
   | 'dog-staff-xiaoniu'
@@ -96,6 +100,10 @@ const ARCHETYPES = new Set<MallObjectArchetype>([
   'sewing-machine',
   'electronics-bench',
   'jewelry-case',
+  'onsen-bath',
+  'onsen-supplies',
+  'onsen-steamer',
+  'onsen-yukata-rack',
   'dog-staff-huahua',
   'dog-staff-milkshake',
   'dog-staff-xiaoniu',

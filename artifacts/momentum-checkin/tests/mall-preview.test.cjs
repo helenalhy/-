@@ -278,6 +278,61 @@ test('shop interiors offer shop-specific equipment while keeping each default ca
   );
 });
 
+test('general shops receive forty distinct decor variants for their specialty, including the 15F onsen shop', () => {
+  const specialtyCases = [
+    ['cafe', '暖陽咖啡館'],
+    ['candy', '糖果禮物店'],
+    ['icecream', '雪糕小屋'],
+    ['bakery', '草莓烘焙屋'],
+    ['tea', '花草茶館'],
+    ['food', '暖湯食堂'],
+    ['flower', '花園苗圃'],
+    ['book', '繪本書店'],
+    ['toy', '玩具模型店'],
+    ['craft', '手作工房'],
+    ['onsen', '櫻花暖湯紀念店'],
+  ];
+  const signatures = [];
+
+  for (const [specialty, name] of specialtyCases) {
+    const options = shopInteriorCatalog.getShopInteriorDecorations(
+      'general',
+      `theme-${specialty}-store`,
+      name,
+    );
+    assert.equal(options.length, 50, `${name} should retain its 50-choice catalog`);
+    const themedFixtures = options.filter(({ id }) => id.startsWith(`general-${specialty}-`));
+    assert.equal(themedFixtures.length, 40, `${name} should have ten fixtures in four finishes`);
+    signatures.push(themedFixtures.map(({ name: fixtureName }) => fixtureName).join('|'));
+  }
+
+  assert.equal(new Set(signatures).size, specialtyCases.length, 'each general-store specialty should have its own decor set');
+
+  const onsenStore = mallCatalog.MALL_ITEMS.find((item) => item.name === '櫻花暖湯紀念店');
+  assert.ok(onsenStore, 'the floor catalog should include the Sakura Hot Spring shop');
+  const onsen = shopInteriorCatalog.getShopInteriorDecorations('general', onsenStore.id, onsenStore.name);
+  assert.ok(onsen.some((item) => item.name === '櫻花露天暖湯池' && item.visual === 'onsen-bath'));
+  assert.ok(onsen.some((item) => item.name === '溫泉用品玻璃展示櫃' && item.visual === 'onsen-supplies'));
+  assert.ok(onsen.some((item) => item.name === '柚香蒸氣暖浴器' && item.visual === 'onsen-steamer'));
+  assert.ok(onsen.some((item) => item.name === '浴衣與腰帶整理架' && item.visual === 'onsen-yukata-rack'));
+
+  const previouslyAvailableGeneralItem = shopInteriorCatalog.getShopInteriorDecorations(
+    'general',
+    'unclassified-store',
+    '小店',
+  )[6];
+  const onsenWithArchivedItem = shopInteriorCatalog.getShopInteriorDecorations(
+    'general',
+    onsenStore.id,
+    onsenStore.name,
+    [previouslyAvailableGeneralItem.id],
+  );
+  assert.ok(
+    onsenWithArchivedItem.some(({ id }) => id === previouslyAvailableGeneralItem.id),
+    'previously owned general-store items remain available in the onsen shop archive',
+  );
+});
+
 function pager(app) {
   return app.nodes().find((node) => node.type === 'CatalogPager');
 }

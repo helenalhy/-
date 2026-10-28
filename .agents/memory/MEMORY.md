@@ -7,3 +7,4 @@
 - [打卡與金幣原子性](checkin-atomicity.md) — 一次打卡同時更新完成狀態與金幣時，以單筆可恢復交易記錄避免跨儲存項目部分成功。
 - [巢狀讀屏標籤](nested-screenreader-labels.md) — 外層可按元件指定 accessibilityLabel 時，巢狀資訊須合併到外層標籤才會可靠播報。
 - [商場讀取失敗](mall-read-failure.md) — 無法驗證已存資料時保留原始值、停止同步與變更，並顯示錯誤而非空商場。
+- [手機網頁固定淺色](mobile-web-light-theme.md) — 手機瀏覽器須沿用 preview 糖果色，不隨作業系統切換深色。

@@ -8,8 +8,8 @@
  * brand. If a sibling web artifact exists, read its index.css and convert the
  * HSL values to hex so both artifacts use the same palette.
  *
- * To add dark mode, add a `dark` key with the same token names.
- * The useColors() hook will automatically pick it up.
+ * The native app follows system dark mode. Web deliberately stays on
+ * the preview's light palette so mobile browsers match the candy-color UI.
  */
 
 const colors = {

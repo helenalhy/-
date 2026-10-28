@@ -31,9 +31,10 @@ export const GUEST_ROWS = 3;
 export const GUEST_ATLAS_FRAME_WIDTH = 192;
 export const GUEST_FRAME_WIDTH = 48;
 export const GUEST_FRAME_HEIGHT = 64;
+// New square atlases have larger character cutouts; this frame yields about 55px of visible character height, matching 5F.
 export const GUEST_FRAME_SIZES_BY_FLOOR = Array.from({ length: 20 }, (_, index) =>
   index >= 9 && index <= 18
-    ? { width: 51.2, height: 1024 / 3 / 4 }
+    ? { width: 36, height: 60 }
     : { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT },
 );
 export const GUEST_COUNTS_BY_FLOOR = [10, 10, 10, 12, 11, 10, 11, 13, 10, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 10] as const;

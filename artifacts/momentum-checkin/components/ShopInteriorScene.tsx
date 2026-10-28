@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorAreaId, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
 import { classifyDecoration, mapCoverPoint, resolveObjectAnchor } from '@/constants/mall-shop-scene-anchors';
+import { getMallFloorArtProfile } from '@/constants/mall-floor-art';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
 import { canDisplayShopProducts, SHOP_DISPLAY_SLOT_COUNT, type ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { ShopMerchandiseVisual } from '@/components/ShopMerchandiseVisual';
@@ -91,6 +92,8 @@ export function ShopInteriorScene({
   testID,
   sceneKey,
   shopName,
+  shopId,
+  floor,
   shopColor,
   areaId,
   areaLabel,
@@ -107,6 +110,8 @@ export function ShopInteriorScene({
   testID: string;
   sceneKey: ShopInteriorSceneKey;
   shopName: string;
+  shopId: string;
+  floor: number;
   shopColor: string;
   areaId: ShopInteriorAreaId;
   areaLabel: string;
@@ -130,6 +135,15 @@ export function ShopInteriorScene({
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
   const interactionSequence = useRef(0);
   const merchandiseMotion = useRef(new Animated.Value(0)).current;
+  const themeMotion = useRef(new Animated.Value(0)).current;
+  const floorArt = getMallFloorArtProfile(floor, shopId);
+  const themeBadgeShape = [
+    { borderRadius: 12 },
+    { borderRadius: 7 },
+    { borderRadius: 15 },
+    { borderRadius: 5 },
+    { borderRadius: 18 },
+  ][floorArt.variant];
   const completeDogInteraction = useCallback((id: number) => {
     setDogInteraction((current) => current?.id === id ? null : current);
   }, []);
@@ -160,6 +174,18 @@ export function ShopInteriorScene({
     loop.start();
     return () => loop.stop();
   }, [hasMerchandise, merchandiseMotion]);
+  useEffect(() => {
+    if (reducedMotion) {
+      themeMotion.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(themeMotion, { toValue: 1, duration: 1500, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(themeMotion, { toValue: 0, duration: 1500, useNativeDriver: Platform.OS !== 'web' }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [reducedMotion, themeMotion]);
   const startDogInteraction = (action: DogStaffInteractionAction, food?: DogStaffFoodOption) => {
     if (!selectedDog) return;
     interactionSequence.current += 1;
@@ -193,6 +219,32 @@ export function ShopInteriorScene({
     >
       <ImageBackground onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} source={SCENES[sceneKey]} resizeMode="cover" style={styles.imageStage} imageStyle={styles.imageShape}>
         <View style={styles.topScrim} pointerEvents="none" />
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: floorArt.soft, opacity: 0.12 }]} />
+        <View
+          testID={`shop-interior-floor-theme-${floor}-${shopId}`}
+          pointerEvents="none"
+          style={[styles.themeRail, { backgroundColor: floorArt.accent }]}
+        >
+          {Array.from({ length: 5 + floorArt.pattern }, (_, index) => (
+            <View key={index} style={[styles.themeRailMark, { backgroundColor: index % 2 ? floorArt.secondary : floorArt.soft }]} />
+          ))}
+        </View>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.themeBadge,
+            themeBadgeShape,
+            { backgroundColor: floorArt.shopSoft, borderColor: floorArt.shopAccent },
+            {
+              opacity: themeMotion.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] }),
+              transform: [{ translateY: themeMotion.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }],
+            },
+          ]}
+        >
+          <Feather name={floorArt.emblem as keyof typeof Feather.glyphMap} size={11} color={floorArt.accent} />
+          <Text style={[styles.themeBadgeText, { color: floorArt.accent }]}>{floor}F · {floorArt.title} · {String(floorArt.displayMark).padStart(2, '0')}</Text>
+          <Feather name={floorArt.ornament as keyof typeof Feather.glyphMap} size={9} color={floorArt.shopAccent} />
+        </Animated.View>
         <View style={[styles.namePlaque, { backgroundColor: colors.card, borderColor: shopColor }]} pointerEvents="none">
           <View style={[styles.plaqueDot, { backgroundColor: shopColor }]} />
           <Text numberOfLines={1} style={[styles.nameText, { color: colors.foreground }]}>{shopName}</Text>
@@ -1014,6 +1066,10 @@ const styles = StyleSheet.create({
   },
   imageStage: { width: '100%', aspectRatio: 0.94, minHeight: 360, maxHeight: 510, justifyContent: 'flex-start' },
   imageShape: { width: '100%', height: '100%' },
+  themeRail: { position: 'absolute', left: 0, right: 0, top: 0, height: 7, zIndex: 1, flexDirection: 'row', justifyContent: 'space-around', overflow: 'hidden' },
+  themeRailMark: { width: 20, height: 7, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  themeBadge: { position: 'absolute', top: 48, right: 9, minHeight: 23, zIndex: 1, borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#74575D', shadowOpacity: 0.1, shadowRadius: 3, elevation: 1 },
+  themeBadgeText: { fontSize: 8, lineHeight: 11, fontWeight: '900' },
   topScrim: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255,248,239,0.08)',

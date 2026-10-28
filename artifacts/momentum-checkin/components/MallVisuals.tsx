@@ -1,20 +1,15 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, Platform, StyleSheet, View, type ImageSourcePropType } from 'react-native';
+import { Animated, Image, Platform, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import palette from '@/constants/colors';
 import { getShopFacadeVariant, resolveMallObjectArchetype, type MallObjectArchetype, type MallVisualCategory } from '@/constants/mall-visual-profile';
+import { getMallFloorArtProfile } from '@/constants/mall-floor-art';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { ThemedMallObject } from './ThemedMallObject';
 import { MallCustomers } from './MallCustomers';
 
 const c = palette.light;
 const useNativeDriver = Platform.OS !== 'web';
-
-const SHOP_FACADE_ARTWORK: readonly ImageSourcePropType[] = [
-  require('../assets/images/mall-shop-classic.png'),
-  require('../assets/images/mall-shop-arched.png'),
-  require('../assets/images/mall-shop-wide.png'),
-  require('../assets/images/mall-shop-corner.png'),
-];
 
 const OBJECT_ARTWORK: Partial<Record<MallObjectArchetype, ImageSourcePropType>> = {
   'cloud-walk': require('../assets/images/mall-cloud-walk.png'),
@@ -59,9 +54,11 @@ const OBJECT_ARTWORK: Partial<Record<MallObjectArchetype, ImageSourcePropType>> 
   'jewelry-case': require('../assets/images/mall-jewelry-case.png'),
 };
 
-export function MallObjectVisual({ id, itemId, color, icon, category, isActive = true, presentation = 'standard', dogOutfitId, dogAccessoryId }: {
+export function MallObjectVisual({ id, itemId, itemName, floor = 1, color, icon, category, isActive = true, presentation = 'standard', dogOutfitId, dogAccessoryId }: {
   id: string;
   itemId?: string;
+  itemName?: string;
+  floor?: number;
   color: string;
   icon: string;
   category: MallVisualCategory;
@@ -73,9 +70,10 @@ export function MallObjectVisual({ id, itemId, color, icon, category, isActive =
   const motion = useRef(new Animated.Value(0)).current;
   const shimmer = useRef(new Animated.Value(0)).current;
   const animationSeed = itemId ?? id;
+  const reducedMotion = useReducedMotion() !== false;
 
   useEffect(() => {
-    if (!isActive) {
+    if (!isActive || reducedMotion) {
       motion.setValue(0);
       shimmer.setValue(0);
       return;
@@ -100,15 +98,16 @@ export function MallObjectVisual({ id, itemId, color, icon, category, isActive =
       floatLoop.stop();
       sparkleLoop.stop();
     };
-  }, [animationSeed, isActive, motion, shimmer]);
+  }, [animationSeed, isActive, motion, reducedMotion, shimmer]);
 
   const archetype = resolveMallObjectArchetype(id, icon, category);
-  const artwork = category === 'shop'
-    ? SHOP_FACADE_ARTWORK[getShopFacadeVariant(animationSeed)]
-    : OBJECT_ARTWORK[archetype];
+  const artwork = category === 'shop' ? undefined : OBJECT_ARTWORK[archetype];
+  const floorArt = getMallFloorArtProfile(floor, animationSeed);
   const drawing = artwork
     ? <Image source={artwork} resizeMode="contain" fadeDuration={0} style={s.sceneSprite} />
-    : <ThemedMallObject id={archetype} color={color} icon={icon} dogOutfitId={dogOutfitId} dogAccessoryId={dogAccessoryId} />;
+    : category === 'shop'
+      ? <MallStorefrontArt itemId={animationSeed} itemName={itemName ?? '特色小店'} itemIcon={icon} floor={floor} itemColor={color} />
+      : <ThemedMallObject id={archetype} color={color} icon={icon} dogOutfitId={dogOutfitId} dogAccessoryId={dogAccessoryId} />;
   const canvasPresentation = presentation === 'mall-storefront'
     ? s.mallStorefrontCanvas
     : undefined;
@@ -127,6 +126,70 @@ export function MallObjectVisual({ id, itemId, color, icon, category, isActive =
           <Feather name="star" size={8} color={c.candyLemon} />
         </Animated.View>
       )}
+    </View>
+  );
+}
+
+function MallStorefrontArt({ itemId, itemName, itemIcon, floor, itemColor }: {
+  itemId: string;
+  itemName: string;
+  itemIcon: string;
+  floor: number;
+  itemColor: string;
+}) {
+  const art = getMallFloorArtProfile(floor, itemId);
+  const roofShape = [
+    { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+    { borderTopLeftRadius: 7, borderTopRightRadius: 7 },
+    { borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+    { borderTopLeftRadius: 4, borderTopRightRadius: 17 },
+    { borderTopLeftRadius: 13, borderTopRightRadius: 13 },
+  ][art.variant];
+  const signShape = [
+    { borderRadius: 6 },
+    { borderRadius: 14 },
+    { borderRadius: 4 },
+    { borderRadius: 9 },
+    { borderRadius: 18 },
+  ][art.pattern % 5];
+
+  return (
+    <View testID={`mall-storefront-art-${floor}-${itemId}`} style={s.storefrontArt}>
+      <View style={[s.storefrontRoof, roofShape, { backgroundColor: art.accent, borderColor: art.secondary }]}>
+        <View style={s.storefrontRoofLine} />
+        <View style={s.storefrontRoofIcons}>
+          <Feather name={art.emblem as keyof typeof Feather.glyphMap} size={9} color={palette.light.card} />
+          <View style={[s.storefrontRoofGem, { backgroundColor: art.secondary }]} />
+          <Text style={s.storefrontMark}>{String(art.displayMark).padStart(2, '0')}</Text>
+        </View>
+      </View>
+      <View style={[s.storefrontShell, { borderColor: art.shopAccent, backgroundColor: art.shopSoft }]}>
+        <View style={[s.storefrontSign, signShape, { backgroundColor: palette.light.card, borderColor: art.shopAccent }]}>
+          <Feather name={itemIcon as keyof typeof Feather.glyphMap} size={9} color={art.shopAccent} />
+          <Text numberOfLines={1} style={[s.storefrontSignText, { color: art.shopAccent }]}>{itemName}</Text>
+        </View>
+        <View style={s.storefrontWindowRow}>
+          <View style={[s.storefrontWindow, { borderColor: art.shopAccent, backgroundColor: palette.light.card }]}>
+            <View style={[s.storefrontWindowShine, { backgroundColor: art.secondary }]} />
+            <View style={[s.storefrontWindowShelf, { backgroundColor: art.shopAccent }]} />
+            <Feather name={art.ornament as keyof typeof Feather.glyphMap} size={10} color={art.shopAccent} />
+          </View>
+          <View style={[s.storefrontDoor, { borderColor: art.shopAccent, backgroundColor: itemColor }]}>
+            <View style={[s.storefrontDoorGlass, { backgroundColor: palette.light.card }]} />
+            <View style={[s.storefrontDoorKnob, { backgroundColor: art.accent }]} />
+          </View>
+          <View style={[s.storefrontWindow, { borderColor: art.shopAccent, backgroundColor: palette.light.card }]}>
+            <View style={[s.storefrontWindowShine, { backgroundColor: art.secondary }]} />
+            <Feather name={art.secondaryOrnament as keyof typeof Feather.glyphMap} size={9} color={art.shopAccent} />
+          </View>
+        </View>
+        <View style={[s.storefrontAwning, { backgroundColor: art.secondary, borderColor: art.shopAccent }]}>
+          {Array.from({ length: 4 + (art.pattern % 4) }, (_, index) => (
+            <View key={index} style={[s.storefrontAwningStripe, { backgroundColor: (index + art.displayMark) % 2 ? art.shopAccent : palette.light.card }]} />
+          ))}
+        </View>
+      </View>
+      <View style={[s.storefrontBase, { backgroundColor: art.accent }]} />
     </View>
   );
 }
@@ -157,6 +220,25 @@ const s = StyleSheet.create({
   mallStorefrontCanvas: { width: 84, height: 63 },
   mallStorefrontMotion: { width: 84, height: 63 },
   sceneSprite: { width: '100%', height: '100%' },
+  storefrontArt: { width: 82, height: 62, justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 4, overflow: 'visible' },
+  storefrontRoof: { position: 'absolute', zIndex: 2, top: 1, width: 73, height: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  storefrontRoofLine: { position: 'absolute', left: 0, right: 0, bottom: 2, height: 2, backgroundColor: 'rgba(255,255,255,0.55)' },
+  storefrontRoofIcons: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  storefrontRoofGem: { width: 4, height: 4, borderRadius: 3, transform: [{ rotate: '45deg' }] },
+  storefrontMark: { color: palette.light.card, fontSize: 5, fontWeight: '900' },
+  storefrontShell: { width: 70, height: 47, borderWidth: 1.5, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomWidth: 2, alignItems: 'center', justifyContent: 'flex-end', paddingTop: 9 },
+  storefrontSign: { position: 'absolute', zIndex: 2, top: 3, width: '83%', minHeight: 13, paddingHorizontal: 3, borderWidth: 0.8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 },
+  storefrontSignText: { maxWidth: 46, fontSize: 5.5, lineHeight: 7, fontWeight: '900' },
+  storefrontWindowRow: { width: '93%', height: 23, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 2 },
+  storefrontWindow: { width: 17, height: 18, borderWidth: 1, borderRadius: 4, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  storefrontWindowShine: { position: 'absolute', top: 1, left: 2, width: 3, height: 11, borderRadius: 2, opacity: 0.7 },
+  storefrontWindowShelf: { position: 'absolute', left: 0, right: 0, bottom: 3, height: 1.5 },
+  storefrontDoor: { width: 17, height: 20, borderWidth: 1, borderTopLeftRadius: 7, borderTopRightRadius: 7, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 2 },
+  storefrontDoorGlass: { position: 'absolute', top: 2, width: 10, height: 8, borderRadius: 4, opacity: 0.8 },
+  storefrontDoorKnob: { position: 'absolute', right: 2, bottom: 4, width: 2, height: 2, borderRadius: 2 },
+  storefrontAwning: { width: '100%', height: 7, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-around', overflow: 'hidden' },
+  storefrontAwningStripe: { width: 10, height: '100%', borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  storefrontBase: { width: 76, height: 3, borderRadius: 3 },
   objectSparkle: { position: 'absolute', right: 6, top: 4 },
   visitorLayer: { zIndex: 10, elevation: 10 },
   sparkle: { position: 'absolute' },

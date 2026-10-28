@@ -199,6 +199,8 @@ function MallSceneSlot({
           <MallObjectVisual
             id={item.visual ?? item.id}
             itemId={item.id}
+            itemName={item.name}
+            floor={item.floor}
             color={item.color}
             icon={item.icon}
             category={item.category}

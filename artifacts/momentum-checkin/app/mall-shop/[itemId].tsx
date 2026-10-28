@@ -49,10 +49,14 @@ function ShopInteriorAnimatedObject({
   icon,
   category,
   visual,
+  itemName,
+  floor,
   testID,
 }: {
   id: string;
   itemId: string;
+  itemName?: string;
+  floor?: number;
   color: string;
   icon: string;
   category: MallVisualCategory;
@@ -89,7 +93,7 @@ function ShopInteriorAnimatedObject({
       pointerEvents="none"
       style={[styles.objectEntrance, { opacity: entranceOpacity, transform: [{ scale: entranceScale }] }]}
     >
-      <MallObjectVisual id={visual ?? id} itemId={itemId} color={color} icon={icon} category={category} isActive />
+      <MallObjectVisual id={visual ?? id} itemId={itemId} itemName={itemName} floor={floor} color={color} icon={icon} category={category} isActive />
     </Animated.View>
   );
 }
@@ -325,6 +329,8 @@ export default function MallShopInteriorScreen() {
                 testID="shop-interior-storefront-visual"
                 id={shop.visual ?? shop.id}
                 itemId={shop.id}
+                itemName={shop.name}
+                floor={shop.floor}
                 color={shop.color}
                 icon={shop.icon}
                 category="shop"
@@ -343,6 +349,8 @@ export default function MallShopInteriorScreen() {
               testID="shop-interior-scene"
               sceneKey={getShopInteriorSceneKey(shop.shopType, shop.id, shop.name)}
               shopName={shop.name}
+              shopId={shop.id}
+              floor={shop.floor}
               shopColor={shop.color}
               areaId={selectedArea}
               areaLabel={getShopInteriorAreaLabel(selectedArea)}

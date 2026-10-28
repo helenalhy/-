@@ -4,7 +4,8 @@ import type { MallWing } from '@/constants/mall-layout';
 import { useColors } from '@/hooks/useColors';
 
 type WingTabKeyboardEvent = {
-  key: string;
+  key?: string;
+  nativeEvent?: { key: string };
   preventDefault: () => void;
 };
 
@@ -96,9 +97,10 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   }
 
   function handleTabKeyDown(event: WingTabKeyboardEvent) {
+    const key = event.key ?? event.nativeEvent?.key;
     const activeIndex = WINGS.findIndex((wing) => wing.id === activeWing);
     let nextIndex: number;
-    switch (event.key) {
+    switch (key) {
       case 'ArrowRight':
         nextIndex = (activeIndex + 1) % WINGS.length;
         break;
@@ -139,7 +141,8 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
               ref={(node) => { tabRefs.current[wing.id] = node ?? undefined; }}
               testID={`mall-wing-${wing.id}`}
               onPress={() => changeWing(wing.id)}
-              onKeyDown={Platform.OS === 'web' ? handleTabKeyDown : undefined}
+              onKeyDown={handleTabKeyDown}
+              focusable={Platform.OS === 'web' ? undefined : selected}
               tabIndex={selected ? 0 : -1}
               aria-selected={selected}
               accessibilityRole="tab"

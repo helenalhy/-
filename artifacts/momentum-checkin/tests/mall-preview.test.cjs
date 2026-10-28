@@ -1409,6 +1409,111 @@ test('mall wing keyboard changes respect reduced motion while touch changes keep
   assert.equal(findWing('mall-wing-pager').props.pagingEnabled, true, 'native swipe paging remains enabled');
 });
 
+test('iOS and Android mall wing tabs handle native keyboard events and move focus', () => {
+  for (const platformOS of ['ios', 'android']) {
+    const state = [360, 'main', '', false];
+    let cursor = 0;
+    const focusedWings = [];
+    const announcements = [];
+    const react = {
+      createElement: (type, props, ...children) => {
+        if (type === 'Pressable' && props?.ref) {
+          props.ref({ focus() { focusedWings.push(props.testID.slice('mall-wing-'.length)); } });
+        }
+        return { type, props: { ...props, children } };
+      },
+      useRef: (current) => ({ current }),
+      useEffect: () => {},
+      useState: (initial) => {
+        const index = cursor++;
+        return [state[index] ?? initial, (next) => { state[index] = typeof next === 'function' ? next(state[index]) : next; }];
+      },
+    };
+    const module = { exports: {} };
+    new Function('require', 'module', 'exports', wingPagerSource)(
+      (name) => {
+        if (name === 'react') return react;
+        if (name === 'react-native') return {
+          AccessibilityInfo: {
+            isReduceMotionEnabled: async () => false,
+            addEventListener: () => ({ remove() {} }),
+            announceForAccessibility(message) { announcements.push(message); },
+          },
+          Platform: { OS: platformOS },
+          Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: (styles) => styles },
+          Text: 'Text', View: 'View',
+        };
+        if (name === '@/hooks/useColors') return { useColors: () => ({}) };
+        throw new Error(`Unexpected dependency: ${name}`);
+      },
+      module,
+      module.exports,
+    );
+    const renderPager = () => {
+      cursor = 0;
+      return module.exports.MallWingPager({
+        counts: { main: 0, annex: 0, extension: 0, extension3: 0, extension4: 0 },
+        onWingChange() {},
+        renderWing: () => null,
+      });
+    };
+    const nodes = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node)
+      ? node.flatMap(nodes)
+      : [node, ...nodes(node.props?.children)];
+    let pager = renderPager();
+    const find = (testID) => nodes(pager).find((node) => node.props.testID === testID);
+    const sendNativeKey = (wing, key) => {
+      let prevented = false;
+      const tab = find(`mall-wing-${wing}`);
+      assert.equal(typeof tab.props.onKeyDown, 'function', `${platformOS} wires its native key handler`);
+      tab.props.onKeyDown({ nativeEvent: { key }, preventDefault() { prevented = true; } });
+      return prevented;
+    };
+
+    assert.equal(find('mall-wing-main').props.focusable, true, `${platformOS} can focus the selected tab`);
+    assert.equal(find('mall-wing-annex').props.focusable, false, `${platformOS} skips unselected tabs`);
+    assert.equal(sendNativeKey('main', 'ArrowRight'), true);
+    pager = renderPager();
+    assert.equal(find('mall-wing-annex').props.accessibilityState.selected, true);
+    assert.equal(find('mall-wing-annex').props.focusable, true);
+    assert.deepEqual(focusedWings.at(-1), 'annex');
+    if (platformOS === 'ios') {
+      assert.deepEqual(announcements, ['目前所在區域：延伸區']);
+      assert.equal(find('mall-wing-announcement'), undefined, 'iOS keeps its system announcement without a second live region');
+    } else {
+      assert.deepEqual(announcements, [], 'Android does not also call the iOS announcement API');
+      assert.deepEqual(find('mall-wing-announcement').props.children, ['目前所在區域：延伸區']);
+    }
+
+    assert.equal(sendNativeKey('annex', 'Home'), true);
+    pager = renderPager();
+    assert.equal(find('mall-wing-main').props.accessibilityState.selected, true);
+    assert.deepEqual(focusedWings.at(-1), 'main');
+
+    assert.equal(sendNativeKey('main', 'End'), true);
+    pager = renderPager();
+    assert.equal(find('mall-wing-extension4').props.accessibilityState.selected, true);
+    assert.deepEqual(focusedWings.at(-1), 'extension4');
+
+    let prevented = false;
+    find('mall-wing-extension4').props.onKeyDown({
+      nativeEvent: { key: 'Escape' },
+      preventDefault() { prevented = true; },
+    });
+    assert.equal(prevented, false, `${platformOS} leaves unrelated keys to the native control`);
+    if (platformOS === 'ios') {
+      assert.deepEqual(announcements, [
+        '目前所在區域：延伸區',
+        '目前所在區域：主商場',
+        '目前所在區域：延伸區四',
+      ]);
+    } else {
+      assert.deepEqual(announcements, []);
+      assert.deepEqual(find('mall-wing-announcement').props.children, ['目前所在區域：延伸區四']);
+    }
+  }
+});
+
 test('native mall wing changes use one platform-appropriate polite announcement', () => {
   for (const platformOS of ['ios', 'android']) {
     const state = [360, 'main', ''];

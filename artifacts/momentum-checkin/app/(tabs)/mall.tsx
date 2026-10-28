@@ -317,7 +317,7 @@ export default function MallScreen() {
   const floorItems = MALL_ITEMS.filter((item) => item.floor === currentFloor);
   const searchTerm = searchQuery.trim().toLocaleLowerCase();
   const searchTerms = searchTerm.split(/\s+/).filter(Boolean);
-  const isSearching = searchTerms.length > 0;
+  const isSearching = searchTerms.length > 0 && !showCollection;
   const searchItems = useMemo(
     () => MALL_ITEMS.filter((item) => {
       if (!matchesMallSearch(item, searchTerms)) return false;
@@ -694,8 +694,7 @@ export default function MallScreen() {
     setPreviewSlotId(null);
     setWarehouseNotice(null);
     setShowCollection(true);
-    setSearchQuery('');
-    setCategory('all');
+    setSearchFilterResultMessage('');
     setCatalogPage(1);
     requestAnimationFrame(scrollToCatalog);
   }
@@ -714,8 +713,7 @@ export default function MallScreen() {
       setPlacementIntent(null);
       setPreviewSlotId(null);
       setShowCollection(true);
-      setSearchQuery('');
-      setCategory('all');
+      setSearchFilterResultMessage('');
       setCatalogPage(1);
       requestAnimationFrame(scrollToCatalog);
     } catch (error) {
@@ -1043,7 +1041,7 @@ export default function MallScreen() {
 
         <View style={styles.collectionTabs}>
           {([{ id: false, label: '本層兌換', icon: 'shopping-bag' }, { id: true, label: `倉庫 · ${collectionItems.length}`, icon: 'archive' }] as const).map((tab) => (
-            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setSearchQuery(''); setSearchFloor(null); setSearchPlacementFloor(null); setSearchWing(null); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
+            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setSearchFilterResultMessage(''); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
               <Feather name={tab.icon} size={16} color={colors.primary} />
               <Text style={[styles.filterText, { color: colors.primary }]}>{tab.label}</Text>
             </Pressable>
@@ -1098,7 +1096,7 @@ export default function MallScreen() {
         </View>
         <Text testID="mall-search-hint" style={[styles.searchHint, { color: colors.mutedForeground }]}>跨二十層搜尋名稱或描述；以空格分隔多個關鍵字，每個詞都需符合 · 可配合分類 · 搜尋及換層不扣金幣</Text>
 
-        {!isSearching && recentSearches.length > 0 && (
+        {!showCollection && !isSearching && recentSearches.length > 0 && (
           <View testID="mall-recent-searches" style={styles.recentSearches}>
             <View style={styles.recentSearchesHeader}>
               <Text style={[styles.searchFilterTitle, { color: colors.mutedForeground }]}>最近搜尋</Text>

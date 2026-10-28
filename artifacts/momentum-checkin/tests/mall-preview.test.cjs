@@ -413,6 +413,54 @@ test('multi-keyword search requires every term across names and descriptions and
   assert.equal(app.find('mall-search-floor-2'), undefined);
 });
 
+test('warehouse detour preserves search and filters while showing only owned unplaced items', async () => {
+  const catalog = [
+    { id: 'owned-unplaced-match', floor: 1, name: '花園倉庫裝飾', description: '綠色裝飾', category: 'decor', price: 20, ticketCost: 0 },
+    { id: 'owned-placed-match', floor: 1, name: '花園展示店', description: '已放置', category: 'decor', price: 30, ticketCost: 0 },
+    { id: 'unowned-unplaced-match', floor: 1, name: '花園新裝飾', description: '尚未兌換', category: 'decor', price: 40, ticketCost: 0 },
+    { id: 'other-floor-match', floor: 2, name: '花園二樓裝飾', description: '其他樓層', category: 'decor', price: 50, ticketCost: 0 },
+  ];
+  const originalPurchasedItems = ['owned-unplaced-match', 'owned-placed-match'];
+  const originalPlacements = { 'floor-2-right': 'owned-placed-match' };
+  const app = mount({
+    coins: 12,
+    purchasedItems: [...originalPurchasedItems],
+    mallPlacements: { ...originalPlacements },
+  }, catalog);
+
+  app.find('mall-search-input').props.onChangeText('花園');
+  app.render();
+  await app.press('mall-search-floor-1');
+  await app.press('mall-search-wing-unplaced');
+  await app.press('mall-category-decor');
+  assert.equal(pager(app).props.total, 2);
+
+  await app.press('collection-tab');
+  assert.equal(app.find('mall-search-input').props.value, '花園');
+  assert.equal(pager(app).props.total, 1);
+  assert.ok(app.find('restore-owned-unplaced-match'), 'the owned unplaced item remains in the warehouse');
+  assert.equal(app.find('restore-owned-placed-match'), undefined, 'placed items do not appear in the warehouse');
+  assert.equal(app.find('restore-unowned-unplaced-match'), undefined, 'unowned items do not appear in the warehouse');
+  assert.equal(app.find('search-select-owned-unplaced-match'), undefined, 'the warehouse is not replaced by search results');
+
+  await app.press('catalog-tab');
+  assert.equal(app.find('mall-search-input').props.value, '花園');
+  assert.equal(app.find('mall-search-floor-1').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-wing-unplaced').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-category-decor').props.accessibilityState.selected, true);
+  assert.equal(pager(app).props.total, 2, 'returning restores the original search results and filters');
+  assert.equal(app.habits.coins, 12);
+  assert.deepEqual(app.habits.purchasedItems, originalPurchasedItems);
+  assert.deepEqual(app.habits.mallPlacements, originalPlacements);
+  assert.deepEqual(app.calls, [], 'switching views does not change ownership, placement, or coins');
+
+  await app.press('warehouse-shortcut');
+  assert.equal(pager(app).props.total, 1, 'the warehouse shortcut also opens the owned unplaced collection');
+  await app.press('catalog-tab');
+  assert.equal(app.find('mall-search-input').props.value, '花園');
+  assert.equal(pager(app).props.total, 2, 'the shortcut return preserves the same search conditions');
+});
+
 test('recent searches load, apply, deduplicate, remove and clear without changing mall items or rewards', async () => {
   const storageKey = '@momentum/mall/recent-searches';
   const app = mount(

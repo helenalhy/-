@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 import type { RewardCategory } from '@/context/HabitsContext';
 import palette from './colors';
 import { createExpandedItems } from './mall-expansion';
+import { createNewFloorItems } from './mall-new-floor-catalogs';
 
 const c = palette.light;
 
@@ -51,6 +52,16 @@ export const MALL_FLOORS: MallFloorTheme[] = [
   { title: '彩虹藝術廊', description: '用顏色、雕塑和畫作記錄每一份靈感。', image: require('../assets/images/mall-floor-7.jpg'), accent: c.candyRoseDark, surface: c.candyCoral },
   { title: '星際觀測站', description: '仰望星空，讓小小進步走向更遠的地方。', image: require('../assets/images/mall-floor-8.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },
   { title: '世界美食集', description: '用暖暖的香氣，慶祝認真生活的自己。', image: require('../assets/images/mall-floor-9.jpg'), accent: c.candyCaramelDark, surface: c.candyLemon },
+  { title: '巡遊嘉年華大街', description: '跟著花車和音樂，一起慶祝每一個完成的目標。', image: require('../assets/images/mall-floor-10-carnival.jpg'), accent: c.candyRoseDark, surface: c.candyCoral },
+  { title: '影視製片夢工場', description: '走進片場、服裝工作室和電影首映的熱鬧世界。', image: require('../assets/images/mall-floor-11-film-studio.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },
+  { title: '冰晶雪國', description: '在極光、雪花與冰晶小屋之間慢慢探索。', image: require('../assets/images/mall-floor-12-ice-crystal.jpg'), accent: c.candySkyDark, surface: c.candySky },
+  { title: '古文明探險館', description: '尋找古陶、石刻和遺跡裡留下的故事。', image: require('../assets/images/mall-floor-13-ancient-exploration.jpg'), accent: c.candyCaramelDark, surface: c.candyLemon },
+  { title: '魔法學院', description: '在星光教室與魔法工房裡發現新的驚喜。', image: require('../assets/images/mall-floor-14-magic-academy.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },
+  { title: '櫻花溫泉小町', description: '穿過櫻花小巷，在溫泉旅館旁好好休息。', image: require('../assets/images/mall-floor-15-sakura-onsen.jpg'), accent: c.candyRoseDark, surface: c.candyPink },
+  { title: '復古中世紀石板城', description: '漫步古城街道，欣賞華麗的中世紀宮廷服飾。', image: require('../assets/images/mall-floor-16-medieval-court.jpg'), accent: c.candyCaramelDark, surface: c.candyPeach },
+  { title: '音樂舞台街', description: '沿著唱片店與表演舞台，聽見努力的節奏。', image: require('../assets/images/mall-floor-17-music-stage.jpg'), accent: c.candyRoseDark, surface: c.candyCoral },
+  { title: '積木創想樂園', description: '在繽紛積木城市裡動手拼出自己的小世界。', image: require('../assets/images/mall-floor-18-brick-park.jpg'), accent: c.candyCaramelDark, surface: c.candyLemon },
+  { title: '毛茸茸寵物樂園', description: '在寵物照護小站和遊樂區認識新朋友。', image: require('../assets/images/mall-floor-19-pet-park.jpg'), accent: c.candyMintDark, surface: c.candyMint },
   { title: '天空花園', description: '來到雲端，在彩虹和城市風景中休息。', image: require('../assets/images/mall-floor-10.jpg'), accent: c.candySkyDark, surface: c.candySky },
 ];
 
@@ -87,9 +98,9 @@ export const MALL_ITEMS: MallItem[] = [
   item(9, 'world-kitchen', '環球小食堂', '一餐小小的慶祝，也很重要', 'coffee', 'shop', 110, 3, c.candyPeach),
   item(9, 'tasting-court', '共享餐桌', '好好坐下來，享受生活', 'grid', 'facility', 80, 2, c.candyCaramel),
   item(9, 'spice-display', '香料展示架', '用世界各地的香氣裝點美食街', 'package', 'decor', 40, 1, c.candyCoral),
-  item(10, 'skyline-tea', '雲端茶屋', '在城市最高處喝一杯茶', 'feather', 'shop', 150, 3, c.candyMint),
-  item(10, 'cloud-swing', '天空鞦韆', '輕輕擺動，看雲慢慢走過', 'anchor', 'facility', 100, 3, c.candySky),
-  item(10, 'rainbow-arch', '彩虹拱門', '為走到這裡的自己留一道彩虹', 'sunrise', 'decor', 50, 2, c.candyPink),
+  item(20, 'skyline-tea', '雲端茶屋', '在城市最高處喝一杯茶', 'feather', 'shop', 150, 3, c.candyMint),
+  item(20, 'cloud-swing', '天空鞦韆', '輕輕擺動，看雲慢慢走過', 'anchor', 'facility', 100, 3, c.candySky),
+  item(20, 'rainbow-arch', '彩虹拱門', '為走到這裡的自己留一道彩虹', 'sunrise', 'decor', 50, 2, c.candyPink),
   item(1, 'strawberry-bakery', '草莓烘焙屋', '剛出爐的甜香，為今天加一點糖', 'heart', 'shop', 40, 1, c.candyPink),
   item(1, 'candy-gift-shop', '糖果禮物店', '把小小心意包裝成驚喜', 'gift', 'shop', 50, 1, c.candyLavender),
   item(1, 'cream-pavilion', '奶油休息亭', '像奶油蛋糕一樣柔和的歇腳處', 'home', 'facility', 45, 1, c.candyPeach, 'rest-pavilion'),
@@ -144,18 +155,18 @@ export const MALL_ITEMS: MallItem[] = [
   item(9, 'food-demo-stage', '料理分享台', '看見食物，也看見製作的用心', 'layers', 'facility', 90, 3, c.candyPeach, 'rhythm-stage'),
   item(9, 'fruit-crate-display', '鮮果展示架', '把市場裡的繽紛色彩排整齊', 'package', 'decor', 25, 1, c.candyCoral, 'spice-display'),
   item(9, 'market-welcome-lamp', '市集迎賓燈', '用暖暖燈光等你來吃飯', 'sun', 'decor', 30, 1, c.candyLemon, 'garden-lights'),
-  item(10, 'cloud-flower-shop', '雲上花藝店', '為走到高處的自己送一束花', 'feather', 'shop', 120, 3, c.candyPink),
-  item(10, 'sunset-dessert-room', '日落甜點室', '看城市亮起燈，吃一口喜歡的甜點', 'coffee', 'shop', 130, 3, c.candyPeach),
-  item(10, 'sky-observation-scope', '城市觀景鏡', '看看遠方，也看看已經走過的路', 'compass', 'facility', 110, 3, c.candySky, 'observatory-dome'),
-  item(10, 'rooftop-pavilion', '天台花園亭', '在雲和花之間，給自己一個擁抱', 'home', 'facility', 90, 2, c.candyMint, 'rest-pavilion'),
-  item(10, 'rainbow-flower-bed', '彩虹花圃', '把一路的努力種成一片花海', 'sunrise', 'decor', 40, 2, c.candyCoral, 'colorful-planter'),
-  item(10, 'sunset-wind-mobile', '晚霞風鈴', '讓風輕輕唱出今天的好心情', 'wind', 'decor', 45, 2, c.candyPeach, 'starlight-mobile'),
+  item(20, 'cloud-flower-shop', '雲上花藝店', '為走到高處的自己送一束花', 'feather', 'shop', 120, 3, c.candyPink),
+  item(20, 'sunset-dessert-room', '日落甜點室', '看城市亮起燈，吃一口喜歡的甜點', 'coffee', 'shop', 130, 3, c.candyPeach),
+  item(20, 'sky-observation-scope', '城市觀景鏡', '看看遠方，也看看已經走過的路', 'compass', 'facility', 110, 3, c.candySky, 'observatory-dome'),
+  item(20, 'rooftop-pavilion', '天台花園亭', '在雲和花之間，給自己一個擁抱', 'home', 'facility', 90, 2, c.candyMint, 'rest-pavilion'),
+  item(20, 'rainbow-flower-bed', '彩虹花圃', '把一路的努力種成一片花海', 'sunrise', 'decor', 40, 2, c.candyCoral, 'colorful-planter'),
+  item(20, 'sunset-wind-mobile', '晚霞風鈴', '讓風輕輕唱出今天的好心情', 'wind', 'decor', 45, 2, c.candyPeach, 'starlight-mobile'),
   item(1, 'ladies-fashion-boutique', '女裝店', '挑選適合今天心情的服飾搭配', 'shopping-bag', 'shop', 65, 0, c.candyPink, undefined, 'womenswear'),
   item(2, 'japanese-hyakuen-store', '日本百元店', '逛逛日系生活小物與實用選品', 'grid', 'shop', 70, 0, c.candyLemon, undefined, 'hyakuen'),
   item(3, 'kimono-house', '和服店', '欣賞細緻花色與傳統和服配件', 'feather', 'shop', 85, 0, c.candyCoral, undefined, 'kimono'),
   item(7, 'evening-gown-salon', '晚禮服店', '為特別的日子挑一套優雅禮服', 'star', 'shop', 115, 0, c.candyLavender, undefined, 'eveningwear'),
   item(9, 'sunny-supermarket', '陽光超市', '把日常所需和新鮮食材一次買齊', 'shopping-cart', 'shop', 130, 0, c.candyMint, undefined, 'supermarket'),
-  item(10, 'bridal-gown-house', '婚紗店', '在柔光之中挑選夢想中的婚紗', 'heart', 'shop', 160, 0, c.candyPeach, undefined, 'bridal'),
+  item(20, 'bridal-gown-house', '婚紗店', '在柔光之中挑選夢想中的婚紗', 'heart', 'shop', 160, 0, c.candyPeach, undefined, 'bridal'),
   item(4, 'blue-tide-swimwear', '泳衣店', '挑選泳衣、沙灘罩衫和度假配件', 'sun', 'shop', 95, 0, c.candySky, undefined, 'swimwear'),
   item(5, 'cosplay-costume-studio', 'Cosplay服裝店', '挑選角色服裝、假髮和舞台配件', 'star', 'shop', 110, 0, c.candyLavender, undefined, 'cosplay'),
   item(6, 'little-circuit-electronics', '電器店', '發現日常家電、耳機和可愛小科技', 'cpu', 'shop', 125, 0, c.candyMint, undefined, 'electronics'),

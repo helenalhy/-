@@ -54,7 +54,7 @@ export interface Habit {
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
 export type RewardTokens = Record<RewardCategory, number>;
-export const MALL_FLOOR_COUNT = 10;
+export const MALL_FLOOR_COUNT = 20;
 
 interface CheckInTransaction {
   version: 1;
@@ -131,7 +131,7 @@ const STORAGE_KEY = 'momentum.habits.v1';
 const MALL_STORAGE_KEY = 'momentum.mall.v1';
 const CHECK_IN_TRANSACTION_KEY = 'momentum.checkin-transaction.v1';
 // Version 2 made unplaced items intentional collection items; v3 adds per-shop interiors.
-const MALL_SCHEMA_VERSION = 4;
+const MALL_SCHEMA_VERSION = 5;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
 const IS_DEVELOPMENT_BUILD = typeof __DEV__ !== 'undefined' && __DEV__;
@@ -283,12 +283,18 @@ function normalizeMallPlacements(
   const placements: Record<string, string> = {};
   const assignedItems = new Set<string>();
   for (const [slotId, itemId] of Object.entries(savedPlacements ?? {})) {
+    const migratedSlotId = schemaVersion < 5
+      && slotId.startsWith('floor-10-')
+      && MALL_ITEM_BY_ID[itemId]?.floor === 20
+      ? `floor-20-${slotId.slice('floor-10-'.length)}`
+      : slotId;
     if (
-      (MALL_SLOT_IDS as readonly string[]).includes(slotId)
+      (MALL_SLOT_IDS as readonly string[]).includes(migratedSlotId)
+      && !placements[migratedSlotId]
       && purchasedItems.includes(itemId)
       && !assignedItems.has(itemId)
     ) {
-      placements[slotId] = itemId;
+      placements[migratedSlotId] = itemId;
       assignedItems.add(itemId);
     }
   }
@@ -516,7 +522,15 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         // Reading existing data must not depend on being able to write a migration.
         try {
           if (checkInTransaction) {
-            await synchronizeCheckInTransaction(checkInTransaction);
+            await synchronizeCheckInTransaction({
+              ...checkInTransaction,
+              mall: {
+                ...checkInTransaction.mall,
+                schemaVersion: MALL_SCHEMA_VERSION,
+                placements: initialPlacements,
+                shopInteriors: initialShopInteriors,
+              },
+            });
             return;
           }
           await Promise.all([

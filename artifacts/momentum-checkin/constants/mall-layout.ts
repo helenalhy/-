@@ -6,26 +6,34 @@ export type MallWing = 'main' | 'annex' | 'extension' | 'extension3' | 'extensio
 export type MallSlotId = `floor-${number}-${Column | `plaza-${PlazaRow}-${Column}` | `annex-${AnnexRow}-${'left' | 'right'}` | `extension-${ExtensionRow}-${Column}` | `extension3-${ExtensionRow}-${Column}` | `extension4-${ExtensionRow}-${Column}`}`;
 
 const COLUMNS: Column[] = ['left', 'center', 'right'];
-const FLOORS = [3, 2, 1, 4, 5, 6, 7, 8, 9, 10];
+const LEGACY_FLOORS = [3, 2, 1, 4, 5, 6, 7, 8, 9, 10];
+const EXPANSION_FLOORS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 export const MALL_POSITIONS_PER_FLOOR = 56;
 // Preserve all original slot IDs and ordering before adding either annex.
+function createFloorSlotIds(floors: number[]): MallSlotId[] {
+  return [
+    ...floors.flatMap((floor) => COLUMNS.map((column): MallSlotId => `floor-${floor}-${column}`)),
+    ...floors.flatMap((floor) => ([1, 2, 3] as const).flatMap((row) =>
+      COLUMNS.map((column): MallSlotId => `floor-${floor}-plaza-${row}-${column}`),
+    )),
+    ...floors.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
+      (['left', 'right'] as const).map((column): MallSlotId => `floor-${floor}-annex-${row}-${column}`),
+    )),
+    ...floors.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
+      COLUMNS.map((column): MallSlotId => `floor-${floor}-extension-${row}-${column}`),
+    )),
+    ...floors.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
+      COLUMNS.map((column): MallSlotId => `floor-${floor}-extension3-${row}-${column}`),
+    )),
+    ...floors.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
+      COLUMNS.map((column): MallSlotId => `floor-${floor}-extension4-${row}-${column}`),
+    )),
+  ];
+}
+
 export const MALL_SLOT_IDS: MallSlotId[] = [
-  ...FLOORS.flatMap((floor) => COLUMNS.map((column): MallSlotId => `floor-${floor}-${column}`)),
-  ...FLOORS.flatMap((floor) => ([1, 2, 3] as const).flatMap((row) =>
-    COLUMNS.map((column): MallSlotId => `floor-${floor}-plaza-${row}-${column}`),
-  )),
-  ...FLOORS.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
-    (['left', 'right'] as const).map((column): MallSlotId => `floor-${floor}-annex-${row}-${column}`),
-  )),
-  ...FLOORS.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
-    COLUMNS.map((column): MallSlotId => `floor-${floor}-extension-${row}-${column}`),
-  )),
-  ...FLOORS.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
-    COLUMNS.map((column): MallSlotId => `floor-${floor}-extension3-${row}-${column}`),
-  )),
-  ...FLOORS.flatMap((floor) => ([1, 2, 3, 4] as const).flatMap((row) =>
-    COLUMNS.map((column): MallSlotId => `floor-${floor}-extension4-${row}-${column}`),
-  )),
+  ...createFloorSlotIds(LEGACY_FLOORS),
+  ...createFloorSlotIds(EXPANSION_FLOORS),
 ];
 
 export function getMallSlotFloor(slotId: MallSlotId): number {

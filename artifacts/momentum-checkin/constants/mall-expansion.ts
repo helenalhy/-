@@ -3,6 +3,7 @@ import type { RewardCategory } from '@/context/HabitsContext';
 import palette from './colors';
 import { LOWER_COLLECTIONS } from './mall-additions-lower';
 import { UPPER_COLLECTIONS } from './mall-additions-upper';
+import { createNewFloorItems } from './mall-new-floor-catalogs';
 
 type Visual = NonNullable<MallItem['visual']>;
 const c = palette.light;
@@ -85,19 +86,23 @@ const SWATCHES = [c.candyPink, c.candyMint, c.candySky, c.candyLavender, c.candy
 const SHOP_ICONS = ['shopping-bag', 'gift', 'coffee', 'heart', 'package', 'feather', 'book-open', 'star'];
 const CATEGORIES: RewardCategory[] = ['shop', 'facility', 'decor'];
 
+const LEGACY_COLLECTION_FLOORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 20];
+
 function buildCollections(collections: Record<RewardCategory, string[]>[], themes: MallFloorTheme[], offset: number): MallItem[] {
-  return collections.flatMap((collection, floorIndex) => CATEGORIES.flatMap((category, categoryIndex) =>
+  return collections.flatMap((collection, collectionIndex) => CATEGORIES.flatMap((category, categoryIndex) =>
     collection[category].map((name, entryIndex) => {
       const index = entryIndex + offset;
       const visual = category === 'facility' ? FACILITY_VISUALS[index % FACILITY_VISUALS.length] : category === 'decor' ? DECOR_VISUALS[index % DECOR_VISUALS.length] : undefined;
-      const price = (category === 'shop' ? 45 : category === 'facility' ? 35 : 15) + floorIndex * 5 + (index % 5) * 10;
+      const price = (category === 'shop' ? 45 : category === 'facility' ? 35 : 15) + collectionIndex * 5 + (index % 5) * 10;
+      const floor = LEGACY_COLLECTION_FLOORS[collectionIndex];
+      const theme = themes[floor - 1];
       return {
-        id: `collection-${floorIndex + 1}-${category}-${index + 1}`,
-        floor: floorIndex + 1,
+        id: `collection-${collectionIndex + 1}-${category}-${index + 1}`,
+        floor,
         name,
         description: category === 'shop'
           ? `在${name}慢慢逛，為今天挑一份喜歡的東西。`
-          : `${themes[floorIndex].title}專屬${category === 'facility' ? '設施' : '裝修'}，讓${name}成為你的日常風景。`,
+          : `${theme.title}專屬${category === 'facility' ? '設施' : '裝修'}，讓${name}成為你的日常風景。`,
         category,
         icon: visual ? VISUAL_ICONS[visual] : SHOP_ICONS[index % SHOP_ICONS.length],
         color: SWATCHES[(floorIndex + categoryIndex + index) % SWATCHES.length],
@@ -113,5 +118,6 @@ export function createExpandedItems(themes: MallFloorTheme[]): MallItem[] {
   return [
     ...buildCollections(COLLECTIONS, themes, 0),
     ...buildCollections([...LOWER_COLLECTIONS, ...UPPER_COLLECTIONS], themes, 17),
+    ...createNewFloorItems(themes),
   ];
 }

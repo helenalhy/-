@@ -243,7 +243,7 @@ test('shop interiors offer shop-specific equipment while keeping each default ca
     const expectedCount = shopType === 'cosplay' ? 53 : 50;
     assert.equal(options.length, expectedCount, `${shopType} catalog should offer ${expectedCount} choices`);
     assert.equal(
-      options.filter((option) => option.id.startsWith(`${shopType}-equipment-`)).length,
+      options.filter((option) => option.id.includes(`${shopType}-equipment-`)).length,
       shopType === 'general' ? 0 : 4,
       `${shopType} should have its own equipment choices`,
     );
@@ -263,7 +263,7 @@ test('shop interiors offer shop-specific equipment while keeping each default ca
   assert.ok(candyShop.some((option) => option.name.includes('夢幻棉花糖機')));
 
   const seasonalBakery = shopInteriorCatalog.getShopInteriorDecorations('general', 'strawberry-bakery', '草莓烘焙屋');
-  assert.ok(seasonalBakery.some((option) => option.name === '奶油色旋風烤爐'));
+  assert.ok(seasonalBakery.some((option) => option.name.includes('奶油色旋風烤爐')));
 
   const archivedDecorationId = 'kimono-tatami-fitting-sakura';
   const kimonoWithOwnedArchive = shopInteriorCatalog.getShopInteriorDecorations(

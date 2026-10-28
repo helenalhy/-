@@ -926,9 +926,9 @@ test('search cards follow saved moves, show warehouse state after storage, and s
     return pager.props.renderWing(wing, true);
   };
   const searchItem = (mallTree) => findByTestId(mallTree, `search-item-location-${item.id}`);
-  const enterSearch = (mallTree) => {
+  const enterSearch = (mallTree, mallKey = 'mall') => {
     findByTestId(mallTree, 'mall-search-input').props.onChangeText(item.name);
-    return app.renderMall();
+    return app.renderMall(mallKey);
   };
 
   let mallTree = enterSearch(app.renderMall());
@@ -957,39 +957,54 @@ test('search cards follow saved moves, show warehouse state after storage, and s
   assert.match(textContent(searchItem(mallTree)), /2F · 延伸區 · 延伸區店面區左側/);
   assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /已擺放/);
 
-  const movedSlot = findNodes(renderWingScene(mallTree, 'annex'), (node) =>
-    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-2-annex-1-left',
-  )[0];
-  assert.ok(movedSlot);
-  movedSlot.props.onLongPress();
-  mallTree = app.renderMall();
-  await press(mallTree, 'store-selected-item');
-  app.renderProvider();
+  const movedState = app.contextExports.useHabits();
+  assert.deepEqual(movedState.purchasedItems, [item.id], 'moving keeps ownership unchanged');
+  assert.equal(movedState.coins, 20, 'moving does not spend coins');
+  app.renderProvider('provider-after-move-reload');
+  await app.runEffects('provider-after-move-reload');
+  app.renderProvider('provider-after-move-reload');
+  mallTree = enterSearch(app.renderMall('mall-after-move-reload'), 'mall-after-move-reload');
+  assert.match(textContent(searchItem(mallTree)), /2F · 延伸區 · 延伸區店面區左側/);
+  assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /已擺放/);
+  assert.deepEqual(app.contextExports.useHabits().purchasedItems, [item.id], 'reload preserves ownership');
+  assert.equal(app.contextExports.useHabits().coins, 20, 'reload preserves the coin balance');
 
-  mallTree = enterSearch(app.renderMall());
+  await press(mallTree, `search-select-${item.id}`);
+  mallTree = app.renderMall('mall-after-move-reload');
+  assert.ok(findByTestId(mallTree, 'store-selected-item'), 'the reloaded search result can still be stored');
+  await press(mallTree, 'store-selected-item');
+
+  app.renderProvider('provider-after-storage-reload');
+  await app.runEffects('provider-after-storage-reload');
+  app.renderProvider('provider-after-storage-reload');
+  mallTree = enterSearch(
+    app.renderMall('mall-after-storage-reload'),
+    'mall-after-storage-reload',
+  );
   assert.match(textContent(searchItem(mallTree)), /倉庫保存中 · 原屬 1F/);
   assert.doesNotMatch(textContent(searchItem(mallTree)), /店面區|延伸區/);
   assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /倉庫保存中 · 免費擺放/);
   assert.deepEqual(app.contextExports.useHabits().mallPlacements, {});
   assert.ok(app.contextExports.useHabits().purchasedItems.includes(item.id), 'storage keeps ownership for free placement');
+  assert.equal(app.contextExports.useHabits().coins, 20, 'reload after storage preserves coins');
 
   await press(mallTree, `search-select-${item.id}`);
-  mallTree = app.renderMall();
+  mallTree = app.renderMall('mall-after-storage-reload');
   assert.match(textContent(mallTree), /從倉庫免費擺放/);
   await press(mallTree, 'cancel-placement');
-  mallTree = app.renderMall();
+  mallTree = app.renderMall('mall-after-storage-reload');
   assert.match(textContent(searchItem(mallTree)), /倉庫保存中 · 原屬 1F/);
 
   await press(mallTree, `search-select-${item.id}`);
-  mallTree = app.renderMall();
+  mallTree = app.renderMall('mall-after-storage-reload');
   const restoreSlot = findNodes(renderWingScene(mallTree, 'main'), (node) =>
     node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-1-left',
   )[0];
   assert.ok(restoreSlot, 'the item can be selected for free placement from its search result');
   restoreSlot.props.onPress();
   await new Promise((resolve) => setImmediate(resolve));
-  app.renderProvider();
-  mallTree = app.renderMall();
+  app.renderProvider('provider-after-storage-reload');
+  mallTree = app.renderMall('mall-after-storage-reload');
   assert.match(textContent(searchItem(mallTree)), /1F · 主商場 · 店面區左側/);
   assert.match(textContent(findByTestId(mallTree, `search-item-status-${item.id}`)), /已擺放/);
   assert.equal(app.contextExports.useHabits().coins, 20, 'movement and free placement do not spend coins');

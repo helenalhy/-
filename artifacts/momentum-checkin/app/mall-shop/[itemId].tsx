@@ -124,6 +124,7 @@ export default function MallShopInteriorScreen() {
   const [selectedDisplaySlot, setSelectedDisplaySlot] = useState(0);
   const [workingDisplayProduct, setWorkingDisplayProduct] = useState(false);
   const [notice, setNotice] = useState('');
+  const [slotAccessibilityResult, setSlotAccessibilityResult] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
   const interior = shop ? shopInteriors[shop.id] : undefined;
   const ownedDecorationIds = interior?.ownedDecorations ?? [];
@@ -188,12 +189,15 @@ export default function MallShopInteriorScreen() {
     const alreadyOwned = owned.has(decorationId);
     setWorkingDecoration(decorationId);
     setNotice('');
+    setSlotAccessibilityResult('');
     try {
       await placeShopInteriorDecoration(shop.id, decorationId, selectedPlacementId);
       const location = `${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label ?? '店內'}`;
-      setNotice(alreadyOwned
+      const result = alreadyOwned
         ? `已免費將項目移至${location}。舊項目仍保留在店內收藏。`
-        : `已兌換並放在${location}，扣除 ${price} 金幣。`);
+        : `已兌換並放在${location}，扣除 ${price} 金幣。`;
+      setNotice(result);
+      setSlotAccessibilityResult(result);
     } catch (error) {
       Alert.alert('項目未能放置', error instanceof Error ? error.message : '請稍後再試。');
     } finally {
@@ -205,6 +209,7 @@ export default function MallShopInteriorScreen() {
     if (!shop || !activeFixture || !hasAccess || workingDisplayProduct) return;
     setWorkingDisplayProduct(true);
     setNotice('');
+    setSlotAccessibilityResult('');
     try {
       await setShopInteriorFixtureProduct(shop.id, activeFixture.id, selectedDisplaySlot, productId);
       const productName = activeFixtureProducts.find(({ id }) => id === productId)?.name;
@@ -228,6 +233,7 @@ export default function MallShopInteriorScreen() {
     const alreadyOwned = owned.has(dogDecorationId);
     setWorkingDecoration(dogDecorationId);
     setNotice('');
+    setSlotAccessibilityResult('');
     try {
       await placeShopInteriorDogStaff(shop.id, dogDecorationId, areaId);
       setSelectedArea(areaId);
@@ -247,6 +253,7 @@ export default function MallShopInteriorScreen() {
     if (!shop || !hasAccess || workingDecoration) return;
     setWorkingDecoration(dogDecorationId);
     setNotice('');
+    setSlotAccessibilityResult('');
     try {
       await storeShopInteriorDogStaff(shop.id, dogDecorationId);
       setNotice('已將狗狗店員收進店員收藏，沒有退款或扣除金幣。');
@@ -262,9 +269,12 @@ export default function MallShopInteriorScreen() {
     if (!shop || !selectedDecoration || workingDecoration) return;
     setWorkingDecoration(selectedDecoration.id);
     setNotice('');
+    setSlotAccessibilityResult('');
     try {
       await storeShopInteriorDecoration(shop.id, selectedPlacementId);
-      setNotice(`已將${selectedDecoration.name}收進這間店的收藏，沒有退款或扣除金幣。`);
+      const result = `已將${selectedDecoration.name}收進這間店的收藏，沒有退款或扣除金幣。`;
+      setNotice(result);
+      setSlotAccessibilityResult(result);
     } catch (error) {
       Alert.alert('收納未完成', error instanceof Error ? error.message : '請稍後再試。');
     } finally {
@@ -373,7 +383,12 @@ export default function MallShopInteriorScreen() {
               fixtureContents={interior?.fixtureContents}
               fixtureProducts={fixtureProducts}
               selectedSlot={selectedSlot}
-              onSelectSlot={setSelectedSlot}
+              accessibilityResult={slotAccessibilityResult}
+              onSelectSlot={(slot) => {
+                setSelectedSlot(slot);
+                setNotice('');
+                setSlotAccessibilityResult('');
+              }}
               onOpenDisplayFixture={(fixtureId) => {
                 setSelectedDisplaySlot(0);
                 setActiveFixtureId(fixtureId);
@@ -393,7 +408,11 @@ export default function MallShopInteriorScreen() {
                 disabled={SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea) === 0}
                 onPress={() => {
                   const index = SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea);
-                  if (index > 0) setSelectedArea(SHOP_INTERIOR_AREAS[index - 1].id);
+                  if (index > 0) {
+                    setSelectedArea(SHOP_INTERIOR_AREAS[index - 1].id);
+                    setNotice('');
+                    setSlotAccessibilityResult('');
+                  }
                 }}
                 style={[styles.areaButton, { backgroundColor: colors.secondary, opacity: selectedArea === 'main' ? 0.45 : 1 }]}
               >
@@ -415,7 +434,11 @@ export default function MallShopInteriorScreen() {
                 disabled={SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea) === SHOP_INTERIOR_AREAS.length - 1}
                 onPress={() => {
                   const index = SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea);
-                  if (index < SHOP_INTERIOR_AREAS.length - 1) setSelectedArea(SHOP_INTERIOR_AREAS[index + 1].id);
+                  if (index < SHOP_INTERIOR_AREAS.length - 1) {
+                    setSelectedArea(SHOP_INTERIOR_AREAS[index + 1].id);
+                    setNotice('');
+                    setSlotAccessibilityResult('');
+                  }
                 }}
                 style={[styles.areaButton, { backgroundColor: colors.secondary, opacity: selectedArea === 'extension-5' ? 0.45 : 1 }]}
               >
@@ -499,7 +522,7 @@ export default function MallShopInteriorScreen() {
             )}
 
             {notice ? (
-              <Text testID="shop-interior-notice" accessibilityRole="text" accessibilityLiveRegion="polite" style={[styles.notice, { color: colors.primary }]}>
+              <Text testID="shop-interior-notice" accessibilityRole="text" accessibilityLiveRegion={slotAccessibilityResult ? 'none' : 'polite'} style={[styles.notice, { color: colors.primary }]}>
                 {notice}
               </Text>
             ) : null}

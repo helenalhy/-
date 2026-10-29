@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ImageBackground, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, findNodeHandle, ImageBackground, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorAreaId, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
@@ -105,6 +105,7 @@ export function ShopInteriorScene({
   fixtureContents,
   fixtureProducts,
   selectedSlot,
+  accessibilityResult,
   onSelectSlot,
   onOpenDisplayFixture,
 }: {
@@ -123,6 +124,7 @@ export function ShopInteriorScene({
   fixtureContents?: Record<string, (string | null)[]>;
   fixtureProducts?: Record<string, ShopDisplayProduct[]>;
   selectedSlot: ShopInteriorSlotId;
+  accessibilityResult?: string;
   onSelectSlot: (slot: ShopInteriorSlotId) => void;
   onOpenDisplayFixture: (decorationId: string) => void;
 }) {
@@ -134,10 +136,24 @@ export function ShopInteriorScene({
   const [dogInteraction, setDogInteraction] = useState<DogStaffInteraction | null>(null);
   const [interactionMessage, setInteractionMessage] = useState('');
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
+  const selectedSlotRef = useRef<React.ElementRef<typeof Pressable> | null>(null);
   const interactionSequence = useRef(0);
   const merchandiseMotion = useRef(new Animated.Value(0)).current;
   const themeMotion = useRef(new Animated.Value(0)).current;
   const floorArt = getMallFloorArtProfile(floor, shopId);
+  useEffect(() => {
+    if (!accessibilityResult) return;
+    const frame = requestAnimationFrame(() => {
+      const target = selectedSlotRef.current;
+      if (Platform.OS === 'web') {
+        (target as unknown as { focus?: () => void } | null)?.focus?.();
+        return;
+      }
+      const node = findNodeHandle(target);
+      if (node !== null) AccessibilityInfo.setAccessibilityFocus(node);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [accessibilityResult]);
   const themeBadgeShape = [
     { borderRadius: 12 },
     { borderRadius: 7 },
@@ -360,8 +376,10 @@ export function ShopInteriorScene({
             <Pressable
               key={slot.id}
               testID={`shop-interior-slot-${slot.id}`}
+              ref={selected ? selectedSlotRef : undefined}
+              accessible
               accessibilityRole="button"
-              accessibilityLabel={`${areaLabel}，${slot.label}${decoration ? `，目前是${decoration.name}` : '，尚未佈置'}${displayEnabled ? `，已陳列 ${displayedProducts.length} 款商品，點選可管理貨架商品` : ''}${selected ? '，目前選取' : ''}`}
+              accessibilityLabel={`${areaLabel}，${slot.label}${decoration ? `，目前是${decoration.name}` : '，尚未佈置'}${displayEnabled ? `，已陳列 ${displayedProducts.length} 款商品，點選可管理貨架商品` : ''}${selected ? `，目前選取${accessibilityResult ? `，操作結果：${accessibilityResult}` : ''}` : ''}`}
               accessibilityHint={displayEnabled ? '點選開啟這個展示架的商品陳列；關閉後仍可從下方收納或調整家具。' : '選取這個店內位置，再從下方選擇佈置'}
               accessibilityState={{ selected }}
               onPress={() => {

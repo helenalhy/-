@@ -81,7 +81,7 @@ test('interior page retains accessible slots and routes placement operations thr
   const page = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   assert.match(page, /<ShopInteriorScene/);
-  assert.match(page, /onSelectSlot=\{setSelectedSlot\}/);
+  assert.match(page, /onSelectSlot=\{\(slot\) => \{[\s\S]*?setSelectedSlot\(slot\);/);
   assert.match(page, /placeShopInteriorDecoration\(shop\.id, decorationId, selectedPlacementId\)/);
   assert.match(page, /storeShopInteriorDecoration\(shop\.id, selectedPlacementId\)/);
   assert.match(page, /placements=\{areaPlacements\}/);
@@ -91,8 +91,12 @@ test('interior page retains accessible slots and routes placement operations thr
   const slotIds = SHOP_INTERIOR_SLOTS.map(({ id }) => id);
   assert.deepEqual(slotIds, ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table']);
   assert.match(scene, /<Pressable\s+key=\{slot\.id\}[\s\S]*?accessibilityRole="button"[\s\S]*?style=\{\[styles\.hotspot/);
+  assert.match(scene, /accessible\s+accessibilityRole="button"/);
   assert.match(scene, /accessibilityLabel=/);
   assert.match(scene, /accessibilityState=\{\{ selected \}\}/);
+  assert.match(scene, /操作結果：\$\{accessibilityResult\}/);
+  assert.match(scene, /AccessibilityInfo\.setAccessibilityFocus\(node\)/);
+  assert.match(scene, /\?\.focus\?\.\(\)/);
 });
 
 test('every shop interior keeps its specialty illustration and adds a unique floor-aware design', () => {

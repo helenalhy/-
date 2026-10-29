@@ -82,7 +82,10 @@ function createHarness() {
       setAccessibilityFocus() {},
     },
     Animated: {
-      Value: class { setValue() {} },
+      Value: class {
+        setValue() {}
+        interpolate() { return 1; }
+      },
       View: 'Animated.View',
       parallel: () => ({ start() {}, stop() {} }),
       spring: () => ({ start() {}, stop() {} }),
@@ -338,6 +341,15 @@ function findNodes(tree, predicate) {
 
 function findByTestId(tree, testID) {
   return findNodes(tree, (node) => node.props?.testID === testID)[0];
+}
+
+function findByTestIdPrefixAndSuffix(tree, prefix, suffix) {
+  return findNodes(
+    tree,
+    (node) => typeof node.props?.testID === 'string'
+      && node.props.testID.startsWith(prefix)
+      && node.props.testID.endsWith(suffix),
+  )[0];
 }
 
 function findCatalogPager(tree) {
@@ -1103,7 +1115,7 @@ test('shop interior page shows its matching decor catalog and charges only goal-
     node.props.testID === 'shop-interior-storefront-visual' && node.props.category === 'shop',
   ), 'the shop facade uses the shared animated mall visual');
   assert.ok(animatedVisuals.some((node) =>
-    node.props.testID === 'shop-decoration-visual-womenswear-clothing-rack' && node.props.category === 'decor',
+    node.props.testID?.endsWith('womenswear-clothing-rack') && node.props.category === 'decor',
   ), 'decoration choices preview with the shared animated mall visual');
   const catalogVisuals = (tree) => findNodes(
     tree,
@@ -1118,7 +1130,7 @@ test('shop interior page shows its matching decor catalog and charges only goal-
     textContent(findByTestId(interiorTree, 'shop-decoration-page-count')),
     '第 5 / 5 頁 · 共 50 款',
   );
-  assert.ok(findByTestId(interiorTree, 'shop-decoration-limited-womenswear-limited-starlight-top'));
+  assert.ok(findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-limited-', 'womenswear-limited-starlight-top'));
   for (let page = 5; page > 1; page -= 1) {
     await press(interiorTree, 'shop-decoration-page-prev');
     interiorTree = app.renderShopInterior();
@@ -1133,25 +1145,116 @@ test('shop interior page shows its matching decor catalog and charges only goal-
     8,
     'the main area exposes eight placement positions',
   );
-  assert.ok(findByTestId(interiorTree, 'shop-decoration-womenswear-clothing-rack'));
+  assert.ok(findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-store-', 'womenswear-clothing-rack'));
 
-  await press(interiorTree, 'shop-decoration-place-womenswear-clothing-rack');
+  const placementActionId = findByTestIdPrefixAndSuffix(
+    interiorTree,
+    'shop-decoration-place-store-',
+    'womenswear-clothing-rack',
+  ).props.testID;
+  const rackDecorationId = placementActionId.replace('shop-decoration-place-', '');
+  await press(interiorTree, placementActionId);
   app.renderProvider();
   interiorTree = app.renderShopInterior();
   sceneTree = app.renderShopInteriorScene(interiorTree);
   assert.equal(app.contextExports.useHabits().coins, 90);
   assert.deepEqual(app.contextExports.useHabits().shopInteriors[shop.id], {
-    ownedDecorations: ['womenswear-clothing-rack'],
-    placements: { 'front-window': 'womenswear-clothing-rack' },
+    ownedDecorations: [rackDecorationId],
+    placements: { 'front-window': rackDecorationId },
   });
   const installedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
   const installedVisual = findNodes(installedSlot, (node) => node.type === 'MallObjectVisual')[0];
   assert.equal(installedVisual.props.category, 'decor');
-  assert.equal(installedVisual.props.id, 'clothing-rack');
+  assert.match(installedVisual.props.id, /^clothing-(rack|wardrobe)$/);
   assert.match(
-    textContent(findByTestId(interiorTree, 'shop-decoration-womenswear-clothing-rack')),
+    textContent(findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-store-', 'womenswear-clothing-rack')),
     /已佈置於主區櫥窗/,
   );
+});
+
+test('screen readers can identify and use every shop-interior position', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 120,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  const areaLabels = ['主區', '延伸區 1', '延伸區 2', '延伸區 3', '延伸區 4', '延伸區 5'];
+  const slotIds = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table'];
+  for (let areaIndex = 0; areaIndex < areaLabels.length; areaIndex += 1) {
+    const sceneTree = app.renderShopInteriorScene(interiorTree);
+    for (const slot of slotIds) {
+      const hotspot = findByTestId(sceneTree, `shop-interior-slot-${slot}`);
+      assert.equal(hotspot.props.accessible, true, `${areaLabels[areaIndex]} ${slot} can receive focus`);
+      assert.equal(hotspot.props.accessibilityRole, 'button');
+      assert.match(hotspot.props.accessibilityLabel, new RegExp(areaLabels[areaIndex]));
+      assert.match(hotspot.props.accessibilityLabel, /尚未佈置/);
+      assert.equal(hotspot.props.accessibilityState.selected, slot === 'front-window');
+    }
+    if (areaIndex < areaLabels.length - 1) {
+      await press(interiorTree, 'shop-interior-area-next');
+      interiorTree = app.renderShopInterior();
+    }
+  }
+
+  for (let areaIndex = areaLabels.length - 1; areaIndex > 0; areaIndex -= 1) {
+    await press(interiorTree, 'shop-interior-area-prev');
+    interiorTree = app.renderShopInterior();
+  }
+  let sceneTree = app.renderShopInteriorScene(interiorTree);
+  await press(sceneTree, 'shop-interior-slot-left-wall');
+  interiorTree = app.renderShopInterior();
+  sceneTree = app.renderShopInteriorScene(interiorTree);
+  const selectedWall = findByTestId(sceneTree, 'shop-interior-slot-left-wall');
+  assert.equal(selectedWall.props.accessibilityState.selected, true);
+  assert.match(selectedWall.props.accessibilityLabel, /左牆，尚未佈置.*目前選取/);
+
+  await press(sceneTree, 'shop-interior-slot-front-window');
+  interiorTree = app.renderShopInterior();
+  const getRackPlacementActionId = (tree) => findNodes(
+    tree,
+    (node) => node.props?.testID?.startsWith('shop-decoration-place-')
+      && node.props.testID.endsWith('womenswear-clothing-rack'),
+  )[0]?.props.testID;
+  const initialPlacementActionId = getRackPlacementActionId(interiorTree);
+  assert.ok(initialPlacementActionId);
+  await press(interiorTree, initialPlacementActionId);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  sceneTree = app.renderShopInteriorScene(interiorTree);
+  const redeemedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
+  assert.match(redeemedSlot.props.accessibilityLabel, /主區，櫥窗，目前是.*新品衣架牆/);
+  assert.match(redeemedSlot.props.accessibilityLabel, /操作結果：已兌換並放在主區櫥窗，扣除 30 金幣。/);
+
+  await press(sceneTree, 'shop-interior-slot-left-wall');
+  interiorTree = app.renderShopInterior();
+  await press(interiorTree, getRackPlacementActionId(interiorTree));
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  sceneTree = app.renderShopInteriorScene(interiorTree);
+  const movedSlot = findByTestId(sceneTree, 'shop-interior-slot-left-wall');
+  assert.match(movedSlot.props.accessibilityLabel, /目前是.*新品衣架牆/);
+  assert.match(movedSlot.props.accessibilityLabel, /操作結果：已免費將項目移至主區左牆/);
+
+  await press(interiorTree, 'shop-interior-store-decoration');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  sceneTree = app.renderShopInteriorScene(interiorTree);
+  const storedSlot = findByTestId(sceneTree, 'shop-interior-slot-left-wall');
+  assert.match(storedSlot.props.accessibilityLabel, /左牆，尚未佈置/);
+  assert.match(storedSlot.props.accessibilityLabel, /操作結果：已將.*新品衣架牆收進這間店的收藏/);
 });
 
 test('cafe equipment is clearly labeled, illustrated, and purchased with earned coins', async () => {
@@ -1177,20 +1280,26 @@ test('cafe equipment is clearly labeled, illustrated, and purchased with earned 
     await press(interiorTree, 'shop-decoration-page-next');
     interiorTree = app.renderShopInterior();
   }
-  const coffeeMachine = findByTestId(interiorTree, 'shop-decoration-general-equipment-cafe-espresso-machine');
+  const coffeeMachine = findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-store-', 'general-equipment-cafe-espresso-machine');
   assert.equal(textContent(coffeeMachine).includes('雙頭咖啡機'), true);
-  assert.ok(findByTestId(interiorTree, 'shop-decoration-equipment-general-equipment-cafe-espresso-machine'));
-  const machineVisual = findByTestId(interiorTree, 'shop-decoration-visual-general-equipment-cafe-espresso-machine');
+  assert.ok(findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-equipment-store-', 'general-equipment-cafe-espresso-machine'));
+  const machineVisual = findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-visual-store-', 'general-equipment-cafe-espresso-machine');
   assert.equal(machineVisual.props.visual, 'coffee-machine');
 
-  await press(interiorTree, 'shop-decoration-place-general-equipment-cafe-espresso-machine');
+  const machinePlacementActionId = findByTestIdPrefixAndSuffix(
+    interiorTree,
+    'shop-decoration-place-store-',
+    'general-equipment-cafe-espresso-machine',
+  ).props.testID;
+  const machineDecorationId = machinePlacementActionId.replace('shop-decoration-place-', '');
+  await press(interiorTree, machinePlacementActionId);
   app.renderProvider();
   interiorTree = app.renderShopInterior();
   const sceneTree = app.renderShopInteriorScene(interiorTree);
   assert.equal(app.contextExports.useHabits().coins, 58);
   assert.equal(
     app.contextExports.useHabits().shopInteriors[shop.id].placements['front-window'],
-    'general-equipment-cafe-espresso-machine',
+    machineDecorationId,
   );
   const installedSlot = findByTestId(sceneTree, 'shop-interior-slot-front-window');
   assert.equal(

@@ -8,3 +8,4 @@
 - [巢狀讀屏標籤](nested-screenreader-labels.md) — 外層可按元件指定 accessibilityLabel 時，巢狀資訊須合併到外層標籤才會可靠播報。
 - [商場讀取失敗](mall-read-failure.md) — 無法驗證已存資料時保留原始值、停止同步與變更，並顯示錯誤而非空商場。
 - [手機網頁固定淺色](mobile-web-light-theme.md) — 手機瀏覽器須沿用 preview 糖果色，不隨作業系統切換深色。
+- [彩妝試妝視覺驗收](cosmetics-tryon-visuals.md) — 試妝人像須保持臉至肩膀的大尺寸，並在已解鎖頁面目視確認唇色、眼影覆蓋正確位置。

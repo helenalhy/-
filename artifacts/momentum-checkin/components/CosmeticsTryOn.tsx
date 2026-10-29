@@ -1,16 +1,17 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Ellipse } from 'react-native-svg';
 import type { ImageSourcePropType } from 'react-native';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
 
 type GuestMakeupAnchors = {
-  leftEyeLeftPct: number;
-  rightEyeLeftPct: number;
-  eyeTopPct: number;
-  lipsLeftPct: number;
-  lipsTopPct: number;
+  leftEyeX: number;
+  rightEyeX: number;
+  eyeY: number;
+  lipsX: number;
+  lipsY: number;
 };
 
 const GUEST_PORTRAITS: ReadonlyArray<{
@@ -18,14 +19,14 @@ const GUEST_PORTRAITS: ReadonlyArray<{
   source: ImageSourcePropType;
   makeup: GuestMakeupAnchors;
 }> = [
-  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 56.7, eyeTopPct: 65, lipsLeftPct: 49.2, lipsTopPct: 75 } },
-  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 55, eyeTopPct: 64.2, lipsLeftPct: 48.3, lipsTopPct: 74.2 } },
-  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeLeftPct: 41.7, rightEyeLeftPct: 55.8, eyeTopPct: 63.3, lipsLeftPct: 48.3, lipsTopPct: 73.3 } },
-  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 56.7, eyeTopPct: 64.2, lipsLeftPct: 48.3, lipsTopPct: 73.3 } },
-  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeLeftPct: 40, rightEyeLeftPct: 55.8, eyeTopPct: 64.2, lipsLeftPct: 48.3, lipsTopPct: 74.2 } },
-  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 55.8, eyeTopPct: 63.3, lipsLeftPct: 49.2, lipsTopPct: 73.3 } },
-  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 55.8, eyeTopPct: 65, lipsLeftPct: 49.2, lipsTopPct: 75.8 } },
-  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 56.7, eyeTopPct: 64.2, lipsLeftPct: 49.2, lipsTopPct: 74.2 } },
+  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeX: 43, rightEyeX: 76, eyeY: 77, lipsX: 59, lipsY: 87 } },
+  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeX: 46, rightEyeX: 70, eyeY: 77, lipsX: 59, lipsY: 87 } },
+  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeY: 76, lipsX: 60, lipsY: 86 } },
+  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeX: 46, rightEyeX: 74, eyeY: 77, lipsX: 60, lipsY: 87 } },
+  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeX: 44, rightEyeX: 72, eyeY: 77, lipsX: 59, lipsY: 87 } },
+  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeY: 76, lipsX: 59, lipsY: 87 } },
+  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeX: 43, rightEyeX: 75, eyeY: 78, lipsX: 60, lipsY: 88 } },
+  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeX: 44, rightEyeX: 72, eyeY: 77, lipsX: 59, lipsY: 87 } },
 ];
 
 export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] }) {
@@ -77,11 +78,6 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
                 ]}
               >
                 <View style={[styles.swatch, { backgroundColor: product.color, borderColor: colors.border }]}>
-                  <Feather
-                    name={label === '唇色' ? 'heart' : 'star'}
-                    size={11}
-                    color={colors.candyCream}
-                  />
                 </View>
                 <Text numberOfLines={2} style={[styles.choiceName, { color: colors.foreground }]}>
                   {product.name}
@@ -127,30 +123,37 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
             fadeDuration={0}
             style={styles.guestPortrait}
           />
-          <View
-            testID="cosmetics-try-on-eyeshadow-left"
-            pointerEvents="none"
-            style={[
-              styles.eyeshadowOverlay,
-              { left: `${selectedGuest.makeup.leftEyeLeftPct}%`, top: `${selectedGuest.makeup.eyeTopPct}%`, backgroundColor: selectedEyeshadow.color },
-            ]}
-          />
-          <View
-            testID="cosmetics-try-on-eyeshadow-right"
-            pointerEvents="none"
-            style={[
-              styles.eyeshadowOverlay,
-              { left: `${selectedGuest.makeup.rightEyeLeftPct}%`, top: `${selectedGuest.makeup.eyeTopPct}%`, backgroundColor: selectedEyeshadow.color },
-            ]}
-          />
-          <View
-            testID="cosmetics-try-on-lips"
-            pointerEvents="none"
-            style={[
-              styles.lipstickOverlay,
-              { left: `${selectedGuest.makeup.lipsLeftPct}%`, top: `${selectedGuest.makeup.lipsTopPct}%`, backgroundColor: selectedLipstick.color },
-            ]}
-          />
+          <View testID="cosmetics-try-on-makeup-layer" pointerEvents="none" style={styles.makeupLayer}>
+            <Svg width="100%" height="100%" viewBox="0 0 120 120" preserveAspectRatio="none">
+              <Ellipse
+                testID="cosmetics-try-on-eyeshadow-left"
+                cx={selectedGuest.makeup.leftEyeX}
+                cy={selectedGuest.makeup.eyeY}
+                rx={7}
+                ry={3.5}
+                fill={selectedEyeshadow.color}
+                fillOpacity={0.96}
+              />
+              <Ellipse
+                testID="cosmetics-try-on-eyeshadow-right"
+                cx={selectedGuest.makeup.rightEyeX}
+                cy={selectedGuest.makeup.eyeY}
+                rx={7}
+                ry={3.5}
+                fill={selectedEyeshadow.color}
+                fillOpacity={0.96}
+              />
+              <Ellipse
+                testID="cosmetics-try-on-lips"
+                cx={selectedGuest.makeup.lipsX}
+                cy={selectedGuest.makeup.lipsY}
+                rx={6}
+                ry={3.5}
+                fill={selectedLipstick.color}
+                fillOpacity={0.98}
+              />
+            </Svg>
+          </View>
         </View>
         <View style={styles.previewCopy}>
           <Text style={[styles.previewEyebrow, { color: colors.primary }]}>客人妝容預覽</Text>
@@ -190,8 +193,8 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
         </ScrollView>
       </View>
 
-      {renderChoices('唇色', lipsticks, selectedLipstick.id, setSelectedLipstickId, 'cosmetics-lip')}
-      {renderChoices('眼影', eyeshadows, selectedEyeshadow.id, setSelectedEyeshadowId, 'cosmetics-eyeshadow')}
+      {renderChoices(`唇色（${lipsticks.length}款）`, lipsticks, selectedLipstick.id, setSelectedLipstickId, 'cosmetics-lip')}
+      {renderChoices(`眼影（${eyeshadows.length}款）`, eyeshadows, selectedEyeshadow.id, setSelectedEyeshadowId, 'cosmetics-eyeshadow')}
 
       <View style={styles.note}>
         <Feather name="info" size={13} color={colors.mutedForeground} />
@@ -211,10 +214,9 @@ const styles = StyleSheet.create({
   freePill: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
   freeText: { fontSize: 11, fontWeight: '800' },
   preview: { minHeight: 174, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  portraitStage: { width: 112, height: 112, flexShrink: 0, borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
+  portraitStage: { width: 132, height: 132, flexShrink: 0, position: 'relative', borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
   guestPortrait: { position: 'absolute', width: '100%', height: '100%' },
-  eyeshadowOverlay: { position: 'absolute', width: 14, height: 6, borderRadius: 8, opacity: 0.55 },
-  lipstickOverlay: { position: 'absolute', width: 14, height: 6, borderRadius: 8, opacity: 0.78 },
+  makeupLayer: { ...StyleSheet.absoluteFill, zIndex: 2 },
   guestChoiceList: { gap: 8, paddingRight: 4 },
   guestChoice: { width: 72, minHeight: 84, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 4, padding: 5 },
   guestChoicePortrait: { width: 58, height: 55, borderWidth: 1, borderRadius: 10, overflow: 'hidden' },

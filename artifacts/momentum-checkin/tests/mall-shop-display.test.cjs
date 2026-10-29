@@ -127,10 +127,10 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   );
   const lipsticks = cosmetics.filter(({ illustration }) => illustration === 'lipstick');
   const eyeshadows = cosmetics.filter(({ illustration }) => illustration === 'palette');
-  assert.ok(lipsticks.length >= 4, 'cosmetics inventory has several try-on lipstick colors');
-  assert.ok(eyeshadows.length >= 4, 'cosmetics inventory has several try-on eyeshadow colors');
-  assert.ok(new Set(lipsticks.map(({ color }) => color)).size > 1, 'lipsticks offer different shades');
-  assert.ok(new Set(eyeshadows.map(({ color }) => color)).size > 1, 'eyeshadows offer different shades');
+  assert.ok(lipsticks.length >= 18, 'cosmetics inventory offers a broad lipstick shade selection');
+  assert.ok(eyeshadows.length >= 18, 'cosmetics inventory offers a broad eyeshadow shade selection');
+  assert.ok(new Set(lipsticks.map(({ color }) => color)).size > 5, 'lipsticks offer many distinct shades');
+  assert.ok(new Set(eyeshadows.map(({ color }) => color)).size > 5, 'eyeshadows offer many distinct shades');
 
   const tryOn = fs.readFileSync(path.join(__dirname, '../components/CosmeticsTryOn.tsx'), 'utf8');
   assert.match(tryOn, /setSelectedLipstickId/);
@@ -138,13 +138,18 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /setSelectedGuestIndex/);
   assert.match(tryOn, /source=\{selectedGuest\.source\}/);
   assert.match(tryOn, /GUEST_PORTRAITS\.map/);
-  assert.match(tryOn, /portraitStage: \{ width: 112, height: 112, flexShrink: 0/);
+  assert.match(tryOn, /portraitStage: \{ width: 132, height: 132, flexShrink: 0/);
   assert.match(tryOn, /guestPortrait: \{ position: 'absolute', width: '100%', height: '100%'/);
-  assert.match(tryOn, /leftEyeLeftPct/);
-  assert.match(tryOn, /lipsTopPct/);
+  assert.match(tryOn, /makeupLayer: \{ \.\.\.StyleSheet\.absoluteFill, zIndex: 2/);
+  assert.match(tryOn, /viewBox="0 0 120 120"/);
+  assert.match(tryOn, /leftEyeX/);
+  assert.match(tryOn, /lipsY/);
+  assert.match(tryOn, /唇色（\$\{lipsticks\.length\}款）/);
+  assert.match(tryOn, /眼影（\$\{eyeshadows\.length\}款）/);
   assert.match(tryOn, /cosmetics-try-on-lips/);
   assert.match(tryOn, /cosmetics-try-on-guest-art/);
-  assert.match(tryOn, /styles\.eyeshadowOverlay/);
+  assert.match(tryOn, /<Ellipse/);
+  assert.match(tryOn, /cosmetics-try-on-makeup-layer/);
   for (let index = 1; index <= 8; index += 1) {
     const portrait = String(index).padStart(2, '0');
     assert.ok(

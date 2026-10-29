@@ -6,10 +6,18 @@ import type { ImageSourcePropType } from 'react-native';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
 
+type EyeshadowCurve = {
+  centerX: number;
+  centerY: number;
+  halfWidth: number;
+  bend: number;
+  tilt: number;
+  thickness: number;
+};
+
 type GuestMakeupAnchors = {
-  leftEyeX: number;
-  rightEyeX: number;
-  eyeShadowY: number;
+  leftEye: EyeshadowCurve;
+  rightEye: EyeshadowCurve;
   lipsX: number;
   lipsY: number;
 };
@@ -19,18 +27,96 @@ const GUEST_PORTRAITS: ReadonlyArray<{
   source: ImageSourcePropType;
   makeup: GuestMakeupAnchors;
 }> = [
-  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeX: 46, rightEyeX: 73, eyeShadowY: 60, lipsX: 60, lipsY: 81 } },
-  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 54, lipsX: 60, lipsY: 78 } },
-  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 48, lipsX: 60, lipsY: 68 } },
-  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 50, lipsX: 60, lipsY: 70 } },
-  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 49, lipsX: 60, lipsY: 68 } },
-  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 48, lipsX: 60, lipsY: 68 } },
-  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 51, lipsX: 60, lipsY: 72 } },
-  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeX: 46, rightEyeX: 74, eyeShadowY: 49, lipsX: 60, lipsY: 69 } },
+  {
+    id: 'guest-1',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'),
+    makeup: {
+      leftEye: { centerX: 46, centerY: 60, halfWidth: 7.4, bend: -2.6, tilt: 0.3, thickness: 1.8 },
+      rightEye: { centerX: 73, centerY: 60, halfWidth: 7.2, bend: -2.3, tilt: -0.2, thickness: 1.8 },
+      lipsX: 60,
+      lipsY: 81,
+    },
+  },
+  {
+    id: 'guest-2',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'),
+    makeup: {
+      leftEye: { centerX: 45, centerY: 54, halfWidth: 7.8, bend: -2.5, tilt: 0.2, thickness: 1.8 },
+      rightEye: { centerX: 73, centerY: 54, halfWidth: 7.8, bend: -2.8, tilt: -0.2, thickness: 1.8 },
+      lipsX: 60,
+      lipsY: 78,
+    },
+  },
+  {
+    id: 'guest-3',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'),
+    makeup: {
+      leftEye: { centerX: 45, centerY: 48, halfWidth: 7.2, bend: -1.9, tilt: 0.5, thickness: 1.7 },
+      rightEye: { centerX: 74, centerY: 48, halfWidth: 7.1, bend: -2.2, tilt: -0.3, thickness: 1.7 },
+      lipsX: 60,
+      lipsY: 68,
+    },
+  },
+  {
+    id: 'guest-4',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'),
+    makeup: {
+      leftEye: { centerX: 45, centerY: 50, halfWidth: 7.2, bend: -1.7, tilt: 0.6, thickness: 1.7 },
+      rightEye: { centerX: 73, centerY: 50, halfWidth: 7.1, bend: -2.0, tilt: -0.5, thickness: 1.7 },
+      lipsX: 60,
+      lipsY: 70,
+    },
+  },
+  {
+    id: 'guest-5',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'),
+    makeup: {
+      leftEye: { centerX: 45, centerY: 49, halfWidth: 7.3, bend: -2.3, tilt: 0.3, thickness: 1.8 },
+      rightEye: { centerX: 74, centerY: 49, halfWidth: 7.2, bend: -2.0, tilt: -0.2, thickness: 1.8 },
+      lipsX: 60,
+      lipsY: 68,
+    },
+  },
+  {
+    id: 'guest-6',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'),
+    makeup: {
+      leftEye: { centerX: 45, centerY: 48, halfWidth: 7.2, bend: -2.4, tilt: 0.2, thickness: 1.8 },
+      rightEye: { centerX: 73, centerY: 48, halfWidth: 7.2, bend: -2.5, tilt: -0.2, thickness: 1.8 },
+      lipsX: 60,
+      lipsY: 68,
+    },
+  },
+  {
+    id: 'guest-7',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'),
+    makeup: {
+      leftEye: { centerX: 45, centerY: 51, halfWidth: 7.4, bend: -1.8, tilt: 0.5, thickness: 1.8 },
+      rightEye: { centerX: 73, centerY: 51, halfWidth: 7.4, bend: -2.1, tilt: -0.4, thickness: 1.8 },
+      lipsX: 60,
+      lipsY: 72,
+    },
+  },
+  {
+    id: 'guest-8',
+    source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'),
+    makeup: {
+      leftEye: { centerX: 46, centerY: 49, halfWidth: 7.2, bend: -2.2, tilt: 0.3, thickness: 1.8 },
+      rightEye: { centerX: 74, centerY: 49, halfWidth: 7.2, bend: -2.0, tilt: -0.4, thickness: 1.8 },
+      lipsX: 60,
+      lipsY: 69,
+    },
+  },
 ];
 
-function getEyeshadowPath(centerX: number, centerY: number) {
-  return `M ${centerX - 8} ${centerY} C ${centerX - 6} ${centerY - 3.5}, ${centerX + 5} ${centerY - 3.5}, ${centerX + 8} ${centerY} C ${centerX + 5} ${centerY + 1.6}, ${centerX - 5} ${centerY + 1.6}, ${centerX - 8} ${centerY} Z`;
+function getEyeshadowPath(eye: EyeshadowCurve) {
+  const leftX = eye.centerX - eye.halfWidth;
+  const rightX = eye.centerX + eye.halfWidth;
+  const leftY = eye.centerY - eye.tilt / 2;
+  const rightY = eye.centerY + eye.tilt / 2;
+  const curveY = eye.centerY + eye.bend;
+  // Positive bend follows a downward-curving lid; negative bend follows an upward arch.
+  return `M ${leftX} ${leftY} Q ${eye.centerX} ${curveY} ${rightX} ${rightY} L ${rightX} ${rightY + eye.thickness} Q ${eye.centerX} ${curveY + eye.thickness} ${leftX} ${leftY + eye.thickness} Z`;
 }
 
 function getLipstickPath(centerX: number, centerY: number) {
@@ -135,13 +221,13 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
             <Svg width="100%" height="100%" viewBox="0 0 120 120" preserveAspectRatio="none">
               <Path
                 testID="cosmetics-try-on-eyeshadow-left"
-                d={getEyeshadowPath(selectedGuest.makeup.leftEyeX, selectedGuest.makeup.eyeShadowY)}
+                d={getEyeshadowPath(selectedGuest.makeup.leftEye)}
                 fill={selectedEyeshadow.color}
                 fillOpacity={0.45}
               />
               <Path
                 testID="cosmetics-try-on-eyeshadow-right"
-                d={getEyeshadowPath(selectedGuest.makeup.rightEyeX, selectedGuest.makeup.eyeShadowY)}
+                d={getEyeshadowPath(selectedGuest.makeup.rightEye)}
                 fill={selectedEyeshadow.color}
                 fillOpacity={0.45}
               />

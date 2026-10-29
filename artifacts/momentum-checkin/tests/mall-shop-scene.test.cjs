@@ -220,7 +220,14 @@ const anchorSource = ts.transpileModule(
 ).outputText;
 const anchorModule = { exports: {} };
 new Function('require', 'module', 'exports', anchorSource)(require, anchorModule, anchorModule.exports);
-const { SCENE_ANCHORS, classifyDecoration, resolveObjectAnchor, mapCoverPoint } = anchorModule.exports;
+const {
+  SCENE_ANCHORS,
+  classifyDecoration,
+  resolveObjectAnchor,
+  mapCoverPoint,
+  clampHotspotPoint,
+  separateHotspotPoints,
+} = anchorModule.exports;
 
 test('every scene defines in-bounds anchors for all eight slots', () => {
   const slots = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table'];
@@ -230,6 +237,42 @@ test('every scene defines in-bounds anchors for all eight slots', () => {
     for (const { table, floor } of Object.values(anchors)) {
       for (const p of [table, floor]) assert.ok(p.x >= 0 && p.x <= 1 && p.y >= 0.1 && p.y <= 1, scene);
       assert.ok(floor.y >= table.y - 0.001, `${scene} floor is not above table`);
+    }
+  }
+});
+
+test('all 21 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  const sceneAssets = [...scene.matchAll(/require\('\.\.\/assets\/images\/(shop-room-[^']+\.jpg)'\)/g)]
+    .map(([, asset]) => asset);
+  assert.equal(sceneAssets.length, 21);
+  assert.equal(new Set(sceneAssets).size, 21);
+  for (const asset of sceneAssets) {
+    const assetPath = path.join(__dirname, '../assets/images', asset);
+    assert.ok(fs.existsSync(assetPath), `missing scene illustration ${asset}`);
+    assert.ok(fs.statSync(assetPath).size > 0, `empty scene illustration ${asset}`);
+  }
+  assert.match(scene, /imageStage: \{[^}]*maxWidth: 510, aspectRatio: 1/);
+
+  for (const [sceneKey, anchors] of Object.entries(SCENE_ANCHORS)) {
+    for (const anchorClass of ['table', 'floor']) {
+      for (const width of [320, 375, 430, 510]) {
+        const points = separateHotspotPoints(
+          Object.values(anchors).map((anchor) => mapCoverPoint(anchor[anchorClass], width, width)),
+          width,
+          width,
+        );
+        for (const [index, point] of points.entries()) {
+          assert.ok(point.x >= 42 && point.x <= width - 42, `${sceneKey}/${anchorClass}/${index} horizontal bounds at ${width}px`);
+          assert.ok(point.y >= 50 && point.y <= width - 18, `${sceneKey}/${anchorClass}/${index} vertical bounds at ${width}px`);
+          for (const other of points.slice(0, index)) {
+            assert.ok(
+              Math.abs(point.x - other.x) >= 84 || Math.abs(point.y - other.y) >= 58,
+              `${sceneKey}/${anchorClass} controls do not overlap at ${width}px`,
+            );
+          }
+        }
+      }
     }
   }
 });

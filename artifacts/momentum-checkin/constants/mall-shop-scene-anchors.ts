@@ -101,3 +101,52 @@ export function mapCoverPoint(p: AnchorPoint, width: number, height: number): { 
   const size = Math.max(width, height);
   return { x: (width - size) / 2 + p.x * size, y: (height - size) / 2 + p.y * size };
 }
+
+/** Keeps the hotspot and its label inside the scene on narrow screens and near-edge anchors. */
+export function clampHotspotPoint(
+  p: AnchorPoint,
+  width: number,
+  height: number,
+  horizontalInset = 42,
+  topInset = 50,
+  bottomInset = 18,
+): AnchorPoint {
+  return {
+    x: Math.max(horizontalInset, Math.min(width - horizontalInset, p.x)),
+    y: Math.max(topInset, Math.min(height - bottomInset, p.y)),
+  };
+}
+
+/** Nudges crowded controls while keeping them close to their scene-specific furniture anchors. */
+export function separateHotspotPoints(points: AnchorPoint[], width: number, height: number): AnchorPoint[] {
+  const laidOut: AnchorPoint[] = [];
+  const collides = (candidate: AnchorPoint) => laidOut.some((point) => (
+    Math.abs(candidate.x - point.x) < 84 && Math.abs(candidate.y - point.y) < 58
+  ));
+
+  for (const rawPoint of points) {
+    const origin = clampHotspotPoint(rawPoint, width, height);
+    if (!collides(origin)) {
+      laidOut.push(origin);
+      continue;
+    }
+
+    let separated = origin;
+    search: for (let radius = 8; radius <= Math.max(width, height); radius += 8) {
+      for (let step = 0; step < 24; step += 1) {
+        const angle = (step / 24) * Math.PI * 2;
+        const candidate = clampHotspotPoint({
+          x: origin.x + Math.cos(angle) * radius,
+          y: origin.y + Math.sin(angle) * radius,
+        }, width, height);
+        if (!collides(candidate)) {
+          separated = candidate;
+          break search;
+        }
+      }
+    }
+    laidOut.push(separated);
+  }
+
+  return laidOut;
+}

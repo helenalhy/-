@@ -4,7 +4,7 @@ import { Animated, Easing, ImageBackground, Modal, Platform, Pressable, StyleShe
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorAreaId, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
-import { classifyDecoration, mapCoverPoint, resolveObjectAnchor } from '@/constants/mall-shop-scene-anchors';
+import { classifyDecoration, mapCoverPoint, resolveObjectAnchor, separateHotspotPoints } from '@/constants/mall-shop-scene-anchors';
 import { getMallFloorArtProfile } from '@/constants/mall-floor-art';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
 import { canDisplayShopProducts, SHOP_DISPLAY_SLOT_COUNT, type ShopDisplayProduct } from '@/constants/mall-shop-display';
@@ -158,6 +158,15 @@ export function ShopInteriorScene({
   const displayCount = 2 + (floorArt.displayStyle % 5);
   const canopyLights = 3 + (floorArt.canopyStyle % 6);
   const displayTop = 68 + (floorArt.roofStyle * 2);
+  const hotspotPoints = separateHotspotPoints(
+    SHOP_INTERIOR_SLOTS.map((slot) => {
+      const decoration = decorations.find(({ id }) => id === placements[slot.id]);
+      const profile = decoration ? classifyDecoration(decoration) : { cls: 'tabletop' as const, scale: 1 };
+      return mapCoverPoint(resolveObjectAnchor(sceneKey, slot.id, profile.cls), size.width, size.height);
+    }),
+    size.width,
+    size.height,
+  );
   const completeDogInteraction = useCallback((id: number) => {
     setDogInteraction((current) => current?.id === id ? null : current);
   }, []);
@@ -332,7 +341,7 @@ export function ShopInteriorScene({
           })}
           <View style={[styles.interiorDisplayShelf, { backgroundColor: floorArt.accent }]} />
         </Animated.View>
-        {SHOP_INTERIOR_SLOTS.map((slot) => {
+        {SHOP_INTERIOR_SLOTS.map((slot, slotIndex) => {
           const decoration = decorations.find(({ id }) => id === placements[slot.id]);
           const dogLook = decoration ? resolveDogStaffLook(decoration.id, dogStaffLooks?.[decoration.id]) : null;
           const displayEnabled = !!decoration
@@ -344,7 +353,7 @@ export function ShopInteriorScene({
             .filter((product): product is ShopDisplayProduct => !!product) ?? [];
           const selected = selectedSlot === slot.id;
           const profile = decoration ? classifyDecoration(decoration) : { cls: 'tabletop' as const, scale: 1 };
-          const point = mapCoverPoint(resolveObjectAnchor(sceneKey, slot.id, profile.cls), size.width, size.height);
+          const point = hotspotPoints[slotIndex];
           const lift = (OBJECT_H * (1 - profile.scale)) / 2;
           return (
             <Pressable
@@ -1147,7 +1156,7 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 4,
   },
-  imageStage: { width: '100%', aspectRatio: 0.94, minHeight: 360, maxHeight: 510, justifyContent: 'flex-start' },
+  imageStage: { width: '100%', maxWidth: 510, aspectRatio: 1, alignSelf: 'center', justifyContent: 'flex-start' },
   imageShape: { width: '100%', height: '100%' },
   themeRail: { position: 'absolute', left: 0, right: 0, top: 0, height: 7, zIndex: 1, flexDirection: 'row', justifyContent: 'space-around', overflow: 'hidden' },
   themeRailMark: { width: 20, height: 7, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },

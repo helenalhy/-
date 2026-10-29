@@ -7,4 +7,4 @@ The try-on portrait should show a large, straight-on face through the shoulders,
 
 **Why:** The user reported repeated preview failures: the earlier side-angled portraits and opaque overlays made makeup look misplaced even though code and type checks passed.
 
-**How to apply:** Keep all eight portraits front-facing, inspect each guest's overlays on mobile, and verify the rendered, unlocked try-on screen; source tests and compilation alone are not visual confirmation.
+**How to apply:** Keep all eight portraits front-facing, measure each eye/lip anchor against that exact source image (a 10-unit coordinate grid helps), and check the rendered, unlocked mobile screen; contact-sheet estimates, source tests, and compilation alone are not visual confirmation.

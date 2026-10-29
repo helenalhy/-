@@ -144,6 +144,7 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /viewBox="0 0 120 120"/);
   assert.match(tryOn, /leftEyeX/);
   assert.match(tryOn, /lipsY/);
+  assert.match(tryOn, /id: 'guest-2'.*?eyeShadowY: 54, lipsX: 60, lipsY: 78/s);
   assert.match(tryOn, /唇色（\$\{lipsticks\.length\}款）/);
   assert.match(tryOn, /眼影（\$\{eyeshadows\.length\}款）/);
   assert.match(tryOn, /cosmetics-try-on-lips/);

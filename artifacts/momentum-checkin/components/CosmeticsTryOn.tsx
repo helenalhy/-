@@ -19,14 +19,14 @@ const GUEST_PORTRAITS: ReadonlyArray<{
   source: ImageSourcePropType;
   makeup: GuestMakeupAnchors;
 }> = [
-  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeX: 46, rightEyeX: 73, eyeShadowY: 64, lipsX: 60, lipsY: 81 } },
-  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 60, lipsX: 60, lipsY: 76 } },
-  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 51, lipsX: 60, lipsY: 68 } },
-  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 53, lipsX: 60, lipsY: 70 } },
-  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 52, lipsX: 60, lipsY: 68 } },
-  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 51, lipsX: 60, lipsY: 68 } },
-  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 55, lipsX: 60, lipsY: 72 } },
-  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeX: 46, rightEyeX: 74, eyeShadowY: 52, lipsX: 60, lipsY: 69 } },
+  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeX: 46, rightEyeX: 73, eyeShadowY: 60, lipsX: 60, lipsY: 81 } },
+  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 54, lipsX: 60, lipsY: 78 } },
+  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 48, lipsX: 60, lipsY: 68 } },
+  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 50, lipsX: 60, lipsY: 70 } },
+  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 49, lipsX: 60, lipsY: 68 } },
+  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 48, lipsX: 60, lipsY: 68 } },
+  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 51, lipsX: 60, lipsY: 72 } },
+  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeX: 46, rightEyeX: 74, eyeShadowY: 49, lipsX: 60, lipsY: 69 } },
 ];
 
 function getEyeshadowPath(centerX: number, centerY: number) {

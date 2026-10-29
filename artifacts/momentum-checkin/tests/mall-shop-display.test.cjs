@@ -135,11 +135,21 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   const tryOn = fs.readFileSync(path.join(__dirname, '../components/CosmeticsTryOn.tsx'), 'utf8');
   assert.match(tryOn, /setSelectedLipstickId/);
   assert.match(tryOn, /setSelectedEyeshadowId/);
+  assert.match(tryOn, /setSelectedGuestIndex/);
+  assert.match(tryOn, /source=\{selectedGuest\.source\}/);
+  assert.match(tryOn, /GUEST_PORTRAITS\.map/);
+  assert.match(tryOn, /portraitStage: \{ width: 144, height: 136/);
   assert.match(tryOn, /cosmetics-try-on-lips/);
   assert.match(tryOn, /cosmetics-try-on-guest-art/);
-  assert.match(tryOn, /cosmetics-tryon-guest-portrait\.png/);
   assert.match(tryOn, /styles\.eyeshadowOverlay/);
-  assert.ok(fs.existsSync(path.join(__dirname, '../assets/images/cosmetics-tryon-guest-portrait.png')));
+  for (let index = 1; index <= 8; index += 1) {
+    const portrait = String(index).padStart(2, '0');
+    assert.ok(
+      fs.existsSync(path.join(__dirname, `../assets/images/cosmetics-tryon-guest-portrait-${portrait}.png`)),
+      `guest portrait ${portrait} should be available for selection`,
+    );
+  }
+  assert.match(tryOn, /選擇試妝客人/);
   assert.doesNotMatch(tryOn, /hairCap|hairBangs|eyeRow/);
   assert.match(tryOn, /試色只會改變預覽，不扣金幣/);
   assert.doesNotMatch(tryOn, /useHabits|placeShopInteriorDecoration|setShopInteriorFixtureProduct/);

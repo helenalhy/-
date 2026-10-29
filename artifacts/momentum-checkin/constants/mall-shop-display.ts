@@ -72,7 +72,8 @@ export type ShopProductIllustration =
   | 'postcard'
   | 'pencil'
   | 'bucket'
-  | 'swimwear';
+  | 'swimwear'
+  | 'teaCup';
 
 export interface ShopDisplayProduct {
   id: string;
@@ -378,7 +379,7 @@ function inferProductIllustration(
   theme: ProductTheme,
   fallback?: ShopProductIllustration,
 ): ShopProductIllustration {
-  if (/手提包|手袋|小方包|手拿包|包袋/.test(name)) return 'handbag';
+  if (/手提包|手袋|小方包|手拿包|包袋|水母包|荷包/.test(name)) return 'handbag';
   if (/卡夾|卡套|錢包|零錢包/.test(name)) return 'wallet';
   if (/耳環|耳飾/.test(name)) return 'earring';
   if (/腕錶|手錶|手表|時計/.test(name)) return 'watch';
@@ -391,7 +392,6 @@ function inferProductIllustration(
   if (/浴巾|毛巾|沙灘巾/.test(name)) return 'towel';
   if (/扇子|摺扇/.test(name)) return 'fan';
   if (/胸針|別針|徽章/.test(name)) return 'jewel';
-  if (/手提包|手袋|小方包|手拿包|包袋|水母包|荷包/.test(name)) return 'handbag';
   if (/香氛石|擴香石/.test(name)) return 'diffuserStone';
   if (/按摩梳|木梳/.test(name)) return 'brush';
   if (/眼罩/.test(name)) return 'mask';
@@ -399,7 +399,8 @@ function inferProductIllustration(
   if (/禮盒|收納盒/.test(name)) return 'box';
   if (/冰棒/.test(name)) return 'popsicle';
   if (/冰淇淋|雪糕|冰品|雪球|三球杯/.test(name)) return 'icecream';
-  if (/烏龍茶|冰茶|熱茶/.test(name)) return 'mug';
+  if (/烏龍茶|冰茶|熱茶|奶蓋/.test(name)) return 'teaCup';
+  if (/蜂蜜水/.test(name)) return 'bottle';
   if (/冰沙|飲|拿鐵|奶茶|氣泡茶/.test(name)) return 'drink';
   if (/布丁/.test(name)) return 'pudding';
   if (/蛋糕|馬芬|小塔|蛋塔/.test(name)) return 'cake';
@@ -409,10 +410,13 @@ function inferProductIllustration(
   if (/麵包|菠蘿包|咖喱包/.test(name)) return 'bread';
   if (/棒棒糖/.test(name)) return 'lollipop';
   if (/糖罐/.test(name)) return 'bottle';
-  if (/棉花糖|軟糖|糖果|糖球|巧克力/.test(name)) return 'candy';
+  if (/棉花糖/.test(name)) return 'cloud';
+  if (/軟糖|糖果|糖球|巧克力/.test(name)) return 'candy';
   if (/披薩/.test(name)) return 'pizza';
   if (/飯糰|飯團|海苔|小卷|壽司/.test(name)) return 'riceball';
   if (/便當|餐盒|餐具/.test(name)) return 'bento';
+  if (/泳衣|比基尼|防曬上衣/.test(name)) return 'swimwear';
+  if (/上衣|襯衫|裙|禮服|手套|羽織|和服|浴衣/.test(name)) return 'garment';
   if (/盆栽|多肉/.test(name)) return 'plant';
   if (/水果|蔬菜|草莓|莓果|鮮蔬/.test(name)) return 'produce';
   if (/小熊布偶|布偶|玩偶/.test(name)) return 'plush';
@@ -426,8 +430,6 @@ function inferProductIllustration(
   if (/陶瓷|陶土/.test(name)) return 'pottery';
   if (/花籃|編織花籃/.test(name)) return 'basket';
   if (/手杖|魔法棒/.test(name)) return 'wand';
-  if (/泳衣|比基尼|防曬上衣/.test(name)) return 'swimwear';
-  if (/上衣|襯衫|裙|禮服|手套|羽織|和服|浴衣/.test(name)) return 'garment';
   if (/帽/.test(name)) return 'hat';
   if (/紙盒/.test(name)) return 'carton';
   if (/零食包|分享包/.test(name)) return 'snack';

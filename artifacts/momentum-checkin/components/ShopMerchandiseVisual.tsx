@@ -18,7 +18,7 @@ type ProductArtShape =
   | 'bento' | 'pot' | 'plush' | 'blocks' | 'capsule' | 'puzzle' | 'train'
   | 'ball' | 'vase' | 'basket' | 'wand' | 'hat' | 'carton' | 'bag'
   | 'headphones' | 'camera' | 'speaker' | 'console' | 'cable' | 'projector'
-  | 'brush' | 'mask' | 'pencil' | 'bucket';
+  | 'brush' | 'mask' | 'pencil' | 'bucket' | 'swimwear' | 'teaCup';
 type ProductArtConfig = {
   shape: ProductArtShape;
   icon: keyof typeof Feather.glyphMap;
@@ -68,6 +68,8 @@ const PRODUCT_SPECIFIC_ART: Partial<Record<ShopProductIllustration, ProductArtCo
   postcard: { shape: 'card', icon: 'image' },
   pencil: { shape: 'pencil', icon: 'edit-3' },
   bucket: { shape: 'bucket', icon: 'package' },
+  swimwear: { shape: 'swimwear', icon: 'droplet' },
+  teaCup: { shape: 'teaCup', icon: 'coffee' },
 };
 
 const SPECIAL_PRODUCT_SHAPES: Record<ProductArtShape, ViewStyle> = {
@@ -110,6 +112,8 @@ const SPECIAL_PRODUCT_SHAPES: Record<ProductArtShape, ViewStyle> = {
   mask: { width: 29, height: 19, borderRadius: 8 },
   pencil: { width: 7, height: 29, borderRadius: 3, transform: [{ rotate: '24deg' }] },
   bucket: { width: 23, height: 20, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
+  swimwear: { width: 23, height: 26, borderTopLeftRadius: 12, borderTopRightRadius: 12, borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
+  teaCup: { width: 27, height: 17, borderRadius: 5, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
 };
 
 const MERCHANDISE_MOTION_PROFILES: Partial<Record<ShopProductIllustration, MerchandiseMotionProfile>> = {
@@ -199,7 +203,15 @@ export function ShopMerchandiseVisual({
           <>
             <View style={[styles.bottleCap, { backgroundColor: colors.candyCaramelDark }]} />
             <View style={[styles.bottleNeck, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
-            <View style={[styles.bottle, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]}>
+            <View style={[
+              styles.bottle,
+              garmentStyle === 1 ? styles.bottleRound
+                : garmentStyle === 2 ? styles.bottleSquare
+                  : garmentStyle === 3 ? styles.bottleTall
+                    : garmentStyle === 4 ? styles.bottleWide
+                      : garmentStyle === 5 ? styles.bottleSlim : null,
+              { backgroundColor: product.color, borderColor: colors.candyCaramelDark },
+            ]}>
               <View style={[styles.bottleLabel, { backgroundColor: colors.candyCream }]}>
                 <Feather name={product.icon as keyof typeof Feather.glyphMap} size={8} color={colors.candyRoseDark} />
                 <View style={[styles.bottleLabelLine, { backgroundColor: colors.candyCaramel }]} />
@@ -539,7 +551,7 @@ export function ShopMerchandiseVisual({
               {(productArtwork.shape === 'bento' || productArtwork.shape === 'blocks') && (
                 <View style={[styles.specialGridLine, { backgroundColor: colors.candyCream }]} />
               )}
-              {productArtwork.shape === 'plant' && <View style={[styles.specialLeaf, { backgroundColor: colors.candyMintDark }]} />}
+              {productArtwork.shape === 'pot' && <View style={[styles.specialLeaf, { backgroundColor: colors.candyMintDark }]} />}
               {productArtwork.shape === 'plush' && <View style={[styles.specialPlushEar, styles.specialPlushEarLeft, { backgroundColor: accent }]} />}
               {productArtwork.shape === 'plush' && <View style={[styles.specialPlushEar, styles.specialPlushEarRight, { backgroundColor: accent }]} />}
             </View>
@@ -562,6 +574,11 @@ const styles = StyleSheet.create({
   bottleCap: { position: 'absolute', top: 4, width: 10, height: 4, borderRadius: 2 },
   bottleNeck: { position: 'absolute', top: 7, width: 10, height: 6, borderWidth: 1, borderBottomWidth: 0 },
   bottle: { position: 'absolute', bottom: 5, width: 22, height: 27, borderWidth: 1.2, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  bottleRound: { width: 25, height: 23, borderRadius: 12 },
+  bottleSquare: { width: 23, height: 24, borderRadius: 3 },
+  bottleTall: { width: 19, height: 30, borderRadius: 5 },
+  bottleWide: { width: 27, height: 21, borderRadius: 7 },
+  bottleSlim: { width: 18, height: 26, borderRadius: 5 },
   bottleLabel: { width: 15, height: 13, borderRadius: 4, alignItems: 'center', justifyContent: 'center', gap: 1 },
   bottleLabelLine: { width: 8, height: 1, borderRadius: 1, opacity: 0.8 },
   bottleShine: { position: 'absolute', left: 3, top: 5, width: 2, height: 13, borderRadius: 2, opacity: 0.8 },
@@ -712,45 +729,6 @@ const styles = StyleSheet.create({
   giftBox: { position: 'absolute', bottom: 5, width: 23, height: 20, borderWidth: 1, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, alignItems: 'center', justifyContent: 'center' },
   giftRibbon: { position: 'absolute', width: 3, height: 18, opacity: 0.8 },
   specialObject: { position: 'absolute', top: 7, borderWidth: 1.2, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
-  specialCloud: { width: 30, height: 23, borderRadius: 16 },
-  specialBox: { width: 27, height: 23, borderRadius: 5 },
-  specialMug: { width: 23, height: 22, borderRadius: 5, borderTopLeftRadius: 3 },
-  specialCard: { width: 29, height: 22, borderRadius: 4, transform: [{ rotate: '-8deg' }] },
-  specialCharm: { width: 23, height: 23, borderRadius: 12 },
-  specialStone: { width: 29, height: 19, borderRadius: 12, transform: [{ rotate: '-7deg' }] },
-  specialCake: { width: 25, height: 24, borderRadius: 6, borderTopLeftRadius: 13, borderTopRightRadius: 13 },
-  specialStack: { width: 28, height: 22, borderRadius: 12 },
-  specialCookie: { width: 25, height: 25, borderRadius: 13 },
-  specialPudding: { width: 24, height: 23, borderTopLeftRadius: 12, borderTopRightRadius: 12, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
-  specialCone: { width: 23, height: 26, borderTopLeftRadius: 13, borderTopRightRadius: 13, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 },
-  specialPopsicle: { width: 17, height: 25, borderRadius: 8 },
-  specialLollipop: { width: 22, height: 22, borderRadius: 12 },
-  specialBread: { width: 29, height: 20, borderRadius: 12, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
-  specialTriangle: { width: 24, height: 23, borderRadius: 4, transform: [{ rotate: '45deg' }] },
-  specialBento: { width: 30, height: 22, borderRadius: 4 },
-  specialPot: { width: 22, height: 16, borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
-  specialPlush: { width: 22, height: 22, borderRadius: 12 },
-  specialBlocks: { width: 23, height: 23, borderRadius: 4, transform: [{ rotate: '-5deg' }] },
-  specialCapsule: { width: 22, height: 27, borderRadius: 12 },
-  specialPuzzle: { width: 26, height: 23, borderRadius: 5 },
-  specialTrain: { width: 29, height: 17, borderRadius: 5 },
-  specialBall: { width: 23, height: 23, borderRadius: 12 },
-  specialVase: { width: 20, height: 25, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
-  specialBasket: { width: 29, height: 18, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
-  specialWand: { width: 6, height: 30, borderRadius: 4, transform: [{ rotate: '25deg' }] },
-  specialHat: { width: 29, height: 13, borderTopLeftRadius: 15, borderTopRightRadius: 15, borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
-  specialCarton: { width: 20, height: 27, borderRadius: 4, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
-  specialBag: { width: 24, height: 25, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
-  specialHeadphones: { width: 26, height: 25, borderTopLeftRadius: 13, borderTopRightRadius: 13 },
-  specialCamera: { width: 29, height: 20, borderRadius: 5 },
-  specialSpeaker: { width: 21, height: 27, borderRadius: 6 },
-  specialConsole: { width: 29, height: 20, borderRadius: 5 },
-  specialCable: { width: 25, height: 25, borderRadius: 13 },
-  specialProjector: { width: 29, height: 18, borderRadius: 5 },
-  specialBrush: { width: 8, height: 28, borderRadius: 3, transform: [{ rotate: '-18deg' }] },
-  specialMask: { width: 29, height: 19, borderRadius: 8 },
-  specialPencil: { width: 7, height: 29, borderRadius: 3, transform: [{ rotate: '24deg' }] },
-  specialBucket: { width: 23, height: 20, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
   specialLollipopStick: { position: 'absolute', top: 27, width: 2, height: 11, borderRadius: 2 },
   specialTrainWheel: { position: 'absolute', top: 28, width: 7, height: 7, borderRadius: 4 },
   specialTrainWheelLeft: { left: 8 },

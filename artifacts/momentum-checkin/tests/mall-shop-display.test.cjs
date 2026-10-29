@@ -42,6 +42,17 @@ test('display fixtures are recognized without treating ordinary lamps as shelves
 test('each shop type gets sixty distinct, shop-specific illustrated products', () => {
   const shopTypes = [
     'general',
+    'fragrance',
+    'cafe',
+    'candy',
+    'icecream',
+    'bakery',
+    'tea',
+    'food',
+    'flower',
+    'book',
+    'toy',
+    'craft',
     'womenswear',
     'bridal',
     'eveningwear',
@@ -68,6 +79,11 @@ test('each shop type gets sixty distinct, shop-specific illustrated products', (
       name && description && icon && color && theme && illustration && Number.isInteger(variant)
     )));
     assert.equal(new Set(products.map(({ variant }) => variant)).size, 60, `${shopType} products should each have an illustration variation`);
+    const illustrationCount = new Set(products.slice(0, 8).map(({ illustration }) => illustration)).size;
+    assert.ok(
+      illustrationCount >= (shopType === 'fragrance' ? 2 : 3),
+      `${shopType} should show multiple distinct product illustrations`,
+    );
     assert.deepEqual(products.slice(0, 8).map(({ id }) => id), Array.from(
       { length: 8 },
       (_, index) => `display-${shopType}-${index + 1}`,
@@ -102,6 +118,40 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   for (const illustration of ['handbag', 'earring', 'watch', 'scarf', 'hairclip', 'shoe', 'wallet', 'necklace', 'towel', 'fan']) {
     assert.match(visual, new RegExp(`product\\.illustration === '${illustration}'`));
   }
+});
+
+test('other shops use product-specific animated silhouettes across food, toys and electronics', () => {
+  const illustrationCases = [
+    ['cafe', ['drink', 'cake', 'pancake', 'cookie', 'cloud', 'pudding']],
+    ['candy', ['candy', 'bottle', 'lollipop', 'box']],
+    ['icecream', ['icecream', 'drink', 'popsicle']],
+    ['bakery', ['cake', 'bread', 'cookie', 'croissant']],
+    ['food', ['riceball', 'bread', 'pizza', 'pancake', 'bento', 'produce']],
+    ['toy', ['plush', 'blocks', 'capsule', 'puzzle', 'musicbox', 'train']],
+    ['electronics', ['headphones', 'camera', 'speaker', 'gameConsole', 'watch', 'cable', 'projector']],
+    ['supermarket', ['produce', 'carton', 'cookie', 'snack', 'flower']],
+  ];
+
+  for (const [shopType, expectedIllustrations] of illustrationCases) {
+    const products = getShopFixtureProductCatalog(
+      `${shopType}-shop`,
+      '主題商店',
+      shopType,
+      displayFixture,
+    );
+    const firstPageIllustrations = products.slice(0, 8).map(({ illustration }) => illustration);
+    for (const expected of expectedIllustrations) {
+      assert.ok(firstPageIllustrations.includes(expected), `${shopType} should use the ${expected} illustration`);
+    }
+  }
+
+  const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
+  assert.match(visual, /bottleRound/);
+  assert.match(visual, /bottleSquare/);
+  for (const illustration of ['cloud', 'diffuserStone', 'pudding', 'icecream', 'popsicle', 'pizza', 'riceball', 'plush', 'blocks', 'capsule', 'musicbox', 'train', 'yarn', 'pottery', 'basket', 'wand', 'carton', 'headphones', 'camera', 'speaker', 'gameConsole', 'cable', 'projector', 'brush', 'mask', 'postcard', 'pencil', 'bucket', 'swimwear', 'teaCup']) {
+    assert.match(visual, new RegExp(`${illustration}: \\{ shape:`));
+  }
+  assert.match(visual, /productArtwork &&/);
 });
 
 test('cloud fragrance shop has fragrance bottles and diffuser stones', () => {
@@ -249,7 +299,7 @@ test('fixture merchandise uses animated illustrations and paginated 18-slot arra
   assert.match(visual, /product\.illustration === 'cloak'/);
   assert.match(visual, /product\.illustration === 'wig'/);
   assert.match(visual, /product\.illustration === 'ring'/);
-  assert.match(visual, /MERCHANDISE_MOTION_PROFILES: Record<ShopProductIllustration, MerchandiseMotionProfile>/);
+  assert.match(visual, /MERCHANDISE_MOTION_PROFILES: Partial<Record<ShopProductIllustration, MerchandiseMotionProfile>>/);
   assert.match(context, /product\.legacyOnly/);
   assert.match(context, /product\.fixtureIds\.includes\(fixtureDecorationId\)/);
   assert.match(route, /setShopInteriorFixtureProduct/);

@@ -18,6 +18,8 @@ new Function('require', 'module', 'exports', constantsOutput)(
 
 test('floor guest counts, unique frame positions, routes, and sprite sheets stay aligned', () => {
   const {
+    BEAUTY_BAG_GUEST_INDICES,
+    COSMETICS_SHOP_FLOOR,
     GUEST_ATLAS_FRAME_WIDTH,
     GUEST_COLUMNS,
     GUEST_COUNTS_BY_FLOOR,
@@ -63,4 +65,22 @@ test('floor guest counts, unique frame positions, routes, and sprite sheets stay
   }
   assert.equal(sheetPaths.size, 20, 'every floor uses its own shopper sheet');
   assert.equal(sheetHashes.size, 20, 'floor casts should keep their own unique sheets');
+});
+
+test('7F cosmetics shoppers carry moving pastel beauty bags', () => {
+  const {
+    BEAUTY_BAG_GUEST_INDICES,
+    COSMETICS_SHOP_FLOOR,
+    GUEST_COUNTS_BY_FLOOR,
+  } = guestConstants.exports;
+  assert.equal(COSMETICS_SHOP_FLOOR, 7);
+  assert.deepEqual(BEAUTY_BAG_GUEST_INDICES, [0, 2, 4, 6, 8, 10]);
+  assert.equal(new Set(BEAUTY_BAG_GUEST_INDICES).size, BEAUTY_BAG_GUEST_INDICES.length);
+  assert.ok(BEAUTY_BAG_GUEST_INDICES.every((index) => index < GUEST_COUNTS_BY_FLOOR[COSMETICS_SHOP_FLOOR - 1]));
+
+  const customerScene = fs.readFileSync(path.join(__dirname, '../components/MallCustomers.tsx'), 'utf8');
+  assert.match(customerScene, /floor === COSMETICS_SHOP_FLOOR/);
+  assert.match(customerScene, /mall-guest-beauty-bag-/);
+  assert.match(customerScene, /Animated\.View/);
+  assert.match(customerScene, /candyPink.*candyLavender.*candyPeach.*candySky.*candyMint.*candyCoral/);
 });

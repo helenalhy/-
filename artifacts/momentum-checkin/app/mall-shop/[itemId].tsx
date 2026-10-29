@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useHabits } from '@/context/HabitsContext';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { ShopInteriorScene } from '@/components/ShopInteriorScene';
+import { CosmeticsTryOn } from '@/components/CosmeticsTryOn';
 import { ShopDisplayFixturePanel } from '@/components/ShopDisplayFixturePanel';
 import { DogStaffCustomizer } from '@/components/DogStaffCustomizer';
 import {
@@ -147,6 +148,17 @@ export default function MallShopInteriorScreen() {
         .filter(([, products]) => (products as { id: string }[]).length > 0),
     ) as Record<string, ReturnType<typeof getShopFixtureProductCatalog>>;
   }, [shop?.id, shop?.name, shop?.shopType, interiorDecorations]);
+  const cosmeticsTryOnProducts = useMemo(() => {
+    if (!shop || shop.shopType !== 'cosmetics') return [];
+    return getShopFixtureProductCatalog(shop.id, shop.name, shop.shopType, {
+      id: 'cosmetics-try-on-display',
+      name: '彩妝商品展示架',
+      description: '可試搭的唇膏與眼影商品展示架。',
+      icon: 'shopping-bag',
+      price: 0,
+      color: shop.color,
+    });
+  }, [shop?.id, shop?.name, shop?.shopType]);
   const owned = new Set(interior?.ownedDecorations ?? []);
   const placements = interior?.placements ?? {};
   const areaPlacements = useMemo(
@@ -367,6 +379,10 @@ export default function MallShopInteriorScreen() {
                 setActiveFixtureId(fixtureId);
               }}
             />
+
+            {shop.shopType === 'cosmetics' && (
+              <CosmeticsTryOn products={cosmeticsTryOnProducts} />
+            )}
 
             <View style={[styles.areaPager, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Pressable

@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Feather } from '@expo/vector-icons';
 import { AccessibilityInfo, Animated, Easing, Image, Platform, StyleSheet, View } from 'react-native';
 import palette from '@/constants/colors';
 import {
+  BEAUTY_BAG_GUEST_INDICES,
+  COSMETICS_SHOP_FLOOR,
   GUEST_FRAME_CELLS,
   GUEST_FRAME_HEIGHT,
   GUEST_FRAME_WIDTH,
@@ -14,6 +17,7 @@ import {
 } from '@/constants/mall-guests';
 
 const c = palette.light;
+const beautyBagColors = [c.candyPink, c.candyLavender, c.candyPeach, c.candySky, c.candyMint, c.candyCoral];
 
 function Shopper({ index, floor, width, reducedMotion }: { index: number; floor: number; width: number; reducedMotion: boolean }) {
   const route = GUEST_ROUTES[index];
@@ -24,6 +28,9 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
   const frameSize = GUEST_FRAME_SIZES_BY_FLOOR[floor - 1] ?? { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT };
   const frameWidth = frameSize.width;
   const frameHeight = frameSize.height;
+  const carriesBeautyBag = floor === COSMETICS_SHOP_FLOOR
+    && (BEAUTY_BAG_GUEST_INDICES as readonly number[]).includes(index);
+  const beautyBagColor = beautyBagColors[index % beautyBagColors.length];
   useEffect(() => {
     if (reducedMotion) return;
     function walk(to: number) {
@@ -79,6 +86,14 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
             }]}
           />
         </View>
+        {carriesBeautyBag && (
+          <View testID={`mall-guest-beauty-bag-${floor}-${index}`} style={s.beautyBagWrap}>
+            <View style={[s.beautyBagHandle, { borderColor: c.candyRoseDark }]} />
+            <View style={[s.beautyBag, { backgroundColor: beautyBagColor, borderColor: c.candyRoseDark }]}>
+              <Feather name={index % 2 === 0 ? 'heart' : 'star'} size={6} color={c.candyRoseDark} />
+            </View>
+          </View>
+        )}
       </Animated.View>
     </Animated.View>
   );
@@ -106,4 +121,7 @@ const s = StyleSheet.create({
   shadow: { position: 'absolute', bottom: 7, left: 10, width: 28, height: 4, borderRadius: 12, opacity: 0.15 },
   spriteWindow: { overflow: 'hidden' },
   spriteSheet: { position: 'absolute' },
+  beautyBagWrap: { position: 'absolute', left: 32, bottom: 9, width: 14, height: 17, alignItems: 'center', justifyContent: 'flex-end' },
+  beautyBagHandle: { position: 'absolute', top: 0, width: 6, height: 5, borderWidth: 1.2, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  beautyBag: { width: 12, height: 12, borderWidth: 1, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },
 });

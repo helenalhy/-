@@ -125,6 +125,22 @@ test('fashion and boutique products use item-shaped animated illustrations inste
     cosmetics.slice(0, 8).map(({ illustration }) => illustration),
     ['compact', 'lipstick', 'palette', 'mascara', 'bottle', 'brush', 'compact', 'nailPolish'],
   );
+  const lipsticks = cosmetics.filter(({ illustration }) => illustration === 'lipstick');
+  const eyeshadows = cosmetics.filter(({ illustration }) => illustration === 'palette');
+  assert.ok(lipsticks.length >= 4, 'cosmetics inventory has several try-on lipstick colors');
+  assert.ok(eyeshadows.length >= 4, 'cosmetics inventory has several try-on eyeshadow colors');
+  assert.ok(new Set(lipsticks.map(({ color }) => color)).size > 1, 'lipsticks offer different shades');
+  assert.ok(new Set(eyeshadows.map(({ color }) => color)).size > 1, 'eyeshadows offer different shades');
+
+  const tryOn = fs.readFileSync(path.join(__dirname, '../components/CosmeticsTryOn.tsx'), 'utf8');
+  assert.match(tryOn, /setSelectedLipstickId/);
+  assert.match(tryOn, /setSelectedEyeshadowId/);
+  assert.match(tryOn, /cosmetics-try-on-lips/);
+  assert.match(tryOn, /試色只會改變預覽，不扣金幣/);
+  assert.doesNotMatch(tryOn, /useHabits|placeShopInteriorDecoration|setShopInteriorFixtureProduct/);
+  const shopPage = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
+  assert.match(shopPage, /shop\.shopType === 'cosmetics'/);
+  assert.match(shopPage, /<CosmeticsTryOn products=\{cosmeticsTryOnProducts\}/);
 
   const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
   for (const illustration of ['handbag', 'earring', 'watch', 'scarf', 'hairclip', 'shoe', 'wallet', 'necklace', 'towel', 'fan']) {

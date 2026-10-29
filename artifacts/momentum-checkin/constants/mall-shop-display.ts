@@ -89,6 +89,7 @@ export interface ShopDisplayProduct {
   theme: ProductTheme;
   illustration: ShopProductIllustration;
   variant: number;
+  finish?: 'matte' | 'satin' | 'gloss' | 'shimmer' | 'glitter';
   fixtureIds?: string[];
   legacyOnly?: boolean;
 }
@@ -373,6 +374,110 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '夜空星塵深紫眼影盤', description: '深紫、莓果與月光銀的晚宴色系', icon: 'star', color: c.candyLavenderDark, illustration: 'palette' },
   ],
 };
+
+type CosmeticsTryOnShade = {
+  name: string;
+  color: string;
+  finish: NonNullable<ShopDisplayProduct['finish']>;
+};
+
+const cosmeticsTryOnLipsticks: CosmeticsTryOnShade[] = [
+  { name: '豆沙玫瑰唇膏', color: '#B87582', finish: 'satin' },
+  { name: '櫻桃果凍唇釉', color: '#E91E63', finish: 'gloss' },
+  { name: '電光莓粉唇釉', color: '#FF168C', finish: 'gloss' },
+  { name: '覆盆子星閃唇釉', color: '#D5006D', finish: 'glitter' },
+  { name: '珊瑚汽水唇膏', color: '#FF5A5F', finish: 'gloss' },
+  { name: '蜜桃果醬唇釉', color: '#F47C73', finish: 'gloss' },
+  { name: '日落橘紅唇膏', color: '#F04E23', finish: 'matte' },
+  { name: '南瓜糖橘唇膏', color: '#E96B20', finish: 'satin' },
+  { name: '朱砂紅唇膏', color: '#C62828', finish: 'matte' },
+  { name: '正紅絲絨唇膏', color: '#B5122A', finish: 'matte' },
+  { name: '石榴深紅唇釉', color: '#8E1538', finish: 'satin' },
+  { name: '酒釀莓紅唇膏', color: '#720026', finish: 'matte' },
+  { name: '玫瑰木棕唇膏', color: '#8D4A47', finish: 'matte' },
+  { name: '焦糖裸棕唇釉', color: '#B96D4C', finish: 'gloss' },
+  { name: '奶茶裸色唇膏', color: '#C8866B', finish: 'satin' },
+  { name: '蜜糖杏色唇膏', color: '#DDA284', finish: 'matte' },
+  { name: '夕霧裸粉唇釉', color: '#C77F8B', finish: 'satin' },
+  { name: '玫瑰金砂唇釉', color: '#C37A82', finish: 'glitter' },
+  { name: '紫葡萄唇釉', color: '#8025A0', finish: 'gloss' },
+  { name: '梅子紅酒唇膏', color: '#5D1C44', finish: 'satin' },
+  { name: '午夜莓紫唇膏', color: '#42104A', finish: 'matte' },
+  { name: '極光紫閃唇釉', color: '#9327C5', finish: 'glitter' },
+  { name: '水晶桃粉唇釉', color: '#FF7FA8', finish: 'shimmer' },
+  { name: '冰糖櫻粉唇膏', color: '#F5A3C7', finish: 'gloss' },
+  { name: '薔薇紅晶唇釉', color: '#B5265D', finish: 'glitter' },
+  { name: '柿子蜜橙唇膏', color: '#F28C28', finish: 'satin' },
+  { name: '香檳粉光唇釉', color: '#E5A8A7', finish: 'shimmer' },
+  { name: '星河幻彩唇釉', color: '#C070D8', finish: 'glitter' },
+  { name: '深海莓果唇膏', color: '#4E1D55', finish: 'satin' },
+  { name: '蜜金微閃唇釉', color: '#D4A43A', finish: 'glitter' },
+];
+
+const cosmeticsTryOnEyeshadows: CosmeticsTryOnShade[] = [
+  { name: '玫瑰花瓣眼影', color: '#E91E63', finish: 'matte' },
+  { name: '電光莓粉眼影', color: '#FF168C', finish: 'satin' },
+  { name: '珊瑚亮粉眼影', color: '#F50057', finish: 'glitter' },
+  { name: '蜜桃橘粉眼影', color: '#FF6F61', finish: 'matte' },
+  { name: '日落橙紅眼影', color: '#E64A19', finish: 'satin' },
+  { name: '蜜糖金棕眼影', color: '#A96012', finish: 'matte' },
+  { name: '香檳金砂眼影', color: '#C5961A', finish: 'glitter' },
+  { name: '焦糖奶茶眼影', color: '#98604A', finish: 'matte' },
+  { name: '可可煙棕眼影', color: '#5F3A32', finish: 'satin' },
+  { name: '古銅星塵眼影', color: '#8A4B08', finish: 'glitter' },
+  { name: '薄荷森林眼影', color: '#007F5F', finish: 'matte' },
+  { name: '翠綠寶石眼影', color: '#00875A', finish: 'satin' },
+  { name: '海玻璃青眼影', color: '#007C91', finish: 'shimmer' },
+  { name: '湖水藍眼影', color: '#0284C7', finish: 'matte' },
+  { name: '藍寶石眼影', color: '#1748A8', finish: 'satin' },
+  { name: '午夜海軍藍眼影', color: '#172554', finish: 'matte' },
+  { name: '冰川銀藍眼影', color: '#5E8FA8', finish: 'shimmer' },
+  { name: '深海藍星砂眼影', color: '#2459B3', finish: 'glitter' },
+  { name: '薰衣草霧眼影', color: '#A78BFA', finish: 'matte' },
+  { name: '紫羅蘭眼影', color: '#7B2CBF', finish: 'satin' },
+  { name: '午夜深紫眼影', color: '#4B0082', finish: 'matte' },
+  { name: '電光皇家紫眼影', color: '#5B18A8', finish: 'gloss' },
+  { name: '葡萄酒紫眼影', color: '#642B73', finish: 'satin' },
+  { name: '紫水晶星塵眼影', color: '#8A2BE2', finish: 'glitter' },
+  { name: '梅子煙燻眼影', color: '#5D1F46', finish: 'matte' },
+  { name: '煙灰紫眼影', color: '#6E607D', finish: 'shimmer' },
+  { name: '霜晶銀眼影', color: '#B9C4D1', finish: 'glitter' },
+  { name: '玫瑰粉鑽眼影', color: '#D81B60', finish: 'glitter' },
+  { name: '極光靛紫眼影', color: '#4338CA', finish: 'glitter' },
+  { name: '薔薇星雲眼影', color: '#F10D83', finish: 'glitter' },
+];
+
+export function getCosmeticsTryOnCatalog(): ShopDisplayProduct[] {
+  const createShade = (
+    shade: CosmeticsTryOnShade,
+    category: 'lipstick' | 'palette',
+    index: number,
+  ): ShopDisplayProduct => {
+    const finishLabel = {
+      matte: '柔霧',
+      satin: '緞光',
+      gloss: '水光',
+      shimmer: '珠光',
+      glitter: '細閃亮片',
+    }[shade.finish];
+    return {
+      id: `cosmetics-tryon-${category}-${String(index + 1).padStart(2, '0')}`,
+      name: shade.name,
+      description: `${finishLabel}妝效，只套用於試妝預覽。`,
+      icon: category === 'lipstick' ? 'heart' : 'star',
+      color: shade.color,
+      theme: 'cosmetics',
+      illustration: category,
+      variant: index,
+      finish: shade.finish,
+    };
+  };
+
+  return [
+    ...cosmeticsTryOnLipsticks.map((shade, index) => createShade(shade, 'lipstick', index)),
+    ...cosmeticsTryOnEyeshadows.map((shade, index) => createShade(shade, 'palette', index)),
+  ];
+}
 
 const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> = {
   fragrance: 'bottle',

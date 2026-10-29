@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import type { ImageSourcePropType } from 'react-native';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
@@ -123,6 +123,36 @@ function getLipstickPath(centerX: number, centerY: number) {
   return `M ${centerX - 4} ${centerY} C ${centerX - 2.5} ${centerY - 1.5}, ${centerX - 1} ${centerY - 1.5}, ${centerX} ${centerY - 0.8} C ${centerX + 1} ${centerY - 1.5}, ${centerX + 2.5} ${centerY - 1.5}, ${centerX + 4} ${centerY} C ${centerX + 3.2} ${centerY + 2}, ${centerX + 1.5} ${centerY + 2.4}, ${centerX} ${centerY + 1.3} C ${centerX - 1.5} ${centerY + 2.4}, ${centerX - 3.2} ${centerY + 2}, ${centerX - 4} ${centerY} Z`;
 }
 
+function getEyeSparklePoints(eye: EyeshadowCurve, finish: ShopDisplayProduct['finish']) {
+  if (finish !== 'glitter' && finish !== 'shimmer') return [];
+  const samples = finish === 'glitter' ? [0.16, 0.34, 0.52, 0.70, 0.88] : [0.28, 0.56, 0.82];
+  return samples.map((t, index) => {
+    const inverse = 1 - t;
+    const startX = eye.centerX - eye.halfWidth;
+    const endX = eye.centerX + eye.halfWidth;
+    const startY = eye.centerY - eye.tilt / 2;
+    const endY = eye.centerY + eye.tilt / 2;
+    return {
+      x: inverse ** 2 * startX + 2 * inverse * t * eye.centerX + t ** 2 * endX,
+      y: inverse ** 2 * startY
+        + 2 * inverse * t * (eye.centerY + eye.bend)
+        + t ** 2 * endY
+        + eye.thickness * 0.56,
+      radius: finish === 'glitter' ? (index % 2 === 0 ? 0.8 : 0.65) : 0.45,
+    };
+  });
+}
+
+function getLipSparklePoints(centerX: number, centerY: number, finish: ShopDisplayProduct['finish']) {
+  if (finish !== 'glitter' && finish !== 'shimmer') return [];
+  const offsets = finish === 'glitter' ? [-2.2, -0.7, 0.9, 2.4] : [-1.4, 1.5];
+  return offsets.map((offset, index) => ({
+    x: centerX + offset,
+    y: centerY + (index % 2 === 0 ? 0 : 0.45),
+    radius: finish === 'glitter' ? 0.55 : 0.4,
+  }));
+}
+
 export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] }) {
   const colors = useColors();
   const lipsticks = products.filter(({ illustration }) => illustration === 'lipstick');
@@ -160,7 +190,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
                 key={product.id}
                 testID={`${testIdPrefix}-${product.id}`}
                 accessibilityRole="button"
-                accessibilityLabel={`試用${label}：${product.name}`}
+                accessibilityLabel={`試用${label}：${product.name}${product.finish === 'glitter' ? '，閃粉款' : product.finish === 'shimmer' ? '，珠光款' : ''}`}
                 accessibilityState={{ selected }}
                 onPress={() => onSelect(product.id)}
                 style={[
@@ -172,6 +202,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
                 ]}
               >
                 <View style={[styles.swatch, { backgroundColor: product.color, borderColor: colors.border }]}>
+                  {product.finish === 'glitter' && <Feather name="star" size={13} color={colors.card} />}
                 </View>
                 <Text numberOfLines={2} style={[styles.choiceName, { color: colors.foreground }]}>
                   {product.name}
@@ -223,20 +254,50 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
                 testID="cosmetics-try-on-eyeshadow-left"
                 d={getEyeshadowPath(selectedGuest.makeup.leftEye)}
                 fill={selectedEyeshadow.color}
-                fillOpacity={0.45}
+                fillOpacity={0.56}
               />
               <Path
                 testID="cosmetics-try-on-eyeshadow-right"
                 d={getEyeshadowPath(selectedGuest.makeup.rightEye)}
                 fill={selectedEyeshadow.color}
-                fillOpacity={0.45}
+                fillOpacity={0.56}
               />
+              {getEyeSparklePoints(selectedGuest.makeup.leftEye, selectedEyeshadow.finish).map((point, index) => (
+                <Circle
+                  key={`left-eye-glitter-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={point.radius}
+                  fill={index % 2 === 0 ? colors.card : colors.primary}
+                  opacity={0.92}
+                />
+              ))}
+              {getEyeSparklePoints(selectedGuest.makeup.rightEye, selectedEyeshadow.finish).map((point, index) => (
+                <Circle
+                  key={`right-eye-glitter-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={point.radius}
+                  fill={index % 2 === 0 ? colors.card : colors.primary}
+                  opacity={0.92}
+                />
+              ))}
               <Path
                 testID="cosmetics-try-on-lips"
                 d={getLipstickPath(selectedGuest.makeup.lipsX, selectedGuest.makeup.lipsY)}
                 fill={selectedLipstick.color}
                 fillOpacity={0.68}
               />
+              {getLipSparklePoints(selectedGuest.makeup.lipsX, selectedGuest.makeup.lipsY, selectedLipstick.finish).map((point, index) => (
+                <Circle
+                  key={`lip-glitter-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={point.radius}
+                  fill={index % 2 === 0 ? colors.card : colors.primary}
+                  opacity={0.95}
+                />
+              ))}
             </Svg>
           </View>
         </View>

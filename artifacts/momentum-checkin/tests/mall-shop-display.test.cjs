@@ -24,6 +24,7 @@ new Function('require', 'module', 'exports', constantsOutput)(
 
 const {
   canDisplayShopProducts,
+  getCosmeticsTryOnCatalog,
   getShopFixtureProductCatalog,
   SHOP_DISPLAY_SLOT_COUNT,
 } = constantsModule.exports;
@@ -37,6 +38,26 @@ test('display fixtures are recognized without treating ordinary lamps as shelves
   assert.equal(canDisplayShopProducts(displayFixture), true);
   assert.equal(canDisplayShopProducts({ id: 'general-warm-lamp', name: '暖光吊燈', description: '照明' }), false);
   assert.equal(SHOP_DISPLAY_SLOT_COUNT, 18);
+});
+
+test('cosmetics try-on offers thirty distinct lip and eyeshadow shades, including visible glitter', () => {
+  const products = getCosmeticsTryOnCatalog();
+  const lipsticks = products.filter(({ illustration }) => illustration === 'lipstick');
+  const eyeshadows = products.filter(({ illustration }) => illustration === 'palette');
+  assert.equal(lipsticks.length, 30);
+  assert.equal(eyeshadows.length, 30);
+  assert.equal(new Set(lipsticks.map(({ name }) => name)).size, 30);
+  assert.equal(new Set(eyeshadows.map(({ name }) => name)).size, 30);
+  assert.equal(new Set(lipsticks.map(({ color }) => color)).size, 30);
+  assert.equal(new Set(eyeshadows.map(({ color }) => color)).size, 30);
+  assert.ok(lipsticks.filter(({ finish }) => finish === 'glitter').length >= 6);
+  assert.ok(eyeshadows.filter(({ finish }) => finish === 'glitter').length >= 6);
+
+  const pink = eyeshadows.find(({ name }) => name === '電光莓粉眼影');
+  const purple = eyeshadows.find(({ name }) => name === '午夜深紫眼影');
+  const rgb = (hex) => hex.match(/[a-f\d]{2}/gi).map((part) => Number.parseInt(part, 16));
+  const contrast = Math.hypot(...rgb(pink.color).map((channel, index) => channel - rgb(purple.color)[index]));
+  assert.ok(contrast > 100, 'pink and purple eyeshadows must remain visibly distinct');
 });
 
 test('each shop type gets sixty distinct, shop-specific illustrated products', () => {
@@ -152,9 +173,12 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /眼影（\$\{eyeshadows\.length\}款）/);
   assert.match(tryOn, /cosmetics-try-on-lips/);
   assert.match(tryOn, /cosmetics-try-on-guest-art/);
+  assert.match(tryOn, /getEyeSparklePoints/);
+  assert.match(tryOn, /getLipSparklePoints/);
+  assert.match(tryOn, /<Circle/);
   assert.match(tryOn, /<Path/);
   assert.match(tryOn, /halfWidth/);
-  assert.match(tryOn, /fillOpacity=\{0\.45\}/);
+  assert.match(tryOn, /fillOpacity=\{0\.56\}/);
   assert.match(tryOn, /fillOpacity=\{0\.68\}/);
   assert.match(tryOn, /resizeMode="cover"/);
   assert.match(tryOn, /cosmetics-try-on-makeup-layer/);

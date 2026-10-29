@@ -40,7 +40,12 @@ import {
 } from '@/constants/dog-staff-customization';
 import { MALL_FLOORS, MALL_ITEM_BY_ID } from '@/constants/mall';
 import type { MallVisualCategory } from '@/constants/mall-visual-profile';
-import { canDisplayShopProducts, getShopFixtureProductCatalog, SHOP_DISPLAY_SLOT_COUNT } from '@/constants/mall-shop-display';
+import {
+  canDisplayShopProducts,
+  getCosmeticsTryOnCatalog,
+  getShopFixtureProductCatalog,
+  SHOP_DISPLAY_SLOT_COUNT,
+} from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
 
 function ShopInteriorAnimatedObject({
@@ -151,15 +156,8 @@ export default function MallShopInteriorScreen() {
   }, [shop?.id, shop?.name, shop?.shopType, interiorDecorations]);
   const cosmeticsTryOnProducts = useMemo(() => {
     if (!shop || shop.shopType !== 'cosmetics') return [];
-    return getShopFixtureProductCatalog(shop.id, shop.name, shop.shopType, {
-      id: 'cosmetics-try-on-display',
-      name: '彩妝商品展示架',
-      description: '可試搭的唇膏與眼影商品展示架。',
-      icon: 'shopping-bag',
-      price: 0,
-      color: shop.color,
-    });
-  }, [shop?.id, shop?.name, shop?.shopType]);
+    return getCosmeticsTryOnCatalog();
+  }, [shop?.shopType]);
   const owned = new Set(interior?.ownedDecorations ?? []);
   const placements = interior?.placements ?? {};
   const areaPlacements = useMemo(

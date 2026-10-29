@@ -1382,6 +1382,8 @@ export default function MallScreen() {
                   {isSearching && (
                     <Text
                       testID={`search-item-match-${item.id}`}
+                      accessibilityRole="text"
+                      accessibilityLabel={getMallSearchMatchReason(item, searchTerms)}
                       style={[styles.searchMatchReason, { color: colors.primary }]}
                     >
                       {getMallSearchMatchReason(item, searchTerms)}

@@ -1090,6 +1090,12 @@ test('description keywords return catalog items with correct category counts, pa
     '描述符合「雨天」',
     'description matches explain the matched description keyword',
   );
+  assert.equal(app.find('search-item-match-description-match-0').props.accessibilityRole, 'text');
+  assert.equal(
+    app.find('search-item-match-description-match-0').props.accessibilityLabel,
+    '描述符合「雨天」',
+    'VoiceOver and TalkBack can identify the matched field and keyword',
+  );
   assert.match(
     app.find('search-select-description-match-0').props.accessibilityLabel,
     /前往 2F.*已兌換，可免費重擺/,
@@ -1106,6 +1112,27 @@ test('description keywords return catalog items with correct category counts, pa
     '選擇獨特選物 0，前往 2F，店鋪，20 金幣，已兌換，可免費重擺',
     'adding match context does not change the existing selection accessibility label',
   );
+  const android = mount({ purchasedItems: ['description-match-0'], mallPlacements: {} }, descriptionCatalog, 'android');
+  android.find('mall-search-input').props.onChangeText('雨天');
+  android.render();
+  assert.equal(
+    android.find('search-item-match-description-match-0').props.accessibilityLabel,
+    '描述符合「雨天」',
+    'TalkBack receives the same explicit match reason',
+  );
+  assert.equal(android.find('search-item-match-description-match-0').props.accessibilityRole, 'text');
+  assert.equal(
+    android.find('search-select-description-match-0').props.accessibilityLabel,
+    '選擇獨特選物 0，前往 2F，店鋪，20 金幣，已兌換，可免費重擺',
+    'the TalkBack selection action does not repeat the match reason',
+  );
+  android.find('mall-search-input').props.onChangeText('雨天小舖');
+  android.render();
+  assert.equal(
+    android.find('search-item-match-name-only-match').props.accessibilityLabel,
+    '名稱符合「雨天小舖」',
+    'TalkBack identifies a match found in the name',
+  );
 
   const renderedIds = [];
   for (let page = 1; page <= pager(app).props.pages; page += 1) {
@@ -1118,6 +1145,12 @@ test('description keywords return catalog items with correct category counts, pa
     textContent(app.find('search-item-match-name-only-match')),
     '名稱符合「雨天」',
     'name-only matches clearly identify the matched field',
+  );
+  assert.equal(app.find('search-item-match-name-only-match').props.accessibilityRole, 'text');
+  assert.equal(
+    app.find('search-item-match-name-only-match').props.accessibilityLabel,
+    '名稱符合「雨天」',
+    'the accessible label identifies the name field and matching keyword',
   );
   assert.deepEqual(renderedIds, [
     ...descriptionCatalog.map((item) => `search-select-${item.id}`),
@@ -1149,6 +1182,19 @@ test('search result explains matches split across the name and description', () 
   assert.equal(
     textContent(app.find('search-item-match-split-match')),
     '名稱符合「雨天」 · 描述符合「露台」',
+  );
+  assert.equal(
+    app.find('search-item-match-split-match').props.accessibilityLabel,
+    '名稱符合「雨天」 · 描述符合「露台」',
+    'the accessible label distinguishes name and description matches',
+  );
+  const android = mount({}, catalog, 'android');
+  android.find('mall-search-input').props.onChangeText('雨天 露台');
+  android.render();
+  assert.equal(
+    android.find('search-item-match-split-match').props.accessibilityLabel,
+    '名稱符合「雨天」 · 描述符合「露台」',
+    'TalkBack distinguishes keywords matched in the name and description',
   );
 });
 

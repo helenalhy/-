@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Ellipse } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import type { ImageSourcePropType } from 'react-native';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
@@ -9,7 +9,7 @@ import { useColors } from '@/hooks/useColors';
 type GuestMakeupAnchors = {
   leftEyeX: number;
   rightEyeX: number;
-  eyeY: number;
+  eyeShadowY: number;
   lipsX: number;
   lipsY: number;
 };
@@ -19,15 +19,23 @@ const GUEST_PORTRAITS: ReadonlyArray<{
   source: ImageSourcePropType;
   makeup: GuestMakeupAnchors;
 }> = [
-  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeX: 43, rightEyeX: 76, eyeY: 77, lipsX: 59, lipsY: 87 } },
-  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeX: 46, rightEyeX: 70, eyeY: 77, lipsX: 59, lipsY: 87 } },
-  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeY: 76, lipsX: 60, lipsY: 86 } },
-  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeX: 46, rightEyeX: 74, eyeY: 77, lipsX: 60, lipsY: 87 } },
-  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeX: 44, rightEyeX: 72, eyeY: 77, lipsX: 59, lipsY: 87 } },
-  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeY: 76, lipsX: 59, lipsY: 87 } },
-  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeX: 43, rightEyeX: 75, eyeY: 78, lipsX: 60, lipsY: 88 } },
-  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeX: 44, rightEyeX: 72, eyeY: 77, lipsX: 59, lipsY: 87 } },
+  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeX: 46, rightEyeX: 73, eyeShadowY: 64, lipsX: 60, lipsY: 81 } },
+  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 60, lipsX: 60, lipsY: 76 } },
+  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 51, lipsX: 60, lipsY: 68 } },
+  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 53, lipsX: 60, lipsY: 70 } },
+  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeX: 45, rightEyeX: 74, eyeShadowY: 52, lipsX: 60, lipsY: 68 } },
+  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 51, lipsX: 60, lipsY: 68 } },
+  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeX: 45, rightEyeX: 73, eyeShadowY: 55, lipsX: 60, lipsY: 72 } },
+  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeX: 46, rightEyeX: 74, eyeShadowY: 52, lipsX: 60, lipsY: 69 } },
 ];
+
+function getEyeshadowPath(centerX: number, centerY: number) {
+  return `M ${centerX - 8} ${centerY} C ${centerX - 6} ${centerY - 3.5}, ${centerX + 5} ${centerY - 3.5}, ${centerX + 8} ${centerY} C ${centerX + 5} ${centerY + 1.6}, ${centerX - 5} ${centerY + 1.6}, ${centerX - 8} ${centerY} Z`;
+}
+
+function getLipstickPath(centerX: number, centerY: number) {
+  return `M ${centerX - 4} ${centerY} C ${centerX - 2.5} ${centerY - 1.5}, ${centerX - 1} ${centerY - 1.5}, ${centerX} ${centerY - 0.8} C ${centerX + 1} ${centerY - 1.5}, ${centerX + 2.5} ${centerY - 1.5}, ${centerX + 4} ${centerY} C ${centerX + 3.2} ${centerY + 2}, ${centerX + 1.5} ${centerY + 2.4}, ${centerX} ${centerY + 1.3} C ${centerX - 1.5} ${centerY + 2.4}, ${centerX - 3.2} ${centerY + 2}, ${centerX - 4} ${centerY} Z`;
+}
 
 export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] }) {
   const colors = useColors();
@@ -119,38 +127,29 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
             testID="cosmetics-try-on-guest-art"
             accessible={false}
             source={selectedGuest.source}
-            resizeMode="stretch"
+            resizeMode="cover"
             fadeDuration={0}
             style={styles.guestPortrait}
           />
           <View testID="cosmetics-try-on-makeup-layer" pointerEvents="none" style={styles.makeupLayer}>
             <Svg width="100%" height="100%" viewBox="0 0 120 120" preserveAspectRatio="none">
-              <Ellipse
+              <Path
                 testID="cosmetics-try-on-eyeshadow-left"
-                cx={selectedGuest.makeup.leftEyeX}
-                cy={selectedGuest.makeup.eyeY}
-                rx={7}
-                ry={3.5}
+                d={getEyeshadowPath(selectedGuest.makeup.leftEyeX, selectedGuest.makeup.eyeShadowY)}
                 fill={selectedEyeshadow.color}
-                fillOpacity={0.96}
+                fillOpacity={0.45}
               />
-              <Ellipse
+              <Path
                 testID="cosmetics-try-on-eyeshadow-right"
-                cx={selectedGuest.makeup.rightEyeX}
-                cy={selectedGuest.makeup.eyeY}
-                rx={7}
-                ry={3.5}
+                d={getEyeshadowPath(selectedGuest.makeup.rightEyeX, selectedGuest.makeup.eyeShadowY)}
                 fill={selectedEyeshadow.color}
-                fillOpacity={0.96}
+                fillOpacity={0.45}
               />
-              <Ellipse
+              <Path
                 testID="cosmetics-try-on-lips"
-                cx={selectedGuest.makeup.lipsX}
-                cy={selectedGuest.makeup.lipsY}
-                rx={6}
-                ry={3.5}
+                d={getLipstickPath(selectedGuest.makeup.lipsX, selectedGuest.makeup.lipsY)}
                 fill={selectedLipstick.color}
-                fillOpacity={0.98}
+                fillOpacity={0.68}
               />
             </Svg>
           </View>
@@ -184,7 +183,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
                 ]}
               >
                 <View style={[styles.guestChoicePortrait, { backgroundColor: colors.candyPeach, borderColor: colors.border }]}>
-                  <Image accessible={false} source={guest.source} resizeMode="stretch" style={styles.guestChoiceImage} />
+                  <Image accessible={false} source={guest.source} resizeMode="cover" style={styles.guestChoiceImage} />
                 </View>
                 <Text style={[styles.guestChoiceName, { color: colors.foreground }]}>客人 {index + 1}</Text>
               </Pressable>

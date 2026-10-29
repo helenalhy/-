@@ -148,14 +148,19 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /眼影（\$\{eyeshadows\.length\}款）/);
   assert.match(tryOn, /cosmetics-try-on-lips/);
   assert.match(tryOn, /cosmetics-try-on-guest-art/);
-  assert.match(tryOn, /<Ellipse/);
+  assert.match(tryOn, /<Path/);
+  assert.match(tryOn, /eyeShadowY/);
+  assert.match(tryOn, /fillOpacity=\{0\.45\}/);
+  assert.match(tryOn, /fillOpacity=\{0\.68\}/);
+  assert.match(tryOn, /resizeMode="cover"/);
   assert.match(tryOn, /cosmetics-try-on-makeup-layer/);
   for (let index = 1; index <= 8; index += 1) {
     const portrait = String(index).padStart(2, '0');
-    assert.ok(
-      fs.existsSync(path.join(__dirname, `../assets/images/cosmetics-tryon-guest-portrait-${portrait}.png`)),
-      `guest portrait ${portrait} should be available for selection`,
-    );
+    const portraitPath = path.join(__dirname, `../assets/images/cosmetics-tryon-guest-portrait-${portrait}.png`);
+    assert.ok(fs.existsSync(portraitPath), `guest portrait ${portrait} should be available for selection`);
+    const portraitPng = fs.readFileSync(portraitPath);
+    assert.equal(portraitPng.readUInt32BE(16), 360, `guest portrait ${portrait} should retain its full-size square framing`);
+    assert.equal(portraitPng.readUInt32BE(20), 360, `guest portrait ${portrait} should retain its full-size square framing`);
   }
   assert.match(tryOn, /選擇試妝客人/);
   assert.doesNotMatch(tryOn, /hairCap|hairBangs|eyeRow/);

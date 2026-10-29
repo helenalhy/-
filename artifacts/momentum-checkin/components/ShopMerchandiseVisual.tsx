@@ -27,6 +27,16 @@ const MERCHANDISE_MOTION_PROFILES: Record<ShopProductIllustration, MerchandiseMo
   flower: { lift: 1, tilt: 8, scale: 1.045, sparkle: 0.82 },
   gift: { lift: 1.4, tilt: 3, scale: 1.065, sparkle: 0.88 },
   jewel: { lift: 0.5, tilt: 9, scale: 1.13, sparkle: 1 },
+  handbag: { lift: 1.1, tilt: 7, scale: 1.07, sparkle: 0.9 },
+  earring: { lift: 0.7, tilt: 11, scale: 1.12, sparkle: 1 },
+  watch: { lift: 0.4, tilt: 6, scale: 1.08, sparkle: 0.95 },
+  scarf: { lift: 1.5, tilt: 8, scale: 1.06, sparkle: 0.8 },
+  hairclip: { lift: 0.8, tilt: 10, scale: 1.1, sparkle: 0.95 },
+  shoe: { lift: 0.6, tilt: 8, scale: 1.06, sparkle: 0.78 },
+  wallet: { lift: 0.6, tilt: 4, scale: 1.05, sparkle: 0.82 },
+  necklace: { lift: 0.8, tilt: 8, scale: 1.1, sparkle: 1 },
+  towel: { lift: 0.7, tilt: 4, scale: 1.04, sparkle: 0.7 },
+  fan: { lift: 1.1, tilt: 9, scale: 1.08, sparkle: 0.92 },
 };
 
 export function ShopMerchandiseVisual({
@@ -52,7 +62,9 @@ export function ShopMerchandiseVisual({
     colors.candyLemon,
   ];
   const accent = accents[(product.variant + index) % accents.length];
-  const garmentStyle = product.variant % 3;
+  const garmentStyle = product.variant % 11;
+  const isDress = garmentStyle === 1 || garmentStyle === 4 || garmentStyle === 9;
+  const isSkirt = garmentStyle === 2 || garmentStyle === 5 || garmentStyle === 10;
   const animation = MERCHANDISE_MOTION_PROFILES[product.illustration];
   const direction = (product.variant + index) % 2 === 0 ? 1 : -1;
   const lift = reducedMotion ? 0 : motion.interpolate({
@@ -123,32 +135,149 @@ export function ShopMerchandiseVisual({
             <View style={[styles.hanger, { borderColor: colors.candyCaramelDark }]} />
             <View style={[
               styles.garment,
-              garmentStyle === 1 ? styles.garmentDress : garmentStyle === 2 ? styles.garmentSkirt : null,
+              isDress ? styles.garmentDress : isSkirt ? styles.garmentSkirt : null,
+              garmentStyle === 6 || garmentStyle === 8 ? styles.garmentJacket : null,
               { backgroundColor: product.color, borderColor: colors.candyCaramelDark },
             ]}>
-              {garmentStyle === 1 ? (
+              {isDress ? (
                 <>
                   <View style={[styles.garmentSleeve, styles.garmentSleeveLeft, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
                   <View style={[styles.garmentSleeve, styles.garmentSleeveRight, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
                   <View style={[styles.garmentBodice, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
                   <View style={[styles.garmentWaist, { backgroundColor: accent }]} />
                   <View style={[styles.garmentHem, { borderTopColor: colors.candyCream }]} />
+                  {garmentStyle === 4 && <View style={[styles.dressBow, { backgroundColor: accent }]} />}
+                  {garmentStyle === 1 && <View style={[styles.dressGem, { backgroundColor: colors.candyLemon, borderColor: colors.candyCream }]} />}
+                  {garmentStyle === 9 && <View style={[styles.dressLace, { borderColor: colors.candyCream }]} />}
                 </>
-              ) : garmentStyle === 2 ? (
+              ) : isSkirt ? (
                 <>
                   <View style={[styles.skirtWaist, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
                   <View style={[styles.skirtPleat, styles.skirtPleatLeft, { borderColor: colors.candyCream }]} />
                   <View style={[styles.skirtPleat, styles.skirtPleatRight, { borderColor: colors.candyCream }]} />
                   <View style={[styles.garmentHem, { borderTopColor: colors.candyCream }]} />
+                  {garmentStyle === 5 && <View style={[styles.skirtRibbon, { backgroundColor: accent }]} />}
+                  {garmentStyle === 10 && <View style={[styles.skirtGem, { backgroundColor: colors.candyLemon }]} />}
                 </>
               ) : (
                 <>
-                  <View style={[styles.garmentCollar, { borderColor: colors.candyCaramelDark }]} />
-                  <View style={[styles.garmentButton, { backgroundColor: accent }]} />
-                  <View style={[styles.garmentPocket, { borderColor: colors.candyCream }]} />
+                  <View style={[styles.garmentCollar, garmentStyle === 3 ? styles.garmentWideCollar : null, { borderColor: colors.candyCaramelDark }]} />
+                  {garmentStyle === 7 ? (
+                    <View style={[styles.garmentBow, { backgroundColor: accent }]} />
+                  ) : (
+                    <>
+                      <View style={[styles.garmentButton, { backgroundColor: accent }]} />
+                      {garmentStyle === 6 && <View style={[styles.garmentButton, styles.garmentSecondButton, { backgroundColor: accent }]} />}
+                    </>
+                  )}
+                  {garmentStyle !== 7 && <View style={[styles.garmentPocket, { borderColor: colors.candyCream }]} />}
+                  {(garmentStyle === 3 || garmentStyle === 8) && <View style={[styles.garmentStripe, { backgroundColor: colors.candyCream }]} />}
+                  {garmentStyle === 6 && <View style={[styles.garmentBadge, { backgroundColor: colors.candyLemon }]} />}
                 </>
               )}
             </View>
+          </>
+        )}
+        {product.illustration === 'handbag' && (
+          <>
+            {garmentStyle === 3 ? (
+              <View style={[styles.handbagCrossbody, { borderColor: colors.candyCaramelDark }]} />
+            ) : (
+              <View style={[styles.handbagHandle, garmentStyle === 7 ? styles.handbagDoubleHandle : null, { borderColor: colors.candyCaramelDark }]} />
+            )}
+            <View style={[
+              styles.handbagBody,
+              garmentStyle === 1 ? styles.handbagRound : garmentStyle === 2 ? styles.handbagSatchel : garmentStyle === 6 ? styles.handbagMini : garmentStyle === 9 ? styles.handbagWide : null,
+              { backgroundColor: product.color, borderColor: colors.candyCaramelDark },
+            ]}>
+              <View style={[styles.handbagFlap, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+              <View style={[styles.handbagClasp, { backgroundColor: colors.candyLemon, borderColor: colors.candyCream }]} />
+              {(garmentStyle === 4 || garmentStyle === 10) && <View style={[styles.handbagRibbon, { backgroundColor: colors.candyRose }]} />}
+              {garmentStyle === 5 && <Feather name="star" size={8} color={colors.candyCream} />}
+              {garmentStyle === 8 && <Feather name="heart" size={8} color={colors.candyCream} />}
+            </View>
+            <View style={[styles.handbagSide, { backgroundColor: accent }]} />
+          </>
+        )}
+        {product.illustration === 'earring' && (
+          <>
+            <View style={[styles.earringLoop, styles.earringLeft, { borderColor: product.color }]} />
+            <View style={[styles.earringLoop, styles.earringRight, { borderColor: accent }]} />
+            <View style={[styles.earringGem, styles.earringGemLeft, { backgroundColor: accent, borderColor: colors.candyCream }]} />
+            <View style={[styles.earringGem, styles.earringGemRight, { backgroundColor: product.color, borderColor: colors.candyCream }]} />
+            {garmentStyle % 2 === 0 && <View style={[styles.earringDrop, { backgroundColor: colors.candyLemon, borderColor: colors.candyCream }]} />}
+          </>
+        )}
+        {product.illustration === 'watch' && (
+          <>
+            <View style={[styles.watchStrap, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.watchFace, { backgroundColor: colors.candyCream, borderColor: product.color }]}>
+              <View style={[styles.watchHand, { backgroundColor: colors.candyCaramelDark, transform: [{ rotate: `${(product.variant % 12) * 30}deg` }] }]} />
+              <View style={[styles.watchDot, { backgroundColor: colors.candyRoseDark }]} />
+            </View>
+            {garmentStyle % 2 === 0 && <View style={[styles.watchGem, { backgroundColor: colors.candyLemon }]} />}
+          </>
+        )}
+        {product.illustration === 'scarf' && (
+          <>
+            <View style={[styles.scarfLoop, { borderColor: colors.candyCaramelDark, backgroundColor: product.color }]} />
+            <View style={[styles.scarfTail, styles.scarfTailLeft, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.scarfTail, styles.scarfTailRight, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.scarfStripe, { backgroundColor: colors.candyCream }]} />
+            {garmentStyle % 2 === 1 && <Feather name="star" size={7} color={colors.candyLemon} />}
+          </>
+        )}
+        {product.illustration === 'hairclip' && (
+          <>
+            <View style={[styles.hairclipBar, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.hairclipBowLeft, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.hairclipBowRight, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.hairclipCenter, { backgroundColor: colors.candyLemon, borderColor: colors.candyCream }]} />
+            {garmentStyle % 2 === 1 && <View style={[styles.hairclipGem, { backgroundColor: colors.candySky }]} />}
+          </>
+        )}
+        {product.illustration === 'shoe' && (
+          <>
+            <View style={[styles.shoeSole, { backgroundColor: colors.candyCream, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.shoeBody, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.shoeToe, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.shoeHeel, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            {garmentStyle % 2 === 0 && <Feather name="heart" size={7} color={colors.candyRoseDark} />}
+          </>
+        )}
+        {product.illustration === 'wallet' && (
+          <>
+            <View style={[styles.walletBody, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.walletFlap, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.walletButton, { backgroundColor: colors.candyLemon, borderColor: colors.candyCream }]} />
+            <View style={[styles.walletSeam, { borderColor: colors.candyCream }]} />
+            {garmentStyle % 2 === 1 && <Feather name={product.icon as keyof typeof Feather.glyphMap} size={7} color={colors.candyRoseDark} />}
+          </>
+        )}
+        {product.illustration === 'necklace' && (
+          <>
+            <View style={[styles.necklaceChain, { borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.necklacePendant, { backgroundColor: product.color, borderColor: colors.candyCream }]} />
+            {garmentStyle % 2 === 0 && <View style={[styles.necklaceGem, { backgroundColor: colors.candyLemon, borderColor: colors.candyCream }]} />}
+          </>
+        )}
+        {product.illustration === 'towel' && (
+          <>
+            <View style={[styles.towelBack, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <View style={[styles.towelFold, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]}>
+              <View style={[styles.towelStripe, { backgroundColor: colors.candyCream }]} />
+              {garmentStyle % 2 === 0 && <Feather name="heart" size={7} color={colors.candyRoseDark} />}
+            </View>
+          </>
+        )}
+        {product.illustration === 'fan' && (
+          <>
+            <View style={[styles.fanFold, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+            {[0, 1, 2, 3].map((fold) => (
+              <View key={fold} style={[styles.fanRib, { backgroundColor: colors.candyCream, transform: [{ rotate: `${(fold - 1.5) * 18}deg` }] }]} />
+            ))}
+            <View style={[styles.fanHandle, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />
+            <Feather name={product.icon as keyof typeof Feather.glyphMap} size={7} color={colors.candyRoseDark} />
           </>
         )}
         {product.illustration === 'treat' && (
@@ -318,16 +447,27 @@ const styles = StyleSheet.create({
   garmentPocket: { position: 'absolute', right: 3, bottom: 5, width: 5, height: 6, borderWidth: 0.7, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
   garmentDress: { width: 27, borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
   garmentSkirt: { width: 28, height: 25, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderBottomLeftRadius: 11, borderBottomRightRadius: 11 },
+  garmentJacket: { borderTopLeftRadius: 5, borderTopRightRadius: 5, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 },
   garmentSleeve: { position: 'absolute', top: 3, width: 8, height: 11, borderWidth: 1, borderRadius: 5 },
   garmentSleeveLeft: { left: -5, transform: [{ rotate: '20deg' }] },
   garmentSleeveRight: { right: -5, transform: [{ rotate: '-20deg' }] },
   garmentBodice: { position: 'absolute', top: 1, width: 13, height: 11, borderWidth: 1, borderTopLeftRadius: 6, borderTopRightRadius: 6 },
   garmentWaist: { position: 'absolute', top: 11, left: 2, right: 2, height: 3, borderRadius: 3 },
   garmentHem: { position: 'absolute', left: 1, right: 1, bottom: 2, height: 5, borderTopWidth: 1, borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  garmentWideCollar: { width: 14, height: 7 },
+  garmentSecondButton: { top: 15 },
+  garmentBow: { position: 'absolute', top: 7, width: 9, height: 6, borderRadius: 4 },
+  garmentStripe: { position: 'absolute', top: 13, left: 3, width: 17, height: 2, opacity: 0.8 },
+  garmentBadge: { position: 'absolute', top: 13, right: 5, width: 5, height: 5, borderRadius: 3 },
+  dressBow: { position: 'absolute', top: 11, width: 9, height: 6, borderRadius: 4 },
+  dressGem: { position: 'absolute', top: 17, width: 5, height: 5, borderWidth: 1, borderRadius: 3 },
+  dressLace: { position: 'absolute', left: 2, right: 2, bottom: 2, height: 4, borderTopWidth: 1, borderRadius: 3, borderStyle: 'dotted' },
   skirtWaist: { position: 'absolute', top: 1, left: 2, right: 2, height: 5, borderWidth: 0.7, borderRadius: 4 },
   skirtPleat: { position: 'absolute', top: 7, width: 5, height: 12, borderLeftWidth: 1, borderBottomWidth: 1, borderBottomLeftRadius: 5 },
   skirtPleatLeft: { left: 5, transform: [{ rotate: '8deg' }] },
   skirtPleatRight: { right: 5, transform: [{ rotate: '-8deg' }] },
+  skirtRibbon: { position: 'absolute', top: 8, width: 7, height: 5, borderRadius: 4 },
+  skirtGem: { position: 'absolute', top: 8, left: 11, width: 5, height: 5, borderRadius: 3 },
   treatTop: { position: 'absolute', bottom: 15, width: 24, height: 14, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   sugarPearl: { position: 'absolute', width: 3, height: 3, borderRadius: 2 },
   sugarPearlLeft: { left: 4, top: 3 },
@@ -377,6 +517,57 @@ const styles = StyleSheet.create({
   jewelTray: { position: 'absolute', bottom: 5, width: 29, height: 13, borderWidth: 1, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   jewelStone: { position: 'absolute', bottom: 17, left: 11, width: 9, height: 9, borderWidth: 1, borderRadius: 3, transform: [{ rotate: '45deg' }] },
   jewelStoneSecond: { left: 23, bottom: 15, width: 7, height: 7 },
+  handbagHandle: { position: 'absolute', top: 7, width: 17, height: 14, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 9, borderTopRightRadius: 9 },
+  handbagDoubleHandle: { width: 23 },
+  handbagCrossbody: { position: 'absolute', top: 4, left: 8, width: 26, height: 24, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 13, borderTopRightRadius: 13, transform: [{ rotate: '-18deg' }] },
+  handbagBody: { position: 'absolute', bottom: 5, width: 29, height: 24, borderWidth: 1.2, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomLeftRadius: 9, borderBottomRightRadius: 9, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  handbagRound: { width: 26, height: 22, borderRadius: 11 },
+  handbagSatchel: { width: 31, height: 21, borderRadius: 4 },
+  handbagMini: { width: 22, height: 20, borderRadius: 7 },
+  handbagWide: { width: 33, height: 20, borderRadius: 5 },
+  handbagFlap: { position: 'absolute', top: 0, left: 1, right: 1, height: 9, borderWidth: 0.8, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
+  handbagClasp: { position: 'absolute', top: 7, width: 5, height: 5, borderWidth: 0.8, borderRadius: 3 },
+  handbagSide: { position: 'absolute', right: 5, bottom: 8, width: 3, height: 15, borderRadius: 3, opacity: 0.7 },
+  handbagRibbon: { position: 'absolute', top: 5, left: 4, width: 8, height: 5, borderRadius: 5 },
+  earringLoop: { position: 'absolute', top: 9, width: 10, height: 14, borderWidth: 2, borderTopWidth: 1, borderRadius: 7 },
+  earringLeft: { left: 7, transform: [{ rotate: '12deg' }] },
+  earringRight: { right: 7, top: 13, transform: [{ rotate: '-12deg' }] },
+  earringGem: { position: 'absolute', width: 6, height: 6, borderWidth: 1, borderRadius: 4 },
+  earringGemLeft: { left: 9, top: 24 },
+  earringGemRight: { right: 9, top: 28 },
+  earringDrop: { position: 'absolute', top: 30, width: 5, height: 7, borderWidth: 1, borderTopLeftRadius: 2, borderTopRightRadius: 2, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  watchStrap: { position: 'absolute', width: 13, height: 34, borderWidth: 1, borderRadius: 5 },
+  watchFace: { position: 'absolute', width: 22, height: 22, borderWidth: 2, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  watchHand: { position: 'absolute', top: 4, width: 2, height: 7, borderRadius: 2, transformOrigin: 'bottom' },
+  watchDot: { position: 'absolute', width: 3, height: 3, borderRadius: 2 },
+  watchGem: { position: 'absolute', top: 7, right: 7, width: 4, height: 4, borderRadius: 3 },
+  scarfLoop: { position: 'absolute', top: 7, width: 25, height: 15, borderWidth: 2, borderBottomWidth: 1, borderRadius: 12, transform: [{ rotate: '-8deg' }] },
+  scarfTail: { position: 'absolute', top: 18, width: 10, height: 19, borderWidth: 1, borderTopWidth: 0, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
+  scarfTailLeft: { left: 10, transform: [{ rotate: '8deg' }] },
+  scarfTailRight: { right: 9, top: 21, transform: [{ rotate: '-9deg' }] },
+  scarfStripe: { position: 'absolute', top: 25, left: 12, width: 17, height: 2, borderRadius: 2 },
+  hairclipBar: { position: 'absolute', bottom: 16, width: 32, height: 8, borderWidth: 1, borderRadius: 6, transform: [{ rotate: '-12deg' }] },
+  hairclipBowLeft: { position: 'absolute', top: 8, left: 9, width: 12, height: 10, borderWidth: 1, borderRadius: 8, transform: [{ rotate: '28deg' }] },
+  hairclipBowRight: { position: 'absolute', top: 8, right: 9, width: 12, height: 10, borderWidth: 1, borderRadius: 8, transform: [{ rotate: '-28deg' }] },
+  hairclipCenter: { position: 'absolute', top: 11, width: 7, height: 7, borderWidth: 1, borderRadius: 4 },
+  hairclipGem: { position: 'absolute', bottom: 11, width: 5, height: 5, borderRadius: 3 },
+  shoeSole: { position: 'absolute', bottom: 7, left: 5, width: 32, height: 7, borderWidth: 1, borderRadius: 6, transform: [{ rotate: '-7deg' }] },
+  shoeBody: { position: 'absolute', bottom: 11, left: 8, width: 27, height: 15, borderWidth: 1, borderTopLeftRadius: 13, borderTopRightRadius: 6, borderBottomLeftRadius: 4, borderBottomRightRadius: 5, transform: [{ rotate: '-7deg' }] },
+  shoeToe: { position: 'absolute', bottom: 14, left: 7, width: 11, height: 9, borderWidth: 1, borderRadius: 7, transform: [{ rotate: '-13deg' }] },
+  shoeHeel: { position: 'absolute', bottom: 8, right: 8, width: 5, height: 8, borderWidth: 1, borderTopWidth: 0, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
+  walletBody: { position: 'absolute', bottom: 7, width: 29, height: 22, borderWidth: 1.2, borderRadius: 6 },
+  walletFlap: { position: 'absolute', bottom: 19, width: 27, height: 10, borderWidth: 1, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
+  walletButton: { position: 'absolute', bottom: 19, width: 5, height: 5, borderWidth: 0.7, borderRadius: 3 },
+  walletSeam: { position: 'absolute', bottom: 11, width: 21, height: 1, borderTopWidth: 1, opacity: 0.9 },
+  necklaceChain: { position: 'absolute', top: 7, width: 28, height: 24, borderWidth: 1.4, borderBottomWidth: 0, borderTopLeftRadius: 18, borderTopRightRadius: 18 },
+  necklacePendant: { position: 'absolute', top: 22, width: 12, height: 13, borderWidth: 1, borderBottomLeftRadius: 8, borderBottomRightRadius: 8, transform: [{ rotate: '45deg' }] },
+  necklaceGem: { position: 'absolute', top: 25, width: 5, height: 5, borderWidth: 1, borderRadius: 3 },
+  towelBack: { position: 'absolute', bottom: 8, width: 30, height: 17, borderWidth: 1, borderRadius: 5, transform: [{ rotate: '7deg' }] },
+  towelFold: { position: 'absolute', bottom: 10, width: 25, height: 17, borderWidth: 1, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  towelStripe: { width: 18, height: 3, borderRadius: 2 },
+  fanFold: { position: 'absolute', top: 5, width: 31, height: 25, borderWidth: 1, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
+  fanRib: { position: 'absolute', top: 8, width: 1, height: 23, borderRadius: 1 },
+  fanHandle: { position: 'absolute', bottom: 4, width: 6, height: 15, borderWidth: 1, borderRadius: 4 },
   giftLid: { position: 'absolute', bottom: 24, width: 27, height: 7, borderWidth: 1, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },
   giftBow: { width: 8, height: 5, borderWidth: 1, borderRadius: 5 },
   giftBox: { position: 'absolute', bottom: 5, width: 23, height: 20, borderWidth: 1, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, alignItems: 'center', justifyContent: 'center' },

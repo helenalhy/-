@@ -18,7 +18,17 @@ export type ShopProductIllustration =
   | 'book'
   | 'flower'
   | 'gift'
-  | 'jewel';
+  | 'jewel'
+  | 'handbag'
+  | 'earring'
+  | 'watch'
+  | 'scarf'
+  | 'hairclip'
+  | 'shoe'
+  | 'wallet'
+  | 'necklace'
+  | 'towel'
+  | 'fan';
 
 export interface ShopDisplayProduct {
   id: string;
@@ -319,6 +329,26 @@ const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> 
   boutique: 'jewel',
 };
 
+function inferProductIllustration(
+  name: string,
+  theme: ProductTheme,
+  fallback?: ShopProductIllustration,
+): ShopProductIllustration {
+  if (/手提包|手袋|小方包|手拿包|包袋/.test(name)) return 'handbag';
+  if (/卡夾|卡套|錢包|零錢包/.test(name)) return 'wallet';
+  if (/耳環|耳飾/.test(name)) return 'earring';
+  if (/腕錶|手錶|手表|時計/.test(name)) return 'watch';
+  if (/圍巾|方巾|披肩|絲巾/.test(name)) return 'scarf';
+  if (/髮飾|髮夾|髮簪|髮梳|髮箍|頭紗/.test(name)) return 'hairclip';
+  if (/鞋|木屐/.test(name)) return 'shoe';
+  if (/項鍊|項鏈|珍珠鍊/.test(name)) return 'necklace';
+  if (/浴巾|毛巾/.test(name)) return 'towel';
+  if (/扇子|摺扇/.test(name)) return 'fan';
+  if (/花束|捧花|盆栽|花瓶/.test(name)) return 'flower';
+  if (/戒指/.test(name)) return 'ring';
+  return fallback ?? productIllustrationByTheme[theme];
+}
+
 const packageVariants = [
   { label: '春日櫻花限定', color: c.candyRose },
   { label: '星河月光限定', color: c.candyLavender },
@@ -490,7 +520,7 @@ function createFeaturedProduct(
     icon: seed.icon,
     color,
     theme,
-    illustration: seed.illustration ?? productIllustrationByTheme[theme],
+    illustration: seed.illustration ?? inferProductIllustration(seed.name, theme),
     variant,
     ...(seed.fixtureIds ? { fixtureIds: seed.fixtureIds } : {}),
   };
@@ -554,8 +584,8 @@ export function getShopFixtureProductCatalog(
     id: `display-${theme}-${index + 1}`,
     ...seed,
     theme,
-    illustration: seed.illustration ?? illustration,
-    variant: index % packageVariants.length,
+    illustration: seed.illustration ?? inferProductIllustration(seed.name, theme, illustration),
+    variant: index,
   }));
   for (let variantIndex = 0; variantIndex < packageVariants.length && catalog.length < 60; variantIndex += 1) {
     const variant = packageVariants[variantIndex];
@@ -568,8 +598,8 @@ export function getShopFixtureProductCatalog(
         icon: seed.icon,
         color: variant.color,
         theme,
-        illustration: seed.illustration ?? illustration,
-        variant: variantIndex + 1,
+        illustration: seed.illustration ?? inferProductIllustration(seed.name, theme, illustration),
+        variant: catalog.length,
       });
     }
   }

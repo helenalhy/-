@@ -67,10 +67,40 @@ test('each shop type gets sixty distinct, shop-specific illustrated products', (
     assert.ok(products.every(({ name, description, icon, color, theme, illustration, variant }) => (
       name && description && icon && color && theme && illustration && Number.isInteger(variant)
     )));
+    assert.equal(new Set(products.map(({ variant }) => variant)).size, 60, `${shopType} products should each have an illustration variation`);
     assert.deepEqual(products.slice(0, 8).map(({ id }) => id), Array.from(
       { length: 8 },
       (_, index) => `display-${shopType}-${index + 1}`,
     ));
+  }
+});
+
+test('fashion and boutique products use item-shaped animated illustrations instead of repeated jars', () => {
+  const boutique = getShopFixtureProductCatalog(
+    'starlight-luxury-boutique',
+    '精品店',
+    'boutique',
+    displayFixture,
+  );
+  assert.deepEqual(
+    boutique.slice(0, 8).map(({ illustration }) => illustration),
+    ['handbag', 'earring', 'watch', 'scarf', 'jewel', 'wallet', 'necklace', 'hairclip'],
+  );
+
+  const womenswear = getShopFixtureProductCatalog(
+    'ladies-fashion-boutique',
+    '女裝店',
+    'womenswear',
+    displayFixture,
+  );
+  assert.ok(womenswear.some(({ illustration }) => illustration === 'garment'));
+  assert.ok(womenswear.some(({ illustration }) => illustration === 'handbag'));
+  assert.ok(womenswear.some(({ illustration }) => illustration === 'earring'));
+  assert.ok(womenswear.some(({ illustration }) => illustration === 'scarf'));
+
+  const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
+  for (const illustration of ['handbag', 'earring', 'watch', 'scarf', 'hairclip', 'shoe', 'wallet', 'necklace', 'towel', 'fan']) {
+    assert.match(visual, new RegExp(`product\\.illustration === '${illustration}'`));
   }
 });
 

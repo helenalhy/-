@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
 
@@ -89,27 +89,36 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
         accessibilityLabel={`妝容預覽：${selectedLipstick.name}搭配${selectedEyeshadow.name}`}
         style={[styles.preview, { backgroundColor: colors.candyCream, borderColor: colors.border }]}
       >
-        <View style={styles.portraitStage}>
-          <View style={[styles.hairCap, { backgroundColor: colors.candyLavenderDark }]} />
-          <View style={[styles.face, { backgroundColor: colors.candyPeach, borderColor: colors.candyCaramelDark }]}>
-            <View style={styles.eyeRow}>
-              {[0, 1].map((eye) => (
-                <View key={eye} style={styles.eyeGroup}>
-                  <View style={[styles.eyeshadow, { backgroundColor: selectedEyeshadow.color }]} />
-                  <View style={[styles.eye, { backgroundColor: colors.foreground }]} />
-                </View>
-              ))}
-            </View>
-            <View style={styles.cheekRow}>
-              <View style={[styles.cheek, { backgroundColor: selectedLipstick.color }]} />
-              <View style={[styles.cheek, { backgroundColor: selectedLipstick.color }]} />
-            </View>
-            <View testID="cosmetics-try-on-lips" style={[styles.lips, { backgroundColor: selectedLipstick.color }]} />
-          </View>
-          <View style={[styles.hairBangs, { backgroundColor: colors.candyLavenderDark }]} />
+        <View
+          testID="cosmetics-try-on-portrait"
+          style={[styles.portraitStage, { backgroundColor: colors.candyPeach, borderColor: colors.candyPink }]}
+        >
+          <Image
+            testID="cosmetics-try-on-guest-art"
+            accessible={false}
+            source={require('../assets/images/cosmetics-tryon-guest-portrait.png')}
+            resizeMode="stretch"
+            fadeDuration={0}
+            style={styles.guestPortrait}
+          />
+          <View
+            testID="cosmetics-try-on-eyeshadow-left"
+            pointerEvents="none"
+            style={[styles.eyeshadowOverlay, styles.leftEyeshadow, { backgroundColor: selectedEyeshadow.color }]}
+          />
+          <View
+            testID="cosmetics-try-on-eyeshadow-right"
+            pointerEvents="none"
+            style={[styles.eyeshadowOverlay, styles.rightEyeshadow, { backgroundColor: selectedEyeshadow.color }]}
+          />
+          <View
+            testID="cosmetics-try-on-lips"
+            pointerEvents="none"
+            style={[styles.lipstickOverlay, { backgroundColor: selectedLipstick.color }]}
+          />
         </View>
         <View style={styles.previewCopy}>
-          <Text style={[styles.previewEyebrow, { color: colors.primary }]}>試妝預覽</Text>
+          <Text style={[styles.previewEyebrow, { color: colors.primary }]}>客人妝容預覽</Text>
           <Text style={[styles.previewName, { color: colors.foreground }]} numberOfLines={1}>{selectedLipstick.name}</Text>
           <Text style={[styles.previewName, { color: colors.foreground }]} numberOfLines={1}>{selectedEyeshadow.name}</Text>
         </View>
@@ -135,18 +144,13 @@ const styles = StyleSheet.create({
   copy: { fontSize: 12, lineHeight: 17 },
   freePill: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
   freeText: { fontSize: 11, fontWeight: '800' },
-  preview: { minHeight: 157, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  portraitStage: { width: 116, height: 136, alignItems: 'center', justifyContent: 'center' },
-  hairCap: { position: 'absolute', top: 13, width: 76, height: 61, borderTopLeftRadius: 40, borderTopRightRadius: 40, borderBottomLeftRadius: 23, borderBottomRightRadius: 23 },
-  face: { width: 68, height: 94, marginTop: 22, borderWidth: 1.2, borderRadius: 36, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  hairBangs: { position: 'absolute', top: 33, width: 62, height: 20, borderBottomLeftRadius: 22, borderBottomRightRadius: 22, transform: [{ rotate: '-3deg' }] },
-  eyeRow: { width: 42, marginTop: 23, flexDirection: 'row', justifyContent: 'space-between' },
-  eyeGroup: { alignItems: 'center', gap: 2 },
-  eyeshadow: { width: 15, height: 5, borderRadius: 4, opacity: 0.8 },
-  eye: { width: 4, height: 5, borderRadius: 3 },
-  cheekRow: { width: 49, flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  cheek: { width: 9, height: 5, borderRadius: 6, opacity: 0.45 },
-  lips: { width: 15, height: 7, marginTop: 2, borderRadius: 8, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
+  preview: { minHeight: 176, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  portraitStage: { width: 158, height: 156, borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
+  guestPortrait: { position: 'absolute', width: 158, height: 156 },
+  eyeshadowOverlay: { position: 'absolute', width: 18, height: 6, borderRadius: 8, opacity: 0.48 },
+  leftEyeshadow: { left: 41, top: 46 },
+  rightEyeshadow: { left: 100, top: 46 },
+  lipstickOverlay: { position: 'absolute', left: 73, top: 76, width: 14, height: 7, borderRadius: 8, opacity: 0.78 },
   previewCopy: { flex: 1, gap: 6 },
   previewEyebrow: { fontSize: 11, fontWeight: '800' },
   previewName: { fontSize: 12, fontWeight: '700' },

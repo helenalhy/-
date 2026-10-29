@@ -136,6 +136,11 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /setSelectedLipstickId/);
   assert.match(tryOn, /setSelectedEyeshadowId/);
   assert.match(tryOn, /cosmetics-try-on-lips/);
+  assert.match(tryOn, /cosmetics-try-on-guest-art/);
+  assert.match(tryOn, /cosmetics-tryon-guest-portrait\.png/);
+  assert.match(tryOn, /styles\.eyeshadowOverlay/);
+  assert.ok(fs.existsSync(path.join(__dirname, '../assets/images/cosmetics-tryon-guest-portrait.png')));
+  assert.doesNotMatch(tryOn, /hairCap|hairBangs|eyeRow/);
   assert.match(tryOn, /試色只會改變預覽，不扣金幣/);
   assert.doesNotMatch(tryOn, /useHabits|placeShopInteriorDecoration|setShopInteriorFixtureProduct/);
   const shopPage = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');

@@ -28,7 +28,51 @@ export type ShopProductIllustration =
   | 'wallet'
   | 'necklace'
   | 'towel'
-  | 'fan';
+  | 'fan'
+  | 'cloud'
+  | 'box'
+  | 'mug'
+  | 'sticker'
+  | 'charm'
+  | 'diffuserStone'
+  | 'cake'
+  | 'pancake'
+  | 'cookie'
+  | 'pudding'
+  | 'candy'
+  | 'icecream'
+  | 'popsicle'
+  | 'lollipop'
+  | 'bread'
+  | 'pizza'
+  | 'riceball'
+  | 'bento'
+  | 'plant'
+  | 'plush'
+  | 'blocks'
+  | 'capsule'
+  | 'puzzle'
+  | 'musicbox'
+  | 'train'
+  | 'yarn'
+  | 'pottery'
+  | 'basket'
+  | 'wand'
+  | 'hat'
+  | 'carton'
+  | 'snack'
+  | 'headphones'
+  | 'camera'
+  | 'speaker'
+  | 'gameConsole'
+  | 'cable'
+  | 'projector'
+  | 'brush'
+  | 'mask'
+  | 'postcard'
+  | 'pencil'
+  | 'bucket'
+  | 'swimwear';
 
 export interface ShopDisplayProduct {
   id: string;
@@ -95,11 +139,11 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '櫻花入浴鹽小罐', description: '帶有淡淡櫻花香氣的泡湯入浴鹽', icon: 'droplet', color: c.candyPink, illustration: 'bottle' },
     { name: '柚子暖湯香包', description: '泡澡時散發柚子香氣的溫泉香包', icon: 'sun', color: c.candyLemon, illustration: 'gift' },
     { name: '檜木香氛沐浴露', description: '以柔和檜木香調製成的沐浴露', icon: 'wind', color: c.candyCaramel, illustration: 'bottle' },
-    { name: '溫泉旅館毛巾組', description: '柔軟吸水的浴巾與小毛巾組合', icon: 'heart', color: c.candySky, illustration: 'garment' },
+    { name: '溫泉旅館毛巾組', description: '柔軟吸水的浴巾與小毛巾組合', icon: 'heart', color: c.candySky, illustration: 'towel' },
     { name: '櫻花紋浴衣', description: '印有柔粉櫻花圖案的輕柔浴衣', icon: 'feather', color: c.candyRose, illustration: 'garment' },
-    { name: '泡湯竹木按摩梳', description: '適合沐浴後梳理頭髮的竹木梳', icon: 'star', color: c.candyMint, illustration: 'gift' },
-    { name: '雪見泡腳木桶組', description: '可愛迷你的木桶與足浴用品組', icon: 'package', color: c.candyPeach, illustration: 'gift' },
-    { name: '草本蒸氣眼罩', description: '以溫熱草本香氣陪伴泡湯後休息', icon: 'moon', color: c.candyLavender, illustration: 'garment' },
+    { name: '泡湯竹木按摩梳', description: '適合沐浴後梳理頭髮的竹木梳', icon: 'star', color: c.candyMint, illustration: 'brush' },
+    { name: '雪見泡腳木桶組', description: '可愛迷你的木桶與足浴用品組', icon: 'package', color: c.candyPeach, illustration: 'bucket' },
+    { name: '草本蒸氣眼罩', description: '以溫熱草本香氣陪伴泡湯後休息', icon: 'moon', color: c.candyLavender, illustration: 'mask' },
   ],
   cafe: [
     { name: '星星拿鐵', description: '奶泡上有小星星圖案', icon: 'coffee', color: c.candyPeach },
@@ -339,11 +383,66 @@ function inferProductIllustration(
   if (/耳環|耳飾/.test(name)) return 'earring';
   if (/腕錶|手錶|手表|時計/.test(name)) return 'watch';
   if (/圍巾|方巾|披肩|絲巾/.test(name)) return 'scarf';
+  if (/假髮/.test(name)) return 'wig';
+  if (/斗篷|披風/.test(name)) return 'cloak';
   if (/髮飾|髮夾|髮簪|髮梳|髮箍|頭紗/.test(name)) return 'hairclip';
   if (/鞋|木屐/.test(name)) return 'shoe';
   if (/項鍊|項鏈|珍珠鍊/.test(name)) return 'necklace';
-  if (/浴巾|毛巾/.test(name)) return 'towel';
+  if (/浴巾|毛巾|沙灘巾/.test(name)) return 'towel';
   if (/扇子|摺扇/.test(name)) return 'fan';
+  if (/胸針|別針|徽章/.test(name)) return 'jewel';
+  if (/手提包|手袋|小方包|手拿包|包袋|水母包|荷包/.test(name)) return 'handbag';
+  if (/香氛石|擴香石/.test(name)) return 'diffuserStone';
+  if (/按摩梳|木梳/.test(name)) return 'brush';
+  if (/眼罩/.test(name)) return 'mask';
+  if (/木桶|泡腳桶/.test(name)) return 'bucket';
+  if (/禮盒|收納盒/.test(name)) return 'box';
+  if (/冰棒/.test(name)) return 'popsicle';
+  if (/冰淇淋|雪糕|冰品|雪球|三球杯/.test(name)) return 'icecream';
+  if (/烏龍茶|冰茶|熱茶/.test(name)) return 'mug';
+  if (/冰沙|飲|拿鐵|奶茶|氣泡茶/.test(name)) return 'drink';
+  if (/布丁/.test(name)) return 'pudding';
+  if (/蛋糕|馬芬|小塔|蛋塔/.test(name)) return 'cake';
+  if (/鬆餅|可麗餅/.test(name)) return 'pancake';
+  if (/曲奇|餅乾/.test(name)) return 'cookie';
+  if (/可頌/.test(name)) return 'croissant';
+  if (/麵包|菠蘿包|咖喱包/.test(name)) return 'bread';
+  if (/棒棒糖/.test(name)) return 'lollipop';
+  if (/糖罐/.test(name)) return 'bottle';
+  if (/棉花糖|軟糖|糖果|糖球|巧克力/.test(name)) return 'candy';
+  if (/披薩/.test(name)) return 'pizza';
+  if (/飯糰|飯團|海苔|小卷|壽司/.test(name)) return 'riceball';
+  if (/便當|餐盒|餐具/.test(name)) return 'bento';
+  if (/盆栽|多肉/.test(name)) return 'plant';
+  if (/水果|蔬菜|草莓|莓果|鮮蔬/.test(name)) return 'produce';
+  if (/小熊布偶|布偶|玩偶/.test(name)) return 'plush';
+  if (/積木/.test(name)) return 'blocks';
+  if (/扭蛋/.test(name)) return 'capsule';
+  if (/拼圖/.test(name)) return 'puzzle';
+  if (/音樂盒/.test(name)) return 'musicbox';
+  if (/火車/.test(name)) return 'train';
+  if (/編織線|毛線/.test(name)) return 'yarn';
+  if (/陶瓷杯|造型杯|迷你陶瓷杯/.test(name)) return 'mug';
+  if (/陶瓷|陶土/.test(name)) return 'pottery';
+  if (/花籃|編織花籃/.test(name)) return 'basket';
+  if (/手杖|魔法棒/.test(name)) return 'wand';
+  if (/泳衣|比基尼|防曬上衣/.test(name)) return 'swimwear';
+  if (/上衣|襯衫|裙|禮服|手套|羽織|和服|浴衣/.test(name)) return 'garment';
+  if (/帽/.test(name)) return 'hat';
+  if (/紙盒/.test(name)) return 'carton';
+  if (/零食包|分享包/.test(name)) return 'snack';
+  if (/耳機/.test(name)) return 'headphones';
+  if (/相機|拍立得/.test(name)) return 'camera';
+  if (/喇叭/.test(name)) return 'speaker';
+  if (/遊戲機/.test(name)) return 'gameConsole';
+  if (/充電線/.test(name)) return 'cable';
+  if (/投影機/.test(name)) return 'projector';
+  if (/貼紙/.test(name)) return 'sticker';
+  if (/明信片/.test(name)) return 'postcard';
+  if (/彩色筆|畫筆/.test(name)) return 'pencil';
+  if (/雲朵造型/.test(name)) return 'cloud';
+  if (/杯/.test(name)) return 'mug';
+  if (/吊飾|掛繩/.test(name)) return 'charm';
   if (/花束|捧花|盆栽|花瓶/.test(name)) return 'flower';
   if (/戒指/.test(name)) return 'ring';
   return fallback ?? productIllustrationByTheme[theme];

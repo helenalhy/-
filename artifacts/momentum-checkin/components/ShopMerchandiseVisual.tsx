@@ -18,7 +18,8 @@ type ProductArtShape =
   | 'bento' | 'pot' | 'plush' | 'blocks' | 'capsule' | 'puzzle' | 'train'
   | 'ball' | 'vase' | 'basket' | 'wand' | 'hat' | 'carton' | 'bag'
   | 'headphones' | 'camera' | 'speaker' | 'console' | 'cable' | 'projector'
-  | 'brush' | 'mask' | 'pencil' | 'bucket' | 'swimwear' | 'teaCup';
+  | 'brush' | 'mask' | 'pencil' | 'bucket' | 'swimwear' | 'teaCup'
+  | 'compact' | 'lipstick' | 'palette' | 'mascara' | 'nailPolish';
 type ProductArtConfig = {
   shape: ProductArtShape;
   icon: keyof typeof Feather.glyphMap;
@@ -70,6 +71,11 @@ const PRODUCT_SPECIFIC_ART: Partial<Record<ShopProductIllustration, ProductArtCo
   bucket: { shape: 'bucket', icon: 'package' },
   swimwear: { shape: 'swimwear', icon: 'droplet' },
   teaCup: { shape: 'teaCup', icon: 'coffee' },
+  compact: { shape: 'compact', icon: 'sun' },
+  lipstick: { shape: 'lipstick', icon: 'heart' },
+  palette: { shape: 'palette', icon: 'grid' },
+  mascara: { shape: 'mascara', icon: 'eye' },
+  nailPolish: { shape: 'nailPolish', icon: 'droplet' },
 };
 
 const SPECIAL_PRODUCT_SHAPES: Record<ProductArtShape, ViewStyle> = {
@@ -114,6 +120,11 @@ const SPECIAL_PRODUCT_SHAPES: Record<ProductArtShape, ViewStyle> = {
   bucket: { width: 23, height: 20, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
   swimwear: { width: 23, height: 26, borderTopLeftRadius: 12, borderTopRightRadius: 12, borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
   teaCup: { width: 27, height: 17, borderRadius: 5, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+  compact: { width: 25, height: 19, borderRadius: 9 },
+  lipstick: { width: 14, height: 27, borderRadius: 4, borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
+  palette: { width: 30, height: 22, borderRadius: 5 },
+  mascara: { width: 17, height: 27, borderRadius: 6 },
+  nailPolish: { width: 21, height: 22, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
 };
 
 const MERCHANDISE_MOTION_PROFILES: Partial<Record<ShopProductIllustration, MerchandiseMotionProfile>> = {
@@ -141,6 +152,11 @@ const MERCHANDISE_MOTION_PROFILES: Partial<Record<ShopProductIllustration, Merch
   necklace: { lift: 0.8, tilt: 8, scale: 1.1, sparkle: 1 },
   towel: { lift: 0.7, tilt: 4, scale: 1.04, sparkle: 0.7 },
   fan: { lift: 1.1, tilt: 9, scale: 1.08, sparkle: 0.92 },
+  compact: { lift: 0.7, tilt: 5, scale: 1.09, sparkle: 0.95 },
+  lipstick: { lift: 0.9, tilt: 8, scale: 1.08, sparkle: 0.92 },
+  palette: { lift: 0.8, tilt: 4, scale: 1.06, sparkle: 0.84 },
+  mascara: { lift: 0.6, tilt: 7, scale: 1.07, sparkle: 0.88 },
+  nailPolish: { lift: 1, tilt: 6, scale: 1.08, sparkle: 0.94 },
 };
 const DEFAULT_MOTION_PROFILE: MerchandiseMotionProfile = {
   lift: 1,
@@ -536,6 +552,9 @@ export function ShopMerchandiseVisual({
             )}
             {productArtwork.shape === 'hat' && <View style={[styles.specialHatBrim, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />}
             {productArtwork.shape === 'bucket' && <View style={[styles.specialBucketHandle, { borderColor: colors.candyCaramelDark }]} />}
+            {productArtwork.shape === 'lipstick' && <View style={[styles.specialCosmeticCap, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />}
+            {productArtwork.shape === 'mascara' && <View style={[styles.specialMascaraWand, { backgroundColor: colors.candyRoseDark }]} />}
+            {productArtwork.shape === 'nailPolish' && <View style={[styles.specialNailPolishCap, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />}
             <View
               style={[
                 styles.specialObject,
@@ -551,6 +570,13 @@ export function ShopMerchandiseVisual({
               {(productArtwork.shape === 'bento' || productArtwork.shape === 'blocks') && (
                 <View style={[styles.specialGridLine, { backgroundColor: colors.candyCream }]} />
               )}
+              {productArtwork.shape === 'palette' && (
+                <>
+                  <View style={[styles.specialPaletteDivider, { backgroundColor: colors.candyCream }]} />
+                  <View style={[styles.specialPalettePan, { backgroundColor: accent }]} />
+                </>
+              )}
+              {productArtwork.shape === 'compact' && <View style={[styles.specialCompactShine, { backgroundColor: colors.candyCream }]} />}
               {productArtwork.shape === 'pot' && <View style={[styles.specialLeaf, { backgroundColor: colors.candyMintDark }]} />}
               {productArtwork.shape === 'plush' && <View style={[styles.specialPlushEar, styles.specialPlushEarLeft, { backgroundColor: accent }]} />}
               {productArtwork.shape === 'plush' && <View style={[styles.specialPlushEar, styles.specialPlushEarRight, { backgroundColor: accent }]} />}
@@ -735,7 +761,13 @@ const styles = StyleSheet.create({
   specialTrainWheelRight: { right: 8 },
   specialHatBrim: { position: 'absolute', top: 17, width: 34, height: 4, borderWidth: 1, borderRadius: 4 },
   specialBucketHandle: { position: 'absolute', top: 8, width: 18, height: 12, borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 10, borderTopRightRadius: 10 },
+  specialCosmeticCap: { position: 'absolute', top: 2, width: 11, height: 8, borderWidth: 1, borderRadius: 3 },
+  specialMascaraWand: { position: 'absolute', top: 3, width: 3, height: 9, borderRadius: 2 },
+  specialNailPolishCap: { position: 'absolute', top: 3, width: 9, height: 7, borderWidth: 1, borderRadius: 2 },
   specialGridLine: { position: 'absolute', width: 1, height: 15, backgroundColor: 'white', opacity: 0.8 },
+  specialPaletteDivider: { position: 'absolute', width: 1, height: 14, backgroundColor: 'white', opacity: 0.8 },
+  specialPalettePan: { position: 'absolute', top: 4, left: 5, width: 5, height: 5, borderRadius: 3 },
+  specialCompactShine: { position: 'absolute', top: 3, width: 13, height: 3, borderRadius: 2 },
   specialLeaf: { position: 'absolute', top: -8, width: 8, height: 13, borderRadius: 8, transform: [{ rotate: '24deg' }] },
   specialPlushEar: { position: 'absolute', top: -3, width: 8, height: 9, borderRadius: 6 },
   specialPlushEarLeft: { left: 1 },

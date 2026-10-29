@@ -63,6 +63,7 @@ test('each shop type gets sixty distinct, shop-specific illustrated products', (
     'cosplay',
     'electronics',
     'boutique',
+    'cosmetics',
   ];
 
   for (const shopType of shopTypes) {
@@ -114,6 +115,17 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.ok(womenswear.some(({ illustration }) => illustration === 'earring'));
   assert.ok(womenswear.some(({ illustration }) => illustration === 'scarf'));
 
+  const cosmetics = getShopFixtureProductCatalog(
+    'rainbow-cosmetics',
+    '繽紛彩妝屋',
+    'cosmetics',
+    displayFixture,
+  );
+  assert.deepEqual(
+    cosmetics.slice(0, 8).map(({ illustration }) => illustration),
+    ['compact', 'lipstick', 'palette', 'mascara', 'bottle', 'brush', 'compact', 'nailPolish'],
+  );
+
   const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
   for (const illustration of ['handbag', 'earring', 'watch', 'scarf', 'hairclip', 'shoe', 'wallet', 'necklace', 'towel', 'fan']) {
     assert.match(visual, new RegExp(`product\\.illustration === '${illustration}'`));
@@ -130,6 +142,7 @@ test('other shops use product-specific animated silhouettes across food, toys an
     ['toy', ['plush', 'blocks', 'capsule', 'puzzle', 'musicbox', 'train']],
     ['electronics', ['headphones', 'camera', 'speaker', 'gameConsole', 'watch', 'cable', 'projector']],
     ['supermarket', ['produce', 'carton', 'cookie', 'snack', 'flower']],
+    ['cosmetics', ['compact', 'lipstick', 'palette', 'mascara', 'bottle', 'brush', 'nailPolish']],
   ];
 
   for (const [shopType, expectedIllustrations] of illustrationCases) {
@@ -148,7 +161,7 @@ test('other shops use product-specific animated silhouettes across food, toys an
   const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
   assert.match(visual, /bottleRound/);
   assert.match(visual, /bottleSquare/);
-  for (const illustration of ['cloud', 'diffuserStone', 'pudding', 'icecream', 'popsicle', 'pizza', 'riceball', 'plush', 'blocks', 'capsule', 'musicbox', 'train', 'yarn', 'pottery', 'basket', 'wand', 'carton', 'headphones', 'camera', 'speaker', 'gameConsole', 'cable', 'projector', 'brush', 'mask', 'postcard', 'pencil', 'bucket', 'swimwear', 'teaCup']) {
+  for (const illustration of ['cloud', 'diffuserStone', 'pudding', 'icecream', 'popsicle', 'pizza', 'riceball', 'plush', 'blocks', 'capsule', 'musicbox', 'train', 'yarn', 'pottery', 'basket', 'wand', 'carton', 'headphones', 'camera', 'speaker', 'gameConsole', 'cable', 'projector', 'brush', 'mask', 'postcard', 'pencil', 'bucket', 'swimwear', 'teaCup', 'compact', 'lipstick', 'palette', 'mascara', 'nailPolish']) {
     assert.match(visual, new RegExp(`${illustration}: \\{ shape:`));
   }
   assert.match(visual, /productArtwork &&/);

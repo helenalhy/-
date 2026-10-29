@@ -55,6 +55,7 @@ export const SCENE_ANCHORS: Record<ShopInteriorSceneKey, SceneAnchors> = {
   cosplay: build(a(0.28, 0.62, 0.25, 0.78), a(0.08, 0.80, 0.12, 0.92), a(0.50, 0.70, 0.50, 0.88), a(0.95, 0.80, 0.88, 0.95), a(0.55, 0.48, 0.60, 0.62), a(0.82, 0.60, 0.78, 0.80), a(0.28, 0.69, 0.29, 0.87), a(0.82, 0.70, 0.82, 0.88)),
   electronics: build(a(0.58, 0.64, 0.55, 0.78), a(0.20, 0.73, 0.15, 0.92), a(0.46, 0.50, 0.50, 0.72), a(0.88, 0.60, 0.90, 0.80), a(0.50, 0.46, 0.60, 0.60), a(0.85, 0.80, 0.70, 0.96), a(0.37, 0.67, 0.38, 0.86), a(0.80, 0.66, 0.80, 0.86)),
   boutique: build(a(0.62, 0.52, 0.66, 0.78), a(0.12, 0.60, 0.20, 0.84), a(0.55, 0.63, 0.50, 0.88), a(0.92, 0.84, 0.86, 0.94), a(0.70, 0.37, 0.58, 0.58), a(0.20, 0.64, 0.28, 0.90), a(0.19, 0.58, 0.22, 0.80), a(0.84, 0.76, 0.82, 0.94)),
+  cosmetics: build(a(0.18, 0.62, 0.18, 0.83), a(0.10, 0.69, 0.16, 0.92), a(0.51, 0.70, 0.50, 0.90), a(0.91, 0.68, 0.84, 0.92), a(0.68, 0.42, 0.64, 0.64), a(0.40, 0.61, 0.40, 0.83), a(0.26, 0.68, 0.25, 0.87), a(0.76, 0.68, 0.76, 0.88)),
 };
 
 const FLOOR_ID = /staff|oven|freezer|warmer|steamer|kiln|wardrobe|rack|mannequin|bench|chair|sofa|lounge|fountain|pavilion|aquarium|stage|arch|shelf|shelves|showcase|display-case|display.?cabinet|chilled|island|cabinet|podium|pedestal|vase|plant|planter|carousel|stand|wall-?rack|photo-set|fitting|kimono-display|dress-display|blouse-display|skirt-display|clothing|展示櫃|展示柜|陳列櫃|陳列柜|衣櫃|衣柜|衣架|冷藏|烤爐|烤箱|冰櫃|冰柜|展示台|展示架|展示島|展示岛|貨架|货架|店員|店员|長椅|长椅|沙發|沙发|座椅/;

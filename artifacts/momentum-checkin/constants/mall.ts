@@ -31,7 +31,8 @@ export type MallShopType =
   | 'swimwear'
   | 'cosplay'
   | 'electronics'
-  | 'boutique';
+  | 'boutique'
+  | 'cosmetics';
 
 export interface MallFloorTheme {
   title: string;
@@ -89,6 +90,7 @@ export const MALL_ITEMS: MallItem[] = [
   item(6, 'yoga-deck', '呼吸瑜伽台', '留一個位置，安靜伸展', 'target', 'facility', 65, 2, c.candyMint),
   item(6, 'aroma-diffuser', '香薰擴香器', '讓療癒的氣息輕輕散開', 'wind', 'decor', 35, 1, c.candyLavender),
   item(7, 'color-atelier', '彩虹畫室', '讓腦海中的顏色成為作品', 'edit-2', 'shop', 100, 2, c.candyCoral),
+  item(7, 'rainbow-cosmetics', '繽紛彩妝屋', '在彩虹藝術廊挑選眼影、唇彩與美妝小物', 'heart', 'shop', 110, 2, c.candyPink, undefined, 'cosmetics'),
   item(7, 'sculpture-plaza', '靈感雕塑台', '為每天的創意搭一座展台', 'hexagon', 'facility', 70, 2, c.candyLavender),
   item(7, 'gallery-frames', '繽紛畫框牆', '把努力裝進漂亮的畫框', 'image', 'decor', 40, 1, c.candyPink),
   item(8, 'orbit-shop', '星球紀念店', '把星空的小禮物帶回家', 'star', 'shop', 120, 3, c.candyLavender),

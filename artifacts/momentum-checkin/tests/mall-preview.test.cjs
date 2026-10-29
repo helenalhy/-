@@ -946,9 +946,9 @@ test('elevator opens a direct 20-floor selector and changes floors without touch
   assert.equal(panel.props.visible, false);
 });
 
-test('real catalog covers twenty distinct themes and includes ten specialized shop types on their assigned floors', () => {
+test('real catalog covers twenty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 3011);
+  assert.equal(MALL_ITEMS.length, 3012);
   assert.equal(MALL_FLOORS.length, 20);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -958,12 +958,13 @@ test('real catalog covers twenty distinct themes and includes ten specialized sh
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 1011, facility: 1000, decor: 1000 },
+    { shop: 1012, facility: 1000, decor: 1000 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(
     MALL_ITEMS.filter((item) => item.shopType && item.shopType !== 'general').map(({ id, floor, shopType }) => [id, floor, shopType]),
     [
+      ['rainbow-cosmetics', 7, 'cosmetics'],
       ['ladies-fashion-boutique', 1, 'womenswear'],
       ['japanese-hyakuen-store', 2, 'hyakuen'],
       ['kimono-house', 3, 'kimono'],

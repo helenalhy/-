@@ -210,6 +210,14 @@ const legacyDecorations: Record<MallShopType, ShopInteriorDecoration[]> = {
     option('boutique', 'watch-pedestal', '腕錶收藏展示台', '讓腕錶在小型展示台上閃耀。', 'clock', 40, c.candySky, 'sculpture-plaza'),
     option('boutique', 'boutique-lounge', '香檳色精品休息椅', '讓客人舒適地慢慢挑選。', 'heart', 32, c.candyCoral, 'wooden-bench'),
   ],
+  cosmetics: [
+    option('cosmetics', 'vanity-mirror', '暖光化妝鏡台', '在柔和燈光下試看不同妝容。', 'sun', 38, c.candyPink, 'gallery-frames'),
+    option('cosmetics', 'lip-color-rack', '唇彩旋轉展示架', '按色系陳列唇膏、唇釉與護唇膏。', 'droplet', 34, c.candyRose, 'sculpture-plaza'),
+    option('cosmetics', 'eye-palette-shelf', '眼影色盤展示櫃', '展示大地色、莓果色與星光色眼影。', 'grid', 40, c.candyLavender, 'spice-display'),
+    option('cosmetics', 'brush-organizer', '彩妝刷具收納架', '整理粉底刷、腮紅刷和眼影刷。', 'edit-2', 29, c.candyPeach, 'craft-station'),
+    option('cosmetics', 'tester-counter', '試妝體驗桌', '提供試色卡與整潔的試妝空間。', 'heart', 42, c.candyMint, 'tasting-court'),
+    option('cosmetics', 'nail-color-wall', '糖果色指甲油牆', '把不同色調的指甲油排成彩虹。', 'droplet', 33, c.candyCoral, 'gallery-frames'),
+  ],
 };
 
 interface DecorationSeed {
@@ -375,6 +383,18 @@ const shopFixtures: Record<Exclude<MallShopType, 'general'>, DecorationFixture[]
     { key: 'gift-box-table', name: '精品禮盒陳列桌', description: '擺放緞帶禮盒和收藏小物。', icon: 'gift', price: 32, visual: 'tasting-court' },
     { key: 'velvet-lounge-chair', name: '天鵝絨貴賓座椅', description: '為挑選精品的客人準備舒適座位。', icon: 'heart', price: 35, visual: 'wooden-bench' },
   ],
+  cosmetics: [
+    { key: 'compact-powder-case', name: '氣墊粉餅珍藏展示櫃', description: '展示不同色號的氣墊粉餅和蜜粉餅。', icon: 'circle', price: 38, visual: 'jewelry-case' },
+    { key: 'lipstick-carousel', name: '唇膏試色旋轉台', description: '讓客人比較唇膏、唇釉與唇蜜色號。', icon: 'droplet', price: 36, visual: 'sculpture-plaza' },
+    { key: 'eyeshadow-palette-wall', name: '九色眼影盤展示牆', description: '分格陳列日常、派對和限定眼影盤。', icon: 'grid', price: 40, visual: 'gallery-frames' },
+    { key: 'makeup-brush-rack', name: '彩妝刷具玻璃收納架', description: '展示粉底刷、蜜粉刷和細節眼影刷。', icon: 'edit-2', price: 32, visual: 'craft-station' },
+    { key: 'beauty-tester-island', name: '夢幻試妝色彩島', description: '集中擺放試色品、棉花棒與試妝卡。', icon: 'sun', price: 42, visual: 'tasting-court' },
+    { key: 'nail-polish-shelf', name: '迷你指甲油彩虹層架', description: '按色系排列不同光澤的指甲油。', icon: 'droplet', price: 34, visual: 'spice-display' },
+    { key: 'skincare-bottle-window', name: '保養精華櫥窗', description: '陳列化妝水、精華液與保濕乳霜。', icon: 'heart', price: 36, visual: 'jewelry-case' },
+    { key: 'shade-card-wall', name: '粉底色號比對牆', description: '以色卡協助挑選合適的粉底色號。', icon: 'image', price: 30, visual: 'gallery-frames' },
+    { key: 'blush-display-podium', name: '花瓣腮紅展示台', description: '讓腮紅盤與打亮餅成為店內焦點。', icon: 'sun', price: 35, visual: 'sculpture-plaza' },
+    { key: 'beauty-lounge-seat', name: '奶油雲朵試妝座', description: '留一張柔軟座位，慢慢試出喜歡的妝容。', icon: 'heart', price: 33, visual: 'wooden-bench' },
+  ],
 };
 
 const finishes: Record<MallShopType, FinishStyle[]> = {
@@ -444,6 +464,12 @@ const finishes: Record<MallShopType, FinishStyle[]> = {
     { key: 'lilac-silk', name: '紫藤絲緞', description: '紫藤紫與銀白光澤', color: c.candyLavender, priceExtra: 11 },
     { key: 'ocean-pearl', name: '海洋珍珠', description: '海水藍與珍珠奶油色', color: c.candySky, priceExtra: 9 },
   ],
+  cosmetics: [
+    { key: 'rose-petal', name: '玫瑰花瓣', description: '柔粉與奶油白的花瓣妝台', color: c.candyPink, priceExtra: 5 },
+    { key: 'berry-glaze', name: '莓果糖霜', description: '莓果紅與亮面香檳色', color: c.candyRose, priceExtra: 8 },
+    { key: 'mint-glow', name: '薄荷柔光', description: '薄荷綠與珍珠白', color: c.candyMint, priceExtra: 6 },
+    { key: 'starlight-lilac', name: '星光丁香', description: '淡紫與星點銀光', color: c.candyLavender, priceExtra: 9 },
+  ],
 };
 
 const signatureDecorations: Partial<Record<MallShopType, DecorationSeed[]>> = {
@@ -509,6 +535,12 @@ const signatureDecorations: Partial<Record<MallShopType, DecorationSeed[]>> = {
     { key: 'limited-pearl-necklace', name: '限定款・星河珍珠項鍊', description: '以珍珠和星光細節設計的限定首飾。', icon: 'gift', price: 92, color: c.candyLavender, visual: 'starlight-mobile', limitedEdition: true },
     { key: 'silk-scarf-collection', name: '晨光真絲圍巾收藏', description: '展示手繪花色與柔亮絲緞。', icon: 'shopping-bag', price: 68, color: c.candyPeach, visual: 'clothing-rack' },
     { key: 'designer-watch-podium', name: '月光設計腕錶展示台', description: '為精緻腕錶留一座柔光展示台。', icon: 'clock', price: 72, color: c.candySky, visual: 'sculpture-plaza' },
+  ],
+  cosmetics: [
+    { key: 'limited-prism-palette', name: '限定款・虹光九色眼影盤', description: '以彩虹藝術廊為靈感的珍藏眼影色盤。', icon: 'grid', price: 90, color: c.candyLavender, visual: 'gallery-frames', limitedEdition: true },
+    { key: 'limited-rose-lipstick', name: '限定款・玫瑰星砂唇膏', description: '柔粉色唇膏搭配細緻星砂光澤。', icon: 'heart', price: 84, color: c.candyPink, visual: 'sculpture-plaza', limitedEdition: true },
+    { key: 'pearl-compact-display', name: '珍珠光氣墊粉餅展示台', description: '以奶油白與珍珠光展示多款粉餅。', icon: 'circle', price: 58, color: c.candyCream, visual: 'jewelry-case' },
+    { key: 'makeup-brush-collection', name: '柔雲刷具收藏架', description: '陳列不同尺寸的柔軟彩妝刷具。', icon: 'edit-2', price: 52, color: c.candyPeach, visual: 'craft-station' },
   ],
 };
 
@@ -654,6 +686,12 @@ const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> 
     { key: 'boutique-polishing-station', name: '首飾保養整理台', description: '收納擦拭布和小型首飾整理工具。', icon: 'sun', price: 50, color: c.candyPink, visual: 'jewelry-case' },
     { key: 'boutique-handbag-stand', name: '手袋輪替展示台', description: '把當季手袋放在專屬展示位置。', icon: 'shopping-bag', price: 54, color: c.candyPeach, visual: 'gallery-frames' },
     { key: 'boutique-gift-wrap', name: '精品禮盒包裝台', description: '以緞帶和包裝紙整理收藏小禮物。', icon: 'gift', price: 48, color: c.candyLavender, visual: 'craft-station' },
+  ],
+  cosmetics: [
+    { key: 'shade-matching-mirror', name: '智慧粉底色號比對鏡', description: '用柔和補光協助挑選合適的粉底色號。', icon: 'sun', price: 60, color: c.candyPink, visual: 'gallery-frames' },
+    { key: 'lipstick-mixer', name: '唇膏色彩調配台', description: '搭配顏料盤調出專屬唇彩色調。', icon: 'droplet', price: 56, color: c.candyRose, visual: 'craft-station' },
+    { key: 'brush-sanitizer', name: '彩妝刷具清潔消毒櫃', description: '讓試妝用刷具保持乾淨整齊。', icon: 'wind', price: 54, color: c.candySky, visual: 'electronics-bench' },
+    { key: 'compact-refill-station', name: '氣墊粉餅補充工作站', description: '整理粉芯、粉撲與替換補充蕊。', icon: 'settings', price: 50, color: c.candyLavender, visual: 'craft-station' },
   ],
 };
 
@@ -824,7 +862,7 @@ function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpeci
 export type ShopInteriorSceneKey =
   | 'general' | 'cafe' | 'candy' | 'icecream' | 'bakery' | 'tea' | 'food' | 'flower' | 'book' | 'toy' | 'craft'
   | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen'
-  | 'swimwear' | 'cosplay' | 'electronics' | 'boutique';
+  | 'swimwear' | 'cosplay' | 'electronics' | 'boutique' | 'cosmetics';
 
 const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorSceneKey> = {
   cafe: 'cafe',
@@ -948,6 +986,7 @@ const previousShopInteriorDecorations: Record<MallShopType, ShopInteriorDecorati
   cosplay: [...legacyDecorations.cosplay, ...variantDecorations('cosplay'), ...featureDecorations('cosplay')],
   electronics: [...legacyDecorations.electronics, ...variantDecorations('electronics'), ...featureDecorations('electronics')],
   boutique: [...legacyDecorations.boutique, ...variantDecorations('boutique'), ...featureDecorations('boutique')],
+  cosmetics: [...legacyDecorations.cosmetics, ...variantDecorations('cosmetics'), ...featureDecorations('cosmetics')],
 };
 
 export const SHOP_INTERIOR_DECORATIONS: Record<MallShopType, ShopInteriorDecoration[]> = {
@@ -962,6 +1001,7 @@ export const SHOP_INTERIOR_DECORATIONS: Record<MallShopType, ShopInteriorDecorat
   cosplay: [...legacyDecorations.cosplay, ...variantDecorations('cosplay', 9), ...featureDecorations('cosplay'), ...specialtyEquipment('cosplay')],
   electronics: [...legacyDecorations.electronics, ...variantDecorations('electronics', 9), ...featureDecorations('electronics'), ...specialtyEquipment('electronics')],
   boutique: [...legacyDecorations.boutique, ...variantDecorations('boutique', 9), ...featureDecorations('boutique'), ...specialtyEquipment('boutique')],
+  cosmetics: [...legacyDecorations.cosmetics, ...variantDecorations('cosmetics', 9), ...featureDecorations('cosmetics'), ...specialtyEquipment('cosmetics')],
 };
 
 export const SHOP_INTERIOR_DECORATION_BY_ID = Object.fromEntries(
@@ -1107,6 +1147,7 @@ export function getShopTypeLabel(shopType?: MallShopType): string {
     cosplay: 'Cosplay服裝店',
     electronics: '電器店',
     boutique: '精品店',
+  cosmetics: '化妝品店',
   };
   return labels[shopType ?? 'general'];
 }

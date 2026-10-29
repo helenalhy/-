@@ -73,7 +73,12 @@ export type ShopProductIllustration =
   | 'pencil'
   | 'bucket'
   | 'swimwear'
-  | 'teaCup';
+  | 'teaCup'
+  | 'compact'
+  | 'lipstick'
+  | 'palette'
+  | 'mascara'
+  | 'nailPolish';
 
 export interface ShopDisplayProduct {
   id: string;
@@ -346,6 +351,16 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '珍珠項鍊', description: '簡潔優雅的珍珠配件', icon: 'circle', color: c.candyLemon },
     { name: '緞帶髮夾', description: '柔和色系的日常髮飾', icon: 'gift', color: c.candyMint },
   ],
+  cosmetics: [
+    { name: '雲朵氣墊粉餅', description: '輕透底妝粉餅與柔軟粉撲', icon: 'sun', color: c.candyPink, illustration: 'compact' },
+    { name: '莓果緞光唇膏', description: '柔滑顯色的莓果系唇膏', icon: 'heart', color: c.candyRose, illustration: 'lipstick' },
+    { name: '星河九色眼影盤', description: '星點亮片搭配日常霧面眼影', icon: 'star', color: c.candyLavender, illustration: 'palette' },
+    { name: '花瓣捲翹睫毛膏', description: '輕盈刷頭打造自然捲翹睫毛', icon: 'eye', color: c.candyCoral, illustration: 'mascara' },
+    { name: '柔霧水光粉底液', description: '奶油柔霧妝感的輕盈粉底', icon: 'droplet', color: c.candyPeach, illustration: 'bottle' },
+    { name: '奶油雲朵刷具組', description: '收納粉底刷、腮紅刷和眼影刷', icon: 'edit-2', color: c.candyMint, illustration: 'brush' },
+    { name: '櫻花透亮腮紅盤', description: '自然提氣色的柔粉腮紅餅', icon: 'sun', color: c.candyPink, illustration: 'compact' },
+    { name: '糖果星點指甲油', description: '帶有細緻星點的糖果色指甲油', icon: 'droplet', color: c.candySky, illustration: 'nailPolish' },
+  ],
 };
 
 const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> = {
@@ -372,6 +387,7 @@ const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> 
   cosplay: 'garment',
   electronics: 'device',
   boutique: 'jewel',
+  cosmetics: 'compact',
 };
 
 function inferProductIllustration(
@@ -379,6 +395,12 @@ function inferProductIllustration(
   theme: ProductTheme,
   fallback?: ShopProductIllustration,
 ): ShopProductIllustration {
+  if (/氣墊粉餅|蜜粉餅|腮紅盤|修容餅|打亮餅/.test(name)) return 'compact';
+  if (/唇膏|唇釉|口紅|唇蜜/.test(name)) return 'lipstick';
+  if (/眼影盤|眼影色盤|九色眼影/.test(name)) return 'palette';
+  if (/睫毛膏|眼線液/.test(name)) return 'mascara';
+  if (/指甲油/.test(name)) return 'nailPolish';
+  if (/粉底刷|彩妝刷|刷具/.test(name)) return 'brush';
   if (/手提包|手袋|小方包|手拿包|包袋|水母包|荷包/.test(name)) return 'handbag';
   if (/卡夾|卡套|錢包|零錢包/.test(name)) return 'wallet';
   if (/耳環|耳飾/.test(name)) return 'earring';

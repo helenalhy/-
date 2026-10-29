@@ -86,6 +86,7 @@ const SCENES: Record<ShopInteriorSceneKey, number> = {
   cosplay: require('../assets/images/shop-room-cosplay.jpg'),
   electronics: require('../assets/images/shop-room-electronics.jpg'),
   boutique: require('../assets/images/shop-room-boutique.jpg'),
+  cosmetics: require('../assets/images/shop-room-cosmetics.jpg'),
 };
 
 export function ShopInteriorScene({

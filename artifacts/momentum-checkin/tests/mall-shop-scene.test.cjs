@@ -69,6 +69,7 @@ test('shop type and all inferred general specialties resolve to stable scene var
   for (const type of [
     'womenswear', 'bridal', 'eveningwear', 'kimono', 'supermarket',
     'hyakuen', 'swimwear', 'cosplay', 'electronics', 'boutique',
+    'cosmetics',
   ]) {
     assert.equal(getShopInteriorSceneKey(type), type);
   }
@@ -229,9 +230,9 @@ const {
   separateHotspotPoints,
 } = anchorModule.exports;
 
-test('every scene defines in-bounds anchors for all eight slots', () => {
+test('every one of twenty-two scenes defines in-bounds anchors for all eight slots', () => {
   const slots = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table'];
-  assert.equal(Object.keys(SCENE_ANCHORS).length, 21);
+  assert.equal(Object.keys(SCENE_ANCHORS).length, 22);
   for (const [scene, anchors] of Object.entries(SCENE_ANCHORS)) {
     assert.deepEqual(Object.keys(anchors).sort(), [...slots].sort(), scene);
     for (const { table, floor } of Object.values(anchors)) {
@@ -241,12 +242,12 @@ test('every scene defines in-bounds anchors for all eight slots', () => {
   }
 });
 
-test('all 21 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
+test('all 22 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const sceneAssets = [...scene.matchAll(/require\('\.\.\/assets\/images\/(shop-room-[^']+\.jpg)'\)/g)]
     .map(([, asset]) => asset);
-  assert.equal(sceneAssets.length, 21);
-  assert.equal(new Set(sceneAssets).size, 21);
+  assert.equal(sceneAssets.length, 22);
+  assert.equal(new Set(sceneAssets).size, 22);
   for (const asset of sceneAssets) {
     const assetPath = path.join(__dirname, '../assets/images', asset);
     assert.ok(fs.existsSync(assetPath), `missing scene illustration ${asset}`);

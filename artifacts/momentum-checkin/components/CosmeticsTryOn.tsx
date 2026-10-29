@@ -6,11 +6,11 @@ import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
 
 type GuestMakeupAnchors = {
-  leftEye: number;
-  rightEye: number;
-  eyeLine: number;
-  lipsX: number;
-  lipsY: number;
+  leftEyeLeftPct: number;
+  rightEyeLeftPct: number;
+  eyeTopPct: number;
+  lipsLeftPct: number;
+  lipsTopPct: number;
 };
 
 const GUEST_PORTRAITS: ReadonlyArray<{
@@ -18,14 +18,14 @@ const GUEST_PORTRAITS: ReadonlyArray<{
   source: ImageSourcePropType;
   makeup: GuestMakeupAnchors;
 }> = [
-  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEye: 55, rightEye: 86, eyeLine: 78, lipsX: 71, lipsY: 95 } },
-  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEye: 53, rightEye: 85, eyeLine: 72, lipsX: 69, lipsY: 88 } },
-  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEye: 56, rightEye: 88, eyeLine: 78, lipsX: 72, lipsY: 92 } },
-  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEye: 54, rightEye: 86, eyeLine: 78, lipsX: 70, lipsY: 92 } },
-  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEye: 51, rightEye: 83, eyeLine: 80, lipsX: 68, lipsY: 95 } },
-  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEye: 56, rightEye: 89, eyeLine: 77, lipsX: 72, lipsY: 90 } },
-  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEye: 56, rightEye: 88, eyeLine: 79, lipsX: 72, lipsY: 94 } },
-  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEye: 55, rightEye: 86, eyeLine: 76, lipsX: 70, lipsY: 90 } },
+  { id: 'guest-1', source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 56.7, eyeTopPct: 65, lipsLeftPct: 49.2, lipsTopPct: 75 } },
+  { id: 'guest-2', source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 55, eyeTopPct: 64.2, lipsLeftPct: 48.3, lipsTopPct: 74.2 } },
+  { id: 'guest-3', source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'), makeup: { leftEyeLeftPct: 41.7, rightEyeLeftPct: 55.8, eyeTopPct: 63.3, lipsLeftPct: 48.3, lipsTopPct: 73.3 } },
+  { id: 'guest-4', source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 56.7, eyeTopPct: 64.2, lipsLeftPct: 48.3, lipsTopPct: 73.3 } },
+  { id: 'guest-5', source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'), makeup: { leftEyeLeftPct: 40, rightEyeLeftPct: 55.8, eyeTopPct: 64.2, lipsLeftPct: 48.3, lipsTopPct: 74.2 } },
+  { id: 'guest-6', source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 55.8, eyeTopPct: 63.3, lipsLeftPct: 49.2, lipsTopPct: 73.3 } },
+  { id: 'guest-7', source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 55.8, eyeTopPct: 65, lipsLeftPct: 49.2, lipsTopPct: 75.8 } },
+  { id: 'guest-8', source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'), makeup: { leftEyeLeftPct: 40.8, rightEyeLeftPct: 56.7, eyeTopPct: 64.2, lipsLeftPct: 49.2, lipsTopPct: 74.2 } },
 ];
 
 export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] }) {
@@ -132,7 +132,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
             pointerEvents="none"
             style={[
               styles.eyeshadowOverlay,
-              { left: selectedGuest.makeup.leftEye - 7, top: selectedGuest.makeup.eyeLine - 3, backgroundColor: selectedEyeshadow.color },
+              { left: `${selectedGuest.makeup.leftEyeLeftPct}%`, top: `${selectedGuest.makeup.eyeTopPct}%`, backgroundColor: selectedEyeshadow.color },
             ]}
           />
           <View
@@ -140,7 +140,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
             pointerEvents="none"
             style={[
               styles.eyeshadowOverlay,
-              { left: selectedGuest.makeup.rightEye - 7, top: selectedGuest.makeup.eyeLine - 3, backgroundColor: selectedEyeshadow.color },
+              { left: `${selectedGuest.makeup.rightEyeLeftPct}%`, top: `${selectedGuest.makeup.eyeTopPct}%`, backgroundColor: selectedEyeshadow.color },
             ]}
           />
           <View
@@ -148,7 +148,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
             pointerEvents="none"
             style={[
               styles.lipstickOverlay,
-              { left: selectedGuest.makeup.lipsX - 7, top: selectedGuest.makeup.lipsY - 3, backgroundColor: selectedLipstick.color },
+              { left: `${selectedGuest.makeup.lipsLeftPct}%`, top: `${selectedGuest.makeup.lipsTopPct}%`, backgroundColor: selectedLipstick.color },
             ]}
           />
         </View>
@@ -211,8 +211,8 @@ const styles = StyleSheet.create({
   freePill: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
   freeText: { fontSize: 11, fontWeight: '800' },
   preview: { minHeight: 174, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  portraitStage: { width: 144, height: 136, borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
-  guestPortrait: { position: 'absolute', width: 144, height: 136 },
+  portraitStage: { width: 112, height: 112, flexShrink: 0, borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
+  guestPortrait: { position: 'absolute', width: '100%', height: '100%' },
   eyeshadowOverlay: { position: 'absolute', width: 14, height: 6, borderRadius: 8, opacity: 0.55 },
   lipstickOverlay: { position: 'absolute', width: 14, height: 6, borderRadius: 8, opacity: 0.78 },
   guestChoiceList: { gap: 8, paddingRight: 4 },

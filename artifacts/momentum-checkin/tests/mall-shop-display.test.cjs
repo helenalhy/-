@@ -138,7 +138,10 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /setSelectedGuestIndex/);
   assert.match(tryOn, /source=\{selectedGuest\.source\}/);
   assert.match(tryOn, /GUEST_PORTRAITS\.map/);
-  assert.match(tryOn, /portraitStage: \{ width: 144, height: 136/);
+  assert.match(tryOn, /portraitStage: \{ width: 112, height: 112, flexShrink: 0/);
+  assert.match(tryOn, /guestPortrait: \{ position: 'absolute', width: '100%', height: '100%'/);
+  assert.match(tryOn, /leftEyeLeftPct/);
+  assert.match(tryOn, /lipsTopPct/);
   assert.match(tryOn, /cosmetics-try-on-lips/);
   assert.match(tryOn, /cosmetics-try-on-guest-art/);
   assert.match(tryOn, /styles\.eyeshadowOverlay/);

@@ -75,6 +75,7 @@ const DECOR_VISUALS: Visual[] = [
 ];
 const VISUAL_ICONS: Record<Visual, string> = {
   'central-fountain': 'droplet', 'wooden-bench': 'minus', 'tasting-court': 'grid',
+  'art-workbench': 'edit-2',
   'rest-pavilion': 'home', 'yoga-deck': 'target', 'cloud-swing': 'anchor',
   'rhythm-stage': 'music', 'coral-aquarium': 'droplet', 'observatory-dome': 'compass',
   'sculpture-plaza': 'hexagon', 'cloud-walk': 'activity', 'colorful-planter': 'feather',

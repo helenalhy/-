@@ -12,6 +12,7 @@ export type MallObjectArchetype =
   | 'sculpture-plaza'
   | 'observatory-dome'
   | 'tasting-court'
+  | 'art-workbench'
   | 'cloud-swing'
   | 'shell-lantern'
   | 'neon-sign'
@@ -72,6 +73,7 @@ const ARCHETYPES = new Set<MallObjectArchetype>([
   'sculpture-plaza',
   'observatory-dome',
   'tasting-court',
+  'art-workbench',
   'cloud-swing',
   'shell-lantern',
   'neon-sign',

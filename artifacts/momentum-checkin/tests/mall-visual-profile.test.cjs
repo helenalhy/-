@@ -22,6 +22,7 @@ test('shop facade variants are stable and use all four storefront designs', () =
 
 test('known visual IDs stay intact and unsupported items resolve to themed category objects', () => {
   assert.equal(resolveMallObjectArchetype('coral-aquarium', 'droplet', 'facility'), 'coral-aquarium');
+  assert.equal(resolveMallObjectArchetype('art-workbench', 'edit-2', 'facility'), 'art-workbench');
   assert.equal(resolveMallObjectArchetype('unknown-facility', 'droplet', 'facility'), 'central-fountain');
   assert.equal(resolveMallObjectArchetype('unknown-decor', 'moon', 'decor'), 'starlight-mobile');
 

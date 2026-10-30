@@ -17,7 +17,7 @@ export interface MallItem {
   /** Legacy compatibility field; redemptions now use earned coins only. */
   ticketCost: number;
   shopType?: MallShopType;
-  visual?: 'cloud-walk' | 'central-fountain' | 'wooden-bench' | 'garden-lights' | 'colorful-planter' | 'rest-pavilion' | 'coral-aquarium' | 'rhythm-stage' | 'yoga-deck' | 'sculpture-plaza' | 'observatory-dome' | 'tasting-court' | 'cloud-swing' | 'shell-lantern' | 'neon-sign' | 'aroma-diffuser' | 'gallery-frames' | 'starlight-mobile' | 'spice-display' | 'rainbow-arch';
+  visual?: 'cloud-walk' | 'central-fountain' | 'wooden-bench' | 'garden-lights' | 'colorful-planter' | 'rest-pavilion' | 'coral-aquarium' | 'rhythm-stage' | 'yoga-deck' | 'sculpture-plaza' | 'observatory-dome' | 'tasting-court' | 'art-workbench' | 'cloud-swing' | 'shell-lantern' | 'neon-sign' | 'aroma-diffuser' | 'gallery-frames' | 'starlight-mobile' | 'spice-display' | 'rainbow-arch';
 }
 
 export type MallShopType =
@@ -140,7 +140,7 @@ export const MALL_ITEMS: MallItem[] = [
   item(6, 'warm-glow-lantern', '暖光療癒燈', '讓空間和心情都柔和下來', 'sun', 'decor', 30, 1, c.candyPeach, 'shell-lantern'),
   item(7, 'ceramic-studio', '陶土小店', '把不完美捏成獨一無二的作品', 'hexagon', 'shop', 75, 2, c.candyPeach),
   item(7, 'art-print-shop', '插畫印物舖', '把喜歡的畫帶回每天的生活', 'image', 'shop', 85, 2, c.candySky),
-  item(7, 'art-workshop-table', '手作工作桌', '留一張桌子，讓靈感慢慢發生', 'edit-2', 'facility', 60, 2, c.candyCaramel, 'tasting-court'),
+  item(7, 'art-workshop-table', '手作工作桌', '一張擺著工具、布料與手作品的創作桌', 'edit-2', 'facility', 60, 2, c.candyCaramel, 'art-workbench'),
   item(7, 'color-stage', '色彩分享台', '展示作品，也分享創作的快樂', 'layers', 'facility', 80, 2, c.candyCoral, 'rhythm-stage'),
   item(7, 'gallery-light', '藝廊暖光燈', '用柔和燈光照亮喜歡的角落', 'sun', 'decor', 25, 1, c.candyLemon, 'garden-lights'),
   item(7, 'mini-color-sculpture', '迷你色塊雕塑', '小小一件，也可以很有個性', 'triangle', 'decor', 45, 2, c.candySky, 'sculpture-plaza'),

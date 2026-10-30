@@ -40,6 +40,9 @@ export function ThemedMallObject({
     case 'tasting-court':
       drawing = <><View style={[s.tableTop, { backgroundColor: color, borderColor: c.candyCaramelDark }]} /><View style={[s.tableLeg, { backgroundColor: c.candyCaramelDark }]} /><View style={s.stoolRow}>{[0, 1, 2].map((i) => <View key={i} style={[s.stool, { backgroundColor: c.candyCoral }]} />)}</View></>;
       break;
+    case 'art-workbench':
+      drawing = <ArtWorkbench color={color} />;
+      break;
     case 'cloud-swing':
       drawing = <><View style={[s.swingBar, { backgroundColor: c.candySkyDark }]} /><View style={s.swingFrame}><View style={[s.swingPost, { backgroundColor: c.candySkyDark }]} /><SwingSeat color={color} /><View style={[s.swingPost, { backgroundColor: c.candySkyDark }]} /></View></>;
       break;
@@ -377,6 +380,28 @@ function CraftStation({ color }: { color: string }) {
   );
 }
 
+function ArtWorkbench({ color }: { color: string }) {
+  return (
+    <View style={s.artWorkbench}>
+      <View style={[s.artWorkbenchLeg, s.artWorkbenchLegLeft, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={[s.artWorkbenchLeg, s.artWorkbenchLegRight, { backgroundColor: c.candyCaramelDark }]} />
+      <View style={[s.artWorkbenchApron, { backgroundColor: c.candyCaramel }]} />
+      <View style={[s.artWorkbenchTop, { backgroundColor: color, borderColor: c.candyCaramelDark }]}>
+        <View style={[s.artWorkbenchPaper, { backgroundColor: c.candyCream }]}>
+          <View style={[s.artWorkbenchPaint, { backgroundColor: c.candyCoral }]} />
+          <View style={[s.artWorkbenchPaint, s.artWorkbenchPaintSecond, { backgroundColor: c.candySky }]} />
+          <View style={[s.artWorkbenchPaint, s.artWorkbenchPaintThird, { backgroundColor: c.candyLavender }]} />
+        </View>
+      </View>
+      <View style={[s.artWorkbenchVase, { backgroundColor: c.candyPeach, borderColor: c.candyCaramelDark }]}>
+        <View style={[s.artWorkbenchVaseFlower, { backgroundColor: c.candyRose }]} />
+      </View>
+      <View style={[s.artWorkbenchBowl, { backgroundColor: c.candyLemon, borderColor: c.candyCaramelDark }]} />
+      <View style={[s.artWorkbenchBrush, { backgroundColor: c.candyMintDark, transform: [{ rotate: '24deg' }] }]} />
+    </View>
+  );
+}
+
 function SewingMachine({ color }: { color: string }) {
   return (
     <>
@@ -560,6 +585,20 @@ const s = StyleSheet.create({
   tableLeg: { width: 5, height: 12 },
   stoolRow: { position: 'absolute', flexDirection: 'row', gap: 10, bottom: 0 },
   stool: { width: 13, height: 9, borderRadius: 5 },
+  artWorkbench: { width: 66, height: 47, position: 'relative', alignItems: 'center', justifyContent: 'flex-end' },
+  artWorkbenchTop: { position: 'absolute', left: 2, right: 2, bottom: 17, height: 8, borderWidth: 1.5, borderRadius: 3, zIndex: 2 },
+  artWorkbenchApron: { position: 'absolute', bottom: 7, left: 10, right: 10, height: 10, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
+  artWorkbenchLeg: { position: 'absolute', bottom: 0, width: 4, height: 18, borderRadius: 2 },
+  artWorkbenchLegLeft: { left: 13 },
+  artWorkbenchLegRight: { right: 13 },
+  artWorkbenchPaper: { position: 'absolute', top: -14, left: 20, width: 19, height: 13, borderRadius: 2, transform: [{ rotate: '-8deg' }] },
+  artWorkbenchPaint: { position: 'absolute', top: 3, left: 3, width: 4, height: 4, borderRadius: 3 },
+  artWorkbenchPaintSecond: { left: 9, top: 6, width: 5, height: 5 },
+  artWorkbenchPaintThird: { left: 13, top: 2, width: 3, height: 3 },
+  artWorkbenchVase: { position: 'absolute', bottom: 25, left: 6, width: 9, height: 13, borderWidth: 1, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, zIndex: 3 },
+  artWorkbenchVaseFlower: { position: 'absolute', top: -4, left: 2, width: 5, height: 5, borderRadius: 3 },
+  artWorkbenchBowl: { position: 'absolute', bottom: 26, right: 7, width: 12, height: 6, borderWidth: 1, borderTopLeftRadius: 2, borderTopRightRadius: 2, borderBottomLeftRadius: 6, borderBottomRightRadius: 6, zIndex: 3 },
+  artWorkbenchBrush: { position: 'absolute', bottom: 26, left: 27, width: 3, height: 13, borderRadius: 2, zIndex: 3 },
   swingBar: { width: 61, height: 5, borderRadius: 3 },
   swingFrame: { flexDirection: 'row', justifyContent: 'space-between', width: 55, height: 39, position: 'relative' },
   swingPost: { width: 4, height: 39 },

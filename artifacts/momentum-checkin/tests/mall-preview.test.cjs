@@ -353,6 +353,16 @@ test('each individual shop receives a unique 50-item catalog while general shops
   );
 });
 
+test('the 7F handmade worktable uses its dedicated illustration without changing its redemption identity', () => {
+  const workbench = mallCatalog.MALL_ITEMS.find(({ id }) => id === 'art-workshop-table');
+  assert.ok(workbench);
+  assert.equal(workbench.floor, 7);
+  assert.equal(workbench.category, 'facility');
+  assert.equal(workbench.visual, 'art-workbench');
+  assert.equal(workbench.price, 60);
+  assert.ok(/工具|布料|手作品/.test(workbench.description));
+});
+
 function pager(app) {
   return app.nodes().find((node) => node.type === 'CatalogPager');
 }

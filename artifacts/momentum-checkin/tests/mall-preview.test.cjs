@@ -363,6 +363,22 @@ test('the 7F handmade worktable uses its dedicated illustration without changing
   assert.ok(/工具|布料|手作品/.test(workbench.description));
 });
 
+test('7F adds a redeemable handcraft shop with its own craft-themed interior catalog', () => {
+  const shop = mallCatalog.MALL_ITEMS.find(({ id }) => id === 'rainbow-handcraft-workshop');
+  assert.ok(shop);
+  assert.equal(shop.floor, 7);
+  assert.equal(shop.category, 'shop');
+  assert.equal(shop.price, 95);
+  assert.equal(shopInteriorCatalog.getShopInteriorSceneKey(shop.shopType, shop.id, shop.name), 'craft');
+
+  const decorations = shopInteriorCatalog.getShopInteriorDecorations(shop.shopType, shop.id, shop.name);
+  assert.equal(decorations.length, 50);
+  assert.equal(new Set(decorations.map(({ id }) => id)).size, 50);
+  assert.equal(new Set(decorations.map(({ name }) => name)).size, 50);
+  assert.ok(decorations.some(({ name }) => name.includes('陶藝體驗轉盤')));
+  assert.ok(decorations.some(({ name }) => name.includes('水彩小畫架展示區')));
+});
+
 function pager(app) {
   return app.nodes().find((node) => node.type === 'CatalogPager');
 }
@@ -958,7 +974,7 @@ test('elevator opens a direct 20-floor selector and changes floors without touch
 
 test('real catalog covers twenty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 3012);
+  assert.equal(MALL_ITEMS.length, 3013);
   assert.equal(MALL_FLOORS.length, 20);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -968,7 +984,7 @@ test('real catalog covers twenty distinct themes and includes eleven specialized
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 1012, facility: 1000, decor: 1000 },
+    { shop: 1013, facility: 1000, decor: 1000 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(

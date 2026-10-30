@@ -140,6 +140,7 @@ export const MALL_ITEMS: MallItem[] = [
   item(6, 'warm-glow-lantern', '暖光療癒燈', '讓空間和心情都柔和下來', 'sun', 'decor', 30, 1, c.candyPeach, 'shell-lantern'),
   item(7, 'ceramic-studio', '陶土小店', '把不完美捏成獨一無二的作品', 'hexagon', 'shop', 75, 2, c.candyPeach),
   item(7, 'art-print-shop', '插畫印物舖', '把喜歡的畫帶回每天的生活', 'image', 'shop', 85, 2, c.candySky),
+  item(7, 'rainbow-handcraft-workshop', '彩虹手作工坊', '挑選繽紛材料，親手完成獨一無二的小作品', 'edit-2', 'shop', 95, 2, c.candyCoral),
   item(7, 'art-workshop-table', '手作工作桌', '一張擺著工具、布料與手作品的創作桌', 'edit-2', 'facility', 60, 2, c.candyCaramel, 'art-workbench'),
   item(7, 'color-stage', '色彩分享台', '展示作品，也分享創作的快樂', 'layers', 'facility', 80, 2, c.candyCoral, 'rhythm-stage'),
   item(7, 'gallery-light', '藝廊暖光燈', '用柔和燈光照亮喜歡的角落', 'sun', 'decor', 25, 1, c.candyLemon, 'garden-lights'),

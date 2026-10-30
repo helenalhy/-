@@ -78,6 +78,7 @@ const OBJECT_ARTWORK: Partial<Record<MallObjectArchetype, ImageSourcePropType>> 
   'book-carousel': require('../assets/images/mall-book-carousel.png'),
   'capsule-machine': require('../assets/images/mall-capsule-machine.png'),
   'craft-station': require('../assets/images/mall-craft-station.png'),
+  'art-workbench': require('../assets/images/mall-craft-station.png'),
   'sewing-machine': require('../assets/images/mall-sewing-machine.png'),
   'electronics-bench': require('../assets/images/mall-electronics-bench.png'),
   'jewelry-case': require('../assets/images/mall-jewelry-case.png'),

@@ -464,7 +464,7 @@ export const getSaveReminderSubscriptionUrl = () => {
 }
 
 /**
- * @summary Save this browser's daily reminder settings
+ * @summary Save this browser's daily reminder times
  */
 export const saveReminderSubscription = async (reminderSubscriptionInput: ReminderSubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<ReminderSubscription> => {
 
@@ -530,7 +530,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SaveReminderSubscriptionMutationVariables = {data: BodyType<ReminderSubscriptionInput>}
 
     /**
- * @summary Save this browser's daily reminder settings
+ * @summary Save this browser's daily reminder times
  */
 export const useSaveReminderSubscription = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveReminderSubscription>>, TError,SaveReminderSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

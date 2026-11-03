@@ -4,13 +4,13 @@ export const REMINDER_SETTINGS_KEY = 'momentum.web-reminder-settings.v1';
 
 export interface ReminderSettings {
   enabled: boolean;
-  reminderTime: string;
+  reminderTimes: string[];
   endpoint: string | null;
 }
 
 export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
   enabled: false,
-  reminderTime: '20:00',
+  reminderTimes: ['20:00'],
   endpoint: null,
 };
 
@@ -22,11 +22,20 @@ export async function readReminderSettings(): Promise<ReminderSettings> {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return DEFAULT_REMINDER_SETTINGS;
     const value = parsed as Partial<ReminderSettings>;
+    const legacyTime = (value as { reminderTime?: unknown }).reminderTime;
+    const storedTimes = Array.isArray(value.reminderTimes)
+      ? value.reminderTimes
+      : typeof legacyTime === 'string'
+        ? [legacyTime]
+        : DEFAULT_REMINDER_SETTINGS.reminderTimes;
+    const reminderTimes = [...new Set(
+      storedTimes
+        .filter((time): time is string => typeof time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time))
+        .slice(0, 5),
+    )].sort();
     return {
       enabled: value.enabled === true,
-      reminderTime: /^\d{2}:\d{2}$/.test(value.reminderTime ?? '')
-        ? value.reminderTime!
-        : DEFAULT_REMINDER_SETTINGS.reminderTime,
+      reminderTimes: reminderTimes.length > 0 ? reminderTimes : DEFAULT_REMINDER_SETTINGS.reminderTimes,
       endpoint: typeof value.endpoint === 'string' ? value.endpoint : null,
     };
   } catch {

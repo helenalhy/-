@@ -61,11 +61,16 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
     return;
   }
 
-  const { endpoint, p256dh, auth, reminderTime, timeZone } = parsed.data;
+  const { endpoint, p256dh, auth, reminderTimes, timeZone } = parsed.data;
   if (!isSupportedPushEndpoint(endpoint) || !isValidTimeZone(timeZone)) {
     res.status(400).json({ error: "Unsupported push endpoint or time zone" });
     return;
   }
+  if (new Set(reminderTimes).size !== reminderTimes.length) {
+    res.status(400).json({ error: "Reminder times must be unique" });
+    return;
+  }
+  const normalizedTimes = [...reminderTimes].sort();
 
   const endpointHash = hashPushEndpoint(endpoint);
   const [saved] = await db
@@ -75,7 +80,8 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
       endpoint,
       p256dh,
       auth,
-      reminderTime,
+      reminderTime: normalizedTimes[0],
+      reminderTimes: normalizedTimes,
       timeZone,
       updatedAt: new Date(),
     })
@@ -85,7 +91,7 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
         endpoint,
         p256dh,
         auth,
-        reminderTime,
+        reminderTimes: normalizedTimes,
         timeZone,
         updatedAt: new Date(),
       },
@@ -95,7 +101,7 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
   res.json(
     SaveReminderSubscriptionResponse.parse({
       enabled: true,
-      reminderTime: saved.reminderTime,
+      reminderTimes: saved.reminderTimes.length > 0 ? saved.reminderTimes : [saved.reminderTime],
       timeZone: saved.timeZone,
     }),
   );

@@ -26,6 +26,9 @@ import {
   type ReminderSettings,
 } from '@/lib/reminder-settings';
 
+const MAX_REMINDER_TIMES = 5;
+const SUGGESTED_REMINDER_TIMES = ['09:00', '12:00', '15:00', '18:00', '20:00'];
+
 function decodeApplicationServerKey(value: string): ArrayBuffer {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
@@ -117,11 +120,43 @@ export default function ReminderSettingsScreen() {
     return () => { active = false; };
   }, []);
 
-  function adjustTime(changeMinutes: number) {
-    const [hours, minutes] = settings.reminderTime.split(':').map(Number);
+  function adjustTime(index: number, changeMinutes: number) {
+    const currentTime = settings.reminderTimes[index];
+    if (!currentTime) return;
+    const [hours, minutes] = currentTime.split(':').map(Number);
     const total = (hours * 60 + minutes + changeMinutes + 1440) % 1440;
     const reminderTime = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-    setSettings((current) => ({ ...current, reminderTime }));
+    if (settings.reminderTimes.some((time, timeIndex) => timeIndex !== index && time === reminderTime)) {
+      setError('每個提醒時段需要不同，請選擇其他時間。');
+      setMessage('');
+      return;
+    }
+    const reminderTimes = settings.reminderTimes.map((time, timeIndex) => (
+      timeIndex === index ? reminderTime : time
+    )).sort();
+    setSettings((current) => ({ ...current, reminderTimes }));
+    setMessage('');
+    setError('');
+  }
+
+  function addReminderTime() {
+    if (settings.reminderTimes.length >= MAX_REMINDER_TIMES) return;
+    const nextTime = SUGGESTED_REMINDER_TIMES.find((time) => !settings.reminderTimes.includes(time));
+    if (!nextTime) return;
+    setSettings((current) => ({
+      ...current,
+      reminderTimes: [...current.reminderTimes, nextTime].sort(),
+    }));
+    setMessage('');
+    setError('');
+  }
+
+  function removeReminderTime(index: number) {
+    if (settings.reminderTimes.length <= 1) return;
+    setSettings((current) => ({
+      ...current,
+      reminderTimes: current.reminderTimes.filter((_, timeIndex) => timeIndex !== index),
+    }));
     setMessage('');
     setError('');
   }
@@ -159,17 +194,17 @@ export default function ReminderSettingsScreen() {
       const payload = getSubscriptionPayload(subscription);
       await saveReminderSubscription({
         ...payload,
-        reminderTime: settings.reminderTime,
+        reminderTimes: settings.reminderTimes,
         timeZone,
       });
-      const next = { enabled: true, reminderTime: settings.reminderTime, endpoint: payload.endpoint };
+      const next = { enabled: true, reminderTimes: settings.reminderTimes, endpoint: payload.endpoint };
       await saveReminderSettings(next);
       setSettings(next);
       await updateReminderCheckInStatus({
         endpoint: payload.endpoint,
         hasCheckedInToday: habits.some((habit) => habit.checkIns.includes(today)),
       });
-      setMessage(`已開啟每日 ${settings.reminderTime} 提醒。今天已打卡的話，系統會自動略過。`);
+      setMessage(`已開啟每日 ${settings.reminderTimes.join('、')} 提醒。今天已打卡的話，後續提醒會自動略過。`);
     } catch {
       setError('通知設定沒有完成，請確認網路與瀏覽器權限後重試。');
     } finally {
@@ -191,20 +226,20 @@ export default function ReminderSettingsScreen() {
       if (!subscription) {
         await saveReminderSettings({ ...settings, enabled: false, endpoint: null });
         setSettings((current) => ({ ...current, enabled: false, endpoint: null }));
-        setMessage(`提醒時間已設為 ${settings.reminderTime}；開啟通知後便會套用。`);
+        setMessage(`已儲存每日 ${settings.reminderTimes.join('、')} 提醒時段；開啟通知後便會套用。`);
         return;
       }
 
       const payload = getSubscriptionPayload(subscription);
       await saveReminderSubscription({
         ...payload,
-        reminderTime: settings.reminderTime,
+        reminderTimes: settings.reminderTimes,
         timeZone,
       });
       const next = { ...settings, enabled: true, endpoint: payload.endpoint };
       await saveReminderSettings(next);
       setSettings(next);
-      setMessage(`每日提醒時間已更新為 ${settings.reminderTime}。`);
+      setMessage(`每日提醒時段已更新為 ${settings.reminderTimes.join('、')}。`);
     } catch {
       setError('儲存提醒時間失敗，請檢查網路後重試。');
     } finally {
@@ -278,46 +313,91 @@ export default function ReminderSettingsScreen() {
         </View>
 
         <View style={[styles.timeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.foreground }]}>每日提醒時間</Text>
-          <View style={styles.timeControls}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="提醒時間提前一小時"
-              onPress={() => adjustTime(-60)}
-              style={[styles.stepButton, { backgroundColor: colors.secondary }]}
-            >
-              <Feather name="chevron-left" size={22} color={colors.primary} />
-              <Text style={[styles.stepLabel, { color: colors.primary }]}>1 小時</Text>
-            </Pressable>
-            <Text style={[styles.timeValue, { color: colors.foreground }]} accessibilityLabel={`提醒時間 ${settings.reminderTime}`}>
-              {settings.reminderTime}
+          <View style={styles.cardHeadingRow}>
+            <View style={styles.cardHeadingCopy}>
+              <Text style={[styles.cardLabel, { color: colors.foreground }]}>每日提醒時段</Text>
+              <Text style={[styles.timeHint, { color: colors.mutedForeground }]}>
+                最多 5 個時段；完成打卡後會略過當天其餘提醒。
+              </Text>
+            </View>
+            <Text style={[styles.countLabel, { color: colors.primary }]}>
+              {settings.reminderTimes.length}/{MAX_REMINDER_TIMES}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="提醒時間延後一小時"
-              onPress={() => adjustTime(60)}
-              style={[styles.stepButton, { backgroundColor: colors.secondary }]}
-            >
-              <Feather name="chevron-right" size={22} color={colors.primary} />
-              <Text style={[styles.stepLabel, { color: colors.primary }]}>1 小時</Text>
-            </Pressable>
           </View>
-          <View style={styles.minuteRow}>
-            <Pressable onPress={() => adjustTime(-15)} accessibilityRole="button" style={styles.minuteButton}>
-              <Text style={[styles.minuteText, { color: colors.primary }]}>− 15 分鐘</Text>
-            </Pressable>
-            <Text style={[styles.timeHint, { color: colors.mutedForeground }]}>依照本機時間</Text>
-            <Pressable onPress={() => adjustTime(15)} accessibilityRole="button" style={styles.minuteButton}>
-              <Text style={[styles.minuteText, { color: colors.primary }]}>＋ 15 分鐘</Text>
-            </Pressable>
+
+          <View style={styles.slotList}>
+            {settings.reminderTimes.map((reminderTime, index) => (
+              <View key={reminderTime} style={[styles.slotCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <View style={styles.slotHeading}>
+                  <Text style={[styles.slotTitle, { color: colors.mutedForeground }]}>提醒 {index + 1}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`刪除每日 ${reminderTime} 提醒`}
+                    accessibilityHint={settings.reminderTimes.length <= 1 ? '至少需要保留一個時段；關閉通知可停用全部提醒' : undefined}
+                    disabled={isBusy || settings.reminderTimes.length <= 1}
+                    onPress={() => removeReminderTime(index)}
+                    style={[styles.removeTimeButton, { backgroundColor: colors.candyPink, opacity: isBusy || settings.reminderTimes.length <= 1 ? 0.45 : 1 }]}
+                  >
+                    <Feather name="trash-2" size={15} color={colors.primary} />
+                  </Pressable>
+                </View>
+                <View style={styles.slotTimeRow}>
+                  <Text
+                    style={[styles.timeValue, { color: colors.foreground }]}
+                    accessibilityLabel={`每日提醒時間 ${reminderTime}`}
+                  >
+                    {reminderTime}
+                  </Text>
+                  <View style={styles.timeAdjustments}>
+                    {[
+                      { label: '−1h', value: -60, description: '提前一小時' },
+                      { label: '−15m', value: -15, description: '提前十五分鐘' },
+                      { label: '+15m', value: 15, description: '延後十五分鐘' },
+                      { label: '+1h', value: 60, description: '延後一小時' },
+                    ].map((adjustment) => (
+                      <Pressable
+                        key={adjustment.label}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${reminderTime} ${adjustment.description}`}
+                        disabled={isBusy}
+                        onPress={() => adjustTime(index, adjustment.value)}
+                        style={({ pressed }) => [
+                          styles.adjustButton,
+                          { backgroundColor: colors.secondary, opacity: isBusy ? 0.5 : pressed ? 0.7 : 1 },
+                        ]}
+                      >
+                        <Text style={[styles.adjustButtonText, { color: colors.primary }]}>{adjustment.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            ))}
           </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`新增提醒時段，目前 ${settings.reminderTimes.length} 個，最多 ${MAX_REMINDER_TIMES} 個`}
+            disabled={isBusy || settings.reminderTimes.length >= MAX_REMINDER_TIMES}
+            onPress={addReminderTime}
+            style={({ pressed }) => [
+              styles.addTimeButton,
+              { borderColor: colors.border, backgroundColor: colors.secondary, opacity: isBusy || settings.reminderTimes.length >= MAX_REMINDER_TIMES ? 0.5 : pressed ? 0.75 : 1 },
+            ]}
+          >
+            <Feather name="plus" size={17} color={colors.primary} />
+            <Text style={[styles.addTimeText, { color: colors.primary }]}>
+              {settings.reminderTimes.length >= MAX_REMINDER_TIMES ? '已達提醒上限' : '新增提醒時段'}
+            </Text>
+          </Pressable>
+
           <Pressable
             accessibilityRole="button"
             onPress={() => void saveTime()}
             disabled={isBusy}
             style={[styles.secondaryButton, { backgroundColor: colors.secondary, opacity: isBusy ? 0.65 : 1 }]}
           >
-            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>儲存提醒時間</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>儲存提醒時段</Text>
           </Pressable>
         </View>
 
@@ -327,10 +407,10 @@ export default function ReminderSettingsScreen() {
               <View style={[styles.statusDot, { backgroundColor: settings.enabled ? colors.candyMint : colors.border }]} />
               <View style={styles.statusCopy}>
                 <Text style={[styles.statusTitle, { color: colors.foreground }]}>
-                  {settings.enabled ? `已開啟 · 每天 ${settings.reminderTime}` : '尚未開啟通知'}
+                  {settings.enabled ? `已開啟 · ${settings.reminderTimes.join('、')}` : '尚未開啟通知'}
                 </Text>
                 <Text style={[styles.statusBody, { color: colors.mutedForeground }]}>
-                  {checkedInToday ? '今天已完成打卡，今天的提醒會自動略過。' : '每天只提醒一次；完成今日打卡後會自動略過。'}
+                  {checkedInToday ? '今天已完成打卡，今天其餘提醒會自動略過。' : '每個時段每天提醒一次；完成打卡後，其餘提醒會自動略過。'}
                 </Text>
               </View>
             </View>
@@ -405,15 +485,23 @@ const styles = StyleSheet.create({
   heroBody: { marginTop: 7, fontSize: 13, lineHeight: 20, textAlign: 'center' },
   zoneLabel: { marginTop: 10, fontSize: 11 },
   timeCard: { borderWidth: 1, borderRadius: 21, padding: 17 },
+  cardHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  cardHeadingCopy: { flex: 1 },
   cardLabel: { fontSize: 14, fontWeight: '700' },
-  timeControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 17 },
-  stepButton: { alignItems: 'center', justifyContent: 'center', minWidth: 69, minHeight: 58, borderRadius: 16, padding: 4 },
-  stepLabel: { fontSize: 10, fontWeight: '600', marginTop: 1 },
-  timeValue: { fontSize: 42, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  minuteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 13 },
-  minuteButton: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 3 },
-  minuteText: { fontSize: 12, fontWeight: '700' },
-  timeHint: { fontSize: 11 },
+  timeHint: { fontSize: 11, lineHeight: 16, marginTop: 4 },
+  countLabel: { fontSize: 12, fontWeight: '700' },
+  slotList: { gap: 10, marginTop: 14 },
+  slotCard: { borderWidth: 1, borderRadius: 16, padding: 11 },
+  slotHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  slotTitle: { fontSize: 11, fontWeight: '600' },
+  removeTimeButton: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  slotTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 },
+  timeValue: { fontSize: 29, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  timeAdjustments: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  adjustButton: { minWidth: 38, minHeight: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  adjustButtonText: { fontSize: 10, fontWeight: '700' },
+  addTimeButton: { minHeight: 44, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 12 },
+  addTimeText: { fontSize: 12, fontWeight: '700' },
   secondaryButton: { minHeight: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 13, paddingHorizontal: 16 },
   secondaryButtonText: { fontSize: 13, fontWeight: '700' },
   statusCard: { borderWidth: 1, borderRadius: 21, padding: 17 },

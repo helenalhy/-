@@ -5,6 +5,7 @@ import {
   pushReminderSubscriptionsTable,
 } from "@workspace/db";
 import { logger } from "./logger";
+import { getDueReminderTimes } from "./reminder-schedule";
 import { getOrCreateVapidKeys } from "./vapid";
 
 function getLocalDateTime(timeZone: string, date: Date) {
@@ -32,11 +33,18 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
 
   try {
     const subscriptions = await db.select().from(pushReminderSubscriptionsTable);
-    const due = subscriptions.filter((subscription) => {
+    const due = subscriptions.flatMap((subscription) => {
       const local = getLocalDateTime(subscription.timeZone, now);
-      return local.time >= subscription.reminderTime
-        && subscription.lastSentLocalDate !== local.date
-        && subscription.lastCheckInLocalDate !== local.date;
+      if (subscription.lastCheckInLocalDate === local.date) return [];
+      const dueTimes = getDueReminderTimes({
+        reminderTimes: subscription.reminderTimes,
+        fallbackReminderTime: subscription.reminderTime,
+        localDate: local.date,
+        localTime: local.time,
+        lastSentLocalDates: subscription.lastSentLocalDates,
+        legacyLastSentLocalDate: subscription.lastSentLocalDate,
+      });
+      return dueTimes.length > 0 ? [{ subscription, local, dueTimes }] : [];
     });
     if (due.length === 0) return;
 
@@ -47,8 +55,9 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
       keys.privateKey,
     );
 
-    for (const subscription of due) {
-      const local = getLocalDateTime(subscription.timeZone, now);
+    for (const item of due) {
+      const { subscription, local, dueTimes } = item;
+      const reminderTime = dueTimes[dueTimes.length - 1];
       try {
         await webpush.sendNotification(
           {
@@ -59,15 +68,20 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
             },
           },
           JSON.stringify({
-            title: "Momentum 打卡時間到啦",
+            title: `Momentum 打卡提醒 · ${reminderTime}`,
             body: "今天留一小步給自己，完成目標後回來打卡吧。",
             url: "/today",
           }),
           { TTL: 60 },
         );
+        const sentDates = { ...(subscription.lastSentLocalDates ?? {}) };
+        dueTimes.forEach((time) => { sentDates[time] = local.date; });
         await db
           .update(pushReminderSubscriptionsTable)
-          .set({ lastSentLocalDate: local.date, updatedAt: now })
+          .set({
+            lastSentLocalDates: sentDates,
+            updatedAt: now,
+          })
           .where(eq(pushReminderSubscriptionsTable.endpointHash, subscription.endpointHash));
       } catch (error) {
         const statusCode = typeof error === "object" && error !== null && "statusCode" in error

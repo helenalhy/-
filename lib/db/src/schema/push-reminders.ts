@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const pushReminderSubscriptionsTable = pgTable(
   "push_reminder_subscriptions",
@@ -8,8 +9,16 @@ export const pushReminderSubscriptionsTable = pgTable(
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
     reminderTime: text("reminder_time").notNull(),
+    reminderTimes: jsonb("reminder_times")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     timeZone: text("time_zone").notNull(),
     lastSentLocalDate: text("last_sent_local_date"),
+    lastSentLocalDates: jsonb("last_sent_local_dates")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     lastCheckInLocalDate: text("last_check_in_local_date"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

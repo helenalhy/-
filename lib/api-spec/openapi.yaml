@@ -81,7 +81,7 @@ paths:
     put:
       operationId: saveReminderSubscription
       tags: [reminders]
-      summary: Save this browser's daily reminder settings
+      summary: Save this browser's daily reminder times
       requestBody:
         required: true
         content:
@@ -200,9 +200,14 @@ components:
           type: string
           minLength: 8
           maxLength: 256
-        reminderTime:
-          type: string
-          pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'
+        reminderTimes:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'
         timeZone:
           type: string
           minLength: 1
@@ -211,7 +216,7 @@ components:
         - endpoint
         - p256dh
         - auth
-        - reminderTime
+        - reminderTimes
         - timeZone
     ReminderUnsubscribeInput:
       type: object
@@ -242,13 +247,19 @@ components:
       properties:
         enabled:
           type: boolean
-        reminderTime:
-          type: string
+        reminderTimes:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'
         timeZone:
           type: string
       required:
         - enabled
-        - reminderTime
+        - reminderTimes
         - timeZone
     ReminderStatus:
       type: object

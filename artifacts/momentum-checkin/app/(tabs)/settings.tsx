@@ -80,8 +80,8 @@ export default function SettingsScreen() {
           ? '正在準備雲端同步'
           : '訪客模式，進度保存在這台裝置';
   const reminderSummary = reminderSettings.enabled
-    ? `每日 ${reminderSettings.reminderTime} · 已開啟`
-    : '選擇時間並允許通知';
+    ? `已開啟 · 每日 ${reminderSettings.reminderTimes.join('、')}`
+    : '設定一個或多個每日時段';
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>

@@ -45,8 +45,12 @@ export interface ReminderSubscriptionInput {
      * @maxLength 256
      */
   auth: string;
-  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
-  reminderTime: string;
+  /**
+     * @minItems 1
+     * @maxItems 5
+     * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
+     */
+  reminderTimes: string[];
   /**
      * @minLength 1
      * @maxLength 80
@@ -67,7 +71,12 @@ export interface ReminderCheckInInput {
 
 export interface ReminderSubscription {
   enabled: boolean;
-  reminderTime: string;
+  /**
+     * @minItems 1
+     * @maxItems 5
+     * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
+     */
+  reminderTimes: string[];
   timeZone: string;
 }
 

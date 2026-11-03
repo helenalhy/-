@@ -72,7 +72,7 @@ export const GetReminderConfigResponse = zod.object({
 
 
 /**
- * @summary Save this browser's daily reminder settings
+ * @summary Save this browser's daily reminder times
  */
 export const saveReminderSubscriptionBodyEndpointMax = 4096;
 
@@ -82,7 +82,9 @@ export const saveReminderSubscriptionBodyP256dhMax = 512;
 export const saveReminderSubscriptionBodyAuthMin = 8;
 export const saveReminderSubscriptionBodyAuthMax = 256;
 
-export const saveReminderSubscriptionBodyReminderTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const saveReminderSubscriptionBodyReminderTimesItemRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const saveReminderSubscriptionBodyReminderTimesMax = 5;
+
 export const saveReminderSubscriptionBodyTimeZoneMax = 80;
 
 
@@ -91,13 +93,18 @@ export const SaveReminderSubscriptionBody = zod.object({
   "endpoint": zod.string().url().max(saveReminderSubscriptionBodyEndpointMax),
   "p256dh": zod.string().min(saveReminderSubscriptionBodyP256dhMin).max(saveReminderSubscriptionBodyP256dhMax),
   "auth": zod.string().min(saveReminderSubscriptionBodyAuthMin).max(saveReminderSubscriptionBodyAuthMax),
-  "reminderTime": zod.string().regex(saveReminderSubscriptionBodyReminderTimeRegExp),
+  "reminderTimes": zod.array(zod.string().regex(saveReminderSubscriptionBodyReminderTimesItemRegExp)).min(1).max(saveReminderSubscriptionBodyReminderTimesMax),
   "timeZone": zod.string().min(1).max(saveReminderSubscriptionBodyTimeZoneMax)
 })
 
+export const saveReminderSubscriptionResponseReminderTimesItemRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const saveReminderSubscriptionResponseReminderTimesMax = 5;
+
+
+
 export const SaveReminderSubscriptionResponse = zod.object({
   "enabled": zod.boolean(),
-  "reminderTime": zod.string(),
+  "reminderTimes": zod.array(zod.string().regex(saveReminderSubscriptionResponseReminderTimesItemRegExp)).min(1).max(saveReminderSubscriptionResponseReminderTimesMax),
   "timeZone": zod.string()
 })
 

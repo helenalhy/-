@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
 import {
   DOG_STAFF_STYLE_CATALOGS,
@@ -8,6 +8,7 @@ import {
   getDefaultDogStaffLook,
   resolveDogStaffLook,
   type DogStaffLook,
+  type DogStaffSavedLook,
   type DogStaffAreaId,
   type DogStaffAreaPlacements,
   type DogStaffProfile,
@@ -23,6 +24,7 @@ export function DogStaffCustomizer({
   dogs,
   ownedDecorationIds,
   looks,
+  savedLooks,
   areaPlacements,
   coins,
   busyDogId,
@@ -30,10 +32,13 @@ export function DogStaffCustomizer({
   onMoveDog,
   onStoreDog,
   onSelectLook,
+  onSaveLook,
+  onDeleteLook,
 }: {
   dogs: DogStaffProfile[];
   ownedDecorationIds: string[];
   looks?: Record<string, DogStaffLook>;
+  savedLooks?: Record<string, DogStaffSavedLook[]>;
   areaPlacements?: DogStaffAreaPlacements;
   coins: number;
   busyDogId: string | null;
@@ -41,6 +46,8 @@ export function DogStaffCustomizer({
   onMoveDog: (dogDecorationId: string, areaId: DogStaffAreaId) => Promise<void>;
   onStoreDog: (dogDecorationId: string) => Promise<void>;
   onSelectLook: (dogDecorationId: string, look: DogStaffLook) => Promise<void>;
+  onSaveLook: (dogDecorationId: string, name: string, look: DogStaffLook) => Promise<void>;
+  onDeleteLook: (dogDecorationId: string, savedLookId: string) => Promise<void>;
 }) {
   const colors = useColors();
   const owned = new Set(ownedDecorationIds);
@@ -55,6 +62,9 @@ export function DogStaffCustomizer({
   const [savingLook, setSavingLook] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
+  const [savedLookName, setSavedLookName] = useState('');
+  const [savingPreset, setSavingPreset] = useState(false);
+  const [workingPresetId, setWorkingPresetId] = useState<string | null>(null);
   function reportNotice(message: string) {
     setNotice(message);
     if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
@@ -68,6 +78,11 @@ export function DogStaffCustomizer({
   const catalog = DOG_STAFF_STYLE_CATALOGS[activeDog.decorationId];
   const currentLook = resolveDogStaffLook(activeDog.decorationId, looks?.[activeDog.decorationId])
     ?? getDefaultDogStaffLook(activeDog.decorationId)!;
+  const savedDogLooks = savedLooks?.[activeDog.decorationId] ?? [];
+  const trimmedSavedLookName = savedLookName.trim();
+  const duplicateSavedLookName = savedDogLooks.some(
+    ({ name }) => name.toLocaleLowerCase() === trimmedSavedLookName.toLocaleLowerCase(),
+  );
   const currentAreaId = areaPlacements?.[activeDog.decorationId];
   const currentAreaLabel = currentAreaId ? getDogStaffAreaLabel(currentAreaId) : '';
   const selectedAreaLabel = getDogStaffAreaLabel(selectedAreaId);
@@ -132,6 +147,49 @@ export function DogStaffCustomizer({
       reportNotice(error instanceof Error ? `造型未能保存：${error.message}` : '造型未能保存，請稍後再試。');
     } finally {
       setSavingLook(false);
+    }
+  }
+
+  async function saveNamedLook() {
+    if (savingPreset || !trimmedSavedLookName || duplicateSavedLookName || !isOwned) return;
+    setSavingPreset(true);
+    setNotice('');
+    try {
+      await onSaveLook(activeDog.decorationId, trimmedSavedLookName, currentLook);
+      setSavedLookName('');
+      reportNotice(`已保存${activeDog.name}的穿搭「${trimmedSavedLookName}」，免費保存。`);
+    } catch (error) {
+      reportNotice(error instanceof Error ? `穿搭未能保存：${error.message}` : '穿搭未能保存，請稍後再試。');
+    } finally {
+      setSavingPreset(false);
+    }
+  }
+
+  async function applyNamedLook(savedLook: DogStaffSavedLook) {
+    if (savingLook || workingPresetId) return;
+    setWorkingPresetId(savedLook.id);
+    setNotice('');
+    try {
+      await onSelectLook(activeDog.decorationId, savedLook.look);
+      reportNotice(`已為${activeDog.name}套用「${savedLook.name}」，服裝與配飾均已更新，免費穿戴。`);
+    } catch (error) {
+      reportNotice(error instanceof Error ? `穿搭未能套用：${error.message}` : '穿搭未能套用，請稍後再試。');
+    } finally {
+      setWorkingPresetId(null);
+    }
+  }
+
+  async function deleteNamedLook(savedLook: DogStaffSavedLook) {
+    if (workingPresetId || savingPreset) return;
+    setWorkingPresetId(savedLook.id);
+    setNotice('');
+    try {
+      await onDeleteLook(activeDog.decorationId, savedLook.id);
+      reportNotice(`已刪除${activeDog.name}的穿搭「${savedLook.name}」。`);
+    } catch (error) {
+      reportNotice(error instanceof Error ? `穿搭未能刪除：${error.message}` : '穿搭未能刪除，請稍後再試。');
+    } finally {
+      setWorkingPresetId(null);
     }
   }
 
@@ -302,6 +360,73 @@ export function DogStaffCustomizer({
 
       {isOwned ? (
         <>
+          <Text style={[styles.subheading, { color: colors.foreground }]}>常用穿搭</Text>
+          <Text style={[styles.copy, { color: colors.mutedForeground }]}>
+            儲存目前服裝與配飾組合；套用或刪除都不扣金幣。
+          </Text>
+          <View style={styles.savedLookCreateRow}>
+            <TextInput
+              testID={`dog-staff-saved-look-name-${activeDog.key}`}
+              accessibilityLabel={`輸入${activeDog.name}的穿搭名稱`}
+              value={savedLookName}
+              onChangeText={setSavedLookName}
+              maxLength={24}
+              placeholder="例如：魔法少女"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.savedLookInput, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
+            />
+            <Pressable
+              testID={`dog-staff-saved-look-save-${activeDog.key}`}
+              accessibilityRole="button"
+              accessibilityLabel={`保存${activeDog.name}目前的服裝與配飾`}
+              accessibilityState={{ disabled: !trimmedSavedLookName || duplicateSavedLookName || savingPreset || workingPresetId !== null }}
+              disabled={!trimmedSavedLookName || duplicateSavedLookName || savingPreset || workingPresetId !== null}
+              onPress={() => void saveNamedLook()}
+              style={[styles.savedLookSaveButton, { backgroundColor: colors.primary, opacity: !trimmedSavedLookName || duplicateSavedLookName || savingPreset || workingPresetId !== null ? 0.45 : 1 }]}
+            >
+              <Feather name="bookmark" size={14} color={colors.primaryForeground} />
+              <Text style={[styles.savedLookSaveText, { color: colors.primaryForeground }]}>保存</Text>
+            </Pressable>
+          </View>
+          {duplicateSavedLookName ? (
+            <Text style={[styles.copy, { color: colors.mutedForeground }]}>這隻狗已有相同名稱，請換一個名稱。</Text>
+          ) : null}
+          {savedDogLooks.length > 0 ? (
+            <View style={styles.savedLookList}>
+              {savedDogLooks.map((savedLook) => (
+                <View key={savedLook.id} style={[styles.savedLookRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <View style={styles.savedLookCopy}>
+                    <Text numberOfLines={1} style={[styles.savedLookName, { color: colors.foreground }]}>{savedLook.name}</Text>
+                    <Text style={[styles.copy, { color: colors.mutedForeground }]}>服裝與配飾</Text>
+                  </View>
+                  <Pressable
+                    testID={`dog-staff-saved-look-apply-${activeDog.key}-${savedLook.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`為${activeDog.name}套用穿搭「${savedLook.name}」`}
+                    accessibilityState={{ disabled: savingLook || workingPresetId !== null }}
+                    disabled={savingLook || workingPresetId !== null}
+                    onPress={() => void applyNamedLook(savedLook)}
+                    style={[styles.savedLookAction, { backgroundColor: colors.secondary }]}
+                  >
+                    <Text style={[styles.savedLookActionText, { color: colors.primary }]}>套用</Text>
+                  </Pressable>
+                  <Pressable
+                    testID={`dog-staff-saved-look-delete-${activeDog.key}-${savedLook.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`刪除${activeDog.name}的穿搭「${savedLook.name}」`}
+                    accessibilityState={{ disabled: workingPresetId !== null || savingPreset }}
+                    disabled={workingPresetId !== null || savingPreset}
+                    onPress={() => void deleteNamedLook(savedLook)}
+                    style={[styles.savedLookAction, { backgroundColor: colors.secondary }]}
+                  >
+                    <Text style={[styles.savedLookActionText, { color: colors.primary }]}>刪除</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[styles.copy, { color: colors.mutedForeground }]}>尚未保存穿搭。</Text>
+          )}
           <Text style={[styles.subheading, { color: colors.foreground }]}>免費附送造型</Text>
           <View style={styles.tabs}>
             {([
@@ -480,6 +605,16 @@ const styles = StyleSheet.create({
   actionButtonText: { fontSize: 10, fontWeight: '800', textAlign: 'center' },
   storeButton: { minHeight: 44, minWidth: 112, flexGrow: 1, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 9 },
   storeButtonText: { fontSize: 10, fontWeight: '800' },
+  savedLookCreateRow: { flexDirection: 'row', gap: 7 },
+  savedLookInput: { flex: 1, minWidth: 0, minHeight: 42, borderWidth: 1, borderRadius: 11, paddingHorizontal: 10, fontSize: 12 },
+  savedLookSaveButton: { minHeight: 42, borderRadius: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 13 },
+  savedLookSaveText: { fontSize: 11, fontWeight: '800' },
+  savedLookList: { gap: 6 },
+  savedLookRow: { minHeight: 54, borderWidth: 1, borderRadius: 12, padding: 7, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  savedLookCopy: { flex: 1, gap: 2 },
+  savedLookName: { fontSize: 11, fontWeight: '800' },
+  savedLookAction: { minWidth: 45, minHeight: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7 },
+  savedLookActionText: { fontSize: 10, fontWeight: '800' },
   tabs: { flexDirection: 'row', gap: 6 },
   tab: { flex: 1, minWidth: 0, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tabText: { fontSize: 10, fontWeight: '800', textAlign: 'center', lineHeight: 14 },

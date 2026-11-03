@@ -37,6 +37,7 @@ import {
   type DogStaffAreaId,
   type DogStaffAreaPlacements,
   type DogStaffLook,
+  type DogStaffSavedLook,
 } from '@/constants/dog-staff-customization';
 export { MALL_SLOT_IDS } from '@/constants/mall-layout';
 export type { MallSlotId } from '@/constants/mall-layout';
@@ -75,6 +76,7 @@ export interface ShopInteriorState {
   placements: Partial<Record<ShopInteriorPlacementId, string>>;
   fixtureContents?: Record<string, (string | null)[]>;
   dogStaffLooks?: Record<string, DogStaffLook>;
+  dogStaffOutfits?: Record<string, DogStaffSavedLook[]>;
   dogStaffPlacements?: DogStaffAreaPlacements;
 }
 
@@ -125,6 +127,8 @@ interface HabitsContextValue {
   placeShopInteriorDogStaff: (shopId: string, dogDecorationId: string, areaId: DogStaffAreaId) => Promise<void>;
   storeShopInteriorDogStaff: (shopId: string, dogDecorationId: string) => Promise<void>;
   updateShopInteriorDogLook: (shopId: string, dogDecorationId: string, look: DogStaffLook) => Promise<void>;
+  saveShopInteriorDogLook: (shopId: string, dogDecorationId: string, name: string, look: DogStaffLook) => Promise<void>;
+  deleteShopInteriorDogLook: (shopId: string, dogDecorationId: string, savedLookId: string) => Promise<void>;
 }
 
 const STORAGE_KEY = 'momentum.habits.v1';
@@ -220,6 +224,22 @@ function parseMallData(value: string): StoredMallData {
             || typeof look.accessoryId !== 'string'
           ))) {
           throw new Error('店員造型格式無效');
+        }
+      }
+      if (interior.dogStaffOutfits !== undefined) {
+        if (!isRecord(interior.dogStaffOutfits)
+          || Object.values(interior.dogStaffOutfits).some((outfits) => (
+            !Array.isArray(outfits)
+            || outfits.some((outfit) => (
+              !isRecord(outfit)
+              || typeof outfit.id !== 'string'
+              || typeof outfit.name !== 'string'
+              || !isRecord(outfit.look)
+              || typeof outfit.look.outfitId !== 'string'
+              || typeof outfit.look.accessoryId !== 'string'
+            ))
+          ))) {
+          throw new Error('已保存穿搭格式無效');
         }
       }
       if (interior.dogStaffPlacements !== undefined && !isStringRecord(interior.dogStaffPlacements)) {
@@ -351,6 +371,7 @@ function normalizeShopInteriors(
     const assigned = new Set<string>();
     const placements: Partial<Record<ShopInteriorPlacementId, string>> = {};
     const dogStaffLooks: Record<string, DogStaffLook> = {};
+    const dogStaffOutfits: Record<string, DogStaffSavedLook[]> = {};
     const dogStaffPlacements: DogStaffAreaPlacements = {};
     const staffAssigned = new Set<string>();
     const stationsById = new Map<string, (typeof DOG_STAFF_STATIONS)[number]>(
@@ -406,12 +427,33 @@ function normalizeShopInteriors(
       const look = resolveDogStaffLook(dogDecorationId, savedLook);
       if (look) dogStaffLooks[dogDecorationId] = look;
     }
-    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(fixtureContents).length > 0 || Object.keys(dogStaffLooks).length > 0 || Object.keys(dogStaffPlacements).length > 0) {
+    for (const [dogDecorationId, savedOutfits] of Object.entries(saved.dogStaffOutfits ?? {})) {
+      if (!owned.has(dogDecorationId) || !DOG_STAFF_STYLE_CATALOGS[dogDecorationId] || !Array.isArray(savedOutfits)) continue;
+      const seenIds = new Set<string>();
+      const outfits = savedOutfits.flatMap((savedOutfit) => {
+        if (
+          !savedOutfit
+          || typeof savedOutfit.id !== 'string'
+          || !savedOutfit.id
+          || seenIds.has(savedOutfit.id)
+          || typeof savedOutfit.name !== 'string'
+          || !savedOutfit.name.trim()
+          || savedOutfit.name.trim().length > 24
+        ) return [];
+        const look = resolveDogStaffLook(dogDecorationId, savedOutfit.look);
+        if (!look) return [];
+        seenIds.add(savedOutfit.id);
+        return [{ id: savedOutfit.id, name: savedOutfit.name.trim(), look }];
+      });
+      if (outfits.length > 0) dogStaffOutfits[dogDecorationId] = outfits;
+    }
+    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(fixtureContents).length > 0 || Object.keys(dogStaffLooks).length > 0 || Object.keys(dogStaffOutfits).length > 0 || Object.keys(dogStaffPlacements).length > 0) {
       interiors[shopId] = {
         ownedDecorations,
         placements,
         ...(Object.keys(fixtureContents).length > 0 ? { fixtureContents } : {}),
         ...(Object.keys(dogStaffLooks).length > 0 ? { dogStaffLooks } : {}),
+        ...(Object.keys(dogStaffOutfits).length > 0 ? { dogStaffOutfits } : {}),
         ...(Object.keys(dogStaffPlacements).length > 0 ? { dogStaffPlacements } : {}),
       };
     }
@@ -1043,6 +1085,88 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
+  const saveShopInteriorDogLook = useCallback(async (
+    shopId: string,
+    dogDecorationId: string,
+    name: string,
+    look: DogStaffLook,
+  ) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== 'fluffy-marshmallow-cafe') throw new Error('狗狗造型只適用於毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    const current = shopInteriors[shopId];
+    if (!current?.ownedDecorations.includes(dogDecorationId)) throw new Error('請先兌換這位狗狗店員');
+    if (!isValidDogStaffLook(dogDecorationId, look)) throw new Error('這套服裝或配飾不屬於這位狗狗店員');
+    const trimmedName = name.trim();
+    if (!trimmedName || trimmedName.length > 24) throw new Error('穿搭名稱請填寫 1 至 24 個字');
+    const savedOutfits = current.dogStaffOutfits?.[dogDecorationId] ?? [];
+    if (savedOutfits.some(({ name: existingName }) => existingName.toLocaleLowerCase() === trimmedName.toLocaleLowerCase())) {
+      throw new Error('這隻狗已經有相同的穿搭名稱');
+    }
+    const idBase = `saved-${Date.now().toString(36)}`;
+    let id = idBase;
+    let suffix = 1;
+    while (savedOutfits.some((savedOutfit) => savedOutfit.id === id)) {
+      id = `${idBase}-${suffix++}`;
+    }
+    const nextSavedOutfits = [...savedOutfits, { id, name: trimmedName, look }];
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: {
+          ...shopInteriors,
+          [shopId]: {
+            ...current,
+            dogStaffOutfits: { ...current.dogStaffOutfits, [dogDecorationId]: nextSavedOutfits },
+          },
+        },
+      });
+      await Haptics.selectionAsync();
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
+  const deleteShopInteriorDogLook = useCallback(async (
+    shopId: string,
+    dogDecorationId: string,
+    savedLookId: string,
+  ) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== 'fluffy-marshmallow-cafe') throw new Error('狗狗造型只適用於毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    const current = shopInteriors[shopId];
+    if (!current?.ownedDecorations.includes(dogDecorationId)) throw new Error('請先兌換這位狗狗店員');
+    const savedOutfits = current.dogStaffOutfits?.[dogDecorationId] ?? [];
+    if (!savedOutfits.some(({ id }) => id === savedLookId)) throw new Error('找不到要刪除的穿搭');
+    const nextSavedOutfits = savedOutfits.filter(({ id }) => id !== savedLookId);
+    const dogStaffOutfits = { ...current.dogStaffOutfits };
+    if (nextSavedOutfits.length > 0) dogStaffOutfits[dogDecorationId] = nextSavedOutfits;
+    else delete dogStaffOutfits[dogDecorationId];
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: {
+          ...shopInteriors,
+          [shopId]: { ...current, dogStaffOutfits },
+        },
+      });
+      await Haptics.selectionAsync();
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
   const grantTestCoins = useCallback(async (minimumBalance: number) => {
     if (!IS_DEVELOPMENT_BUILD) throw new Error('測試金幣只供開發預覽使用');
     if (!Number.isSafeInteger(minimumBalance) || minimumBalance < 0) throw new Error('測試金幣數量無效');
@@ -1078,8 +1202,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
-    today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook]);
+      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

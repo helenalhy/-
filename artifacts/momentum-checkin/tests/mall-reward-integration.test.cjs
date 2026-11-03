@@ -1626,6 +1626,121 @@ test('dog outfits persist when walking dogs move between all six areas, while th
   assert.equal(app.contextExports.useHabits().coins, 40, 'storage is free and does not refund its redemption price');
 });
 
+test('each dog can save, apply, delete and restore named outfits without spending coins', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  const dogId = 'general-fluffy-staff-huahua';
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 5,
+    coins: 500,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {
+      [shop.id]: {
+        ownedDecorations: [dogId],
+        placements: {},
+        dogStaffPlacements: { [dogId]: 'main' },
+      },
+    },
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  const coinsBefore = app.contextExports.useHabits().coins;
+
+  async function changeName(name) {
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    const input = findByTestId(customizerTree, 'dog-staff-saved-look-name-fluffy-staff-huahua');
+    assert.ok(input);
+    input.props.onChangeText(name);
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, 'dog-staff-saved-look-save-fluffy-staff-huahua');
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+
+  await press(customizerTree, 'dog-staff-tab-outfit');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-2');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-tab-accessory');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-accessory-2');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  await changeName('魔法少女');
+
+  const firstSaved = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0];
+  assert.equal(firstSaved.name, '魔法少女');
+
+  await press(customizerTree, 'dog-staff-tab-outfit');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-3');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-tab-accessory');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-accessory-3');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  await changeName('節日派對');
+
+  const savedLooks = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId];
+  assert.equal(savedLooks.length, 2);
+  const secondSaved = savedLooks[1];
+  assert.notEqual(firstSaved.look.outfitId, secondSaved.look.outfitId);
+  assert.notEqual(firstSaved.look.accessoryId, secondSaved.look.accessoryId);
+
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, `dog-staff-saved-look-apply-fluffy-staff-huahua-${firstSaved.id}`);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.deepEqual(
+    app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId],
+    firstSaved.look,
+    'applying a named preset restores both its outfit and accessory',
+  );
+
+  await press(customizerTree, `dog-staff-saved-look-delete-fluffy-staff-huahua-${secondSaved.id}`);
+  app.renderProvider();
+  assert.deepEqual(
+    app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId],
+    [firstSaved],
+    'deleting one preset keeps the other preset',
+  );
+  assert.equal(app.contextExports.useHabits().coins, coinsBefore, 'saving, applying and deleting presets are free');
+
+  const storedMall = app.storage.get(storageKeys.mall);
+  const reopenedApp = createHarness();
+  reopenedApp.storage.set(storageKeys.mall, storedMall);
+  reopenedApp.renderProvider();
+  await reopenedApp.runEffects('provider');
+  reopenedApp.renderProvider();
+  assert.deepEqual(
+    reopenedApp.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId],
+    [firstSaved],
+    'the dog’s named preset remains available after reopening',
+  );
+  assert.deepEqual(
+    reopenedApp.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId],
+    firstSaved.look,
+    'the active outfit and accessory also remain after reopening',
+  );
+  assert.equal(reopenedApp.contextExports.useHabits().coins, coinsBefore);
+});
+
 test('long-pressing a goal only opens management actions; the plus button only checks in', async () => {
   const app = createHarness();
   app.renderProvider();

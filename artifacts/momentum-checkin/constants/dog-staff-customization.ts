@@ -72,6 +72,12 @@ export interface DogStaffLook {
   accessoryId: string;
 }
 
+export interface DogStaffSavedLook {
+  id: string;
+  name: string;
+  look: DogStaffLook;
+}
+
 export type DogStaffExtensionAreaId = 'extension-1' | 'extension-2' | 'extension-3' | 'extension-4' | 'extension-5';
 export type DogStaffAreaId = 'main' | DogStaffExtensionAreaId;
 export type DogStaffAreaPlacements = Partial<Record<string, DogStaffAreaId>>;

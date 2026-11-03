@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getDueReminderTimes } from "../src/lib/reminder-schedule.ts";
+import { getDueReminderBatch, getDueReminderTimes } from "../src/lib/reminder-schedule.ts";
 
 test("returns only reminder slots that have passed and have not been sent", () => {
   assert.deepEqual(
@@ -55,5 +55,48 @@ test("deduplicates schedule slots and lets later slots run after earlier ones", 
       legacyLastSentLocalDate: null,
     }),
     ["21:00"],
+  );
+});
+
+test("returns due habit names and merged slots at the latest due time", () => {
+  assert.deepEqual(
+    getDueReminderBatch({
+      schedules: [
+        { scheduleId: "global", reminderTimes: ["09:00", "20:00"] },
+        { scheduleId: "habit:exercise", reminderTimes: ["18:00"], habitTitle: "晚間運動" },
+        { scheduleId: "habit:reading", reminderTimes: ["18:00"], habitTitle: "閱讀" },
+      ],
+      fallbackReminderTime: "20:00",
+      localDate: "2026-11-03",
+      localTime: "18:00",
+      lastSentLocalDates: { "habit:exercise:18:00": "2026-11-02" },
+      legacyLastSentLocalDate: null,
+    }),
+    {
+      time: "18:00",
+      keysToMarkSent: ["global:09:00", "habit:exercise:18:00", "habit:reading:18:00"],
+      habitTitles: ["晚間運動", "閱讀"],
+    },
+  );
+});
+
+test("legacy global sent marker does not suppress a newly configured habit reminder", () => {
+  assert.deepEqual(
+    getDueReminderBatch({
+      schedules: [
+        { scheduleId: "global", reminderTimes: ["09:00", "20:00"] },
+        { scheduleId: "habit:walk", reminderTimes: ["18:00"], habitTitle: "晚飯後散步" },
+      ],
+      fallbackReminderTime: "20:00",
+      localDate: "2026-11-03",
+      localTime: "20:00",
+      lastSentLocalDates: {},
+      legacyLastSentLocalDate: "2026-11-03",
+    }),
+    {
+      time: "18:00",
+      keysToMarkSent: ["habit:walk:18:00"],
+      habitTitles: ["晚飯後散步"],
+    },
   );
 });

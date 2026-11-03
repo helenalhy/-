@@ -79,9 +79,11 @@ export default function SettingsScreen() {
         : isSignedIn
           ? '正在準備雲端同步'
           : '訪客模式，進度保存在這台裝置';
+  const habitReminderCount = Object.values(reminderSettings.habitReminders)
+    .filter((times) => times.length > 0).length;
   const reminderSummary = reminderSettings.enabled
-    ? `已開啟 · 每日 ${reminderSettings.reminderTimes.join('、')}`
-    : '設定一個或多個每日時段';
+    ? `已開啟 · 每日 ${reminderSettings.reminderTimes.join('、')} · ${habitReminderCount} 項習慣提醒`
+    : `設定每日時段與 ${habitReminderCount} 項習慣提醒`;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>

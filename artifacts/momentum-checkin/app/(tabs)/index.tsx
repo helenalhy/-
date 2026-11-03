@@ -16,6 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
+import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 import { updateReminderCheckInStatus } from '@workspace/api-client-react';
 import { readReminderSettings } from '@/lib/reminder-settings';
 import {
@@ -121,6 +122,7 @@ export function TodayScreen() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const dailyQuote = getDailyMotivationalQuote(today);
   const week = getWeek(today);
   const todayDone = habits.filter((habit) => habit.checkIns.includes(today)).length;
   const percent = habits.length === 0 ? 0 : Math.round((todayDone / habits.length) * 100);
@@ -346,7 +348,7 @@ export function TodayScreen() {
           </View>
           <View style={styles.quoteCopy}>
             <Text style={[styles.quoteTitle, { color: colors.foreground }]}>記得對自己好一點</Text>
-            <Text style={[styles.quoteText, { color: colors.mutedForeground }]}>休息不是放棄，也是照顧自己的方式。</Text>
+            <Text style={[styles.quoteText, { color: colors.mutedForeground }]}>{dailyQuote}</Text>
           </View>
         </View>
       </ScrollView>

@@ -13,6 +13,10 @@ export const pushReminderSubscriptionsTable = pgTable(
       .$type<string[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
+    habitReminders: jsonb("habit_reminders")
+      .$type<Array<{ habitId: string; habitTitle: string; reminderTimes: string[] }>>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     timeZone: text("time_zone").notNull(),
     lastSentLocalDate: text("last_sent_local_date"),
     lastSentLocalDates: jsonb("last_sent_local_dates")

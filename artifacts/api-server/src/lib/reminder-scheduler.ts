@@ -5,7 +5,7 @@ import {
   pushReminderSubscriptionsTable,
 } from "@workspace/db";
 import { logger } from "./logger";
-import { getDueReminderTimes } from "./reminder-schedule";
+import { getDueReminderBatch } from "./reminder-schedule";
 import { getOrCreateVapidKeys } from "./vapid";
 
 function getLocalDateTime(timeZone: string, date: Date) {
@@ -36,15 +36,28 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
     const due = subscriptions.flatMap((subscription) => {
       const local = getLocalDateTime(subscription.timeZone, now);
       if (subscription.lastCheckInLocalDate === local.date) return [];
-      const dueTimes = getDueReminderTimes({
-        reminderTimes: subscription.reminderTimes,
+      const schedules = [
+        {
+          scheduleId: "global",
+          reminderTimes: subscription.reminderTimes.length > 0
+            ? subscription.reminderTimes
+            : [subscription.reminderTime],
+        },
+        ...(subscription.habitReminders ?? []).map((reminder) => ({
+          scheduleId: `habit:${reminder.habitId}`,
+          reminderTimes: reminder.reminderTimes,
+          habitTitle: reminder.habitTitle,
+        })),
+      ];
+      const dueBatch = getDueReminderBatch({
+        schedules,
         fallbackReminderTime: subscription.reminderTime,
         localDate: local.date,
         localTime: local.time,
         lastSentLocalDates: subscription.lastSentLocalDates,
         legacyLastSentLocalDate: subscription.lastSentLocalDate,
       });
-      return dueTimes.length > 0 ? [{ subscription, local, dueTimes }] : [];
+      return dueBatch ? [{ subscription, local, dueBatch }] : [];
     });
     if (due.length === 0) return;
 
@@ -56,8 +69,7 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
     );
 
     for (const item of due) {
-      const { subscription, local, dueTimes } = item;
-      const reminderTime = dueTimes[dueTimes.length - 1];
+      const { subscription, local, dueBatch } = item;
       try {
         await webpush.sendNotification(
           {
@@ -68,14 +80,16 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
             },
           },
           JSON.stringify({
-            title: `Momentum 打卡提醒 · ${reminderTime}`,
-            body: "今天留一小步給自己，完成目標後回來打卡吧。",
+            title: `Momentum 打卡提醒 · ${dueBatch.time}`,
+            body: dueBatch.habitTitles.length > 0
+              ? `現在是「${dueBatch.habitTitles.join('」、「')}」的時間，完成後回來打卡吧。`
+              : "今天留一小步給自己，完成目標後回來打卡吧。",
             url: "/today",
           }),
           { TTL: 60 },
         );
         const sentDates = { ...(subscription.lastSentLocalDates ?? {}) };
-        dueTimes.forEach((time) => { sentDates[time] = local.date; });
+        dueBatch.keysToMarkSent.forEach((key) => { sentDates[key] = local.date; });
         await db
           .update(pushReminderSubscriptionsTable)
           .set({

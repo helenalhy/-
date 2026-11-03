@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HabitReminderSchedule } from './habitReminderSchedule';
 
 export interface ReminderSubscriptionInput {
   /** @maxLength 4096 */
@@ -25,6 +26,8 @@ export interface ReminderSubscriptionInput {
      * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
      */
   reminderTimes: string[];
+  /** @maxItems 100 */
+  habitReminders?: HabitReminderSchedule[];
   /**
      * @minLength 1
      * @maxLength 80

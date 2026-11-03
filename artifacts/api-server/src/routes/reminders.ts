@@ -62,6 +62,7 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
   }
 
   const { endpoint, p256dh, auth, reminderTimes, timeZone } = parsed.data;
+  const inputHabitReminders = parsed.data.habitReminders;
   if (!isSupportedPushEndpoint(endpoint) || !isValidTimeZone(timeZone)) {
     res.status(400).json({ error: "Unsupported push endpoint or time zone" });
     return;
@@ -70,7 +71,20 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Reminder times must be unique" });
     return;
   }
+  if (
+    inputHabitReminders
+    && (
+      new Set(inputHabitReminders.map((reminder) => reminder.habitId)).size !== inputHabitReminders.length
+      || inputHabitReminders.some((reminder) => new Set(reminder.reminderTimes).size !== reminder.reminderTimes.length)
+    )
+  ) {
+    res.status(400).json({ error: "Habit reminders and their times must be unique" });
+    return;
+  }
   const normalizedTimes = [...reminderTimes].sort();
+  const normalizedHabitReminders = [...(inputHabitReminders ?? [])]
+    .map((reminder) => ({ ...reminder, reminderTimes: [...reminder.reminderTimes].sort() }))
+    .sort((left, right) => left.habitId.localeCompare(right.habitId));
 
   const endpointHash = hashPushEndpoint(endpoint);
   const [saved] = await db
@@ -82,6 +96,7 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
       auth,
       reminderTime: normalizedTimes[0],
       reminderTimes: normalizedTimes,
+      habitReminders: normalizedHabitReminders,
       timeZone,
       updatedAt: new Date(),
     })
@@ -92,6 +107,7 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
         p256dh,
         auth,
         reminderTimes: normalizedTimes,
+        ...(inputHabitReminders === undefined ? {} : { habitReminders: normalizedHabitReminders }),
         timeZone,
         updatedAt: new Date(),
       },
@@ -102,6 +118,7 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
     SaveReminderSubscriptionResponse.parse({
       enabled: true,
       reminderTimes: saved.reminderTimes.length > 0 ? saved.reminderTimes : [saved.reminderTime],
+      habitReminders: saved.habitReminders ?? [],
       timeZone: saved.timeZone,
     }),
   );

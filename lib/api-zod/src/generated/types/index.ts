@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './habitReminderSchedule';
 export * from './healthStatus';
 export * from './progressRecord';
 export * from './progressSnapshot';

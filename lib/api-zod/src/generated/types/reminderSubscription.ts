@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HabitReminderSchedule } from './habitReminderSchedule';
 
 export interface ReminderSubscription {
   enabled: boolean;
@@ -14,5 +15,7 @@ export interface ReminderSubscription {
      * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
      */
   reminderTimes: string[];
+  /** @maxItems 100 */
+  habitReminders: HabitReminderSchedule[];
   timeZone: string;
 }

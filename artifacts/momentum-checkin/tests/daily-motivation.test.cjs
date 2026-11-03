@@ -5,6 +5,7 @@ const path = require('node:path');
 const ts = require('typescript');
 
 const source = fs.readFileSync(path.join(__dirname, '../constants/daily-motivation.ts'), 'utf8');
+const todayScreenSource = fs.readFileSync(path.join(__dirname, '../app/(tabs)/index.tsx'), 'utf8');
 const output = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
 }).outputText;
@@ -45,6 +46,12 @@ test('the quote stays fixed for a local date and changes on each consecutive day
     quotes.push(quote);
   }
   assert.equal(new Set(quotes).size, DAILY_MOTIVATIONAL_QUOTES.length);
+});
+
+test('the Today screen displays the quote selected for its current local date', () => {
+  assert.match(todayScreenSource, /getDailyMotivationalQuote\(today\)/);
+  assert.match(todayScreenSource, /\{dailyQuote\}/);
+  assert.doesNotMatch(todayScreenSource, /休息不是放棄，也是照顧自己的方式。/);
 });
 
 test('invalid date keys fail explicitly', () => {

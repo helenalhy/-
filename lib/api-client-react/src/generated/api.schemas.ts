@@ -32,6 +32,25 @@ export interface ReminderConfig {
   publicKey: string;
 }
 
+export interface HabitReminderSchedule {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  habitId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  habitTitle: string;
+  /**
+     * @minItems 1
+     * @maxItems 5
+     * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
+     */
+  reminderTimes: string[];
+}
+
 export interface ReminderSubscriptionInput {
   /** @maxLength 4096 */
   endpoint: string;
@@ -51,6 +70,8 @@ export interface ReminderSubscriptionInput {
      * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
      */
   reminderTimes: string[];
+  /** @maxItems 100 */
+  habitReminders?: HabitReminderSchedule[];
   /**
      * @minLength 1
      * @maxLength 80
@@ -77,6 +98,8 @@ export interface ReminderSubscription {
      * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
      */
   reminderTimes: string[];
+  /** @maxItems 100 */
+  habitReminders: HabitReminderSchedule[];
   timeZone: string;
 }
 

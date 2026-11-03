@@ -34,7 +34,6 @@ import {
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_PROFILES,
-  getDogStaffAreaLabel,
   type DogStaffAreaId,
   type DogStaffLook,
 } from '@/constants/dog-staff-customization';
@@ -228,19 +227,13 @@ export default function MallShopInteriorScreen() {
 
   async function arrangeDogStaff(dogDecorationId: string, areaId: DogStaffAreaId) {
     if (!shop || !hasAccess || workingDecoration) return;
-    const alreadyOwned = owned.has(dogDecorationId);
     setWorkingDecoration(dogDecorationId);
     setNotice('');
     setSlotAccessibilityResult('');
     try {
       await placeShopInteriorDogStaff(shop.id, dogDecorationId, areaId);
       setSelectedArea(areaId);
-      const dogName = DOG_STAFF_PROFILES.find(({ decorationId }) => decorationId === dogDecorationId)?.name ?? '狗狗店員';
-      setNotice(alreadyOwned
-        ? `已免費將${dogName}安排到${getDogStaffAreaLabel(areaId)}，牠會在地面來回巡走。`
-        : `已兌換${dogName}並安排到${getDogStaffAreaLabel(areaId)}，已扣除相應金幣；服裝與配飾免費附送。`);
     } catch (error) {
-      Alert.alert('店員安排未完成', error instanceof Error ? error.message : '請稍後再試。');
       throw error;
     } finally {
       setWorkingDecoration(null);
@@ -254,9 +247,7 @@ export default function MallShopInteriorScreen() {
     setSlotAccessibilityResult('');
     try {
       await storeShopInteriorDogStaff(shop.id, dogDecorationId);
-      setNotice('已將狗狗店員收進店員收藏，沒有退款或扣除金幣。');
     } catch (error) {
-      Alert.alert('店員收納未完成', error instanceof Error ? error.message : '請稍後再試。');
       throw error;
     } finally {
       setWorkingDecoration(null);

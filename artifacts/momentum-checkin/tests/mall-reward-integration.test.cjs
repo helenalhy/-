@@ -21,6 +21,7 @@ function createHarness() {
   const navigationStack = ['/'];
   let localSearchParams = {};
   const alerts = [];
+  const announcements = [];
   const scheduledTimers = [];
   const appStateListeners = new Set();
   const palette = { light: new Proxy({}, { get: (_, key) => String(key) }) };
@@ -77,7 +78,7 @@ function createHarness() {
     ActivityIndicator: 'ActivityIndicator',
     Alert: { alert: (...args) => alerts.push(args) },
     AccessibilityInfo: {
-      announceForAccessibility() {},
+      announceForAccessibility: (message) => announcements.push(message),
       announceForAccessibilityWithOptions() {},
       setAccessibilityFocus() {},
     },
@@ -308,6 +309,7 @@ function createHarness() {
 
   return {
     alerts,
+    announcements,
     contextExports,
     mallCatalog,
     navigation,
@@ -326,6 +328,7 @@ function createHarness() {
     runNextTimer,
     shopInteriorCatalog: loadTsModule(path.join(appRoot, 'constants/mall-shop-interior.ts')),
     storage,
+    setPlatform: (platform) => { native.Platform.OS = platform; },
     setLocalSearchParams: (params) => { localSearchParams = params; },
   };
 }
@@ -1416,6 +1419,9 @@ test('dog outfits persist when walking dogs move between all six areas, while th
   interiorTree = app.renderShopInterior();
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
   assert.ok(findByTestId(customizerTree, 'dog-staff-customizer'));
+  const selectedDogButton = findByTestId(customizerTree, 'dog-staff-select-fluffy-staff-huahua');
+  assert.match(selectedDogButton.props.accessibilityLabel, /花花.*淺啡色博美.*目前選取/);
+  assert.equal(selectedDogButton.props.accessibilityState.selected, true);
   assert.match(textContent(customizerTree), /服裝 56 款/);
   assert.match(textContent(customizerTree), /主題服裝 53 款/);
   assert.match(textContent(customizerTree), /配飾 60 款/);
@@ -1423,10 +1429,20 @@ test('dog outfits persist when walking dogs move between all six areas, while th
 
   await press(customizerTree, 'dog-staff-tab-accessory');
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  const wornAccessory = findNodes(customizerTree, (node) =>
+    node.props?.testID?.startsWith('dog-staff-look-fluffy-staff-huahua-accessory-')
+      && node.props?.accessibilityState?.selected)[0];
+  assert.match(wornAccessory.props.accessibilityLabel, /花花.*目前穿戴中.*免費附送/);
+  const accessoryAnnouncementCount = app.announcements.length;
   await press(customizerTree, `dog-staff-look-fluffy-staff-huahua-accessory-2`);
+  assert.equal(app.announcements.length, accessoryAnnouncementCount + 1, 'iOS announces each saved look once');
+  assert.match(app.announcements.at(-1), /花花.*配飾.*免費穿戴/);
   app.renderProvider();
   interiorTree = app.renderShopInterior();
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  const savedAccessory = findByTestId(customizerTree, 'dog-staff-look-fluffy-staff-huahua-accessory-2');
+  assert.match(savedAccessory.props.accessibilityLabel, /花花.*目前穿戴中.*免費附送/);
+  assert.equal(savedAccessory.props.accessibilityState.selected, true);
   await press(customizerTree, 'dog-staff-tab-outfit');
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
   for (let page = 1; page < 6; page += 1) {
@@ -1493,11 +1509,21 @@ test('dog outfits persist when walking dogs move between all six areas, while th
   assert.equal(activeWalker.props.look.accessoryId, savedLook.accessoryId);
   assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffPlacements[dogId], 'main');
 
+  app.setPlatform('android');
+  const moveAnnouncementCount = app.announcements.length;
   await press(customizerTree, 'dog-staff-area-extension-5');
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
   await press(customizerTree, `dog-staff-move-fluffy-staff-huahua`);
+  assert.equal(app.announcements.length, moveAnnouncementCount, 'Android uses the live region without a second explicit announcement');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.equal(findByTestId(customizerTree, 'dog-staff-customizer-notice').props.accessibilityLiveRegion, 'polite');
+  assert.match(
+    textContent(findByTestId(customizerTree, 'dog-staff-customizer-notice')),
+    /已將花花免費移到延伸區 5.*目前造型保留/,
+  );
   app.renderProvider();
   interiorTree = app.renderShopInterior();
+  assert.equal(findByTestId(interiorTree, 'shop-interior-notice'), undefined, 'the parent page does not duplicate the dog move result');
   sceneTree = app.renderShopInteriorScene(interiorTree);
 
   const currentState = app.contextExports.useHabits();

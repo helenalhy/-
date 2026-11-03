@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
 import {
   DOG_STAFF_STYLE_CATALOGS,
@@ -53,6 +53,10 @@ export function DogStaffCustomizer({
   const [savingLook, setSavingLook] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
+  function reportNotice(message: string) {
+    setNotice(message);
+    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+  }
   const activeDog = dogs.find(({ decorationId }) => decorationId === selectedDogId)
     ?? initialDog;
 
@@ -82,13 +86,13 @@ export function DogStaffCustomizer({
     try {
       if (isOwned) {
         await onMoveDog(activeDog.decorationId, selectedAreaId);
-        setNotice(`${activeDog.name}已免費安排在${selectedAreaLabel}，會在店內地面巡走。`);
+        reportNotice(`已將${activeDog.name}免費移到${selectedAreaLabel}；目前造型保留。`);
       } else {
         await onRedeem(activeDog.decorationId, selectedAreaId);
-        setNotice(`${activeDog.name}已兌換並安排在${selectedAreaLabel}，服裝與配飾已附送。`);
+        reportNotice(`已兌換${activeDog.name}並安排到${selectedAreaLabel}；服裝與配飾免費附送。`);
       }
     } catch (error) {
-      setNotice(error instanceof Error ? `操作未完成：${error.message}` : '操作未完成，請稍後再試。');
+      reportNotice(error instanceof Error ? `操作未完成：${error.message}` : '操作未完成，請稍後再試。');
     } finally {
       setWorking(false);
     }
@@ -100,9 +104,9 @@ export function DogStaffCustomizer({
     setNotice('');
     try {
       await onStoreDog(activeDog.decorationId);
-      setNotice(`${activeDog.name}已收進店員收藏，沒有退款或扣除金幣。`);
+      reportNotice(`${activeDog.name}已收進店員收藏，沒有退款或扣除金幣。`);
     } catch (error) {
-      setNotice(error instanceof Error ? `收納未完成：${error.message}` : '收納未完成，請稍後再試。');
+      reportNotice(error instanceof Error ? `收納未完成：${error.message}` : '收納未完成，請稍後再試。');
     } finally {
       setWorking(false);
     }
@@ -114,13 +118,16 @@ export function DogStaffCustomizer({
       ? { ...currentLook, accessoryId: choiceId }
       : { ...currentLook, outfitId: choiceId };
     if (nextLook.outfitId === currentLook.outfitId && nextLook.accessoryId === currentLook.accessoryId) return;
+    const choice = choices.find(({ id }) => id === choiceId);
+    if (!choice) return;
+    const category = activeTab === 'accessory' ? '配飾' : activeTab === 'theme' ? '主題服裝' : '服裝';
     setSavingLook(true);
     setNotice('');
     try {
       await onSelectLook(activeDog.decorationId, nextLook);
-      setNotice(`${activeDog.name}的造型已保存，沒有扣除金幣。`);
+      reportNotice(`已保存${activeDog.name}的${category}「${choice.name}」，免費穿戴。`);
     } catch (error) {
-      setNotice(error instanceof Error ? `造型未能保存：${error.message}` : '造型未能保存，請稍後再試。');
+      reportNotice(error instanceof Error ? `造型未能保存：${error.message}` : '造型未能保存，請稍後再試。');
     } finally {
       setSavingLook(false);
     }
@@ -198,7 +205,7 @@ export function DogStaffCustomizer({
               key={dog.decorationId}
               testID={`dog-staff-select-${dog.key}`}
               accessibilityRole="button"
-              accessibilityLabel={`選擇${dog.name}，${dog.breed}${dogOwned ? '，已兌換' : `，${dog.price}金幣`}`}
+              accessibilityLabel={`選擇${dog.name}，${dog.breed}${selected ? '，目前選取' : ''}${dogOwned ? '，已兌換' : `，${dog.price}金幣`}`}
               accessibilityState={{ selected }}
               onPress={() => {
                 setSelectedDogId(dog.decorationId);
@@ -363,7 +370,7 @@ export function DogStaffCustomizer({
                   key={choice.id}
                   testID={`dog-staff-look-${activeDog.key}-${activeTab}-${(page - 1) * LOOKS_PER_PAGE + index + 1}`}
                   accessibilityRole="button"
-                  accessibilityLabel={`${choice.name}${selected ? '，目前穿戴中' : '，免費附送'}`}
+                  accessibilityLabel={`為${activeDog.name}選擇${choice.name}，${selected ? '目前穿戴中' : '尚未穿戴'}，免費附送`}
                   accessibilityState={{ selected, disabled: savingLook }}
                   disabled={savingLook}
                   onPress={() => void chooseLook(choice.id)}
@@ -397,7 +404,7 @@ export function DogStaffCustomizer({
       )}
 
       {notice ? (
-        <Text testID="dog-staff-customizer-notice" accessibilityRole="text" accessibilityLiveRegion="polite" style={[styles.notice, { color: colors.primary }]}>
+        <Text testID="dog-staff-customizer-notice" accessibilityRole="text" accessibilityLiveRegion={Platform.OS === 'ios' ? 'none' : 'polite'} style={[styles.notice, { color: colors.primary }]}>
           {notice}
         </Text>
       ) : null}

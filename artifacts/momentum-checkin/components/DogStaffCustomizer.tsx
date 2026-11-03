@@ -232,11 +232,13 @@ export function DogStaffCustomizer({
 
       <View style={[styles.dogProfile, { backgroundColor: colors.candyCream, borderColor: colors.border }]}>
         <View style={styles.dogPreview}>
-          <DogAttendant
-            kind={activeDog.kind as DogAttendantKind}
-            outfitId={currentLook.outfitId}
-            accessoryId={currentLook.accessoryId}
-          />
+          <View style={styles.profileDogScale}>
+            <DogAttendant
+              kind={activeDog.kind as DogAttendantKind}
+              outfitId={currentLook.outfitId}
+              accessoryId={currentLook.accessoryId}
+            />
+          </View>
         </View>
         <View style={styles.profileCopy}>
           <Text style={[styles.profileName, { color: colors.foreground }]}>{activeDog.name} · {activeDog.breed}</Text>
@@ -371,11 +373,13 @@ export function DogStaffCustomizer({
                   ]}
                 >
                   <View style={[styles.lookPreview, { backgroundColor: colors.candyCream }]}>
-                    <DogAttendant
-                      kind={activeDog.kind as DogAttendantKind}
-                      outfitId={candidateLook.outfitId}
-                      accessoryId={candidateLook.accessoryId}
-                    />
+                    <View style={styles.lookDogScale}>
+                      <DogAttendant
+                        kind={activeDog.kind as DogAttendantKind}
+                        outfitId={candidateLook.outfitId}
+                        accessoryId={candidateLook.accessoryId}
+                      />
+                    </View>
                   </View>
                   <Text numberOfLines={2} style={[styles.lookName, { color: colors.foreground }]}>{choice.name}</Text>
                   <Text style={[styles.lookStatus, { color: selected ? colors.primary : colors.mutedForeground }]}>
@@ -416,29 +420,31 @@ const styles = StyleSheet.create({
   selectedAreaCopy: { fontSize: 10, fontWeight: '800' },
   dogPicker: { gap: 8, paddingVertical: 2, paddingRight: 4 },
   dogChip: { width: 68, minHeight: 87, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 5, gap: 1 },
-  dogChipPreview: { width: 45, height: 45, transform: [{ scale: 0.78 }], alignItems: 'center', justifyContent: 'center' },
+  dogChipPreview: { width: 54, height: 48, alignItems: 'center', justifyContent: 'center' },
   dogChipName: { fontSize: 10, fontWeight: '800' },
   ownershipLabel: { fontSize: 8, fontWeight: '700' },
   dogProfile: { minHeight: 82, borderWidth: 1, borderRadius: 15, padding: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dogPreview: { width: 58, height: 62, alignItems: 'center', justifyContent: 'center', transform: [{ scale: 1.05 }] },
+  dogPreview: { width: 66, height: 62, alignItems: 'center', justifyContent: 'center' },
+  profileDogScale: { transform: [{ scale: 1.18 }] },
   profileCopy: { flex: 1, gap: 4 },
   profileName: { fontSize: 12, fontWeight: '800' },
   profileLocation: { fontSize: 10, lineHeight: 14 },
-  actionRow: { flexDirection: 'row', gap: 8 },
-  actionButton: { minHeight: 40, flex: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 9 },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  actionButton: { minHeight: 44, flex: 1, minWidth: 150, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 9 },
   actionButtonText: { fontSize: 10, fontWeight: '800', textAlign: 'center' },
-  storeButton: { minHeight: 40, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 9 },
+  storeButton: { minHeight: 44, minWidth: 112, flexGrow: 1, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 9 },
   storeButtonText: { fontSize: 10, fontWeight: '800' },
-  tabs: { flexDirection: 'row', gap: 8 },
-  tab: { flex: 1, minHeight: 39, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  tabText: { fontSize: 11, fontWeight: '800' },
+  tabs: { flexDirection: 'row', gap: 6 },
+  tab: { flex: 1, minWidth: 0, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tabText: { fontSize: 10, fontWeight: '800', textAlign: 'center', lineHeight: 14 },
   lookPager: { minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pageCount: { fontSize: 10, fontWeight: '700' },
   pageActions: { flexDirection: 'row', gap: 7 },
   pageButton: { width: 31, height: 31, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   lookGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  lookCard: { width: '48.6%', minHeight: 114, borderWidth: 1, borderRadius: 13, padding: 7, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  lookPreview: { width: 50, height: 49, borderRadius: 11, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  lookCard: { width: '48%', minHeight: 132, borderWidth: 1, borderRadius: 13, padding: 7, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  lookPreview: { width: 68, height: 60, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  lookDogScale: { transform: [{ scale: 1.16 }] },
   lookName: { minHeight: 27, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 },
   lookStatus: { fontSize: 9, fontWeight: '800' },
   notice: { fontSize: 11, lineHeight: 16 },

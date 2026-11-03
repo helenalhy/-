@@ -156,6 +156,24 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.match(customizer, /免費梳毛、摸摸牠、餵食或玩耍/);
 });
 
+test('dog outfit previews and controls stay clear and operable on narrow screens', () => {
+  const customizer = fs.readFileSync(path.join(__dirname, '../components/DogStaffCustomizer.tsx'), 'utf8');
+  const attendant = fs.readFileSync(path.join(__dirname, '../components/DogAttendant.tsx'), 'utf8');
+
+  assert.match(customizer, /<ScrollView\s+horizontal[\s\S]*?contentContainerStyle=\{styles\.dogPicker\}/);
+  assert.match(customizer, /dogChipPreview: \{ width: 54, height: 48/);
+  assert.match(customizer, /lookPreview: \{ width: 68, height: 60,[^}]*\}/);
+  assert.doesNotMatch(customizer.match(/lookPreview: \{[^}]*\}/)?.[0] ?? '', /overflow: 'hidden'/);
+  assert.match(customizer, /lookCard: \{ width: '48%', minHeight: 132/);
+  assert.match(customizer, /LOOKS_PER_PAGE = 10/);
+  assert.match(customizer, /tabs: \{ flexDirection: 'row', gap: 6 \}/);
+  assert.match(customizer, /tab: \{ flex: 1, minWidth: 0, minHeight: 44/);
+  assert.match(customizer, /actionRow: \{ flexDirection: 'row', flexWrap: 'wrap'/);
+  assert.match(customizer, /actionButton: \{ minHeight: 44/);
+  assert.match(customizer, /storeButton: \{ minHeight: 44/);
+  assert.match(attendant, /canvas: \{ width: 50, height: 45/);
+});
+
 test('all fourteen dogs get distinct illustrated care colors and five-second action animations', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const colorBlock = scene.match(/const DOG_CARE_COLOR_TOKENS:[\s\S]*?\n};/)?.[0];

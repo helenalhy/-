@@ -279,9 +279,12 @@ function createHarness() {
     await new Promise((resolve) => setImmediate(resolve));
   }
 
-  function runNextTimer() {
-    const timer = scheduledTimers.find((candidate) => !candidate.cleared);
-    assert.ok(timer, 'a future local-midnight timer is scheduled');
+  function runNextTimer(delay) {
+    const timer = scheduledTimers.find((candidate) =>
+      !candidate.cleared && (delay === undefined || candidate.delay === delay));
+    assert.ok(timer, delay === undefined
+      ? 'a future timer is scheduled'
+      : `a timer with a ${delay}ms delay is scheduled`);
     timer.cleared = true;
     const originalSetTimeout = global.setTimeout;
     const originalClearTimeout = global.clearTimeout;
@@ -481,6 +484,60 @@ test('today and first check-in reward roll over after local midnight without dup
     );
   } finally {
     global.Date = OriginalDate;
+  }
+});
+
+test('timezone changes refresh today while earned rewards stay on their original local date', async () => {
+  const OriginalDate = global.Date;
+  const originalTimezone = process.env.TZ;
+  process.env.TZ = 'UTC';
+  let clock = new OriginalDate('2026-03-31T23:30:00Z');
+  global.Date = class ControlledDate extends OriginalDate {
+    constructor(...args) {
+      if (args.length === 0) super(clock.getTime());
+      else super(...args);
+    }
+
+    static now() {
+      return clock.getTime();
+    }
+  };
+
+  try {
+    const app = createHarness();
+    app.renderProvider();
+    await app.runEffects('provider');
+    app.renderProvider();
+
+    assert.equal(app.contextExports.useHabits().today, '2026-03-31');
+    assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 20);
+    app.renderProvider();
+
+    process.env.TZ = 'Asia/Tokyo';
+    app.runNextTimer(30_000);
+    app.renderProvider();
+
+    let state = app.contextExports.useHabits();
+    assert.equal(state.today, '2026-04-01');
+    assert.equal(state.getCheckInReward('starter-walk'), 20);
+    assert.equal(state.coins, 20, 'changing timezone does not grant coins again');
+    assert.deepEqual(
+      JSON.parse(app.storage.get(storageKeys.mall)).rewardedCheckIns,
+      ['starter-walk:2026-03-31'],
+    );
+
+    process.env.TZ = 'UTC';
+    app.runNextTimer(30_000);
+    app.renderProvider();
+
+    state = app.contextExports.useHabits();
+    assert.equal(state.today, '2026-03-31');
+    assert.equal(state.getCheckInReward('starter-walk'), 0);
+    assert.equal(state.coins, 20, 'returning to the earned date cannot claim its reward twice');
+  } finally {
+    global.Date = OriginalDate;
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
   }
 });
 

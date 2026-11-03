@@ -514,22 +514,28 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     let midnightTimer: ReturnType<typeof setTimeout> | undefined;
+    let timezoneCheckTimer: ReturnType<typeof setTimeout> | undefined;
     const refreshDateAndScheduleMidnight = () => {
       if (!active) return;
       const now = new Date();
       const currentDate = getLocalDate(now);
       setToday((previousDateKey) => previousDateKey === currentDate ? previousDateKey : currentDate);
 
+      if (midnightTimer !== undefined) clearTimeout(midnightTimer);
       const nextMidnight = new Date(now);
       nextMidnight.setHours(24, 0, 0, 0);
       midnightTimer = setTimeout(
         refreshDateAndScheduleMidnight,
         Math.max(1, nextMidnight.getTime() - now.getTime()),
       );
+
+      if (timezoneCheckTimer !== undefined) clearTimeout(timezoneCheckTimer);
+      timezoneCheckTimer = setTimeout(refreshDateAndScheduleMidnight, 30_000);
     };
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       if (midnightTimer !== undefined) clearTimeout(midnightTimer);
+      if (timezoneCheckTimer !== undefined) clearTimeout(timezoneCheckTimer);
       refreshDateAndScheduleMidnight();
     });
 
@@ -537,6 +543,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
       if (midnightTimer !== undefined) clearTimeout(midnightTimer);
+      if (timezoneCheckTimer !== undefined) clearTimeout(timezoneCheckTimer);
       subscription.remove();
     };
   }, []);

@@ -20,8 +20,14 @@ new Function('require', 'module', 'exports', output)(
 
 test('daily motivational quotes are unique and include the user-provided lines', () => {
   const { DAILY_MOTIVATIONAL_QUOTES } = loaded.exports;
-  assert.ok(DAILY_MOTIVATIONAL_QUOTES.length >= 30);
+  assert.equal(DAILY_MOTIVATIONAL_QUOTES.length, 100);
   assert.equal(new Set(DAILY_MOTIVATIONAL_QUOTES).size, DAILY_MOTIVATIONAL_QUOTES.length);
+  assert.equal(DAILY_MOTIVATIONAL_QUOTES.filter((quote) => /[\u4e00-\u9fff]/.test(quote)).length, 50);
+  assert.equal(DAILY_MOTIVATIONAL_QUOTES.filter((quote) => /^[\x00-\x7f]+$/.test(quote)).length, 50);
+  DAILY_MOTIVATIONAL_QUOTES.forEach((quote, index) => {
+    if (index % 2 === 0) assert.match(quote, /[\u4e00-\u9fff]/);
+    else assert.match(quote, /^[\x00-\x7f]+$/);
+  });
   for (const quote of [
     '不經一番寒徹骨， 焉得梅花撲鼻香？',
     '莫問前程凶吉，但求落幕無悔。',

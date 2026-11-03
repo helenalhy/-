@@ -37,6 +37,12 @@ function NativeTabLayout() {
         />
         <NativeTabs.Trigger.Label>進度</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'gearshape', selected: 'gearshape.fill' }}
+        />
+        <NativeTabs.Trigger.Label>設定</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -112,6 +118,18 @@ function ClassicTabLayout() {
               <SymbolView name="chart.bar" tintColor={color} size={22} />
             ) : (
               <Feather name="bar-chart-2" size={21} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: '設定',
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="gearshape" tintColor={color} size={21} />
+            ) : (
+              <Feather name="settings" size={20} color={color} />
             ),
         }}
       />

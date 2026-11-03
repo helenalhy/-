@@ -54,6 +54,13 @@ function RootLayoutNav() {
           ...(reduceMotion === null || reduceMotion ? { animation: 'none' as const } : {}),
         }}
       />
+      <Stack.Screen
+        name="reminders"
+        options={{
+          headerShown: false,
+          animation: getMotionAwareAnimation(reduceMotion, 'slide_from_right'),
+        }}
+      />
     </Stack>
   );
 }
@@ -68,6 +75,29 @@ export default function RootLayout() {
     document.documentElement.style.backgroundColor = palette.light.background;
     if (document.body) {
       document.body.style.backgroundColor = palette.light.background;
+    }
+    const manifest = document.createElement('link');
+    manifest.rel = 'manifest';
+    manifest.href = '/manifest.json';
+    document.head.appendChild(manifest);
+    const themeColor = document.createElement('meta');
+    themeColor.name = 'theme-color';
+    themeColor.content = palette.light.background;
+    document.head.appendChild(themeColor);
+    const appleCapable = document.createElement('meta');
+    appleCapable.name = 'apple-mobile-web-app-capable';
+    appleCapable.content = 'yes';
+    document.head.appendChild(appleCapable);
+    const appleTitle = document.createElement('meta');
+    appleTitle.name = 'apple-mobile-web-app-title';
+    appleTitle.content = 'Momentum';
+    document.head.appendChild(appleTitle);
+    const appleIcon = document.createElement('link');
+    appleIcon.rel = 'apple-touch-icon';
+    appleIcon.href = '/icons/momentum-icon.png';
+    document.head.appendChild(appleIcon);
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(() => {});
     }
   }, []);
 

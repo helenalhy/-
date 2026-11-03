@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Momentum 我的商場",
+  "short_name": "Momentum",
+  "description": "每天完成一點目標，累積動力並打造自己的商場。",
+  "start_url": "/today",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFF8FB",
+  "theme_color": "#FFF8FB",
+  "icons": [
+    {
+      "src": "/icons/momentum-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

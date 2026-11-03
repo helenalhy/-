@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: progress
     description: Authenticated user progress synchronization
+  - name: reminders
+    description: Browser push reminders for daily check-ins
 paths:
   /healthz:
     get:
@@ -61,6 +63,75 @@ paths:
           description: Invalid progress snapshot
         "401":
           description: Authentication required
+  /reminders/config:
+    get:
+      operationId: getReminderConfig
+      tags: [reminders]
+      summary: Get the public browser push key
+      responses:
+        "200":
+          description: Push configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderConfig"
+        "503":
+          description: Push reminders are unavailable
+  /reminders/subscription:
+    put:
+      operationId: saveReminderSubscription
+      tags: [reminders]
+      summary: Save this browser's daily reminder settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderSubscriptionInput"
+      responses:
+        "200":
+          description: Reminder settings saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderSubscription"
+        "400":
+          description: Invalid reminder settings
+    post:
+      operationId: deleteReminderSubscription
+      tags: [reminders]
+      summary: Remove this browser's daily reminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderUnsubscribeInput"
+      responses:
+        "200":
+          description: Reminder disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderStatus"
+  /reminders/check-in:
+    put:
+      operationId: updateReminderCheckInStatus
+      tags: [reminders]
+      summary: Update whether this browser has checked in today
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderCheckInInput"
+      responses:
+        "200":
+          description: Check-in reminder status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderStatus"
 components:
   schemas:
     HealthStatus:
@@ -104,4 +175,87 @@ components:
         - exists
         - snapshot
         - updatedAt
+    ReminderConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        publicKey:
+          type: string
+          minLength: 1
+      required:
+        - publicKey
+    ReminderSubscriptionInput:
+      type: object
+      additionalProperties: false
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 4096
+        p256dh:
+          type: string
+          minLength: 16
+          maxLength: 512
+        auth:
+          type: string
+          minLength: 8
+          maxLength: 256
+        reminderTime:
+          type: string
+          pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$'
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required:
+        - endpoint
+        - p256dh
+        - auth
+        - reminderTime
+        - timeZone
+    ReminderUnsubscribeInput:
+      type: object
+      additionalProperties: false
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 4096
+      required:
+        - endpoint
+    ReminderCheckInInput:
+      type: object
+      additionalProperties: false
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 4096
+        hasCheckedInToday:
+          type: boolean
+      required:
+        - endpoint
+        - hasCheckedInToday
+    ReminderSubscription:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+        reminderTime:
+          type: string
+        timeZone:
+          type: string
+      required:
+        - enabled
+        - reminderTime
+        - timeZone
+    ReminderStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
 

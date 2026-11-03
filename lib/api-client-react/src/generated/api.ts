@@ -27,7 +27,13 @@ import type {
 import type {
   HealthStatus,
   ProgressRecord,
-  ProgressSnapshot
+  ProgressSnapshot,
+  ReminderCheckInInput,
+  ReminderConfig,
+  ReminderStatus,
+  ReminderSubscription,
+  ReminderSubscriptionInput,
+  ReminderUnsubscribeInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -346,5 +352,370 @@ export const useSaveProgress = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSaveProgressMutationOptions(options), queryClient);
+    }
+
+export const getGetReminderConfigUrl = () => {
+
+
+
+
+  return `/api/reminders/config`
+}
+
+/**
+ * @summary Get the public browser push key
+ */
+export const getReminderConfig = async ( options?: Parameters<typeof customFetch>[1]): Promise<ReminderConfig> => {
+
+  return customFetch<ReminderConfig>(getGetReminderConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReminderConfigQueryKey = () => {
+    return [
+    `/api/reminders/config`
+    ] as const;
+    }
+
+
+export const getGetReminderConfigQueryOptions = <TData = Awaited<ReturnType<typeof getReminderConfig>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getReminderConfig>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReminderConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReminderConfig>>> = ({ signal }) => getReminderConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReminderConfig>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetReminderConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getReminderConfig>>>
+export type GetReminderConfigQueryError = ErrorType<void>
+
+
+export function useGetReminderConfig<TData = Awaited<ReturnType<typeof getReminderConfig>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getReminderConfig>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getReminderConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getReminderConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetReminderConfig<TData = Awaited<ReturnType<typeof getReminderConfig>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getReminderConfig>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getReminderConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getReminderConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetReminderConfig<TData = Awaited<ReturnType<typeof getReminderConfig>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getReminderConfig>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the public browser push key
+ */
+
+export function useGetReminderConfig<TData = Awaited<ReturnType<typeof getReminderConfig>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getReminderConfig>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetReminderConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveReminderSubscriptionUrl = () => {
+
+
+
+
+  return `/api/reminders/subscription`
+}
+
+/**
+ * @summary Save this browser's daily reminder settings
+ */
+export const saveReminderSubscription = async (reminderSubscriptionInput: ReminderSubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<ReminderSubscription> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReminderSubscription>(getSaveReminderSubscriptionUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reminderSubscriptionInput)
+  }
+);}
+
+
+
+
+
+export const getSaveReminderSubscriptionMutationKey = () => ['saveReminderSubscription'] as const;
+
+export const getSaveReminderSubscriptionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveReminderSubscription>>, TError,SaveReminderSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveReminderSubscription>>, TError,SaveReminderSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getSaveReminderSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveReminderSubscription>>, SaveReminderSubscriptionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveReminderSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveReminderSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof saveReminderSubscription>>>
+    export type SaveReminderSubscriptionMutationBody = BodyType<ReminderSubscriptionInput>
+    export type SaveReminderSubscriptionMutationError = ErrorType<void>
+    export type SaveReminderSubscriptionMutationVariables = {data: BodyType<ReminderSubscriptionInput>}
+
+    /**
+ * @summary Save this browser's daily reminder settings
+ */
+export const useSaveReminderSubscription = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveReminderSubscription>>, TError,SaveReminderSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveReminderSubscription>>,
+        TError,
+        SaveReminderSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveReminderSubscriptionMutationOptions(options), queryClient);
+    }
+
+export const getDeleteReminderSubscriptionUrl = () => {
+
+
+
+
+  return `/api/reminders/subscription`
+}
+
+/**
+ * @summary Remove this browser's daily reminder
+ */
+export const deleteReminderSubscription = async (reminderUnsubscribeInput: ReminderUnsubscribeInput, options?: Parameters<typeof customFetch>[1]): Promise<ReminderStatus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReminderStatus>(getDeleteReminderSubscriptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reminderUnsubscribeInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteReminderSubscriptionMutationKey = () => ['deleteReminderSubscription'] as const;
+
+export const getDeleteReminderSubscriptionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReminderSubscription>>, TError,DeleteReminderSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteReminderSubscription>>, TError,DeleteReminderSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getDeleteReminderSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteReminderSubscription>>, DeleteReminderSubscriptionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  deleteReminderSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteReminderSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteReminderSubscription>>>
+    export type DeleteReminderSubscriptionMutationBody = BodyType<ReminderUnsubscribeInput>
+    export type DeleteReminderSubscriptionMutationError = ErrorType<unknown>
+    export type DeleteReminderSubscriptionMutationVariables = {data: BodyType<ReminderUnsubscribeInput>}
+
+    /**
+ * @summary Remove this browser's daily reminder
+ */
+export const useDeleteReminderSubscription = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReminderSubscription>>, TError,DeleteReminderSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteReminderSubscription>>,
+        TError,
+        DeleteReminderSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteReminderSubscriptionMutationOptions(options), queryClient);
+    }
+
+export const getUpdateReminderCheckInStatusUrl = () => {
+
+
+
+
+  return `/api/reminders/check-in`
+}
+
+/**
+ * @summary Update whether this browser has checked in today
+ */
+export const updateReminderCheckInStatus = async (reminderCheckInInput: ReminderCheckInInput, options?: Parameters<typeof customFetch>[1]): Promise<ReminderStatus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReminderStatus>(getUpdateReminderCheckInStatusUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reminderCheckInInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateReminderCheckInStatusMutationKey = () => ['updateReminderCheckInStatus'] as const;
+
+export const getUpdateReminderCheckInStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReminderCheckInStatus>>, TError,UpdateReminderCheckInStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateReminderCheckInStatus>>, TError,UpdateReminderCheckInStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateReminderCheckInStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateReminderCheckInStatus>>, UpdateReminderCheckInStatusMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateReminderCheckInStatus(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateReminderCheckInStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateReminderCheckInStatus>>>
+    export type UpdateReminderCheckInStatusMutationBody = BodyType<ReminderCheckInInput>
+    export type UpdateReminderCheckInStatusMutationError = ErrorType<unknown>
+    export type UpdateReminderCheckInStatusMutationVariables = {data: BodyType<ReminderCheckInInput>}
+
+    /**
+ * @summary Update whether this browser has checked in today
+ */
+export const useUpdateReminderCheckInStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReminderCheckInStatus>>, TError,UpdateReminderCheckInStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateReminderCheckInStatus>>,
+        TError,
+        UpdateReminderCheckInStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateReminderCheckInStatusMutationOptions(options), queryClient);
     }
 

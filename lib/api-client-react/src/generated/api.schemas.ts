@@ -27,3 +27,51 @@ export interface ProgressRecord {
   updatedAt: string | null;
 }
 
+export interface ReminderConfig {
+  /** @minLength 1 */
+  publicKey: string;
+}
+
+export interface ReminderSubscriptionInput {
+  /** @maxLength 4096 */
+  endpoint: string;
+  /**
+     * @minLength 16
+     * @maxLength 512
+     */
+  p256dh: string;
+  /**
+     * @minLength 8
+     * @maxLength 256
+     */
+  auth: string;
+  /** @pattern ^(?:[01]\d|2[0-3]):[0-5]\d$ */
+  reminderTime: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  timeZone: string;
+}
+
+export interface ReminderUnsubscribeInput {
+  /** @maxLength 4096 */
+  endpoint: string;
+}
+
+export interface ReminderCheckInInput {
+  /** @maxLength 4096 */
+  endpoint: string;
+  hasCheckedInToday: boolean;
+}
+
+export interface ReminderSubscription {
+  enabled: boolean;
+  reminderTime: string;
+  timeZone: string;
+}
+
+export interface ReminderStatus {
+  enabled: boolean;
+}
+

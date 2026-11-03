@@ -60,3 +60,78 @@ export const SaveProgressResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the public browser push key
+ */
+
+
+
+export const GetReminderConfigResponse = zod.object({
+  "publicKey": zod.string().min(1)
+})
+
+
+/**
+ * @summary Save this browser's daily reminder settings
+ */
+export const saveReminderSubscriptionBodyEndpointMax = 4096;
+
+export const saveReminderSubscriptionBodyP256dhMin = 16;
+export const saveReminderSubscriptionBodyP256dhMax = 512;
+
+export const saveReminderSubscriptionBodyAuthMin = 8;
+export const saveReminderSubscriptionBodyAuthMax = 256;
+
+export const saveReminderSubscriptionBodyReminderTimeRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
+export const saveReminderSubscriptionBodyTimeZoneMax = 80;
+
+
+
+export const SaveReminderSubscriptionBody = zod.object({
+  "endpoint": zod.string().url().max(saveReminderSubscriptionBodyEndpointMax),
+  "p256dh": zod.string().min(saveReminderSubscriptionBodyP256dhMin).max(saveReminderSubscriptionBodyP256dhMax),
+  "auth": zod.string().min(saveReminderSubscriptionBodyAuthMin).max(saveReminderSubscriptionBodyAuthMax),
+  "reminderTime": zod.string().regex(saveReminderSubscriptionBodyReminderTimeRegExp),
+  "timeZone": zod.string().min(1).max(saveReminderSubscriptionBodyTimeZoneMax)
+})
+
+export const SaveReminderSubscriptionResponse = zod.object({
+  "enabled": zod.boolean(),
+  "reminderTime": zod.string(),
+  "timeZone": zod.string()
+})
+
+
+/**
+ * @summary Remove this browser's daily reminder
+ */
+export const deleteReminderSubscriptionBodyEndpointMax = 4096;
+
+
+
+export const DeleteReminderSubscriptionBody = zod.object({
+  "endpoint": zod.string().url().max(deleteReminderSubscriptionBodyEndpointMax)
+})
+
+export const DeleteReminderSubscriptionResponse = zod.object({
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Update whether this browser has checked in today
+ */
+export const updateReminderCheckInStatusBodyEndpointMax = 4096;
+
+
+
+export const UpdateReminderCheckInStatusBody = zod.object({
+  "endpoint": zod.string().url().max(updateReminderCheckInStatusBodyEndpointMax),
+  "hasCheckedInToday": zod.boolean()
+})
+
+export const UpdateReminderCheckInStatusResponse = zod.object({
+  "enabled": zod.boolean()
+})
+
+

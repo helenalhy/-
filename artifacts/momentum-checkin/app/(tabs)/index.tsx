@@ -16,6 +16,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
+import { updateReminderCheckInStatus } from '@workspace/api-client-react';
+import { readReminderSettings } from '@/lib/reminder-settings';
 import {
   getStreak,
   useHabits,
@@ -166,6 +168,21 @@ export function TodayScreen() {
   async function handleToggle(habit: Habit) {
     try {
       const reward = await toggleCheckIn(habit.id);
+      if (Platform.OS === 'web') {
+        const wasDone = habit.checkIns.includes(today);
+        const hasCheckedInToday = !wasDone || habits.some(
+          (item) => item.id !== habit.id && item.checkIns.includes(today),
+        );
+        void readReminderSettings()
+          .then((settings) => {
+            if (!settings.enabled || !settings.endpoint) return;
+            return updateReminderCheckInStatus({
+              endpoint: settings.endpoint,
+              hasCheckedInToday,
+            });
+          })
+          .catch(() => {});
+      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (reward > 0) {
         Alert.alert(
@@ -224,6 +241,25 @@ export function TodayScreen() {
           </View>
           <Feather name="arrow-right" size={17} color={colors.primary} />
         </Pressable>
+
+        {Platform.OS === 'web' ? (
+          <Pressable
+            style={[styles.reminderShortcut, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => router.push('/reminders')}
+            accessibilityRole="button"
+            accessibilityLabel="設定每日打卡通知提醒"
+            testID="today-reminder-shortcut"
+          >
+            <View style={[styles.reminderShortcutIcon, { backgroundColor: colors.candyPink }]}>
+              <Feather name="bell" size={17} color={colors.primary} />
+            </View>
+            <View style={styles.mallShortcutCopy}>
+              <Text style={[styles.mallShortcutTitle, { color: colors.foreground }]}>設定打卡提醒</Text>
+              <Text style={[styles.mallShortcutSubtitle, { color: colors.mutedForeground }]}>每天選一個適合自己的時間</Text>
+            </View>
+            <Feather name="arrow-right" size={17} color={colors.primary} />
+          </Pressable>
+        ) : null}
 
         <View style={[styles.weekCard, { backgroundColor: colors.primary }]}>
           <View style={styles.weekHeader}>
@@ -433,8 +469,10 @@ const styles = StyleSheet.create({
   greeting: { marginTop: 28, marginBottom: 20 },
   greetingTitle: { fontSize: 25, fontWeight: '700', letterSpacing: -0.6 },
   greetingBody: { fontSize: 14, marginTop: 8, lineHeight: 21 },
-  mallShortcut: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 17, padding: 12, marginBottom: 17 },
+  mallShortcut: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 17, padding: 12, marginBottom: 10 },
   mallShortcutIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  reminderShortcut: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 17, borderWidth: 1, padding: 12, marginBottom: 17 },
+  reminderShortcutIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   mallShortcutCopy: { flex: 1 },
   mallShortcutTitle: { fontSize: 12, fontWeight: '700' },
   mallShortcutSubtitle: { fontSize: 10, marginTop: 4 },

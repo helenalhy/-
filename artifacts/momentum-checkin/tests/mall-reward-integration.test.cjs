@@ -1393,6 +1393,89 @@ test('redeemed cafe dogs walk, open free care actions, and stay outside the 48 i
   assert.equal(findByTestId(interactionTree, 'dog-staff-interaction-sheet'), undefined);
 });
 
+test('animal ear hat filter finds Huahua and Tangtang styles without saving a look or spending coins', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 500,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  const huahuaId = 'general-fluffy-staff-huahua';
+  const tangtangId = 'general-fluffy-staff-tangtang';
+  let interiorTree = app.renderShopInterior();
+  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-redeem-fluffy-staff-huahua');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-tab-accessory');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-accessory-2');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-select-fluffy-staff-tangtang');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-redeem-fluffy-staff-tangtang');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-select-fluffy-staff-huahua');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+  const coinsBeforeFilter = app.contextExports.useHabits().coins;
+  const huahuaLookBeforeFilter = { ...app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[huahuaId] };
+  await press(customizerTree, 'dog-staff-tab-accessory');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.ok(findByTestId(customizerTree, 'dog-staff-accessory-filter-all'));
+  assert.ok(findByTestId(customizerTree, 'dog-staff-accessory-filter-animal-ears'));
+  await press(customizerTree, 'dog-staff-accessory-filter-animal-ears');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+  assert.match(textContent(customizerTree), /花花・獅子耳朵帽/);
+  assert.doesNotMatch(textContent(customizerTree), /草莓蝴蝶結/);
+  assert.equal(app.contextExports.useHabits().coins, coinsBeforeFilter, 'changing the filter does not spend coins');
+  assert.deepEqual(
+    app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[huahuaId],
+    huahuaLookBeforeFilter,
+    'changing the filter does not save or replace the worn accessory',
+  );
+  assert.match(textContent(findByTestId(customizerTree, 'dog-staff-look-page')), /第 1 \/ 1 頁/);
+  assert.equal(
+    findNodes(customizerTree, (node) => node.props?.testID?.startsWith('dog-staff-look-fluffy-staff-huahua-accessory-')).length,
+    10,
+    'all ten animal ear hats fit on the filtered page',
+  );
+
+  await press(customizerTree, 'dog-staff-select-fluffy-staff-tangtang');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.match(textContent(customizerTree), /糖糖・小熊耳朵帽/);
+  assert.equal(app.contextExports.useHabits().coins, coinsBeforeFilter, 'switching dogs while filtered also remains free');
+  assert.equal(
+    app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks?.[tangtangId],
+    undefined,
+    'filtering does not change Tangtang’s saved accessory either',
+  );
+
+  assert.match(textContent(customizerTree), /熊耳朵帽/);
+  assert.equal(
+    findNodes(customizerTree, (node) => node.props?.testID?.startsWith('dog-staff-look-fluffy-staff-tangtang-accessory-')).length,
+    10,
+    'all ten animal ear hats are available to Tangtang without paging',
+  );
+});
+
 test('dog outfits persist when walking dogs move between all six areas, while the 48 decor slots remain independent', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');

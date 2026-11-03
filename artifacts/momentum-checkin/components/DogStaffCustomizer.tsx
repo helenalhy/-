@@ -16,6 +16,7 @@ import { SHOP_INTERIOR_AREAS } from '@/constants/mall-shop-interior';
 import { useColors } from '@/hooks/useColors';
 
 type LookTab = 'outfit' | 'theme' | 'accessory';
+type AccessoryFilter = 'all' | 'animal-ears';
 const LOOKS_PER_PAGE = 10;
 
 export function DogStaffCustomizer({
@@ -49,6 +50,7 @@ export function DogStaffCustomizer({
     initialDog ? areaPlacements?.[initialDog.decorationId] ?? 'main' : 'main',
   );
   const [activeTab, setActiveTab] = useState<LookTab>('outfit');
+  const [accessoryFilter, setAccessoryFilter] = useState<AccessoryFilter>('all');
   const [page, setPage] = useState(1);
   const [savingLook, setSavingLook] = useState(false);
   const [working, setWorking] = useState(false);
@@ -74,7 +76,7 @@ export function DogStaffCustomizer({
   const basicOutfits = catalog.outfits.filter(({ theme }) => !theme);
   const themedOutfits = catalog.outfits.filter(({ theme }) => !!theme);
   const choices = activeTab === 'accessory'
-    ? catalog.accessories
+    ? catalog.accessories.filter(({ shape }) => accessoryFilter === 'all' || shape === 'animal-ears')
     : activeTab === 'theme' ? themedOutfits : basicOutfits;
   const pageCount = Math.ceil(choices.length / LOOKS_PER_PAGE);
   const visibleChoices = choices.slice((page - 1) * LOOKS_PER_PAGE, page * LOOKS_PER_PAGE);
@@ -316,6 +318,7 @@ export function DogStaffCustomizer({
                   accessibilityState={{ selected }}
                   onPress={() => {
                     setActiveTab(tab);
+                    if (tab === 'accessory') setAccessoryFilter('all');
                     setPage(1);
                     setNotice('');
                   }}
@@ -326,6 +329,42 @@ export function DogStaffCustomizer({
               );
             })}
           </View>
+
+          {activeTab === 'accessory' ? (
+            <View style={styles.accessoryFilters} accessibilityLabel="配飾分類">
+              {([
+                ['all', `全部 ${catalog.accessories.length} 款`],
+                ['animal-ears', `動物耳朵帽 ${catalog.accessories.filter(({ shape }) => shape === 'animal-ears').length} 款`],
+              ] as const).map(([filter, label]) => {
+                const selected = accessoryFilter === filter;
+                return (
+                  <Pressable
+                    key={filter}
+                    testID={`dog-staff-accessory-filter-${filter}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    accessibilityState={{ selected }}
+                    onPress={() => {
+                      setAccessoryFilter(filter);
+                      setPage(1);
+                      setNotice('');
+                    }}
+                    style={[
+                      styles.accessoryFilter,
+                      {
+                        backgroundColor: selected ? colors.secondary : colors.background,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.accessoryFilterText, { color: selected ? colors.primary : colors.mutedForeground }]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
 
           <View style={styles.lookPager}>
             <Text testID="dog-staff-look-page" style={[styles.pageCount, { color: colors.mutedForeground }]}>
@@ -444,6 +483,9 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', gap: 6 },
   tab: { flex: 1, minWidth: 0, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tabText: { fontSize: 10, fontWeight: '800', textAlign: 'center', lineHeight: 14 },
+  accessoryFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  accessoryFilter: { minHeight: 38, borderWidth: 1, borderRadius: 12, justifyContent: 'center', paddingHorizontal: 12 },
+  accessoryFilterText: { fontSize: 10, fontWeight: '800' },
   lookPager: { minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pageCount: { fontSize: 10, fontWeight: '700' },
   pageActions: { flexDirection: 'row', gap: 7 },

@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Image,
   Platform,
   Pressable,
@@ -17,6 +19,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuth, useSSO } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -37,7 +40,63 @@ export default function WelcomeScreen() {
   const { startSSOFlow } = useSSO();
   const [isBusy, setIsBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
+  const cloudDrift = useRef(new Animated.Value(0)).current;
+  const mallFloat = useRef(new Animated.Value(0)).current;
+  const sparklePulse = useRef(new Animated.Value(0)).current;
   useWarmUpBrowser();
+
+  useEffect(() => {
+    if (reducedMotion !== false) {
+      cloudDrift.setValue(0);
+      mallFloat.setValue(0);
+      sparklePulse.setValue(0);
+      return;
+    }
+
+    const useNativeDriver = Platform.OS !== 'web';
+    const clouds = Animated.loop(Animated.sequence([
+      Animated.timing(cloudDrift, {
+        toValue: 1,
+        duration: 5200,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver,
+      }),
+      Animated.timing(cloudDrift, {
+        toValue: 0,
+        duration: 5200,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver,
+      }),
+    ]));
+    const building = Animated.loop(Animated.sequence([
+      Animated.timing(mallFloat, {
+        toValue: 1,
+        duration: 1900,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver,
+      }),
+      Animated.timing(mallFloat, {
+        toValue: 0,
+        duration: 1900,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver,
+      }),
+    ]));
+    const sparkles = Animated.loop(Animated.sequence([
+      Animated.timing(sparklePulse, { toValue: 1, duration: 950, useNativeDriver }),
+      Animated.timing(sparklePulse, { toValue: 0, duration: 950, useNativeDriver }),
+    ]));
+
+    clouds.start();
+    building.start();
+    sparkles.start();
+    return () => {
+      clouds.stop();
+      building.stop();
+      sparkles.stop();
+    };
+  }, [cloudDrift, mallFloat, reducedMotion, sparklePulse]);
 
   useEffect(() => {
     if (isLoaded && isSignedIn) router.replace('/mall');
@@ -84,6 +143,13 @@ export default function WelcomeScreen() {
     );
   }
 
+  const cloudLeftX = cloudDrift.interpolate({ inputRange: [0, 1], outputRange: [-8, 9] });
+  const cloudRightX = cloudDrift.interpolate({ inputRange: [0, 1], outputRange: [8, -10] });
+  const mallOffsetY = mallFloat.interpolate({ inputRange: [0, 1], outputRange: [0, -4] });
+  const mallScale = mallFloat.interpolate({ inputRange: [0, 1], outputRange: [1, 1.012] });
+  const sparkleOpacity = sparklePulse.interpolate({ inputRange: [0, 1], outputRange: [0.48, 1] });
+  const sparkleScale = sparklePulse.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1.18] });
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -100,9 +166,9 @@ export default function WelcomeScreen() {
             </View>
           </View>
           <View style={styles.mallIllustration}>
-            <View style={[styles.cloud, styles.cloudLeft]} />
-            <View style={[styles.cloud, styles.cloudRight]} />
-            <View style={styles.building}>
+            <Animated.View style={[styles.cloud, styles.cloudLeft, { transform: [{ translateX: cloudLeftX }] }]} />
+            <Animated.View style={[styles.cloud, styles.cloudRight, { transform: [{ translateX: cloudRightX }] }]} />
+            <Animated.View style={[styles.building, { transform: [{ translateY: mallOffsetY }, { scale: mallScale }] }]}>
               <View style={styles.roof}>
                 <Feather name="star" size={15} color="#E8A344" />
                 <Text style={styles.roofText}>MALL</Text>
@@ -117,9 +183,13 @@ export default function WelcomeScreen() {
                 <View style={styles.doorPanel} />
                 <View style={styles.doorPanel} />
               </View>
-            </View>
-            <View style={styles.sparkleLeft}><Feather name="heart" size={16} color="#E783AE" /></View>
-            <View style={styles.sparkleRight}><Feather name="star" size={16} color="#E9AE55" /></View>
+            </Animated.View>
+            <Animated.View style={[styles.sparkleLeft, { opacity: sparkleOpacity, transform: [{ scale: sparkleScale }] }]}>
+              <Feather name="heart" size={16} color="#E783AE" />
+            </Animated.View>
+            <Animated.View style={[styles.sparkleRight, { opacity: sparkleOpacity, transform: [{ scale: sparkleScale }] }]}>
+              <Feather name="star" size={16} color="#E9AE55" />
+            </Animated.View>
           </View>
           <Text style={[styles.title, { color: colors.foreground }]}>
             每天完成一點點，{'\n'}一起打造你的夢想商場

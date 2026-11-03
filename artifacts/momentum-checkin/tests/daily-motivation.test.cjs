@@ -23,8 +23,9 @@ test('daily motivational quotes are unique and include the user-provided lines',
   assert.ok(DAILY_MOTIVATIONAL_QUOTES.length >= 30);
   assert.equal(new Set(DAILY_MOTIVATIONAL_QUOTES).size, DAILY_MOTIVATIONAL_QUOTES.length);
   for (const quote of [
-    '不經一番寒徹骨，焉得梅花撲鼻香?',
+    '不經一番寒徹骨， 焉得梅花撲鼻香？',
     '莫問前程凶吉，但求落幕無悔。',
+    '不經歷風雨，怎看見彩虹。',
     'If you want the rainbow, you have to tolerate the rain.',
     'Failure is a success if we learn from it.',
   ]) {

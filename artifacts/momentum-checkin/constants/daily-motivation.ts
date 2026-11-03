@@ -1,7 +1,8 @@
 export const DAILY_MOTIVATIONAL_QUOTES = [
   '不需要和別人比較。你只要比昨天更靠近自己一點。',
-  '不經一番寒徹骨，焉得梅花撲鼻香?',
+  '不經一番寒徹骨， 焉得梅花撲鼻香？',
   '莫問前程凶吉，但求落幕無悔。',
+  '不經歷風雨，怎看見彩虹。',
   'If you want the rainbow, you have to tolerate the rain.',
   'Failure is a success if we learn from it.',
   '日日行，不怕千萬里；常常做，不怕千萬事。',

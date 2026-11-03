@@ -1224,6 +1224,91 @@ test('search result explains matches split across the name and description', () 
   );
 });
 
+test('long search match reasons wrap without truncating location, status or card actions', () => {
+  const catalog = [
+    {
+      id: 'long-owned-match',
+      floor: 12,
+      name: '春日花園 SerenityBoutique',
+      description: 'CrystalGarden Atelier 限定裝飾',
+      category: 'shop',
+      price: 80,
+      ticketCost: 0,
+    },
+    {
+      id: 'long-unaffordable-match',
+      floor: 8,
+      name: '月光露台',
+      description: 'VelvetMoonlight GardenDecoration',
+      category: 'decor',
+      price: 180,
+      ticketCost: 0,
+    },
+  ];
+  const app = mount({
+    coins: 20,
+    purchasedItems: ['long-owned-match'],
+    mallPlacements: { 'floor-12-left': 'long-owned-match' },
+  }, catalog);
+
+  app.find('mall-search-input').props.onChangeText(
+    '春日花園 SerenityBoutique CrystalGarden Atelier 限定裝飾',
+  );
+  app.render();
+
+  const match = app.find('search-item-match-long-owned-match');
+  assert.equal(
+    textContent(match),
+    '名稱符合「春日花園、serenityboutique」 · 描述符合「crystalgarden、atelier、限定裝飾」',
+    'all matching keywords remain in the potentially multi-line reason',
+  );
+  assert.equal(match.props.numberOfLines, undefined, 'the match reason has no line clamp');
+  const web = mount({
+    coins: 20,
+    purchasedItems: ['long-owned-match'],
+    mallPlacements: { 'floor-12-left': 'long-owned-match' },
+  }, catalog, 'web');
+  web.find('mall-search-input').props.onChangeText(
+    '春日花園 SerenityBoutique CrystalGarden Atelier 限定裝飾',
+  );
+  web.render();
+  assert.ok(
+    web.find('search-item-match-long-owned-match').props.style.some((style) => style?.wordBreak === 'break-word'),
+    'long unbroken English keywords wrap in the web card',
+  );
+  assert.equal(app.find('search-item-location-long-owned-match').props.numberOfLines, undefined);
+  assert.equal(
+    textContent(app.find('search-item-location-long-owned-match')),
+    '12F · 主商場 · 店面區左側 · 80 金幣',
+    'the full placement and price remain visible on a search card',
+  );
+  assert.equal(
+    textContent(app.find('search-item-status-long-owned-match')),
+    '已兌換 · 已擺放 · 免費搬動',
+    'the redeemed state remains visible after the long match reason',
+  );
+  assert.ok(app.find('search-location-long-owned-match'), 'the view-location action remains rendered');
+  assert.ok(app.find('search-select-long-owned-match'), 'the select action remains rendered');
+  assert.equal(app.styles.catalogCard.height, undefined, 'the card grows with wrapped text instead of using a fixed height');
+  assert.equal(app.styles.searchMatchReason.flexShrink, 1);
+  assert.equal(app.styles.catalogActions.flexShrink, 0, 'action buttons do not shrink out of view');
+  assert.equal(app.styles.catalogIcon.flexShrink, 0, 'the result icon does not steal action width');
+
+  app.find('mall-search-input').props.onChangeText('月光露台 VelvetMoonlight GardenDecoration');
+  app.render();
+  assert.equal(
+    textContent(app.find('search-item-status-long-unaffordable-match')),
+    '未兌換 · 選取後前往所屬樓層試擺',
+  );
+  assert.equal(
+    textContent(app.find('search-item-match-long-unaffordable-match')),
+    '名稱符合「月光露台」 · 描述符合「velvetmoonlight、gardendecoration」',
+  );
+  assert.ok(app.nodes().some((node) => textContent(node) === '還差 160 金幣'), 'the insufficient-coins label stays in normal card flow');
+  assert.equal(app.styles.searchMissingText.position, undefined, 'the shortage label cannot overlay the search status');
+  assert.ok(app.find('search-select-long-unaffordable-match'), 'the purchase-preview action remains available');
+});
+
 test('search selection and cancellation preserve coins, ownership and placements', async () => {
   const target = mallCatalog.MALL_ITEMS.find((item) => item.floor === 10 && item.category === 'shop');
   const startingCoins = 400;

@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextStyle,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1366,7 +1367,7 @@ export default function MallScreen() {
                   </View>
                   <Text
                     testID={isSearching ? `search-item-location-${item.id}` : undefined}
-                    numberOfLines={2}
+                    numberOfLines={isSearching ? undefined : 2}
                     style={[styles.itemDescription, { color: colors.mutedForeground }]}
                   >
                     {isSearching
@@ -1384,7 +1385,11 @@ export default function MallScreen() {
                       testID={`search-item-match-${item.id}`}
                       accessibilityRole="text"
                       accessibilityLabel={getMallSearchMatchReason(item, searchTerms)}
-                      style={[styles.searchMatchReason, { color: colors.primary }]}
+                      style={[
+                        styles.searchMatchReason,
+                        Platform.OS === 'web' ? { wordBreak: 'break-word' } as TextStyle : null,
+                        { color: colors.primary },
+                      ]}
                     >
                       {getMallSearchMatchReason(item, searchTerms)}
                     </Text>
@@ -1393,6 +1398,11 @@ export default function MallScreen() {
                     <View style={styles.costPart}><Feather name="circle" size={11} color={colors.candyCaramelDark} /><Text style={[styles.costText, { color: colors.candyCaramelDark }]}>{item.price}</Text></View>
                     <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>
                   </View>}
+                  {isSearching && !owned && !enoughCoins && (
+                    <Text style={[styles.searchMissingText, { color: colors.mutedForeground }]}>
+                      還差 {item.price - coins} 金幣
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.catalogActions}>
                   {owned && item.category === 'shop' && (
@@ -1449,7 +1459,7 @@ export default function MallScreen() {
                     <Feather name={isSearching ? 'arrow-up-right' : showCollection ? 'map-pin' : owned ? 'check' : 'plus'} size={17} color={owned ? colors.primary : colors.primaryForeground} />
                   </Pressable>
                 </View>
-                {!owned && !enoughCoins && (
+                {!isSearching && !owned && !enoughCoins && (
                   <Text style={[styles.missingText, { color: colors.mutedForeground }]}>
                     {`還差 ${item.price - coins} 金幣`}
                   </Text>
@@ -1592,17 +1602,18 @@ const styles = StyleSheet.create({
   filterPill: { paddingHorizontal: 13, paddingVertical: 8, borderWidth: 1, borderRadius: 99 },
   filterText: { fontSize: 11, fontWeight: '600' },
   catalogList: { gap: 9 },
-  catalogActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  catalogActions: { flexDirection: 'row', flexShrink: 0, alignItems: 'center', gap: 6 },
   locationButton: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 8, borderRadius: 12 },
   locationButtonText: { fontSize: 10, fontWeight: '700' },
   catalogCard: { minHeight: 83, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 17, padding: 10, gap: 10 },
-  catalogIcon: { width: 43, height: 43, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  catalogInfo: { flex: 1, minWidth: 0 },
+  catalogIcon: { width: 43, height: 43, flexShrink: 0, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  catalogInfo: { flex: 1, flexShrink: 1, minWidth: 0 },
   catalogNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   itemName: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   itemType: { overflow: 'hidden', borderRadius: 7, paddingHorizontal: 6, paddingVertical: 3, fontSize: 8, fontWeight: '600' },
   itemDescription: { fontSize: 9, marginTop: 4 },
-  searchMatchReason: { fontSize: 9, fontWeight: '600', marginTop: 3 },
+  searchMatchReason: { flexShrink: 1, fontSize: 9, lineHeight: 13, fontWeight: '600', marginTop: 3 },
+  searchMissingText: { fontSize: 8, marginTop: 4 },
   costRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
   costPart: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   costText: { fontSize: 10, fontWeight: '700' },

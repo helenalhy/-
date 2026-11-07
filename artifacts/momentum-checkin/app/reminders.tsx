@@ -137,6 +137,19 @@ export default function ReminderSettingsScreen() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const refreshPermission = () => {
+      if ('Notification' in window) setPermission(Notification.permission);
+    };
+    window.addEventListener('focus', refreshPermission);
+    document.addEventListener('visibilitychange', refreshPermission);
+    return () => {
+      window.removeEventListener('focus', refreshPermission);
+      document.removeEventListener('visibilitychange', refreshPermission);
+    };
+  }, []);
+
   function adjustTime(index: number, changeMinutes: number) {
     const currentTime = settings.reminderTimes[index];
     if (!currentTime) return;

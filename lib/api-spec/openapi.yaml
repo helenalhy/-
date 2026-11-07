@@ -132,6 +132,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReminderStatus"
+  /reminders/snooze:
+    put:
+      operationId: scheduleReminderSnooze
+      tags: [reminders]
+      summary: Schedule a one-time reminder for a habit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderSnoozeInput"
+      responses:
+        "200":
+          description: One-time reminder scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderSnoozeStatus"
+        "400":
+          description: Invalid snooze request
+        "404":
+          description: Browser push reminder is not enabled
 components:
   schemas:
     HealthStatus:
@@ -265,11 +287,47 @@ components:
           type: string
           format: uri
           maxLength: 4096
+        habitId:
+          type: string
+          minLength: 1
+          maxLength: 128
         hasCheckedInToday:
           type: boolean
       required:
         - endpoint
         - hasCheckedInToday
+    ReminderSnoozeInput:
+      type: object
+      additionalProperties: false
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          maxLength: 4096
+        habitId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        habitTitle:
+          type: string
+          minLength: 1
+          maxLength: 120
+        fireAt:
+          type: string
+          format: date-time
+      required:
+        - endpoint
+        - habitId
+        - habitTitle
+        - fireAt
+    ReminderSnoozeStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        scheduled:
+          type: boolean
+      required:
+        - scheduled
     ReminderSubscription:
       type: object
       additionalProperties: false

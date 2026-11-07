@@ -87,7 +87,32 @@ export interface ReminderUnsubscribeInput {
 export interface ReminderCheckInInput {
   /** @maxLength 4096 */
   endpoint: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  habitId?: string;
   hasCheckedInToday: boolean;
+}
+
+export interface ReminderSnoozeInput {
+  /** @maxLength 4096 */
+  endpoint: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  habitId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  habitTitle: string;
+  fireAt: string;
+}
+
+export interface ReminderSnoozeStatus {
+  scheduled: boolean;
 }
 
 export interface ReminderSubscription {

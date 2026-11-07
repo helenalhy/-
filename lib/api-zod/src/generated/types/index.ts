@@ -14,6 +14,8 @@ export * from './progressSnapshotHabitsItem';
 export * from './progressSnapshotMall';
 export * from './reminderCheckInInput';
 export * from './reminderConfig';
+export * from './reminderSnoozeInput';
+export * from './reminderSnoozeStatus';
 export * from './reminderStatus';
 export * from './reminderSubscription';
 export * from './reminderSubscriptionInput';

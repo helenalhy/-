@@ -28,6 +28,73 @@ export interface DueReminderBatch {
   habitTitles: string[];
 }
 
+export interface SnoozedReminderRecord {
+  status: "pending" | "sent";
+  habitId: string;
+  habitTitle: string;
+  fireAt: string;
+  localDate: string;
+}
+
+export interface StoredSnoozedReminder {
+  key: string;
+  rawValue: string;
+  record: SnoozedReminderRecord;
+}
+
+export function getStoredSnoozedReminders(
+  values: Record<string, string> | null,
+): StoredSnoozedReminder[] {
+  return Object.entries(values ?? {}).flatMap(([key, rawValue]) => {
+    if (!key.startsWith("snooze:")) return [];
+    try {
+      const value: unknown = JSON.parse(rawValue);
+      if (!value || typeof value !== "object") return [];
+      const record = value as Partial<SnoozedReminderRecord>;
+      if (
+        (record.status !== "pending" && record.status !== "sent")
+        || typeof record.habitId !== "string"
+        || key !== `snooze:${record.habitId}`
+        || typeof record.habitTitle !== "string"
+        || typeof record.fireAt !== "string"
+        || !Number.isFinite(Date.parse(record.fireAt))
+        || typeof record.localDate !== "string"
+      ) return [];
+      return [{
+        key,
+        rawValue,
+        record: record as SnoozedReminderRecord,
+      }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+export function serializeSnoozedReminder(record: SnoozedReminderRecord): string {
+  return JSON.stringify(record);
+}
+
+export function getActiveSnoozedReminders(
+  values: Record<string, string> | null,
+  localDate: string,
+): StoredSnoozedReminder[] {
+  return getStoredSnoozedReminders(values)
+    .filter((entry) => entry.record.localDate === localDate);
+}
+
+export function getDueSnoozedReminders(
+  values: Record<string, string> | null,
+  localDate: string,
+  now: Date,
+): StoredSnoozedReminder[] {
+  return getActiveSnoozedReminders(values, localDate)
+    .filter((entry) => (
+      entry.record.status === "pending"
+      && Date.parse(entry.record.fireAt) <= now.getTime()
+    ));
+}
+
 export function getDueReminderBatch(input: DueReminderBatchInput): DueReminderBatch | null {
   const sentDates = input.lastSentLocalDates ?? {};
   const globalTimes = input.schedules

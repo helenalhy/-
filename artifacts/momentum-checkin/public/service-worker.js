@@ -27,7 +27,7 @@ self.addEventListener('push', (event) => {
     body: message.body,
     icon: '/icons/momentum-icon.png',
     badge: '/icons/momentum-icon.png',
-    tag: 'momentum-daily-check-in',
+    tag: message.tag || 'momentum-daily-check-in',
     renotify: false,
     data: { url: message.url },
   }));

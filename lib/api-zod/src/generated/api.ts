@@ -158,15 +158,41 @@ export const DeleteReminderSubscriptionResponse = zod.object({
  */
 export const updateReminderCheckInStatusBodyEndpointMax = 4096;
 
+export const updateReminderCheckInStatusBodyHabitIdMax = 128;
+
 
 
 export const UpdateReminderCheckInStatusBody = zod.object({
   "endpoint": zod.string().url().max(updateReminderCheckInStatusBodyEndpointMax),
+  "habitId": zod.string().min(1).max(updateReminderCheckInStatusBodyHabitIdMax).optional(),
   "hasCheckedInToday": zod.boolean()
 })
 
 export const UpdateReminderCheckInStatusResponse = zod.object({
   "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Schedule a one-time reminder for a habit
+ */
+export const scheduleReminderSnoozeBodyEndpointMax = 4096;
+
+export const scheduleReminderSnoozeBodyHabitIdMax = 128;
+
+export const scheduleReminderSnoozeBodyHabitTitleMax = 120;
+
+
+
+export const ScheduleReminderSnoozeBody = zod.object({
+  "endpoint": zod.string().url().max(scheduleReminderSnoozeBodyEndpointMax),
+  "habitId": zod.string().min(1).max(scheduleReminderSnoozeBodyHabitIdMax),
+  "habitTitle": zod.string().min(1).max(scheduleReminderSnoozeBodyHabitTitleMax),
+  "fireAt": zod.coerce.date()
+})
+
+export const ScheduleReminderSnoozeResponse = zod.object({
+  "scheduled": zod.boolean()
 })
 
 

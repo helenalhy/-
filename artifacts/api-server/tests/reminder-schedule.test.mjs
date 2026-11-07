@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getDueReminderBatch, getDueReminderTimes } from "../src/lib/reminder-schedule.ts";
+import {
+  getActiveSnoozedReminders,
+  getDueReminderBatch,
+  getDueReminderTimes,
+  getDueSnoozedReminders,
+} from "../src/lib/reminder-schedule.ts";
 
 test("returns only reminder slots that have passed and have not been sent", () => {
   assert.deepEqual(
@@ -98,5 +103,55 @@ test("legacy global sent marker does not suppress a newly configured habit remin
       keysToMarkSent: ["habit:walk:18:00"],
       habitTitles: ["晚飯後散步"],
     },
+  );
+});
+
+test("a same-day snooze suppresses that habit's recurring reminder until it fires", () => {
+  const stored = {
+    "snooze:walk": JSON.stringify({
+      status: "pending",
+      habitId: "walk",
+      habitTitle: "晚飯後散步",
+      fireAt: "2026-11-03T10:30:00.000Z",
+      localDate: "2026-11-03",
+    }),
+    "snooze:read": JSON.stringify({
+      status: "sent",
+      habitId: "read",
+      habitTitle: "閱讀",
+      fireAt: "2026-11-03T08:00:00.000Z",
+      localDate: "2026-11-03",
+    }),
+  };
+
+  assert.deepEqual(
+    getActiveSnoozedReminders(stored, "2026-11-03").map((item) => item.record.habitId),
+    ["walk", "read"],
+  );
+  assert.deepEqual(
+    getDueSnoozedReminders(stored, "2026-11-03", new Date("2026-11-03T10:00:00.000Z")),
+    [],
+  );
+  assert.deepEqual(
+    getDueSnoozedReminders(stored, "2026-11-03", new Date("2026-11-03T10:30:00.000Z"))
+      .map((item) => item.record.habitId),
+    ["walk"],
+  );
+});
+
+test("snoozes from another local day are neither active nor due", () => {
+  const stored = {
+    "snooze:walk": JSON.stringify({
+      status: "pending",
+      habitId: "walk",
+      habitTitle: "晚飯後散步",
+      fireAt: "2026-11-03T23:50:00.000Z",
+      localDate: "2026-11-03",
+    }),
+  };
+  assert.deepEqual(getActiveSnoozedReminders(stored, "2026-11-04"), []);
+  assert.deepEqual(
+    getDueSnoozedReminders(stored, "2026-11-04", new Date("2026-11-04T00:20:00.000Z")),
+    [],
   );
 });

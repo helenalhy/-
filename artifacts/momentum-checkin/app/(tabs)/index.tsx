@@ -17,9 +17,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
-import { updateReminderCheckInStatus } from '@workspace/api-client-react';
+import { scheduleReminderSnooze, updateReminderCheckInStatus } from '@workspace/api-client-react';
 import { readReminderSettings } from '@/lib/reminder-settings';
 import { canMakeUpYesterday, getPreviousLocalDate, getPreviousScheduledDate, getWeekday, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
+import { DogCompanionPicker, DEFAULT_DOG_COMPANION_ID } from '@/components/DogCompanionPicker';
+import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
+import { recommendMinimumAction } from '@/lib/minimum-action-suggestions';
 import {
   getStreak,
   useHabits,
@@ -44,11 +47,24 @@ function getWeek(todayKey: string) {
   });
 }
 
-function TwoMinuteStarterModal({ habit, reduceMotion, onClose, onCompleteMinimumAction }: {
+const SNOOZE_DELAY_MINUTES = 30;
+
+function TwoMinuteStarterModal({
+  habit,
+  reduceMotion,
+  minimumActionIsRecommendation,
+  onClose,
+  onCompleteMinimumAction,
+  onSnooze,
+  onOpenReminderSettings,
+}: {
   habit: Habit;
   reduceMotion: boolean | null;
+  minimumActionIsRecommendation: boolean;
   onClose: () => void;
   onCompleteMinimumAction?: () => Promise<boolean>;
+  onSnooze: () => Promise<void>;
+  onOpenReminderSettings: () => void;
 }) {
   const colors = useColors();
   const [endAt, setEndAt] = useState(() => Date.now() + 120_000);
@@ -57,6 +73,13 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose, onCompleteMinimum
   const [pausedRemaining, setPausedRemaining] = useState(120_000);
   const [completed, setCompleted] = useState(false);
   const [isRecordingMinimumAction, setIsRecordingMinimumAction] = useState(false);
+  const [minimumActionRecorded, setMinimumActionRecorded] = useState(false);
+  const [focusMode, setFocusMode] = useState<'normal' | 'minimum'>(habit.minimumAction ? 'minimum' : 'normal');
+  const [selectedDogId, setSelectedDogId] = useState(DEFAULT_DOG_COMPANION_ID);
+  const [showRecoveryActions, setShowRecoveryActions] = useState(false);
+  const [isSchedulingSnooze, setIsSchedulingSnooze] = useState(false);
+  const [snoozeScheduled, setSnoozeScheduled] = useState(false);
+  const [rescueError, setRescueError] = useState('');
   const remainingMs = paused ? pausedRemaining : Math.max(0, endAt - now);
 
   useEffect(() => {
@@ -74,6 +97,8 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose, onCompleteMinimum
   function pause() {
     setPausedRemaining(remainingMs);
     setPaused(true);
+    setShowRecoveryActions(true);
+    setRescueError('');
   }
 
   function resume() {
@@ -92,11 +117,58 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose, onCompleteMinimum
     setCompleted(false);
   }
 
+  function requestClose() {
+    if (completed || minimumActionRecorded || snoozeScheduled) {
+      onClose();
+      return;
+    }
+    if (!paused) {
+      setPausedRemaining(remainingMs);
+      setPaused(true);
+    }
+    setShowRecoveryActions(true);
+    setRescueError('');
+  }
+
+  function chooseTwoMinuteVersion() {
+    setFocusMode('minimum');
+    setShowRecoveryActions(false);
+    setRescueError('');
+    restart();
+  }
+
+  function chooseNormalTarget() {
+    setFocusMode('normal');
+    setShowRecoveryActions(false);
+    restart();
+  }
+
+  async function scheduleLater() {
+    if (isSchedulingSnooze || snoozeScheduled) return;
+    setIsSchedulingSnooze(true);
+    setRescueError('');
+    try {
+      await onSnooze();
+      setSnoozeScheduled(true);
+      setShowRecoveryActions(false);
+    } catch (error) {
+      setRescueError(error instanceof Error ? error.message : '無法安排稍後提醒，請確認通知設定後再試。');
+    } finally {
+      setIsSchedulingSnooze(false);
+    }
+  }
+
   async function recordMinimumAction() {
-    if (!onCompleteMinimumAction || isRecordingMinimumAction) return;
+    if (!onCompleteMinimumAction || isRecordingMinimumAction || minimumActionRecorded) return;
     setIsRecordingMinimumAction(true);
     try {
-      if (await onCompleteMinimumAction()) onClose();
+      if (await onCompleteMinimumAction()) {
+        setMinimumActionRecorded(true);
+        setPausedRemaining(remainingMs);
+        setPaused(true);
+        setShowRecoveryActions(false);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
     } catch {
       Alert.alert('沒有儲存成功', '最小行動尚未記錄，請再試一次。');
     } finally {
@@ -114,30 +186,51 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose, onCompleteMinimum
       transparent
       statusBarTranslucent
       animationType={reduceMotion === false ? 'fade' : 'none'}
-      onRequestClose={onClose}
+      onRequestClose={requestClose}
     >
       <View style={styles.focusBackdrop}>
-        <Pressable style={styles.actionBackdropDismiss} onPress={onClose} accessibilityRole="button" accessibilityLabel="關閉兩分鐘開始計時" />
+        <Pressable style={styles.actionBackdropDismiss} onPress={requestClose} accessibilityRole="button" accessibilityLabel="關閉兩分鐘開始計時" />
         <View style={[styles.focusPanel, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityViewIsModal testID="two-minute-starter-modal">
+          <ScrollView
+            style={styles.focusScroll}
+            contentContainerStyle={styles.focusPanelContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
           <View style={styles.focusHeader}>
             <View style={[styles.focusIcon, { backgroundColor: colors.candyLemon }]}>
               <Feather name="clock" size={18} color={colors.candyCaramelDark} />
             </View>
             <View style={styles.focusTitleCopy}>
                 <Text style={[styles.focusTitle, { color: colors.foreground }]} accessibilityRole="header">
-                  {habit.minimumAction ? '先做最小行動' : '先開始兩分鐘'}
+                  {minimumActionRecorded
+                    ? '你完成了一小步'
+                    : focusMode === 'minimum' ? '先做兩分鐘版本' : '先開始兩分鐘'}
                 </Text>
               <Text style={[styles.focusSubtitle, { color: colors.mutedForeground }]} numberOfLines={2}>{habit.title}</Text>
             </View>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="關閉計時器" testID="close-two-minute-timer" style={styles.focusClose}>
+            <Pressable onPress={requestClose} accessibilityRole="button" accessibilityLabel="關閉計時器" testID="close-two-minute-timer" style={styles.focusClose}>
               <Feather name="x" size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
-          {habit.minimumAction ? (
+          <DogCompanionPicker
+            selectedDogId={selectedDogId}
+            onSelect={setSelectedDogId}
+            celebrating={completed || minimumActionRecorded}
+            reduceMotion={reduceMotion}
+          />
+
+          {focusMode === 'minimum' ? (
             <View style={[styles.minimumActionCard, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.minimumActionLabel, { color: colors.primary }]}>今天的最小行動</Text>
-              <Text style={[styles.minimumActionDetail, { color: colors.foreground }]}>{habit.minimumAction}</Text>
+              <Text style={[styles.minimumActionLabel, { color: colors.primary }]}>
+                {habit.minimumAction
+                  ? minimumActionIsRecommendation ? '今日建議的最小行動' : '今天的最小行動'
+                  : '兩分鐘版本'}
+              </Text>
+              <Text style={[styles.minimumActionDetail, { color: colors.foreground }]}>
+                {habit.minimumAction ?? '只做兩分鐘，從最容易開始的一步做起，不需要完成整個目標。'}
+              </Text>
             </View>
           ) : null}
 
@@ -148,56 +241,144 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose, onCompleteMinimum
             <View style={[styles.focusFill, { backgroundColor: colors.primary, width: `${elapsedPercent}%` }]} />
           </View>
           <Text style={[styles.focusMessage, { color: colors.mutedForeground }]}>
-            {habit.minimumAction
-              ? completed
-                ? '兩分鐘完成了！確認完成小步驟後，才會記錄今天的打卡。'
-                : '做完小步驟後，可以立即確認打卡，不需要等計時結束。'
-              : completed
-                ? '兩分鐘完成了！願意的話，再做一小步。'
-                : '不用一次做到完美，先開始就很好。計時不會自動打卡或發放金幣。'}
+            {minimumActionRecorded
+              ? `最小行動已記錄。${DOG_STAFF_PROFILES.find((dog) => dog.key === selectedDogId)?.name ?? '狗狗'}也替你開心！`
+              : snoozeScheduled
+                ? `已安排 ${SNOOZE_DELAY_MINUTES} 分鐘後提醒你，不會重複安排這次提醒。`
+                : focusMode === 'minimum' && habit.minimumAction
+                  ? minimumActionIsRecommendation
+                    ? completed
+                      ? '兩分鐘完成了！確認完成這個建議步驟後，才會記錄今日打卡。'
+                      : '這是依照目標提供的建議；完成後自行確認，才會記錄打卡。'
+                    : completed
+                      ? '兩分鐘完成了！只有你確認完成最小行動後，才會記錄打卡和發放原有金幣。'
+                      : '完成最小行動後，可自行確認打卡；倒數不會自動打卡或發放金幣。'
+                  : completed
+                    ? '兩分鐘完成了！這代表你已開始，狗狗會為這一步慶祝；計時不會自動打卡。'
+                    : '不用一次做到完美，先開始就很好。計時不會自動打卡或發放金幣。'}
           </Text>
 
-          {onCompleteMinimumAction ? (
+          {onCompleteMinimumAction && focusMode === 'minimum' ? (
             <Pressable
               onPress={() => void recordMinimumAction()}
-              disabled={isRecordingMinimumAction}
+              disabled={isRecordingMinimumAction || minimumActionRecorded}
               accessibilityRole="button"
               accessibilityLabel={`確認完成最小行動：${habit.minimumAction}，並記錄${habit.title}打卡`}
-              accessibilityState={{ disabled: isRecordingMinimumAction, busy: isRecordingMinimumAction }}
+              accessibilityState={{ disabled: isRecordingMinimumAction || minimumActionRecorded, busy: isRecordingMinimumAction }}
               testID={`complete-minimum-action-${habit.id}`}
-              style={[styles.minimumCompleteButton, { backgroundColor: colors.candyMint, opacity: isRecordingMinimumAction ? 0.6 : 1 }]}
+              style={[styles.minimumCompleteButton, { backgroundColor: colors.candyMint, opacity: isRecordingMinimumAction || minimumActionRecorded ? 0.65 : 1 }]}
             >
-              <Feather name="check-circle" size={16} color={colors.foreground} />
+              <Feather name={minimumActionRecorded ? 'check-circle' : 'check'} size={16} color={colors.foreground} />
               <Text style={[styles.minimumCompleteText, { color: colors.foreground }]}>
-                {isRecordingMinimumAction ? '記錄中…' : '完成最小行動並打卡'}
+                {isRecordingMinimumAction
+                  ? '記錄中…'
+                  : minimumActionRecorded
+                    ? '已完成並打卡'
+                    : minimumActionIsRecommendation ? '完成建議行動並打卡' : '完成最小行動並打卡'}
               </Text>
             </Pressable>
           ) : null}
 
+          {showRecoveryActions ? (
+            <View style={[styles.rescueCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <Text style={[styles.rescueTitle, { color: colors.foreground }]}>卡住了也沒關係</Text>
+              <Text style={[styles.rescueDescription, { color: colors.mutedForeground }]}>
+                不用重複提醒自己，選一個比較輕鬆的下一步。
+              </Text>
+              <Pressable
+                onPress={chooseTwoMinuteVersion}
+                accessibilityRole="button"
+                testID={`rescue-two-minute-${habit.id}`}
+                style={[styles.rescueOption, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <Feather name="clock" size={15} color={colors.primary} />
+                <View style={styles.rescueOptionCopy}>
+                  <Text style={[styles.rescueOptionTitle, { color: colors.primary }]}>改做 2 分鐘版本</Text>
+                  <Text style={[styles.rescueOptionDescription, { color: colors.mutedForeground }]}>
+                    {habit.minimumAction ?? '只做最容易開始的一小步'}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                onPress={() => void scheduleLater()}
+                disabled={isSchedulingSnooze || snoozeScheduled}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isSchedulingSnooze || snoozeScheduled, busy: isSchedulingSnooze }}
+                testID={`rescue-snooze-${habit.id}`}
+                style={[styles.rescueOption, { backgroundColor: colors.card, borderColor: colors.border, opacity: isSchedulingSnooze ? 0.65 : 1 }]}
+              >
+                {isSchedulingSnooze
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Feather name="bell" size={15} color={colors.primary} />}
+                <View style={styles.rescueOptionCopy}>
+                  <Text style={[styles.rescueOptionTitle, { color: colors.primary }]}>
+                    {isSchedulingSnooze ? '安排中…' : `改到 ${SNOOZE_DELAY_MINUTES} 分鐘後`}
+                  </Text>
+                  <Text style={[styles.rescueOptionDescription, { color: colors.mutedForeground }]}>
+                    這是一次性提醒，不會改動每日提醒時段。
+                  </Text>
+                </View>
+              </Pressable>
+              {rescueError ? (
+                <>
+                  <Text style={[styles.rescueError, { color: colors.destructive }]}>{rescueError}</Text>
+                  <Pressable onPress={onOpenReminderSettings} accessibilityRole="button" style={styles.rescueSettingsLink}>
+                    <Text style={[styles.rescueSettingsText, { color: colors.primary }]}>開啟通知設定</Text>
+                    <Feather name="arrow-up-right" size={12} color={colors.primary} />
+                  </Pressable>
+                </>
+              ) : null}
+              <View style={styles.rescueFooter}>
+                <Pressable
+                  onPress={() => { setShowRecoveryActions(false); resume(); }}
+                  accessibilityRole="button"
+                  style={styles.rescueTextButton}
+                >
+                  <Text style={[styles.rescueFooterText, { color: colors.primary }]}>繼續計時</Text>
+                </Pressable>
+                <Pressable onPress={onClose} accessibilityRole="button" style={styles.rescueTextButton}>
+                  <Text style={[styles.rescueFooterText, { color: colors.mutedForeground }]}>先關閉</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.focusActions}>
-            {completed ? (
+            {completed && !minimumActionRecorded && !snoozeScheduled ? (
               <Pressable onPress={restart} accessibilityRole="button" testID="restart-two-minute-timer" style={[styles.focusPrimary, { backgroundColor: colors.primary }]}>
                 <Feather name="rotate-ccw" size={16} color={colors.primaryForeground} />
                 <Text style={[styles.focusPrimaryText, { color: colors.primaryForeground }]}>再開始兩分鐘</Text>
               </Pressable>
-            ) : (
-              <Pressable onPress={paused ? resume : pause} accessibilityRole="button" testID={paused ? 'resume-two-minute-timer' : 'pause-two-minute-timer'} style={[styles.focusPrimary, { backgroundColor: colors.primary }]}>
+            ) : !minimumActionRecorded && !snoozeScheduled ? (
+              <Pressable
+                onPress={paused ? () => { setShowRecoveryActions(false); resume(); } : pause}
+                accessibilityRole="button"
+                testID={paused ? 'resume-two-minute-timer' : 'pause-two-minute-timer'}
+                style={[styles.focusPrimary, { backgroundColor: colors.primary }]}
+              >
                 <Feather name={paused ? 'play' : 'pause'} size={16} color={colors.primaryForeground} />
-                <Text style={[styles.focusPrimaryText, { color: colors.primaryForeground }]}>{paused ? '繼續' : '暫停'}</Text>
+                <Text style={[styles.focusPrimaryText, { color: colors.primaryForeground }]}>{paused ? '繼續計時' : '暫停'}</Text>
               </Pressable>
-            )}
+            ) : null}
             <Pressable
-              onPress={onClose}
+              onPress={minimumActionRecorded || snoozeScheduled
+                ? onClose
+                : focusMode === 'minimum' ? chooseNormalTarget : requestClose}
               accessibilityRole="button"
-              accessibilityLabel={habit.minimumAction ? '改做正常目標' : '先到這裡'}
+              accessibilityLabel={minimumActionRecorded || snoozeScheduled
+                ? '完成並關閉'
+                : focusMode === 'minimum' ? '改做正常目標' : '先到這裡'}
               testID="finish-two-minute-timer"
               style={[styles.focusSecondary, { backgroundColor: colors.secondary }]}
             >
               <Text style={[styles.focusSecondaryText, { color: colors.primary }]}>
-                {habit.minimumAction ? '改做正常目標' : completed ? '知道了' : '先到這裡'}
+                {minimumActionRecorded || snoozeScheduled
+                  ? '完成'
+                  : focusMode === 'minimum' ? '改做正常目標' : completed ? '知道了' : '先到這裡'}
               </Text>
             </Pressable>
           </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -215,12 +396,13 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
   completedStep?: string;
   onToggle: (step?: string) => Promise<unknown>;
   onMakeUp: () => Promise<void>;
-  onStartTwoMinute: () => void;
+  onStartTwoMinute: (minimumAction: string, isRecommendation: boolean) => void;
   onEdit: () => void;
   onManage: () => void;
 }) {
   const colors = useColors();
   const longPressTriggered = useRef(false);
+  const recommendedMinimumAction = habit.minimumAction ?? recommendMinimumAction(habit);
   return (
     <View style={[styles.habitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
@@ -252,9 +434,11 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
         {isRestDay && !done ? (
           <Text style={[styles.habitRestNote, { color: colors.primary }]}>今天是安排好的休息日</Text>
         ) : null}
-        {habit.minimumAction && !done && !isRestDay ? (
+        {!done && !isRestDay ? (
           <Text style={[styles.minimumActionNote, { color: colors.mutedForeground }]} numberOfLines={2}>
-            最小行動：{habit.minimumAction}
+            {habit.minimumAction
+              ? `最小行動：${habit.minimumAction}`
+              : `建議最小行動：${recommendedMinimumAction}`}
           </Text>
         ) : null}
         {habit.steps.length > 0 && !done && !isRestDay ? (
@@ -282,17 +466,17 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
         ) : null}
         {!done && !isRestDay ? (
           <Pressable
-            onPress={onStartTwoMinute}
+            onPress={() => onStartTwoMinute(recommendedMinimumAction, !habit.minimumAction)}
             accessibilityRole="button"
             accessibilityLabel={habit.minimumAction
               ? `開始${habit.title}的最小行動：${habit.minimumAction}，並開啟兩分鐘計時`
-              : `為${habit.title}開始兩分鐘計時，不會自動打卡`}
+              : `試試${habit.title}的建議最小行動：${recommendedMinimumAction}，並開啟兩分鐘計時`}
             testID={`focus-start-${habit.id}`}
             style={({ pressed }) => [styles.focusStartButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 }]}
           >
             <Feather name="clock" size={11} color={colors.primary} />
             <Text style={[styles.focusStartText, { color: colors.primary }]}>
-              {habit.minimumAction ? '開始最小行動 · 2 分鐘' : '開始 2 分鐘'}
+              {habit.minimumAction ? '開始最小行動 · 2 分鐘' : '試試建議 · 2 分鐘'}
             </Text>
           </Pressable>
         ) : null}
@@ -364,6 +548,7 @@ export function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { habits, isLoading, storageError, today, coins, rewardedCheckIns, getCheckInReward, toggleCheckIn, makeUpYesterday, deleteHabit } = useHabits();
   const [focusHabit, setFocusHabit] = useState<Habit | null>(null);
+  const [focusActionIsRecommendation, setFocusActionIsRecommendation] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -377,6 +562,24 @@ export function TodayScreen() {
   const date = new Date(`${today}T12:00:00`);
   const weekday = dayNames[date.getDay()];
   const dateLabel = `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
+  async function scheduleHabitSnooze(habit: Habit): Promise<void> {
+    const settings = await readReminderSettings();
+    if (!settings.enabled || !settings.endpoint) {
+      throw new Error('請先在「設定」開啟打卡通知，才能在關閉頁面後收到稍後提醒。');
+    }
+    const result = await scheduleReminderSnooze({
+      endpoint: settings.endpoint,
+      habitId: habit.id,
+      habitTitle: habit.title,
+      fireAt: new Date(Date.now() + SNOOZE_DELAY_MINUTES * 60_000).toISOString(),
+    });
+    if (!result.scheduled) throw new Error('無法安排稍後提醒，請稍後再試。');
+  }
+  function openReminderSettingsFromSnooze() {
+    setFocusHabit(null);
+    setFocusActionIsRecommendation(false);
+    router.push('/reminders');
+  }
   const totalStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today, habit.restDays)));
   const makeupDatesThisAccount = [
     ...habits.flatMap((habit) => habit.makeupCheckIns),
@@ -441,6 +644,7 @@ export function TodayScreen() {
             if (!settings.enabled || !settings.endpoint) return;
             return updateReminderCheckInStatus({
               endpoint: settings.endpoint,
+              habitId: habit.id,
               hasCheckedInToday,
             });
           })
@@ -649,7 +853,10 @@ export function TodayScreen() {
                 completedStep={habit.stepCheckIns[today]}
                 onToggle={(step) => handleToggle(habit, step)}
                 onMakeUp={() => handleMakeUp(habit)}
-                onStartTwoMinute={() => setFocusHabit(habit)}
+                onStartTwoMinute={(minimumAction, isRecommendation) => {
+                  setFocusHabit({ ...habit, minimumAction });
+                  setFocusActionIsRecommendation(isRecommendation);
+                }}
                 onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
                 onManage={() => openHabitActions(habit)}
               />
@@ -769,8 +976,14 @@ export function TodayScreen() {
         <TwoMinuteStarterModal
           habit={focusHabit}
           reduceMotion={reduceMotion}
-          onClose={() => setFocusHabit(null)}
+          minimumActionIsRecommendation={focusActionIsRecommendation}
+          onClose={() => {
+            setFocusHabit(null);
+            setFocusActionIsRecommendation(false);
+          }}
           onCompleteMinimumAction={focusHabit.minimumAction ? () => handleToggle(focusHabit) : undefined}
+          onSnooze={() => scheduleHabitSnooze(focusHabit)}
+          onOpenReminderSettings={openReminderSettingsFromSnooze}
         />
       ) : null}
     </SafeAreaView>
@@ -866,7 +1079,9 @@ const styles = StyleSheet.create({
   restartSubtitle: { fontSize: 10, lineHeight: 15, marginTop: 4 },
   restartButton: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   focusBackdrop: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(38, 25, 42, 0.42)' },
-  focusPanel: { width: '100%', maxWidth: 390, alignSelf: 'center', borderWidth: 1, borderRadius: 25, padding: 22 },
+  focusPanel: { width: '100%', maxWidth: 390, maxHeight: '92%', alignSelf: 'center', borderWidth: 1, borderRadius: 25, padding: 0, overflow: 'hidden' },
+  focusScroll: { flexShrink: 1 },
+  focusPanelContent: { padding: 22 },
   focusHeader: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   focusIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   focusTitleCopy: { flex: 1, minWidth: 0 },
@@ -887,6 +1102,19 @@ const styles = StyleSheet.create({
   focusPrimaryText: { fontSize: 13, fontWeight: '700' },
   focusSecondary: { minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   focusSecondaryText: { fontSize: 12, fontWeight: '700' },
+  rescueCard: { borderWidth: 1, borderRadius: 16, padding: 12, marginTop: 13 },
+  rescueTitle: { fontSize: 13, fontWeight: '700' },
+  rescueDescription: { fontSize: 10, lineHeight: 15, marginTop: 4, marginBottom: 8 },
+  rescueOption: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, marginTop: 7 },
+  rescueOptionCopy: { flex: 1, minWidth: 0 },
+  rescueOptionTitle: { fontSize: 11, fontWeight: '700' },
+  rescueOptionDescription: { fontSize: 9, lineHeight: 13, marginTop: 2 },
+  rescueError: { fontSize: 10, lineHeight: 15, marginTop: 8 },
+  rescueSettingsLink: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 7 },
+  rescueSettingsText: { fontSize: 10, fontWeight: '700' },
+  rescueFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  rescueTextButton: { paddingVertical: 9, paddingHorizontal: 4 },
+  rescueFooterText: { fontSize: 10, fontWeight: '700' },
   actionBackdrop: { flex: 1, justifyContent: 'flex-end', padding: 16, backgroundColor: 'rgba(38, 25, 42, 0.38)' },
   actionBackdropDismiss: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   actionPanel: { width: '100%', maxWidth: 440, alignSelf: 'center', borderWidth: 1, borderRadius: 24, padding: 20, gap: 10 },

@@ -7,7 +7,7 @@
 - [打卡與金幣原子性](checkin-atomicity.md) — 一次打卡同時更新完成狀態與金幣時，以單筆可恢復交易記錄避免跨儲存項目部分成功。
 - [商場里程碑裝飾](mall-milestone-decorations.md) — 里程碑只解鎖符合原有樓層主題的裝飾；商場維持原有20層與主題。
 - [每週補打卡獎勵](weekly-makeup-checkin.md) — 每帳戶每週可補昨天一次，補回時可領取原打卡金幣，但不重複發放。
-- [動力功能獎勵界線](motivation-features.md) — 兩分鐘計時不代替打卡；每週挑戰只提供商場慶祝，不增加金幣或樓層。
+- [動力功能獎勵界線](motivation-features.md) — 陪伴狗狗免費；計時不代打卡；最小行動推薦不覆寫自訂內容，也不更改每日通知。
 - [巢狀讀屏標籤](nested-screenreader-labels.md) — 外層可按元件指定 accessibilityLabel 時，巢狀資訊須合併到外層標籤才會可靠播報。
 - [商場讀取失敗](mall-read-failure.md) — 無法驗證已存資料時保留原始值、停止同步與變更，並顯示錯誤而非空商場。
 - [手機網頁固定淺色](mobile-web-light-theme.md) — 手機瀏覽器須沿用 preview 糖果色，不隨作業系統切換深色。

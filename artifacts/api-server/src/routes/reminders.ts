@@ -7,6 +7,8 @@ import {
   GetReminderConfigResponse,
   SaveReminderSubscriptionBody,
   SaveReminderSubscriptionResponse,
+  ScheduleReminderSnoozeBody,
+  ScheduleReminderSnoozeResponse,
   UpdateReminderCheckInStatusBody,
   UpdateReminderCheckInStatusResponse,
 } from "@workspace/api-zod";
@@ -14,6 +16,7 @@ import {
   db,
   pushReminderSubscriptionsTable,
 } from "@workspace/db";
+import { serializeSnoozedReminder } from "../lib/reminder-schedule";
 import { getOrCreateVapidKeys } from "../lib/vapid";
 
 const router: IRouter = Router();
@@ -43,6 +46,17 @@ function isValidTimeZone(timeZone: string): boolean {
   } catch {
     return false;
   }
+}
+
+function getLocalDate(timeZone: string, date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 router.get("/reminders/config", async (_req, res): Promise<void> => {
@@ -142,6 +156,63 @@ router.post("/reminders/subscription", async (req, res): Promise<void> => {
   res.json(DeleteReminderSubscriptionResponse.parse({ enabled: false }));
 });
 
+router.put("/reminders/snooze", async (req, res): Promise<void> => {
+  const parsed = ScheduleReminderSnoozeBody.safeParse(req.body);
+  if (!parsed.success || !isSupportedPushEndpoint(parsed.data?.endpoint ?? "")) {
+    res.status(400).json({ error: "Invalid snooze request" });
+    return;
+  }
+
+  const fireAt = new Date(parsed.data.fireAt);
+  const now = new Date();
+  const delayMs = fireAt.getTime() - now.getTime();
+  if (delayMs < 30_000 || delayMs > 24 * 60 * 60 * 1000) {
+    res.status(400).json({ error: "Snooze time must be within the next 24 hours" });
+    return;
+  }
+
+  const endpointHash = hashPushEndpoint(parsed.data.endpoint);
+  const [subscription] = await db
+    .select({
+      timeZone: pushReminderSubscriptionsTable.timeZone,
+      lastSentLocalDates: pushReminderSubscriptionsTable.lastSentLocalDates,
+    })
+    .from(pushReminderSubscriptionsTable)
+    .where(eq(pushReminderSubscriptionsTable.endpointHash, endpointHash))
+    .limit(1);
+
+  if (!subscription) {
+    res.status(404).json({ error: "Browser push reminders are not enabled" });
+    return;
+  }
+
+  const habitTitle = parsed.data.habitTitle.trim().slice(0, 120);
+  if (!habitTitle) {
+    res.status(400).json({ error: "Habit title is required" });
+    return;
+  }
+  const snoozeKey = `snooze:${parsed.data.habitId}`;
+  const snoozeRecord = {
+    status: "pending" as const,
+    habitId: parsed.data.habitId,
+    habitTitle,
+    fireAt: fireAt.toISOString(),
+    localDate: getLocalDate(subscription.timeZone, fireAt),
+  };
+  await db
+    .update(pushReminderSubscriptionsTable)
+    .set({
+      lastSentLocalDates: {
+        ...(subscription.lastSentLocalDates ?? {}),
+        [snoozeKey]: serializeSnoozedReminder(snoozeRecord),
+      },
+      updatedAt: now,
+    })
+    .where(eq(pushReminderSubscriptionsTable.endpointHash, endpointHash));
+
+  res.json(ScheduleReminderSnoozeResponse.parse({ scheduled: true }));
+});
+
 router.put("/reminders/check-in", async (req, res): Promise<void> => {
   const parsed = UpdateReminderCheckInStatusBody.safeParse(req.body);
   if (!parsed.success || !isSupportedPushEndpoint(parsed.data?.endpoint ?? "")) {
@@ -153,6 +224,7 @@ router.put("/reminders/check-in", async (req, res): Promise<void> => {
   const [subscription] = await db
     .select({
       timeZone: pushReminderSubscriptionsTable.timeZone,
+      lastSentLocalDates: pushReminderSubscriptionsTable.lastSentLocalDates,
     })
     .from(pushReminderSubscriptionsTable)
     .where(eq(pushReminderSubscriptionsTable.endpointHash, endpointHash))
@@ -165,10 +237,15 @@ router.put("/reminders/check-in", async (req, res): Promise<void> => {
       month: "2-digit",
       day: "2-digit",
     }).format(new Date());
+    const lastSentLocalDates = { ...(subscription.lastSentLocalDates ?? {}) };
+    if (parsed.data.hasCheckedInToday && parsed.data.habitId) {
+      delete lastSentLocalDates[`snooze:${parsed.data.habitId}`];
+    }
     await db
       .update(pushReminderSubscriptionsTable)
       .set({
         lastCheckInLocalDate: parsed.data.hasCheckedInToday ? localDate : null,
+        lastSentLocalDates,
         updatedAt: new Date(),
       })
       .where(

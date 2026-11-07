@@ -9,5 +9,10 @@
 export interface ReminderCheckInInput {
   /** @maxLength 4096 */
   endpoint: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  habitId?: string;
   hasCheckedInToday: boolean;
 }

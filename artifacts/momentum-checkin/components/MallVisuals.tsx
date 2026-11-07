@@ -2,9 +2,9 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, Platform, StyleSheet, Text, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import palette from '@/constants/colors';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { getShopFacadeVariant, resolveMallObjectArchetype, type MallObjectArchetype, type MallVisualCategory } from '@/constants/mall-visual-profile';
 import { getMallFloorArtProfile } from '@/constants/mall-floor-art';
-import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { ThemedMallObject } from './ThemedMallObject';
 import { MallCustomers } from './MallCustomers';
 
@@ -257,7 +257,7 @@ function MallStorefrontArt({ itemId, itemName, itemIcon, floor, itemColor }: {
   );
 }
 
-export function MallAmbience({ floor = 1, totalCheckIns = 0 }: { floor?: number; totalCheckIns?: number }) {
+export function MallAmbience({ floor = 1, totalCheckIns = 0, celebrationKey = 0 }: { floor?: number; totalCheckIns?: number; celebrationKey?: number }) {
   const shimmer = useRef(new Animated.Value(0.25)).current;
   useEffect(() => {
     const twinkle = Animated.loop(Animated.sequence([
@@ -292,7 +292,13 @@ export function MallAmbience({ floor = 1, totalCheckIns = 0 }: { floor?: number;
           ))}
         </Animated.View>
       ) : null}
-      <MallCustomers floor={floor} />
+      {celebrationKey > 0 ? (
+        <>
+          <Animated.View style={[s.sparkle, { left: '31%', top: '14%', opacity: shimmer }]}><Feather name="heart" size={9} color={c.candyRoseDark} /></Animated.View>
+          <Animated.View style={[s.sparkle, { right: '34%', top: '18%', opacity: shimmer }]}><Feather name="star" size={8} color={c.candyLemon} /></Animated.View>
+        </>
+      ) : null}
+      <MallCustomers floor={floor} celebrationKey={celebrationKey} />
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Redirect, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,7 @@ import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 import { updateReminderCheckInStatus } from '@workspace/api-client-react';
 import { readReminderSettings } from '@/lib/reminder-settings';
-import { canMakeUpYesterday, getPreviousLocalDate, getWeekday, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
+import { canMakeUpYesterday, getPreviousLocalDate, getPreviousScheduledDate, getWeekday, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
 import {
   getStreak,
   useHabits,
@@ -44,7 +44,115 @@ function getWeek(todayKey: string) {
   });
 }
 
-function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeUpRewardAlreadyEarned, completedStep, onToggle, onMakeUp, onEdit, onManage }: {
+function TwoMinuteStarterModal({ habit, reduceMotion, onClose }: {
+  habit: Habit;
+  reduceMotion: boolean | null;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const [endAt, setEndAt] = useState(() => Date.now() + 120_000);
+  const [now, setNow] = useState(() => Date.now());
+  const [paused, setPaused] = useState(false);
+  const [pausedRemaining, setPausedRemaining] = useState(120_000);
+  const [completed, setCompleted] = useState(false);
+  const remainingMs = paused ? pausedRemaining : Math.max(0, endAt - now);
+
+  useEffect(() => {
+    if (paused || completed) return undefined;
+    const interval = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(interval);
+  }, [paused, completed]);
+
+  useEffect(() => {
+    if (paused || completed || remainingMs > 0) return;
+    setCompleted(true);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  }, [completed, paused, remainingMs]);
+
+  function pause() {
+    setPausedRemaining(remainingMs);
+    setPaused(true);
+  }
+
+  function resume() {
+    const timestamp = Date.now();
+    setNow(timestamp);
+    setEndAt(timestamp + pausedRemaining);
+    setPaused(false);
+  }
+
+  function restart() {
+    const timestamp = Date.now();
+    setNow(timestamp);
+    setEndAt(timestamp + 120_000);
+    setPausedRemaining(120_000);
+    setPaused(false);
+    setCompleted(false);
+  }
+
+  const seconds = Math.ceil(remainingMs / 1000);
+  const timerLabel = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  const elapsedPercent = Math.min(100, Math.max(0, ((120_000 - remainingMs) / 120_000) * 100));
+
+  return (
+    <Modal
+      visible
+      transparent
+      statusBarTranslucent
+      animationType={reduceMotion === false ? 'fade' : 'none'}
+      onRequestClose={onClose}
+    >
+      <View style={styles.focusBackdrop}>
+        <Pressable style={styles.actionBackdropDismiss} onPress={onClose} accessibilityRole="button" accessibilityLabel="關閉兩分鐘開始計時" />
+        <View style={[styles.focusPanel, { backgroundColor: colors.card, borderColor: colors.border }]} accessibilityViewIsModal testID="two-minute-starter-modal">
+          <View style={styles.focusHeader}>
+            <View style={[styles.focusIcon, { backgroundColor: colors.candyLemon }]}>
+              <Feather name="clock" size={18} color={colors.candyCaramelDark} />
+            </View>
+            <View style={styles.focusTitleCopy}>
+              <Text style={[styles.focusTitle, { color: colors.foreground }]} accessibilityRole="header">先開始兩分鐘</Text>
+              <Text style={[styles.focusSubtitle, { color: colors.mutedForeground }]} numberOfLines={2}>{habit.title}</Text>
+            </View>
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="關閉計時器" testID="close-two-minute-timer" style={styles.focusClose}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
+          <Text style={[styles.focusTimer, { color: colors.primary }]} accessibilityLabel={`計時剩餘 ${timerLabel}`}>
+            {timerLabel}
+          </Text>
+          <View style={[styles.focusTrack, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.focusFill, { backgroundColor: colors.primary, width: `${elapsedPercent}%` }]} />
+          </View>
+          <Text style={[styles.focusMessage, { color: colors.mutedForeground }]}>
+            {completed
+              ? '兩分鐘完成了！願意的話，再做一小步。'
+              : '不用一次做到完美，先開始就很好。計時不會自動打卡或發放金幣。'}
+          </Text>
+
+          <View style={styles.focusActions}>
+            {completed ? (
+              <Pressable onPress={restart} accessibilityRole="button" testID="restart-two-minute-timer" style={[styles.focusPrimary, { backgroundColor: colors.primary }]}>
+                <Feather name="rotate-ccw" size={16} color={colors.primaryForeground} />
+                <Text style={[styles.focusPrimaryText, { color: colors.primaryForeground }]}>再開始兩分鐘</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={paused ? resume : pause} accessibilityRole="button" testID={paused ? 'resume-two-minute-timer' : 'pause-two-minute-timer'} style={[styles.focusPrimary, { backgroundColor: colors.primary }]}>
+                <Feather name={paused ? 'play' : 'pause'} size={16} color={colors.primaryForeground} />
+                <Text style={[styles.focusPrimaryText, { color: colors.primaryForeground }]}>{paused ? '繼續' : '暫停'}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={onClose} accessibilityRole="button" testID="finish-two-minute-timer" style={[styles.focusSecondary, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.focusSecondaryText, { color: colors.primary }]}>{completed ? '知道了' : '先到這裡'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeUpRewardAlreadyEarned, completedStep, onToggle, onMakeUp, onStartTwoMinute, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
   reward: number;
@@ -55,6 +163,7 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
   completedStep?: string;
   onToggle: (step?: string) => Promise<void>;
   onMakeUp: () => Promise<void>;
+  onStartTwoMinute: () => void;
   onEdit: () => void;
   onManage: () => void;
 }) {
@@ -114,6 +223,18 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
         {done && completedStep ? (
           <Text style={[styles.habitStepDone, { color: colors.primary }]} numberOfLines={1}>今日完成：{completedStep}</Text>
         ) : null}
+        {!done && !isRestDay ? (
+          <Pressable
+            onPress={onStartTwoMinute}
+            accessibilityRole="button"
+            accessibilityLabel={`為${habit.title}開始兩分鐘計時，不會自動打卡`}
+            testID={`focus-start-${habit.id}`}
+            style={({ pressed }) => [styles.focusStartButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 }]}
+          >
+            <Feather name="clock" size={11} color={colors.primary} />
+            <Text style={[styles.focusStartText, { color: colors.primary }]}>開始 2 分鐘</Text>
+          </Pressable>
+        ) : null}
         {!done && reward > 0 && (
           <View
             style={[styles.rewardHint, { backgroundColor: colors.candyLemon }]}
@@ -172,6 +293,7 @@ export function TodayScreen() {
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { habits, isLoading, storageError, today, coins, rewardedCheckIns, getCheckInReward, toggleCheckIn, makeUpYesterday, deleteHabit } = useHabits();
+  const [focusHabit, setFocusHabit] = useState<Habit | null>(null);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -190,6 +312,15 @@ export function TodayScreen() {
     ...habits.flatMap((habit) => habit.makeupCheckIns),
     ...rewardedCheckIns.flatMap((key) => key.startsWith(MAKEUP_USE_PREFIX) ? [key.slice(MAKEUP_USE_PREFIX.length)] : []),
   ];
+  const restartHabit = habits.find((habit) => {
+    if (habit.checkIns.includes(today) || habit.restDays.includes(getWeekday(today))) return false;
+    const previousScheduledDate = getPreviousScheduledDate(today, habit.restDays, habit.createdAt);
+    return Boolean(
+      previousScheduledDate
+      && !habit.checkIns.includes(previousScheduledDate)
+      && habit.checkIns.some((dateKey) => dateKey < previousScheduledDate),
+    );
+  });
 
   function openHabitActions(habit: Habit) {
     setSelectedHabit(habit);
@@ -375,6 +506,29 @@ export function TodayScreen() {
           </View>
         </View>
 
+        {restartHabit ? (
+          <View style={[styles.restartCard, { backgroundColor: colors.secondary }] } testID="gentle-restart-card">
+            <View style={[styles.restartIcon, { backgroundColor: colors.candyPink }]}>
+              <Feather name="heart" size={17} color={colors.primary} />
+            </View>
+            <View style={styles.restartCopy}>
+              <Text style={[styles.restartTitle, { color: colors.foreground }]}>重新開始也算進步</Text>
+              <Text style={[styles.restartSubtitle, { color: colors.mutedForeground }]}>
+                漏掉幾天不會抹掉之前的努力。今天只選一個小步驟，從兩分鐘開始就好。
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setFocusHabit(restartHabit)}
+              accessibilityRole="button"
+              accessibilityLabel={`從兩分鐘開始重新進行${restartHabit.title}`}
+              testID="gentle-restart-action"
+              style={({ pressed }) => [styles.restartButton, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}
+            >
+              <Feather name="play" size={14} color={colors.primaryForeground} />
+            </Pressable>
+          </View>
+        ) : null}
+
         <View style={styles.sectionHeading}>
           <View>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>今天的練習</Text>
@@ -419,6 +573,7 @@ export function TodayScreen() {
                 completedStep={habit.stepCheckIns[today]}
                 onToggle={(step) => handleToggle(habit, step)}
                 onMakeUp={() => handleMakeUp(habit)}
+                onStartTwoMinute={() => setFocusHabit(habit)}
                 onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
                 onManage={() => openHabitActions(habit)}
               />
@@ -534,6 +689,9 @@ export function TodayScreen() {
           </View>
         </View>
       </Modal>
+      {focusHabit ? (
+        <TwoMinuteStarterModal habit={focusHabit} reduceMotion={reduceMotion} onClose={() => setFocusHabit(null)} />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -597,6 +755,8 @@ const styles = StyleSheet.create({
   stepChip: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 5, borderRadius: 9 },
   stepChipText: { fontSize: 10, maxWidth: 160 },
   habitStepDone: { fontSize: 10, marginTop: 6 },
+  focusStartButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 9 },
+  focusStartText: { fontSize: 10, fontWeight: '700' },
   makeupButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7, paddingHorizontal: 7, paddingVertical: 5, borderRadius: 9 },
   makeupText: { fontSize: 10, fontWeight: '700' },
   rewardHint: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, marginTop: 6 },
@@ -615,6 +775,29 @@ const styles = StyleSheet.create({
   quoteCopy: { flex: 1 },
   quoteTitle: { fontSize: 13, fontWeight: '600' },
   quoteText: { fontSize: 11, marginTop: 4 },
+  restartCard: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 13, borderRadius: 17, padding: 12 },
+  restartIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  restartCopy: { flex: 1, minWidth: 0 },
+  restartTitle: { fontSize: 12, fontWeight: '700' },
+  restartSubtitle: { fontSize: 10, lineHeight: 15, marginTop: 4 },
+  restartButton: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  focusBackdrop: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(38, 25, 42, 0.42)' },
+  focusPanel: { width: '100%', maxWidth: 390, alignSelf: 'center', borderWidth: 1, borderRadius: 25, padding: 22 },
+  focusHeader: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  focusIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  focusTitleCopy: { flex: 1, minWidth: 0 },
+  focusTitle: { fontSize: 17, fontWeight: '700' },
+  focusSubtitle: { fontSize: 11, marginTop: 3 },
+  focusClose: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  focusTimer: { textAlign: 'center', fontSize: 54, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 27 },
+  focusTrack: { height: 8, borderRadius: 99, overflow: 'hidden', marginTop: 14 },
+  focusFill: { height: '100%', borderRadius: 99 },
+  focusMessage: { textAlign: 'center', fontSize: 12, lineHeight: 18, marginTop: 15, minHeight: 36 },
+  focusActions: { gap: 9, marginTop: 22 },
+  focusPrimary: { minHeight: 47, borderRadius: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  focusPrimaryText: { fontSize: 13, fontWeight: '700' },
+  focusSecondary: { minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  focusSecondaryText: { fontSize: 12, fontWeight: '700' },
   actionBackdrop: { flex: 1, justifyContent: 'flex-end', padding: 16, backgroundColor: 'rgba(38, 25, 42, 0.38)' },
   actionBackdropDismiss: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   actionPanel: { width: '100%', maxWidth: 440, alignSelf: 'center', borderWidth: 1, borderRadius: 24, padding: 20, gap: 10 },

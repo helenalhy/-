@@ -23,7 +23,7 @@ import {
 } from '@/constants/mall-shop-interior';
 import { MALL_ITEM_BY_ID } from '@/constants/mall';
 import { getRewardedCheckInCount } from '@/constants/progress-milestones';
-import { canMakeUpYesterday, getPreviousLocalDate, getWeekday, getStreak, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
+import { canMakeUpYesterday, getPreviousLocalDate, getWeeklyChallengeLimit, getWeekday, getStreak, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
 import {
   canDisplayShopProducts,
   getShopFixtureProductCatalog,
@@ -57,6 +57,7 @@ export interface Habit {
   restDays: number[];
   stepCheckIns: Record<string, string>;
   makeupCheckIns: string[];
+  weeklyChallengeTarget?: number;
 }
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
@@ -120,11 +121,12 @@ interface HabitsContextValue {
   shopInteriors: ShopInteriorCollection;
   rewardTokens: RewardTokens;
   getCheckInReward: (habitId: string) => number;
-  addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns'>) => Promise<void>;
+  addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns' | 'weeklyChallengeTarget'>) => Promise<void>;
   updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays'>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   toggleCheckIn: (id: string, completedStep?: string) => Promise<number>;
   makeUpYesterday: (id: string) => Promise<number>;
+  setWeeklyChallenge: (habitId: string | null, target: number | null) => Promise<void>;
   purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
   moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
   storeMallItem: (itemId: string) => Promise<void>;
@@ -311,7 +313,12 @@ function normalizeHabits(habits: Habit[]): Habit[] {
     const makeupCheckIns = Array.isArray(habit.makeupCheckIns)
       ? [...new Set(habit.makeupCheckIns.filter((date): date is string => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)))]
       : [];
-    return { ...habit, rewardCategory, color: categoryColor, steps, restDays, stepCheckIns, makeupCheckIns };
+    const weeklyChallengeTarget = Number.isInteger(habit.weeklyChallengeTarget)
+      && Number(habit.weeklyChallengeTarget) >= 1
+      && Number(habit.weeklyChallengeTarget) <= 7
+      ? Number(habit.weeklyChallengeTarget)
+      : undefined;
+    return { ...habit, rewardCategory, color: categoryColor, steps, restDays, stepCheckIns, makeupCheckIns, weeklyChallengeTarget };
   });
 }
 
@@ -917,6 +924,26 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [habits, save, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens]);
 
+  const setWeeklyChallenge = useCallback(async (habitId: string | null, target: number | null) => {
+    if (habitId === null) {
+      if (target !== null) throw new Error('請選擇挑戰目標');
+      await save(habits.map((habit) => ({ ...habit, weeklyChallengeTarget: undefined })));
+      return;
+    }
+    if (target === null || !Number.isInteger(target) || target < 1 || target > 7) {
+      throw new Error('每週挑戰次數必須介乎 1 至 7 次');
+    }
+    const selectedHabit = habits.find((habit) => habit.id === habitId);
+    if (!selectedHabit) throw new Error('找不到這個目標');
+    if (target > getWeeklyChallengeLimit(selectedHabit.restDays)) {
+      throw new Error('每週挑戰次數不能多於這個目標每週安排的練習日');
+    }
+    await save(habits.map((habit) => ({
+      ...habit,
+      weeklyChallengeTarget: habit.id === habitId ? target : undefined,
+    })));
+  }, [habits, save]);
+
   // Legacy arguments remain compatible with saved/older clients; only earned coins are spent.
   const purchaseMallItem = useCallback(async (itemId: string, price: number, _category: RewardCategory, _ticketCost: number, slotId: MallSlotId) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
@@ -1308,8 +1335,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
       habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
-      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
+      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, setWeeklyChallenge, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, setWeeklyChallenge, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

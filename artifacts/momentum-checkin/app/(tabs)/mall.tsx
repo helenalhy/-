@@ -31,6 +31,7 @@ import { useColors } from '@/hooks/useColors';
 import { MallAmbience, MallObjectVisual } from '@/components/MallVisuals';
 import { MALL_FLOORS, MALL_ITEMS, MALL_ITEM_BY_ID, type MallItem } from '@/constants/mall';
 import { getRewardedCheckInCount } from '@/constants/progress-milestones';
+import { getWeeklyCheckInCount } from '@/lib/habit-schedule';
 import { SHOP_INTERIOR_DECORATIONS } from '@/constants/mall-shop-interior';
 import { CatalogPager } from '@/components/CatalogPager';
 import { getMallSlotFloor, getMallSlotPosition, MALL_POSITIONS_PER_FLOOR, type MallWing } from '@/constants/mall-layout';
@@ -259,8 +260,14 @@ export default function MallScreen() {
   const mallSceneY = useRef(0);
   const sceneOpacity = useRef(new Animated.Value(1)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
-  const { coins, purchasedItems, rewardedCheckIns, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, mallLoadError, isLoading } = useHabits();
+  const { habits, today, coins, purchasedItems, rewardedCheckIns, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, mallLoadError, isLoading } = useHabits();
   const completedRewardCount = getRewardedCheckInCount(rewardedCheckIns);
+  const completedTodayCount = habits.filter((habit) => habit.checkIns.includes(today)).length;
+  const weeklyChallengeComplete = habits.some((habit) => (
+    habit.weeklyChallengeTarget !== undefined
+    && getWeeklyCheckInCount(habit.checkIns, today) >= habit.weeklyChallengeTarget
+  ));
+  const celebrationKey = completedTodayCount + (weeklyChallengeComplete ? 100 : 0);
   const [showCollection, setShowCollection] = useState(false);
   const [warehouseNotice, setWarehouseNotice] = useState<string | null>(null);
   const [placementAnnouncement, setPlacementAnnouncement] = useState('');
@@ -1016,7 +1023,7 @@ export default function MallScreen() {
                   />
                 );
               })}
-              {active && <MallAmbience floor={currentFloor} totalCheckIns={completedRewardCount} />}
+              {active && <MallAmbience floor={currentFloor} totalCheckIns={completedRewardCount} celebrationKey={celebrationKey} />}
             </ImageBackground>}
             />
             <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>

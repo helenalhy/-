@@ -19,11 +19,13 @@ import {
 const c = palette.light;
 const beautyBagColors = [c.candyPink, c.candyLavender, c.candyPeach, c.candySky, c.candyMint, c.candyCoral];
 
-function Shopper({ index, floor, width, reducedMotion }: { index: number; floor: number; width: number; reducedMotion: boolean }) {
+function Shopper({ index, floor, width, reducedMotion, celebrationKey }: { index: number; floor: number; width: number; reducedMotion: boolean; celebrationKey: number }) {
   const route = GUEST_ROUTES[index];
   const progress = useRef(new Animated.Value(0)).current;
   const stride = useRef(new Animated.Value(0)).current;
   const facing = useRef(new Animated.Value(route.to > route.from ? 1 : -1)).current;
+  const cheer = useRef(new Animated.Value(0)).current;
+  const previousCelebrationKey = useRef<number | null>(null);
   const native = Platform.OS !== 'web';
   const frameSize = GUEST_FRAME_SIZES_BY_FLOOR[floor - 1] ?? { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT };
   const frameWidth = frameSize.width;
@@ -57,7 +59,23 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
     journey.start();
     return () => { journey.stop(); };
   }, [index, route, native, reducedMotion, progress, stride, facing]);
+  useEffect(() => {
+    const isNewCelebration = previousCelebrationKey.current === null
+      ? celebrationKey > 0
+      : celebrationKey > previousCelebrationKey.current;
+    previousCelebrationKey.current = celebrationKey;
+    if (reducedMotion || !isNewCelebration) return undefined;
+    cheer.setValue(0);
+    const bounce = Animated.sequence([
+      Animated.delay((index % 5) * 65),
+      Animated.timing(cheer, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.timing(cheer, { toValue: 0, duration: 240, useNativeDriver: true }),
+    ]);
+    bounce.start();
+    return () => bounce.stop();
+  }, [celebrationKey, cheer, index, reducedMotion]);
   const bob = stride.interpolate({ inputRange: [-1, 0, 1], outputRange: [-1.3, 0, -1.3] });
+  const cheerScaleY = cheer.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.13, 1] });
   const sheet = GUEST_SHEETS[floor - 1];
   const frameCell = GUEST_FRAME_CELLS[index];
   return (
@@ -72,6 +90,7 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
       <Animated.View style={{ transform: [
         { scaleX: facing },
         { rotate: stride.interpolate({ inputRange: [-1, 1], outputRange: ['-1.5deg', '1.5deg'] }) },
+        { scaleY: cheerScaleY },
       ] }}>
         <View style={[s.spriteWindow, { width: frameWidth, height: frameHeight }]}>
           <Image
@@ -99,7 +118,7 @@ function Shopper({ index, floor, width, reducedMotion }: { index: number; floor:
   );
 }
 
-export function MallCustomers({ floor }: { floor: number }) {
+export function MallCustomers({ floor, celebrationKey = 0 }: { floor: number; celebrationKey?: number }) {
   const [width, setWidth] = useState(360);
   const [reducedMotion, setReducedMotion] = useState(false);
   const guestCount = GUEST_COUNTS_BY_FLOOR[floor - 1] ?? 0;
@@ -111,7 +130,7 @@ export function MallCustomers({ floor }: { floor: number }) {
   }, []);
   return (
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="mall-customers" style={StyleSheet.absoluteFill} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      {GUEST_ROUTES.slice(0, guestCount).map((_, index) => <Shopper key={`${floor}-${index}`} index={index} floor={floor} width={width} reducedMotion={reducedMotion} />)}
+      {GUEST_ROUTES.slice(0, guestCount).map((_, index) => <Shopper key={`${floor}-${index}`} index={index} floor={floor} width={width} reducedMotion={reducedMotion} celebrationKey={celebrationKey} />)}
     </View>
   );
 }

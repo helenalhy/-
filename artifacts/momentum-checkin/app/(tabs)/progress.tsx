@@ -9,6 +9,7 @@ import { getLocalDate, getStreak, useHabits } from '@/context/HabitsContext';
 import { useCloudSyncControls } from '@/context/ProgressSyncBridge';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 import { getNextMilestone, getRewardedCheckInCount, getUnlockedMilestones, PROGRESS_MILESTONES } from '@/constants/progress-milestones';
+import { WeeklyChallengeCard } from '@/components/WeeklyChallengeCard';
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -194,6 +195,8 @@ export default function ProgressScreen() {
               : '每一小步都算數，今天也可以從一件小事開始。'}
           </Text>
         </View>
+
+        <WeeklyChallengeCard />
 
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeading}>

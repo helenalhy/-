@@ -48,6 +48,30 @@ export function getLocalWeekStart(dateKey: string): string {
   return formatLocalDate(date);
 }
 
+export function getWeeklyCheckInCount(checkIns: readonly string[], today: string): number {
+  const weekStart = getLocalWeekStart(today);
+  return new Set(checkIns.filter((dateKey) => dateKey >= weekStart && dateKey <= today)).size;
+}
+
+export function getWeeklyChallengeLimit(restDays: readonly number[]): number {
+  return Math.max(0, 7 - new Set(restDays).size);
+}
+
+export function getPreviousScheduledDate(
+  today: string,
+  restDays: readonly number[] = [],
+  createdAt?: string,
+): string | null {
+  const scheduledRestDays = new Set(restDays);
+  let cursor = getPreviousLocalDate(today);
+  for (let scanned = 0; scanned < 7; scanned += 1) {
+    if (createdAt && cursor < createdAt) return null;
+    if (!scheduledRestDays.has(getWeekday(cursor))) return cursor;
+    cursor = getPreviousLocalDate(cursor);
+  }
+  return null;
+}
+
 export function canMakeUpYesterday(
   habit: HabitSchedule,
   today: string,

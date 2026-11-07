@@ -22,6 +22,7 @@ import {
   type ShopInteriorPlacementId,
 } from '@/constants/mall-shop-interior';
 import { MALL_ITEM_BY_ID } from '@/constants/mall';
+import { canMakeUpYesterday, getPreviousLocalDate, getWeekday, getStreak } from '@/lib/habit-schedule';
 import {
   canDisplayShopProducts,
   getShopFixtureProductCatalog,
@@ -51,6 +52,10 @@ export interface Habit {
   rewardCategory: RewardCategory;
   createdAt: string;
   checkIns: string[];
+  steps: string[];
+  restDays: number[];
+  stepCheckIns: Record<string, string>;
+  makeupCheckIns: string[];
 }
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
@@ -109,14 +114,16 @@ interface HabitsContextValue {
   today: string;
   coins: number;
   purchasedItems: string[];
+  rewardedCheckIns: string[];
   mallPlacements: Record<string, string>;
   shopInteriors: ShopInteriorCollection;
   rewardTokens: RewardTokens;
   getCheckInReward: (habitId: string) => number;
-  addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns'>) => Promise<void>;
-  updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory'>) => Promise<void>;
+  addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns'>) => Promise<void>;
+  updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays'>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
-  toggleCheckIn: (id: string) => Promise<number>;
+  toggleCheckIn: (id: string, completedStep?: string) => Promise<number>;
+  makeUpYesterday: (id: string) => Promise<number>;
   purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
   moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
   storeMallItem: (itemId: string) => Promise<void>;
@@ -291,7 +298,19 @@ function normalizeHabits(habits: Habit[]): Habit[] {
       : rewardCategory === 'shop'
         ? palette.light.candyLavender
         : palette.light.candyPink;
-    return { ...habit, rewardCategory, color: categoryColor };
+    const steps = Array.isArray(habit.steps)
+      ? [...new Set(habit.steps.filter((step): step is string => typeof step === 'string').map((step) => step.trim()).filter(Boolean))].slice(0, 5)
+      : [];
+    const restDays = Array.isArray(habit.restDays)
+      ? [...new Set(habit.restDays.filter((day): day is number => Number.isInteger(day) && day >= 0 && day <= 6))]
+      : [];
+    const stepCheckIns = habit.stepCheckIns && typeof habit.stepCheckIns === 'object'
+      ? Object.fromEntries(Object.entries(habit.stepCheckIns).filter(([, step]) => typeof step === 'string' && steps.includes(step)))
+      : {};
+    const makeupCheckIns = Array.isArray(habit.makeupCheckIns)
+      ? [...new Set(habit.makeupCheckIns.filter((date): date is string => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)))]
+      : [];
+    return { ...habit, rewardCategory, color: categoryColor, steps, restDays, stepCheckIns, makeupCheckIns };
   });
 }
 
@@ -462,9 +481,9 @@ function normalizeShopInteriors(
 }
 
 const starterHabits: Habit[] = [
-  { id: 'starter-walk', title: '散步 20 分鐘', reason: '讓身體和心情都透透氣', icon: 'activity', color: palette.light.candyMint, rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: [] },
-  { id: 'starter-read', title: '閱讀 10 頁', reason: '每天留一點時間給自己', icon: 'book-open', color: palette.light.candyLavender, rewardCategory: 'shop', createdAt: '2026-01-01', checkIns: [] },
-  { id: 'starter-water', title: '寫下今天的一件好事', reason: '看見已經擁有的進步', icon: 'edit-3', color: palette.light.candyPink, rewardCategory: 'decor', createdAt: '2026-01-01', checkIns: [] },
+  { id: 'starter-walk', title: '散步 20 分鐘', reason: '讓身體和心情都透透氣', icon: 'activity', color: palette.light.candyMint, rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: [], steps: [], restDays: [], stepCheckIns: {}, makeupCheckIns: [] },
+  { id: 'starter-read', title: '閱讀 10 頁', reason: '每天留一點時間給自己', icon: 'book-open', color: palette.light.candyLavender, rewardCategory: 'shop', createdAt: '2026-01-01', checkIns: [], steps: [], restDays: [], stepCheckIns: {}, makeupCheckIns: [] },
+  { id: 'starter-water', title: '寫下今天的一件好事', reason: '看見已經擁有的進步', icon: 'edit-3', color: palette.light.candyPink, rewardCategory: 'decor', createdAt: '2026-01-01', checkIns: [], steps: [], restDays: [], stepCheckIns: {}, makeupCheckIns: [] },
 ];
 
 export function getLocalDate(date = new Date()): string {
@@ -472,13 +491,6 @@ export function getLocalDate(date = new Date()): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-function previousDate(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  date.setDate(date.getDate() - 1);
-  return getLocalDate(date);
 }
 
 function createId(): string {
@@ -559,8 +571,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(CHECK_IN_TRANSACTION_KEY),
         ]);
         const checkInTransaction = parseCheckInTransaction(savedCheckInTransaction);
-        const initialHabits = checkInTransaction?.habits
-          ?? (saved === null ? starterHabits : normalizeHabits(JSON.parse(saved) as Habit[]));
+        const initialHabits = normalizeHabits(
+          checkInTransaction?.habits
+            ?? (saved === null ? starterHabits : JSON.parse(saved) as Habit[]),
+        );
         if (active) setHabits(initialHabits);
         const initialMall = checkInTransaction?.mall ?? (savedMall === null
           ? { coins: 0, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
@@ -744,20 +758,26 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const addHabit = useCallback(async (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns'>) => {
-    const next = [...habits, { ...habit, id: createId(), createdAt: today, checkIns: [] }];
+  const addHabit = useCallback(async (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns'>) => {
+    const next = [...habits, { ...habit, id: createId(), createdAt: today, checkIns: [], stepCheckIns: {}, makeupCheckIns: [] }];
     await save(next);
   }, [habits, save, today]);
 
-  const updateHabit = useCallback(async (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory'>) => {
-    await save(habits.map((habit) => habit.id === id ? { ...habit, ...updates } : habit));
+  const updateHabit = useCallback(async (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays'>) => {
+    await save(habits.map((habit) => habit.id === id ? {
+      ...habit,
+      ...updates,
+      stepCheckIns: Object.fromEntries(
+        Object.entries(habit.stepCheckIns).filter(([, step]) => updates.steps.includes(step)),
+      ),
+    } : habit));
   }, [habits, save]);
 
   const deleteHabit = useCallback(async (id: string) => {
     await save(habits.filter((habit) => habit.id !== id));
   }, [habits, save]);
 
-  const toggleCheckIn = useCallback(async (id: string) => {
+  const toggleCheckIn = useCallback(async (id: string, completedStep?: string) => {
     if (actionLock.current) return 0;
     actionLock.current = true;
     try {
@@ -766,12 +786,22 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       const checkInDate = getLocalDate();
       const habit = habits.find((item) => item.id === id);
       if (!habit) return 0;
+      if (!habit.checkIns.includes(checkInDate) && habit.restDays.includes(getWeekday(checkInDate))) {
+        throw new Error('今天是這個目標的休息日。');
+      }
       const alreadyDone = habit.checkIns.includes(checkInDate);
-      const nextHabits = habits.map((item) => item.id !== id ? item : {
-        ...item,
-        checkIns: alreadyDone
-          ? item.checkIns.filter((date) => date !== checkInDate)
-          : [...item.checkIns, checkInDate],
+      const nextHabits = habits.map((item) => {
+        if (item.id !== id) return item;
+        const stepCheckIns = { ...item.stepCheckIns };
+        if (alreadyDone) delete stepCheckIns[checkInDate];
+        else if (completedStep && item.steps.includes(completedStep)) stepCheckIns[checkInDate] = completedStep;
+        return {
+          ...item,
+          checkIns: alreadyDone
+            ? item.checkIns.filter((date) => date !== checkInDate)
+            : [...item.checkIns, checkInDate],
+          stepCheckIns,
+        };
       });
       let reward = 0;
       if (!alreadyDone) {
@@ -823,10 +853,72 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [habits, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, save]);
 
+  const makeUpYesterday = useCallback(async (id: string) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    const habit = habits.find((item) => item.id === id);
+    if (!habit) throw new Error('找不到這個目標');
+    const usedMakeups = habits.flatMap((item) => item.makeupCheckIns);
+    if (!canMakeUpYesterday(habit, today, usedMakeups)) {
+      throw new Error('昨天已完成、是休息日，或本週補打卡額度已用完。');
+    }
+    const yesterday = getPreviousLocalDate(today);
+    actionLock.current = true;
+    try {
+      const nextHabits = habits.map((item) => item.id !== id ? item : {
+        ...item,
+        checkIns: [...new Set([...item.checkIns, yesterday])].sort(),
+        makeupCheckIns: [...new Set([...item.makeupCheckIns, yesterday])].sort(),
+      });
+      const rewardKey = `${id}:${yesterday}`;
+      const reward = rewardedCheckIns.includes(rewardKey) ? 0 : CHECK_IN_REWARD;
+      if (reward > 0) {
+        const transaction: CheckInTransaction = {
+          version: 1,
+          habits: nextHabits,
+          mall: {
+            schemaVersion: MALL_SCHEMA_VERSION,
+            coins: coins + reward,
+            purchasedItems,
+            placements: mallPlacements,
+            shopInteriors,
+            rewardedCheckIns: [...rewardedCheckIns, rewardKey],
+            rewardTokens,
+          },
+        };
+        await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
+        setHabits(nextHabits);
+        setCoins(transaction.mall.coins);
+        setRewardedCheckIns(transaction.mall.rewardedCheckIns);
+        setRewardTokens(transaction.mall.rewardTokens);
+        try {
+          await synchronizeCheckInTransaction(transaction);
+          setStorageError(null);
+        } catch {
+          setStorageError('補打卡與金幣已一致記錄；部分同步暫時失敗，重新開啟 App 會自動修復。');
+        }
+      } else {
+        await save(nextHabits);
+      }
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // Feedback failure must not make a durably saved recovery look unsaved.
+      }
+      return reward;
+    } finally {
+      actionLock.current = false;
+    }
+  }, [habits, save, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens]);
+
   // Legacy arguments remain compatible with saved/older clients; only earned coins are spent.
   const purchaseMallItem = useCallback(async (itemId: string, price: number, _category: RewardCategory, _ticketCost: number, slotId: MallSlotId) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
     if (purchasedItems.includes(itemId)) throw new Error('這個項目已經建造完成');
+    const catalogItem = MALL_ITEM_BY_ID[itemId];
+    if (!catalogItem) throw new Error('找不到這個商場項目');
+    if (catalogItem.unlockCheckIns !== undefined && rewardedCheckIns.length < catalogItem.unlockCheckIns) {
+      throw new Error(`完成 ${catalogItem.unlockCheckIns} 次目標後即可免費兌換`);
+    }
     if (coins < price) throw new Error('金幣還不夠');
     if (!(MALL_SLOT_IDS as readonly string[]).includes(slotId)) throw new Error('這個商場位置不存在');
     if (mallPlacements[slotId]) throw new Error('這個位置已經有設施');
@@ -1208,9 +1300,9 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }), [habits, coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors]);
 
   const value = useMemo(() => ({
-    habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
-      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
+      habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
+      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }
@@ -1221,13 +1313,4 @@ export function useHabits() {
   return context;
 }
 
-export function getStreak(checkIns: string[], today: string): number {
-  const dates = new Set(checkIns);
-  let cursor = dates.has(today) ? today : previousDate(today);
-  let count = 0;
-  while (dates.has(cursor)) {
-    count += 1;
-    cursor = previousDate(cursor);
-  }
-  return count;
-}
+export { getStreak } from '@/lib/habit-schedule';

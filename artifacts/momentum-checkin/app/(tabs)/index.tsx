@@ -19,6 +19,7 @@ import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 import { updateReminderCheckInStatus } from '@workspace/api-client-react';
 import { readReminderSettings } from '@/lib/reminder-settings';
+import { canMakeUpYesterday, getPreviousLocalDate, getWeekday, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
 import {
   getStreak,
   useHabits,
@@ -43,11 +44,16 @@ function getWeek(todayKey: string) {
   });
 }
 
-function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
+function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, completedStep, onToggle, onMakeUp, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
   reward: number;
-  onToggle: () => Promise<void>;
+  isRestDay: boolean;
+  canMakeUp: boolean;
+  showMakeUp: boolean;
+  completedStep?: string;
+  onToggle: (step?: string) => Promise<void>;
+  onMakeUp: () => Promise<void>;
   onEdit: () => void;
   onManage: () => void;
 }) {
@@ -58,8 +64,9 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
       <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
         <Feather name={habit.icon as keyof typeof Feather.glyphMap} size={20} color={colors.foreground} />
       </View>
-      <Pressable
-        style={styles.habitInfo}
+      <View style={styles.habitInfo}>
+       <Pressable
+        style={styles.habitTitleArea}
         onPressIn={() => {
           longPressTriggered.current = false;
         }}
@@ -79,6 +86,33 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
       >
         <Text style={[styles.habitTitle, { color: colors.foreground }, done && styles.doneText]}>{habit.title}</Text>
         <Text style={[styles.habitReason, { color: colors.mutedForeground }]} numberOfLines={1}>{habit.reason}</Text>
+      </Pressable>
+        {isRestDay && !done ? (
+          <Text style={[styles.habitRestNote, { color: colors.primary }]}>今天是安排好的休息日</Text>
+        ) : null}
+        {habit.steps.length > 0 && !done && !isRestDay ? (
+          <View style={styles.stepList}>
+            {habit.steps.map((step) => (
+              <Pressable
+                key={step}
+                onPress={() => void onToggle(step)}
+                accessibilityRole="button"
+                accessibilityLabel={`完成小步驟：${step}，並完成今日目標`}
+                testID={`habit-step-${habit.id}-${habit.steps.indexOf(step)}`}
+                style={({ pressed }) => [
+                  styles.stepChip,
+                  { backgroundColor: colors.secondary, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Feather name="check" size={10} color={colors.primary} />
+                <Text style={[styles.stepChipText, { color: colors.primary }]} numberOfLines={1}>{step}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {done && completedStep ? (
+          <Text style={[styles.habitStepDone, { color: colors.primary }]} numberOfLines={1}>今日完成：{completedStep}</Text>
+        ) : null}
         {!done && reward > 0 && (
           <View
             style={[styles.rewardHint, { backgroundColor: colors.candyLemon }]}
@@ -90,7 +124,23 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
             </Text>
           </View>
         )}
-      </Pressable>
+        {showMakeUp ? (
+          <Pressable
+            onPress={() => void onMakeUp()}
+            disabled={!canMakeUp}
+            accessibilityRole="button"
+            accessibilityLabel={canMakeUp ? `補回昨天的${habit.title}打卡，每週一次；未曾領取時可獲得 20 金幣` : '本週補打卡機會已用完'}
+            accessibilityState={{ disabled: !canMakeUp }}
+            testID={`makeup-checkin-${habit.id}`}
+            style={[styles.makeupButton, { backgroundColor: canMakeUp ? colors.candyLemon : colors.background, opacity: canMakeUp ? 1 : 0.55 }]}
+          >
+            <Feather name={canMakeUp ? 'rotate-ccw' : 'check-circle'} size={11} color={colors.candyCaramelDark} />
+            <Text style={[styles.makeupText, { color: colors.candyCaramelDark }]}>
+              {canMakeUp ? '補回昨天打卡' : '本週補打卡已用完'}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
       <Pressable
         style={styles.manageButton}
         onPress={onManage}
@@ -102,9 +152,10 @@ function HabitRow({ habit, done, reward, onToggle, onEdit, onManage }: {
       </Pressable>
       <Pressable
         style={[styles.checkButton, { backgroundColor: done ? colors.primary : colors.secondary }]}
-        onPress={onToggle}
+        onPress={() => void onToggle()}
+        disabled={!done && isRestDay}
         accessibilityRole="button"
-        accessibilityLabel={done ? `取消${habit.title}打卡` : `完成${habit.title}`}
+        accessibilityLabel={done ? `取消${habit.title}打卡` : isRestDay ? `${habit.title}今天是休息日` : `完成${habit.title}`}
         testID={`checkin-${habit.id}`}
       >
         <Feather name={done ? 'check' : 'plus'} size={20} color={done ? colors.primaryForeground : colors.primary} />
@@ -117,7 +168,7 @@ export function TodayScreen() {
   const colors = useColors();
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const { habits, isLoading, storageError, today, coins, getCheckInReward, toggleCheckIn, deleteHabit } = useHabits();
+  const { habits, isLoading, storageError, today, coins, rewardedCheckIns, getCheckInReward, toggleCheckIn, makeUpYesterday, deleteHabit } = useHabits();
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -125,11 +176,17 @@ export function TodayScreen() {
   const dailyQuote = getDailyMotivationalQuote(today);
   const week = getWeek(today);
   const todayDone = habits.filter((habit) => habit.checkIns.includes(today)).length;
-  const percent = habits.length === 0 ? 0 : Math.round((todayDone / habits.length) * 100);
+  const scheduledToday = habits.filter((habit) => !habit.restDays.includes(getWeekday(today)));
+  const scheduledTodayDone = scheduledToday.filter((habit) => habit.checkIns.includes(today)).length;
+  const percent = scheduledToday.length === 0 ? 100 : Math.min(100, Math.round((scheduledTodayDone / scheduledToday.length) * 100));
   const date = new Date(`${today}T12:00:00`);
   const weekday = dayNames[date.getDay()];
   const dateLabel = `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
-  const totalStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today)));
+  const totalStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today, habit.restDays)));
+  const makeupDatesThisAccount = [
+    ...habits.flatMap((habit) => habit.makeupCheckIns),
+    ...rewardedCheckIns.flatMap((key) => key.startsWith(MAKEUP_USE_PREFIX) ? [key.slice(MAKEUP_USE_PREFIX.length)] : []),
+  ];
 
   function openHabitActions(habit: Habit) {
     setSelectedHabit(habit);
@@ -167,9 +224,9 @@ export function TodayScreen() {
     }
   }
 
-  async function handleToggle(habit: Habit) {
+  async function handleToggle(habit: Habit, step?: string) {
     try {
-      const reward = await toggleCheckIn(habit.id);
+      const reward = await toggleCheckIn(habit.id, step);
       if (Platform.OS === 'web') {
         const wasDone = habit.checkIns.includes(today);
         const hasCheckedInToday = !wasDone || habits.some(
@@ -194,6 +251,20 @@ export function TodayScreen() {
       }
     } catch {
       Alert.alert('沒有儲存成功', '請再試一次。');
+    }
+  }
+
+  async function handleMakeUp(habit: Habit) {
+    try {
+      const reward = await makeUpYesterday(habit.id);
+      Alert.alert(
+        '昨天的打卡已補回',
+        reward > 0
+          ? `獲得 ${reward} 金幣；補回紀錄和金幣已一併保存。`
+          : '補回紀錄已保存；這項目昨天已領過金幣，因此不會重複發放。',
+      );
+    } catch (error) {
+      Alert.alert('暫時無法補打卡', error instanceof Error ? error.message : '請稍後再試。');
     }
   }
 
@@ -267,7 +338,7 @@ export function TodayScreen() {
           <View style={styles.weekHeader}>
             <View>
               <Text style={[styles.weekEyebrow, { color: colors.primaryForeground, opacity: 0.78 }]}>本週的你</Text>
-              <Text style={[styles.weekScore, { color: colors.primaryForeground }]}>{todayDone}<Text style={[styles.weekTotal, { color: colors.primaryForeground, opacity: 0.8 }]}> / {habits.length} 今日完成</Text></Text>
+              <Text style={[styles.weekScore, { color: colors.primaryForeground }]}>{scheduledTodayDone}<Text style={[styles.weekTotal, { color: colors.primaryForeground, opacity: 0.8 }]}> / {scheduledToday.length} 今日完成</Text></Text>
             </View>
             <View style={[styles.streakBadge, { backgroundColor: colors.candyLemon }]}>
               <Feather name="zap" size={14} color={colors.candyCaramelDark} />
@@ -334,7 +405,16 @@ export function TodayScreen() {
                 habit={habit}
                 done={habit.checkIns.includes(today)}
                 reward={getCheckInReward(habit.id)}
-                onToggle={() => handleToggle(habit)}
+                isRestDay={habit.restDays.includes(getWeekday(today))}
+                canMakeUp={canMakeUpYesterday(habit, today, makeupDatesThisAccount)}
+                showMakeUp={
+                  habit.createdAt <= getPreviousLocalDate(today)
+                  && !habit.checkIns.includes(getPreviousLocalDate(today))
+                  && !habit.restDays.includes(getWeekday(getPreviousLocalDate(today)))
+                }
+                completedStep={habit.stepCheckIns[today]}
+                onToggle={(step) => handleToggle(habit, step)}
+                onMakeUp={() => handleMakeUp(habit)}
                 onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
                 onManage={() => openHabitActions(habit)}
               />
@@ -503,10 +583,18 @@ const styles = StyleSheet.create({
   habitCard: { minHeight: 75, borderRadius: 19, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
   habitIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   habitInfo: { flex: 1, justifyContent: 'center', minWidth: 0 },
+  habitTitleArea: { minWidth: 0 },
   manageButton: { width: 32, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   habitTitle: { fontSize: 15, fontWeight: '600' },
   doneText: { textDecorationLine: 'line-through', opacity: 0.62 },
   habitReason: { fontSize: 11, marginTop: 5 },
+  habitRestNote: { fontSize: 10, fontWeight: '700', marginTop: 6 },
+  stepList: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 7 },
+  stepChip: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 5, borderRadius: 9 },
+  stepChipText: { fontSize: 10, maxWidth: 160 },
+  habitStepDone: { fontSize: 10, marginTop: 6 },
+  makeupButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7, paddingHorizontal: 7, paddingVertical: 5, borderRadius: 9 },
+  makeupText: { fontSize: 10, fontWeight: '700' },
   rewardHint: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, marginTop: 6 },
   rewardHintText: { fontSize: 10, fontWeight: '700' },
   checkButton: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

@@ -30,6 +30,7 @@ import {
 import { useColors } from '@/hooks/useColors';
 import { MallAmbience, MallObjectVisual } from '@/components/MallVisuals';
 import { MALL_FLOORS, MALL_ITEMS, MALL_ITEM_BY_ID, type MallItem } from '@/constants/mall';
+import { getRewardedCheckInCount } from '@/constants/progress-milestones';
 import { SHOP_INTERIOR_DECORATIONS } from '@/constants/mall-shop-interior';
 import { CatalogPager } from '@/components/CatalogPager';
 import { getMallSlotFloor, getMallSlotPosition, MALL_POSITIONS_PER_FLOOR, type MallWing } from '@/constants/mall-layout';
@@ -258,7 +259,8 @@ export default function MallScreen() {
   const mallSceneY = useRef(0);
   const sceneOpacity = useRef(new Animated.Value(1)).current;
   const sceneOffset = useRef(new Animated.Value(14)).current;
-  const { coins, purchasedItems, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, mallLoadError, isLoading } = useHabits();
+  const { coins, purchasedItems, rewardedCheckIns, mallPlacements, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, storageError, mallLoadError, isLoading } = useHabits();
+  const completedRewardCount = getRewardedCheckInCount(rewardedCheckIns);
   const [showCollection, setShowCollection] = useState(false);
   const [warehouseNotice, setWarehouseNotice] = useState<string | null>(null);
   const [placementAnnouncement, setPlacementAnnouncement] = useState('');
@@ -336,7 +338,11 @@ export default function MallScreen() {
   // Warehouse items are already owned and always free to place.
   const showRedemptionControls = !showCollection || isSearching;
   const filteringAffordable = showRedemptionControls && affordableOnly;
-  const eligibleItems = catalogItems.filter((item) => !filteringAffordable || (!ownedIds.has(item.id) && item.price <= coins));
+  const eligibleItems = catalogItems.filter((item) => !filteringAffordable || (
+    !ownedIds.has(item.id)
+    && item.price <= coins
+    && (item.unlockCheckIns === undefined || completedRewardCount >= item.unlockCheckIns)
+  ));
   const visibleItems = eligibleItems.filter((item) => category === 'all' || item.category === category);
   if (showRedemptionControls && priceAscending) visibleItems.sort((a, b) => a.price - b.price);
   const catalogPages = Math.max(1, Math.ceil(visibleItems.length / CATALOG_PAGE_SIZE));
@@ -347,7 +353,11 @@ export default function MallScreen() {
       if (!matchesMallSearch(item, searchTerms)) return false;
       if (floorFilter !== null && item.floor !== floorFilter) return false;
       if (category !== 'all' && item.category !== category) return false;
-      if (showRedemptionControls && affordableOnly && (ownedIds.has(item.id) || item.price > coins)) return false;
+       if (showRedemptionControls && affordableOnly && (
+         ownedIds.has(item.id)
+         || item.price > coins
+         || (item.unlockCheckIns !== undefined && completedRewardCount < item.unlockCheckIns)
+       )) return false;
       const slotId = placedSlotsByItem.get(item.id);
       if (placementFloorFilter !== null
         && (slotId === undefined || getMallSlotFloor(slotId) !== placementFloorFilter)) return false;
@@ -530,6 +540,10 @@ export default function MallScreen() {
 
   function startPurchasePlacement(item: MallItem) {
     if (isLoading || purchasedItems.includes(item.id) || purchasing || placementIntent) return;
+    if (item.unlockCheckIns !== undefined && completedRewardCount < item.unlockCheckIns) {
+      Alert.alert('里程碑裝飾尚未解鎖', `再完成 ${item.unlockCheckIns - completedRewardCount} 次目標即可免費兌換。`);
+      return;
+    }
     if (coins < item.price) {
       Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
       return;
@@ -556,6 +570,10 @@ export default function MallScreen() {
 
   function selectSearchItem(item: MallItem) {
     if (isLoading || purchasing || operationLock.current || placementIntent) return;
+    if (!ownedIds.has(item.id) && item.unlockCheckIns !== undefined && completedRewardCount < item.unlockCheckIns) {
+      Alert.alert('里程碑裝飾尚未解鎖', `再完成 ${item.unlockCheckIns - completedRewardCount} 次目標即可免費兌換。`);
+      return;
+    }
     if (!ownedIds.has(item.id) && coins < item.price) {
       Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
       return;
@@ -599,7 +617,7 @@ export default function MallScreen() {
       if (!confirmed) {
         setPreviewSlotId(slotId);
         const position = getSlotPosition(slotId);
-        announcePlacement(`${currentPlacementItem.name}試擺於 ${position.floor} ${position.label}，尚未兌換或扣除金幣。需要 ${currentPlacementItem.price} 金幣，請按確認兌換，或改選其他空位。`);
+        announcePlacement(`${currentPlacementItem.name}試擺於 ${position.floor} ${position.label}，尚未兌換。${currentPlacementItem.price > 0 ? `需要 ${currentPlacementItem.price} 金幣，` : '可免費兌換，'}請按確認兌換，或改選其他空位。`);
         return;
       }
       if (previewSlotId !== slotId || !floorSlots.includes(slotId)) return;
@@ -624,7 +642,7 @@ export default function MallScreen() {
           slotId,
         );
         setFocusResultSlotId(slotId);
-        announcePlacement(`${currentPlacementItem.name}已兌換，已放在 ${location}，扣除 ${currentPlacementItem.price} 金幣。`, true);
+        announcePlacement(`${currentPlacementItem.name}已兌換，已放在 ${location}${currentPlacementItem.price > 0 ? `，扣除 ${currentPlacementItem.price} 金幣。` : '，沒有扣除金幣。'}`, true);
       } else {
         await moveMallItem(currentPlacementItem.id, slotId);
         setFocusResultSlotId(slotId);
@@ -998,7 +1016,7 @@ export default function MallScreen() {
                   />
                 );
               })}
-              {active && <MallAmbience floor={currentFloor} />}
+              {active && <MallAmbience floor={currentFloor} totalCheckIns={completedRewardCount} />}
             </ImageBackground>}
             />
             <View style={[styles.mapFooter, { backgroundColor: colors.candyCream }]}>
@@ -1015,14 +1033,16 @@ export default function MallScreen() {
                 {getSlotPosition(previewSlotId).floor} · {floorTheme.title} · {getSlotPosition(previewSlotId).label}
               </Text>
               <Text style={[styles.previewDetails, { color: colors.foreground }]}>
-                {currentPlacementItem.price} 金幣 · 完全免費，只用打卡金幣兌換
+                {currentPlacementItem.unlockCheckIns !== undefined
+                  ? '里程碑禮物 · 免費兌換，不扣金幣'
+                  : `${currentPlacementItem.price} 金幣 · 完全免費，只用打卡金幣兌換`}
               </Text>
               <Text style={[styles.previewDetails, { color: colors.mutedForeground }]}>尚未扣除金幣或取得物件；喜歡這個效果再確認。</Text>
               <View style={styles.previewActions}>
                 <Pressable testID="cancel-purchase-preview" onPress={cancelPlacement} disabled={purchasing !== null} accessibilityRole="button" accessibilityState={{ disabled: purchasing !== null }} style={[styles.previewButton, { backgroundColor: colors.card }]}>
                   <Text style={[styles.filterText, { color: colors.primary }]}>取消預覽</Text>
                 </Pressable>
-                <Pressable testID="confirm-purchase-preview" onPress={() => void placeItemInSlot(previewSlotId, true)} disabled={isLoading || purchasing !== null} accessibilityRole="button" accessibilityLabel={`${purchasing ? '正在兌換' : '確認兌換'}${currentPlacementItem.name}，${getSlotPosition(previewSlotId).floor} ${getSlotPosition(previewSlotId).label}，${currentPlacementItem.price} 金幣`} accessibilityState={{ disabled: isLoading || purchasing !== null, busy: purchasing !== null }} style={[styles.previewButton, { backgroundColor: colors.primary, opacity: purchasing ? 0.5 : 1 }]}>
+                <Pressable testID="confirm-purchase-preview" onPress={() => void placeItemInSlot(previewSlotId, true)} disabled={isLoading || purchasing !== null} accessibilityRole="button" accessibilityLabel={`${purchasing ? '正在兌換' : '確認兌換'}${currentPlacementItem.name}，${getSlotPosition(previewSlotId).floor} ${getSlotPosition(previewSlotId).label}${currentPlacementItem.unlockCheckIns !== undefined ? '，免費里程碑裝飾' : `，${currentPlacementItem.price} 金幣`}`} accessibilityState={{ disabled: isLoading || purchasing !== null, busy: purchasing !== null }} style={[styles.previewButton, { backgroundColor: colors.primary, opacity: purchasing ? 0.5 : 1 }]}>
                   <Text style={[styles.filterText, { color: colors.primaryForeground }]}>{purchasing ? '兌換中…' : '確認兌換'}</Text>
                 </Pressable>
               </View>
@@ -1352,7 +1372,8 @@ export default function MallScreen() {
           {pagedItems.map((item) => {
             const owned = ownedIds.has(item.id);
             const enoughCoins = coins >= item.price;
-            const disabled = isLoading || (owned && !showCollection && !isSearching) || purchasing !== null || placementIntent !== null;
+            const milestoneLocked = item.unlockCheckIns !== undefined && completedRewardCount < item.unlockCheckIns;
+            const disabled = isLoading || (owned && !showCollection && !isSearching) || purchasing !== null || placementIntent !== null || (!owned && milestoneLocked);
             const placedSlotId = placedSlotsByItem.get(item.id);
             const placedPosition = placedSlotId ? getSlotPosition(placedSlotId) : null;
             return (
@@ -1372,13 +1393,13 @@ export default function MallScreen() {
                   >
                     {isSearching
                       ? placedPosition
-                        ? `${placedPosition.floor} · ${WING_NAMES[placedPosition.wing]} · ${placedPosition.label} · ${item.price} 金幣`
+                        ? `${placedPosition.floor} · ${WING_NAMES[placedPosition.wing]} · ${placedPosition.label}${item.unlockCheckIns !== undefined ? ' · 里程碑裝飾' : ` · ${item.price} 金幣`}`
                         : owned
-                          ? `倉庫保存中 · 原屬 ${item.floor}F · ${item.price} 金幣`
-                          : `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.price} 金幣`
+                          ? `倉庫保存中 · 原屬 ${item.floor}F${item.unlockCheckIns !== undefined ? ' · 里程碑裝飾' : ` · ${item.price} 金幣`}`
+                          : `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.unlockCheckIns !== undefined ? '里程碑裝飾' : `${item.price} 金幣`}`
                       : showCollection
                         ? `${item.floor}F 原屬選物 · ${item.description}`
-                        : item.description}
+                      : item.description}
                   </Text>
                   {isSearching && (
                     <Text
@@ -1394,7 +1415,11 @@ export default function MallScreen() {
                       {getMallSearchMatchReason(item, searchTerms)}
                     </Text>
                   )}
-                  {isSearching ? <Text testID={`search-item-status-${item.id}`} style={[styles.sceneSub, { color: colors.primary }]}>{owned ? placedIds.has(item.id) ? '已兌換 · 已擺放 · 免費搬動' : '已兌換 · 倉庫保存中 · 免費擺放' : '未兌換 · 選取後前往所屬樓層試擺'}</Text> : showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : <View style={styles.costRow}>
+                  {isSearching ? <Text testID={`search-item-status-${item.id}`} style={[styles.sceneSub, { color: colors.primary }]}>{owned ? placedIds.has(item.id) ? '已兌換 · 已擺放 · 免費搬動' : '已兌換 · 倉庫保存中 · 免費擺放' : milestoneLocked ? `里程碑裝飾 · 再完成 ${item.unlockCheckIns! - completedRewardCount} 次目標解鎖` : '未兌換 · 選取後前往所屬樓層試擺'}</Text> : showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : item.unlockCheckIns !== undefined ? (
+                    <Text style={[styles.costText, { color: milestoneLocked ? colors.mutedForeground : colors.primary }]}>
+                      {milestoneLocked ? `里程碑裝飾 · ${completedRewardCount}/${item.unlockCheckIns} 次` : '里程碑禮物 · 免費兌換'}
+                    </Text>
+                  ) : <View style={styles.costRow}>
                     <View style={styles.costPart}><Feather name="circle" size={11} color={colors.candyCaramelDark} /><Text style={[styles.costText, { color: colors.candyCaramelDark }]}>{item.price}</Text></View>
                     <Text style={[styles.costText, { color: colors.candyCaramelDark }]}>金幣</Text>
                   </View>}
@@ -1452,7 +1477,7 @@ export default function MallScreen() {
                       { backgroundColor: owned ? colors.secondary : colors.primary, opacity: disabled && !owned ? 0.55 : 1 },
                     ]}
                     accessibilityRole="button"
-                    accessibilityLabel={`${isSearching ? `選擇${item.name}，前往 ${item.floor}F，${CATEGORY_NAMES[item.category]}，${item.price} 金幣，${owned ? '已兌換，可免費重擺' : '未兌換，先試擺再確認'}` : showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : `選擇位置建造${item.name}`}${showCollection && focusRestoreActionItemId === item.id && focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
+                    accessibilityLabel={`${isSearching ? `選擇${item.name}，前往 ${item.floor}F，${CATEGORY_NAMES[item.category]}，${owned ? '已兌換，可免費重擺' : milestoneLocked ? `完成 ${item.unlockCheckIns} 次目標後可免費兌換` : item.unlockCheckIns !== undefined ? '里程碑已達成，可免費兌換' : `${item.price} 金幣，未兌換，先試擺再確認`}` : showCollection ? `免費擺放${item.name}` : owned ? `${item.name}已擁有` : milestoneLocked ? `${item.name}尚未解鎖` : item.unlockCheckIns !== undefined ? `免費兌換${item.name}` : `選擇位置建造${item.name}`}${showCollection && focusRestoreActionItemId === item.id && focusResultMessage ? `，操作結果：${focusResultMessage}` : ''}`}
                     accessibilityState={{ disabled }}
                     testID={`${isSearching ? 'search-select' : showCollection ? 'restore' : 'build'}-${item.id}`}
                   >

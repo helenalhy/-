@@ -40,7 +40,11 @@ function hasMeaningfulLocalProgress(snapshot: ProgressSnapshot) {
         && habit.title === starter.title
         && habit.reason === starter.reason
         && habit.icon === starter.icon
-        && habit.checkIns.length === 0,
+        && habit.checkIns.length === 0
+        && (habit.steps?.length ?? 0) === 0
+        && (habit.restDays?.length ?? 0) === 0
+        && Object.keys(habit.stepCheckIns ?? {}).length === 0
+        && (habit.makeupCheckIns?.length ?? 0) === 0,
       );
     });
   const mall = snapshot.mall;

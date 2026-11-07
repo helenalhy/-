@@ -16,6 +16,8 @@ export interface MallItem {
   price: number;
   /** Legacy compatibility field; redemptions now use earned coins only. */
   ticketCost: number;
+  /** Milestone rewards stay locked until this many rewarded check-ins are recorded. */
+  unlockCheckIns?: number;
   shopType?: MallShopType;
   visual?: 'cloud-walk' | 'central-fountain' | 'wooden-bench' | 'garden-lights' | 'colorful-planter' | 'rest-pavilion' | 'coral-aquarium' | 'rhythm-stage' | 'yoga-deck' | 'sculpture-plaza' | 'observatory-dome' | 'tasting-court' | 'art-workbench' | 'cloud-swing' | 'shell-lantern' | 'neon-sign' | 'aroma-diffuser' | 'gallery-frames' | 'starlight-mobile' | 'spice-display' | 'rainbow-arch';
 }
@@ -65,8 +67,8 @@ export const MALL_FLOORS: MallFloorTheme[] = [
   { title: '天空花園', description: '來到雲端，在彩虹和城市風景中休息。', image: require('../assets/images/mall-floor-10.jpg'), accent: c.candySkyDark, surface: c.candySky },
 ];
 
-function item(floor: number, id: string, name: string, description: string, icon: string, category: RewardCategory, price: number, _legacyTicketCost: number, color: string, visual?: MallItem['visual'], shopType?: MallShopType): MallItem {
-  return { floor, id, name, description, icon, category, price, ticketCost: 0, color, visual, shopType };
+function item(floor: number, id: string, name: string, description: string, icon: string, category: RewardCategory, price: number, _legacyTicketCost: number, color: string, visual?: MallItem['visual'], shopType?: MallShopType, unlockCheckIns?: number): MallItem {
+  return { floor, id, name, description, icon, category, price, ticketCost: 0, color, visual, shopType, unlockCheckIns };
 }
 
 // Existing IDs and prices remain stable so previous purchases keep their identity.
@@ -169,6 +171,9 @@ export const MALL_ITEMS: MallItem[] = [
   item(7, 'evening-gown-salon', '晚禮服店', '為特別的日子挑一套優雅禮服', 'star', 'shop', 115, 0, c.candyLavender, undefined, 'eveningwear'),
   item(9, 'sunny-supermarket', '陽光超市', '把日常所需和新鮮食材一次買齊', 'shopping-cart', 'shop', 130, 0, c.candyMint, undefined, 'supermarket'),
   item(20, 'bridal-gown-house', '婚紗店', '在柔光之中挑選夢想中的婚紗', 'heart', 'shop', 160, 0, c.candyPeach, undefined, 'bridal'),
+  item(1, 'milestone-starlight-lanterns', '星光糖霜燈串', '完成 25 次目標後解鎖，為糖果迎賓街添上柔和星光。', 'star', 'decor', 0, 0, c.candyLemon, 'garden-lights', undefined, 25),
+  item(15, 'milestone-sakura-lantern', '櫻花溫泉紙燈', '完成 75 次目標後解鎖，為櫻花溫泉小町點亮粉色燈影。', 'sun', 'decor', 0, 0, c.candyPink, 'shell-lantern', undefined, 75),
+  item(20, 'milestone-cloud-mobile', '雲端彩虹風鈴', '完成 150 次目標後解鎖，讓天空花園多一串輕柔彩虹風鈴。', 'wind', 'decor', 0, 0, c.candySky, 'rainbow-arch', undefined, 150),
   item(4, 'blue-tide-swimwear', '泳衣店', '挑選泳衣、沙灘罩衫和度假配件', 'sun', 'shop', 95, 0, c.candySky, undefined, 'swimwear'),
   item(5, 'cosplay-costume-studio', 'Cosplay服裝店', '挑選角色服裝、假髮和舞台配件', 'star', 'shop', 110, 0, c.candyLavender, undefined, 'cosplay'),
   item(6, 'little-circuit-electronics', '電器店', '發現日常家電、耳機和可愛小科技', 'cpu', 'shop', 125, 0, c.candyMint, undefined, 'electronics'),

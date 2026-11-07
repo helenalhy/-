@@ -8,6 +8,7 @@ import { useColors } from '@/hooks/useColors';
 import { getLocalDate, getStreak, useHabits } from '@/context/HabitsContext';
 import { useCloudSyncControls } from '@/context/ProgressSyncBridge';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
+import { getNextMilestone, getRewardedCheckInCount, getUnlockedMilestones, PROGRESS_MILESTONES } from '@/constants/progress-milestones';
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -19,7 +20,7 @@ export default function ProgressScreen() {
   const { user, isLoaded: userLoaded } = useUser();
   const { signOut } = useClerk();
   const { retry } = useCloudSyncControls();
-  const { habits, today, cloudSyncStatus, cloudSyncMessage } = useHabits();
+  const { habits, today, rewardedCheckIns, cloudSyncStatus, cloudSyncMessage } = useHabits();
   const [quoteDate, setQuoteDate] = useState(today);
   useEffect(() => {
     const refreshQuoteDate = () => {
@@ -42,9 +43,28 @@ export default function ProgressScreen() {
     const count = habits.filter((habit) => habit.checkIns.includes(key)).length;
     return { key, count, label: weekdays[index], day: date.getDate() };
   });
-  const weeklyDone = week.reduce((sum, dayItem) => sum + dayItem.count, 0);
+  const weekToDate = week.filter((dayItem) => dayItem.key <= today);
+  const weeklyDone = weekToDate.reduce((sum, dayItem) => sum + dayItem.count, 0);
+  const weeklyScheduled = habits.reduce((sum, habit) => sum + weekToDate.filter((dayItem) => (
+    dayItem.key >= habit.createdAt && !habit.restDays.includes(new Date(`${dayItem.key}T12:00:00`).getDay())
+  )).length, 0);
+  const weeklyCoins = rewardedCheckIns.filter((key) => {
+    if (key.startsWith('makeup-used:')) return false;
+    const dateKey = key.slice(key.lastIndexOf(':') + 1);
+    return weekToDate.some((dayItem) => dayItem.key === dateKey);
+  }).length * 20;
+  const weeklyCompletionRate = weeklyScheduled > 0
+    ? Math.min(100, Math.round((weeklyDone / weeklyScheduled) * 100))
+    : 0;
+  const bestDay = [...weekToDate].sort((a, b) => b.count - a.count)[0];
+  const rewardedCheckInCount = getRewardedCheckInCount(rewardedCheckIns);
+  const unlockedMilestones = getUnlockedMilestones(rewardedCheckInCount);
+  const nextMilestone = getNextMilestone(rewardedCheckInCount);
+  const nextMilestoneProgress = nextMilestone
+    ? Math.min(100, Math.round((rewardedCheckInCount / nextMilestone.total) * 100))
+    : 100;
   const totalCheckIns = habits.reduce((sum, habit) => sum + habit.checkIns.length, 0);
-  const longestStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today)));
+  const longestStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today, habit.restDays)));
   const mostConsistent = [...habits].sort((a, b) => b.checkIns.length - a.checkIns.length)[0];
   const maxBar = Math.max(1, ...week.map((item) => item.count));
   const accountStatus = cloudSyncStatus === 'synced'
@@ -139,6 +159,42 @@ export default function ProgressScreen() {
           </View>
         </View>
 
+        <View style={[styles.weeklyReviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeading}>
+            <View>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>本週回顧</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>截至今天的練習成果</Text>
+            </View>
+            <View style={[styles.chartBadge, { backgroundColor: colors.candyLemon }]}>
+              <Feather name="award" size={16} color={colors.candyCaramelDark} />
+            </View>
+          </View>
+          <View style={styles.weeklySummaryRow}>
+            <View style={styles.weeklyStat}>
+              <Text style={[styles.weeklyValue, { color: colors.foreground }]}>{weeklyDone}</Text>
+              <Text style={[styles.weeklyLabel, { color: colors.mutedForeground }]}>完成次數</Text>
+            </View>
+            <View style={[styles.weeklyDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.weeklyStat}>
+              <Text style={[styles.weeklyValue, { color: colors.foreground }]}>{weeklyCoins}</Text>
+              <Text style={[styles.weeklyLabel, { color: colors.mutedForeground }]}>獲得金幣</Text>
+            </View>
+            <View style={[styles.weeklyDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.weeklyStat}>
+              <Text style={[styles.weeklyValue, { color: colors.foreground }]}>{weeklyScheduled > 0 ? `${weeklyCompletionRate}%` : '—'}</Text>
+              <Text style={[styles.weeklyLabel, { color: colors.mutedForeground }]}>計劃完成率</Text>
+            </View>
+          </View>
+          <View style={[styles.weeklyProgressTrack, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.weeklyProgressFill, { backgroundColor: colors.primary, width: `${weeklyCompletionRate}%` }]} />
+          </View>
+          <Text style={[styles.weeklyNote, { color: colors.mutedForeground }]}>
+            {bestDay && bestDay.count > 0
+              ? `本週最有行動力的一天是星期${weekdays[(new Date(`${bestDay.key}T12:00:00`).getDay() + 6) % 7]}，完成 ${bestDay.count} 次。`
+              : '每一小步都算數，今天也可以從一件小事開始。'}
+          </Text>
+        </View>
+
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeading}>
             <View>
@@ -166,6 +222,56 @@ export default function ProgressScreen() {
           </View>
         </View>
 
+        <View style={[styles.milestoneCard, { backgroundColor: colors.secondary }]}>
+          <View style={styles.cardHeading}>
+            <View style={styles.milestoneCopy}>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>商場裝飾里程碑</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>
+                只解鎖符合樓層主題的新裝飾，不會改變 20 層的主題。
+              </Text>
+            </View>
+            <View style={[styles.chartBadge, { backgroundColor: colors.card }]}>
+              <Feather name="gift" size={16} color={colors.primary} />
+            </View>
+          </View>
+          {nextMilestone ? (
+            <View style={styles.nextMilestone}>
+              <View style={styles.nextMilestoneTextRow}>
+                <Text style={[styles.weeklyLabel, { color: colors.mutedForeground }]}>
+                  下一份裝飾 · {nextMilestone.floor}F {nextMilestone.title}
+                </Text>
+                <Text style={[styles.milestoneCount, { color: colors.primary }]}>
+                  {rewardedCheckInCount}/{nextMilestone.total}
+                </Text>
+              </View>
+              <View style={[styles.weeklyProgressTrack, { backgroundColor: colors.card }]}>
+                <View style={[styles.weeklyProgressFill, { backgroundColor: colors.candyRoseDark, width: `${nextMilestoneProgress}%` }]} />
+              </View>
+            </View>
+          ) : (
+            <Text style={[styles.weeklyLabel, { color: colors.primary, marginTop: 15 }]}>所有里程碑裝飾都已解鎖，恭喜你！</Text>
+          )}
+          <View style={styles.milestoneList}>
+            {PROGRESS_MILESTONES.map((milestone) => {
+              const unlocked = unlockedMilestones.some(({ id }) => id === milestone.id);
+              return (
+                <View key={milestone.id} style={[styles.milestoneRow, { backgroundColor: colors.card }]}>
+                  <View style={[styles.milestoneIcon, { backgroundColor: unlocked ? colors.candyLemon : colors.background }]}>
+                    <Feather name={unlocked ? 'check' : 'lock'} size={15} color={unlocked ? colors.candyCaramelDark : colors.mutedForeground} />
+                  </View>
+                  <View style={styles.milestoneCopy}>
+                    <Text style={[styles.milestoneTitle, { color: colors.foreground }]}>{milestone.floor}F · {milestone.title}</Text>
+                    <Text style={[styles.milestoneSubtitle, { color: colors.mutedForeground }]}>
+                      {unlocked ? '已解鎖 · 可到該樓層免費兌換' : `完成 ${milestone.total} 次目標後免費兌換`}
+                    </Text>
+                  </View>
+                  <Text style={[styles.milestoneEffect, { color: unlocked ? colors.primary : colors.mutedForeground }]}>{milestone.effect}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>你正在堅持的事</Text>
         {habits.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -175,7 +281,7 @@ export default function ProgressScreen() {
         ) : (
           <View style={styles.habitStats}>
             {habits.map((habit) => {
-              const streak = getStreak(habit.checkIns, today);
+              const streak = getStreak(habit.checkIns, today, habit.restDays);
               const isTop = mostConsistent?.id === habit.id && habit.checkIns.length > 0;
               return (
                 <View key={habit.id} style={[styles.habitStat, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -232,6 +338,26 @@ const styles = StyleSheet.create({
   metricUnit: { fontSize: 13, fontWeight: '600' },
   metricLabel: { fontSize: 11, marginTop: 3 },
   chartCard: { borderWidth: 1, borderRadius: 21, padding: 17, marginTop: 13 },
+  weeklyReviewCard: { borderWidth: 1, borderRadius: 21, padding: 17, marginTop: 14 },
+  weeklySummaryRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
+  weeklyStat: { flex: 1, alignItems: 'center' },
+  weeklyValue: { fontSize: 20, fontWeight: '700' },
+  weeklyLabel: { fontSize: 10, marginTop: 4 },
+  weeklyDivider: { width: 1, height: 31 },
+  weeklyProgressTrack: { height: 7, borderRadius: 99, overflow: 'hidden', marginTop: 16 },
+  weeklyProgressFill: { height: '100%', borderRadius: 99 },
+  weeklyNote: { fontSize: 11, lineHeight: 17, marginTop: 11 },
+  milestoneCard: { borderRadius: 21, padding: 17, marginTop: 14 },
+  milestoneCopy: { flex: 1, minWidth: 0 },
+  nextMilestone: { marginTop: 16 },
+  nextMilestoneTextRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  milestoneCount: { fontSize: 11, fontWeight: '700' },
+  milestoneList: { gap: 8, marginTop: 14 },
+  milestoneRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 14, padding: 9 },
+  milestoneIcon: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  milestoneTitle: { fontSize: 11, fontWeight: '700' },
+  milestoneSubtitle: { fontSize: 9, marginTop: 3 },
+  milestoneEffect: { fontSize: 9, fontWeight: '600' },
   cardHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { fontSize: 16, fontWeight: '700' },
   cardSubtitle: { fontSize: 11, marginTop: 5 },

@@ -257,7 +257,7 @@ function MallStorefrontArt({ itemId, itemName, itemIcon, floor, itemColor }: {
   );
 }
 
-export function MallAmbience({ floor = 1 }: { floor?: number }) {
+export function MallAmbience({ floor = 1, totalCheckIns = 0 }: { floor?: number; totalCheckIns?: number }) {
   const shimmer = useRef(new Animated.Value(0.25)).current;
   useEffect(() => {
     const twinkle = Animated.loop(Animated.sequence([
@@ -272,6 +272,26 @@ export function MallAmbience({ floor = 1 }: { floor?: number }) {
       <Animated.View style={[s.sparkle, { left: '24%', top: '8%', opacity: shimmer }]}><Feather name="star" size={11} color={c.card} /></Animated.View>
       <Animated.View style={[s.sparkle, { right: '20%', top: '11%', opacity: shimmer }]}><Feather name="star" size={8} color={c.card} /></Animated.View>
       <Animated.View style={[s.waterGlint, { opacity: shimmer }]}><Feather name="droplet" size={14} color={c.candySkyDark} /></Animated.View>
+      {floor === 1 && totalCheckIns >= 25 ? (
+        <>
+          <Animated.View style={[s.sparkle, { left: '13%', top: '19%', opacity: shimmer }]}><Feather name="star" size={9} color={c.candyLemon} /></Animated.View>
+          <Animated.View style={[s.sparkle, { right: '12%', top: '28%', opacity: shimmer }]}><Feather name="star" size={7} color={c.candyPeach} /></Animated.View>
+        </>
+      ) : null}
+      {floor === 15 && totalCheckIns >= 75 ? (
+        <>
+          <Animated.View style={[s.petal, { left: '17%', top: '17%', opacity: shimmer }]} />
+          <Animated.View style={[s.petal, { right: '18%', top: '24%', opacity: shimmer, transform: [{ rotate: '38deg' }] }]} />
+          <Animated.View style={[s.petal, { right: '32%', top: '12%', opacity: shimmer, transform: [{ rotate: '-28deg' }] }]} />
+        </>
+      ) : null}
+      {floor === 20 && totalCheckIns >= 150 ? (
+        <Animated.View style={[s.rainbowSparkles, { opacity: shimmer }]}>
+          {[c.candyRoseDark, c.candyPeach, c.candyLemon, c.candyMintDark, c.candySkyDark].map((color, index) => (
+            <View key={color} style={[s.rainbowDot, { backgroundColor: color, transform: [{ translateY: index % 2 ? 0 : -3 }] }]} />
+          ))}
+        </Animated.View>
+      ) : null}
       <MallCustomers floor={floor} />
     </View>
   );
@@ -305,4 +325,7 @@ const s = StyleSheet.create({
   visitorLayer: { zIndex: 10, elevation: 10 },
   sparkle: { position: 'absolute' },
   waterGlint: { position: 'absolute', left: '48%', top: '82%' },
+  petal: { position: 'absolute', width: 7, height: 10, borderRadius: 6, backgroundColor: c.candyPink },
+  rainbowSparkles: { position: 'absolute', right: '15%', top: '16%', flexDirection: 'row', gap: 3 },
+  rainbowDot: { width: 5, height: 5, borderRadius: 3 },
 });

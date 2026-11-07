@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import palette from '@/constants/colors';
 import { HABIT_ICON_OPTIONS } from '@/constants/habit-icons';
+import { WEEKDAY_OPTIONS } from '@/lib/habit-schedule';
 import { useHabits, type RewardCategory } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
 
@@ -27,6 +28,8 @@ export default function HabitEditorScreen() {
   const existing = useMemo(() => habits.find((habit) => habit.id === id), [habits, id]);
   const [title, setTitle] = useState(existing?.title ?? '');
   const [reason, setReason] = useState(existing?.reason ?? '');
+  const [stepsDraft, setStepsDraft] = useState(existing?.steps.join('\n') ?? '');
+  const [restDays, setRestDays] = useState<number[]>(existing?.restDays ?? []);
   const [selected, setSelected] = useState(() => {
     const found = options.find((option) => option.icon === existing?.icon);
     return found?.icon ?? options[0].icon;
@@ -47,9 +50,25 @@ export default function HabitEditorScreen() {
     setSaving(true);
     try {
       if (existing) {
-        await updateHabit(existing.id, { title: cleanTitle, reason: reason.trim() || '一步一步，慢慢累積', icon: selectedOption.icon, color: selectedOption.color, rewardCategory });
+        await updateHabit(existing.id, {
+          title: cleanTitle,
+          reason: reason.trim() || '一步一步，慢慢累積',
+          icon: selectedOption.icon,
+          color: selectedOption.color,
+          rewardCategory,
+          steps: [...new Set(stepsDraft.split('\n').map((step) => step.trim()).filter(Boolean))].slice(0, 5),
+          restDays,
+        });
       } else {
-        await addHabit({ title: cleanTitle, reason: reason.trim() || '一步一步，慢慢累積', icon: selectedOption.icon, color: selectedOption.color, rewardCategory });
+        await addHabit({
+          title: cleanTitle,
+          reason: reason.trim() || '一步一步，慢慢累積',
+          icon: selectedOption.icon,
+          color: selectedOption.color,
+          rewardCategory,
+          steps: [...new Set(stepsDraft.split('\n').map((step) => step.trim()).filter(Boolean))].slice(0, 5),
+          restDays,
+        });
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
@@ -116,6 +135,51 @@ export default function HabitEditorScreen() {
           accessibilityLabel="目標的原因"
         />
 
+        <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>拆成今天容易開始的小步驟</Text>
+        <Text style={[styles.sectionHint, { color: colors.mutedForeground }]}>
+          每行一項，最多 5 項；完成其中一步即可完成今日目標。
+        </Text>
+        <TextInput
+          value={stepsDraft}
+          onChangeText={setStepsDraft}
+          placeholder={'例如：\\n穿上運動鞋\\n走到公園\\n散步 20 分鐘'}
+          placeholderTextColor={colors.mutedForeground}
+          maxLength={250}
+          multiline
+          textAlignVertical="top"
+          style={[styles.input, styles.stepsInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+          accessibilityLabel="目標的小步驟，每行一項，最多五項"
+          testID="habit-steps-input"
+        />
+
+        <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>安排每週休息日</Text>
+        <Text style={[styles.sectionHint, { color: colors.mutedForeground }]}>
+          休息日不會中斷連續紀錄，也不會出現在今日待辦。
+        </Text>
+        <View style={styles.weekdayOptions}>
+          {WEEKDAY_OPTIONS.map((day) => {
+            const selectedDay = restDays.includes(day.value);
+            return (
+              <Pressable
+                key={day.value}
+                onPress={() => setRestDays((current) => selectedDay
+                  ? current.filter((value) => value !== day.value)
+                  : [...current, day.value].sort((a, b) => a - b))}
+                style={[
+                  styles.weekdayOption,
+                  { backgroundColor: selectedDay ? colors.secondary : colors.card, borderColor: selectedDay ? colors.primary : colors.border },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`星期${day.label}${selectedDay ? '，休息日已選取' : '，設定為休息日'}`}
+                accessibilityState={{ selected: selectedDay }}
+                testID={`rest-day-${day.value}`}
+              >
+                <Text style={[styles.weekdayText, { color: selectedDay ? colors.primary : colors.mutedForeground }]}>{day.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>選一個適合的圖示</Text>
         <View style={styles.options}>
           {options.map((option) => {
@@ -181,6 +245,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', marginBottom: 9 },
   input: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14 },
   reasonInput: { minHeight: 84 },
+  sectionHint: { fontSize: 11, lineHeight: 17, marginTop: -3, marginBottom: 8 },
+  stepsInput: { minHeight: 112 },
+  weekdayOptions: { flexDirection: 'row', justifyContent: 'space-between', gap: 7 },
+  weekdayOption: { flex: 1, minHeight: 42, borderWidth: 1.5, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  weekdayText: { fontSize: 13, fontWeight: '700' },
   options: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
   optionCell: { width: 58, alignItems: 'center' },
   option: { width: 44, height: 44, borderWidth: 2, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },

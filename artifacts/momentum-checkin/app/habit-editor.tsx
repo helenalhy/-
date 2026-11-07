@@ -142,7 +142,7 @@ export default function HabitEditorScreen() {
         <TextInput
           value={stepsDraft}
           onChangeText={setStepsDraft}
-          placeholder={'例如：\\n穿上運動鞋\\n走到公園\\n散步 20 分鐘'}
+          placeholder={'例如：\n穿上運動鞋\n走到公園\n散步 20 分鐘'}
           placeholderTextColor={colors.mutedForeground}
           maxLength={250}
           multiline

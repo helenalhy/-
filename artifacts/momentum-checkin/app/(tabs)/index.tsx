@@ -44,13 +44,14 @@ function getWeek(todayKey: string) {
   });
 }
 
-function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, completedStep, onToggle, onMakeUp, onEdit, onManage }: {
+function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeUpRewardAlreadyEarned, completedStep, onToggle, onMakeUp, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
   reward: number;
   isRestDay: boolean;
   canMakeUp: boolean;
   showMakeUp: boolean;
+  makeUpRewardAlreadyEarned: boolean;
   completedStep?: string;
   onToggle: (step?: string) => Promise<void>;
   onMakeUp: () => Promise<void>;
@@ -129,14 +130,16 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, compl
             onPress={() => void onMakeUp()}
             disabled={!canMakeUp}
             accessibilityRole="button"
-            accessibilityLabel={canMakeUp ? `補回昨天的${habit.title}打卡，每週一次；未曾領取時可獲得 20 金幣` : '本週補打卡機會已用完'}
+            accessibilityLabel={canMakeUp ? `補回昨天的${habit.title}打卡，每週一次${makeUpRewardAlreadyEarned ? '；昨天已領取金幣' : '；可獲得 20 金幣'}` : '本週補打卡機會已用完'}
             accessibilityState={{ disabled: !canMakeUp }}
             testID={`makeup-checkin-${habit.id}`}
             style={[styles.makeupButton, { backgroundColor: canMakeUp ? colors.candyLemon : colors.background, opacity: canMakeUp ? 1 : 0.55 }]}
           >
             <Feather name={canMakeUp ? 'rotate-ccw' : 'check-circle'} size={11} color={colors.candyCaramelDark} />
             <Text style={[styles.makeupText, { color: colors.candyCaramelDark }]}>
-              {canMakeUp ? '補回昨天打卡' : '本週補打卡已用完'}
+              {canMakeUp
+                ? makeUpRewardAlreadyEarned ? '補回昨天 · 已領過金幣' : '補回昨天 · +20 金幣'
+                : '本週補打卡已用完'}
             </Text>
           </Pressable>
         ) : null}
@@ -175,10 +178,10 @@ export function TodayScreen() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const dailyQuote = getDailyMotivationalQuote(today);
   const week = getWeek(today);
-  const todayDone = habits.filter((habit) => habit.checkIns.includes(today)).length;
   const scheduledToday = habits.filter((habit) => !habit.restDays.includes(getWeekday(today)));
   const scheduledTodayDone = scheduledToday.filter((habit) => habit.checkIns.includes(today)).length;
   const percent = scheduledToday.length === 0 ? 100 : Math.min(100, Math.round((scheduledTodayDone / scheduledToday.length) * 100));
+  const todayCounter = scheduledToday.length === 0 ? '休息日' : `${scheduledTodayDone}/${scheduledToday.length}`;
   const date = new Date(`${today}T12:00:00`);
   const weekday = dayNames[date.getDay()];
   const dateLabel = `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
@@ -377,7 +380,7 @@ export function TodayScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>今天的練習</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>長按目標或點「⋯」即可修改或刪除</Text>
           </View>
-          <Text style={[styles.counter, { color: colors.primary }]}>{todayDone}/{habits.length}</Text>
+          <Text style={[styles.counter, { color: colors.primary }]}>{todayCounter}</Text>
         </View>
 
         {storageError && (
@@ -412,6 +415,7 @@ export function TodayScreen() {
                   && !habit.checkIns.includes(getPreviousLocalDate(today))
                   && !habit.restDays.includes(getWeekday(getPreviousLocalDate(today)))
                 }
+                makeUpRewardAlreadyEarned={rewardedCheckIns.includes(`${habit.id}:${getPreviousLocalDate(today)}`)}
                 completedStep={habit.stepCheckIns[today]}
                 onToggle={(step) => handleToggle(habit, step)}
                 onMakeUp={() => handleMakeUp(habit)}

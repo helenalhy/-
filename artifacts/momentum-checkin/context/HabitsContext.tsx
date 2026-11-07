@@ -22,7 +22,8 @@ import {
   type ShopInteriorPlacementId,
 } from '@/constants/mall-shop-interior';
 import { MALL_ITEM_BY_ID } from '@/constants/mall';
-import { canMakeUpYesterday, getPreviousLocalDate, getWeekday, getStreak } from '@/lib/habit-schedule';
+import { getRewardedCheckInCount } from '@/constants/progress-milestones';
+import { canMakeUpYesterday, getPreviousLocalDate, getWeekday, getStreak, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
 import {
   canDisplayShopProducts,
   getShopFixtureProductCatalog,
@@ -855,15 +856,20 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const makeUpYesterday = useCallback(async (id: string) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
     const habit = habits.find((item) => item.id === id);
     if (!habit) throw new Error('找不到這個目標');
-    const usedMakeups = habits.flatMap((item) => item.makeupCheckIns);
+    const usedMakeups = [
+      ...habits.flatMap((item) => item.makeupCheckIns),
+      ...rewardedCheckIns.flatMap((key) => key.startsWith(MAKEUP_USE_PREFIX) ? [key.slice(MAKEUP_USE_PREFIX.length)] : []),
+    ];
     if (!canMakeUpYesterday(habit, today, usedMakeups)) {
       throw new Error('昨天已完成、是休息日，或本週補打卡額度已用完。');
     }
     const yesterday = getPreviousLocalDate(today);
     actionLock.current = true;
     try {
+      await recoverPendingCheckInTransaction();
       const nextHabits = habits.map((item) => item.id !== id ? item : {
         ...item,
         checkIns: [...new Set([...item.checkIns, yesterday])].sort(),
@@ -871,33 +877,34 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       });
       const rewardKey = `${id}:${yesterday}`;
       const reward = rewardedCheckIns.includes(rewardKey) ? 0 : CHECK_IN_REWARD;
-      if (reward > 0) {
-        const transaction: CheckInTransaction = {
-          version: 1,
-          habits: nextHabits,
-          mall: {
-            schemaVersion: MALL_SCHEMA_VERSION,
-            coins: coins + reward,
-            purchasedItems,
-            placements: mallPlacements,
-            shopInteriors,
-            rewardedCheckIns: [...rewardedCheckIns, rewardKey],
-            rewardTokens,
-          },
-        };
-        await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
-        setHabits(nextHabits);
-        setCoins(transaction.mall.coins);
-        setRewardedCheckIns(transaction.mall.rewardedCheckIns);
-        setRewardTokens(transaction.mall.rewardTokens);
-        try {
-          await synchronizeCheckInTransaction(transaction);
-          setStorageError(null);
-        } catch {
-          setStorageError('補打卡與金幣已一致記錄；部分同步暫時失敗，重新開啟 App 會自動修復。');
-        }
-      } else {
-        await save(nextHabits);
+      const nextRewardedCheckIns = [...new Set([
+        ...rewardedCheckIns,
+        rewardKey,
+        `${MAKEUP_USE_PREFIX}${yesterday}`,
+      ])];
+      const transaction: CheckInTransaction = {
+        version: 1,
+        habits: nextHabits,
+        mall: {
+          schemaVersion: MALL_SCHEMA_VERSION,
+          coins: coins + reward,
+          purchasedItems,
+          placements: mallPlacements,
+          shopInteriors,
+          rewardedCheckIns: nextRewardedCheckIns,
+          rewardTokens,
+        },
+      };
+      await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
+      setHabits(nextHabits);
+      setCoins(transaction.mall.coins);
+      setRewardedCheckIns(transaction.mall.rewardedCheckIns);
+      setRewardTokens(transaction.mall.rewardTokens);
+      try {
+        await synchronizeCheckInTransaction(transaction);
+        setStorageError(null);
+      } catch {
+        setStorageError('補打卡與金幣已一致記錄；部分同步暫時失敗，重新開啟 App 會自動修復。');
       }
       try {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -916,7 +923,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (purchasedItems.includes(itemId)) throw new Error('這個項目已經建造完成');
     const catalogItem = MALL_ITEM_BY_ID[itemId];
     if (!catalogItem) throw new Error('找不到這個商場項目');
-    if (catalogItem.unlockCheckIns !== undefined && rewardedCheckIns.length < catalogItem.unlockCheckIns) {
+    if (catalogItem.unlockCheckIns !== undefined && getRewardedCheckInCount(rewardedCheckIns) < catalogItem.unlockCheckIns) {
       throw new Error(`完成 ${catalogItem.unlockCheckIns} 次目標後即可免費兌換`);
     }
     if (coins < price) throw new Error('金幣還不夠');

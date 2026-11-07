@@ -379,6 +379,51 @@ export default function ReminderSettingsScreen() {
     }
   }
 
+  async function testNotification() {
+    if (
+      Platform.OS !== 'web'
+      || typeof window === 'undefined'
+      || !window.isSecureContext
+      || !('serviceWorker' in navigator)
+      || !('Notification' in window)
+    ) {
+      setError('這個瀏覽器或連線不支援通知測試，請使用 HTTPS 的支援瀏覽器。');
+      setMessage('');
+      return;
+    }
+
+    setIsBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const granted = Notification.permission === 'default'
+        ? await Notification.requestPermission()
+        : Notification.permission;
+      setPermission(granted);
+      if (granted !== 'granted') {
+        setError(granted === 'denied'
+          ? '通知權限已被封鎖。請到瀏覽器的網站設定允許通知，再回來測試。'
+          : '尚未允許通知，請在瀏覽器提示中選擇允許。');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.getRegistration('/')
+        ?? await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      await registration.showNotification('Momentum 通知測試成功', {
+        body: '如果你看到這則通知，這台裝置的瀏覽器通知權限正常。',
+        icon: '/icons/momentum-icon.png',
+        badge: '/icons/momentum-icon.png',
+        tag: `momentum-notification-test-${Date.now()}`,
+      });
+      setMessage('測試通知已送出。若沒有看到，請檢查裝置通知總開關、瀏覽器網站通知權限，以及專注／勿擾模式。此測試只檢查本機顯示，不代表關閉網頁後的排程已正常。');
+    } catch {
+      setError('無法顯示測試通知。請確認網站通知權限、瀏覽器設定及裝置的專注／勿擾模式。');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   const isIOS = Platform.OS === 'web'
     && typeof navigator !== 'undefined'
     && /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -629,6 +674,9 @@ export default function ReminderSettingsScreen() {
                 <Text style={[styles.statusBody, { color: colors.mutedForeground }]}>
                   {checkedInToday ? '今天已完成打卡，今天其餘提醒會自動略過。' : '每日和習慣專屬時段各自提醒；完成打卡後，其餘提醒會自動略過。'}
                 </Text>
+                <Text style={[styles.permissionStatus, { color: permission === 'granted' ? colors.primary : colors.mutedForeground }]}>
+                  瀏覽器通知權限：{permission === 'granted' ? '已允許' : permission === 'denied' ? '已封鎖' : permission === 'default' ? '尚未詢問' : '不支援'}
+                </Text>
               </View>
             </View>
             {settings.enabled ? (
@@ -652,11 +700,26 @@ export default function ReminderSettingsScreen() {
                   : <Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>允許並開啟通知</Text>}
               </Pressable>
             )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="立即測試瀏覽器通知"
+                testID="test-web-notification"
+                disabled={isBusy || permission === 'unsupported' || permission === 'denied'}
+                onPress={() => void testNotification()}
+                style={[styles.secondaryButton, { backgroundColor: colors.secondary, opacity: isBusy || permission === 'unsupported' || permission === 'denied' ? 0.65 : 1 }]}
+              >
+                {isBusy
+                  ? <ActivityIndicator color={colors.primary} />
+                  : <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>立即測試通知</Text>}
+              </Pressable>
             {permission === 'denied' ? (
               <Text style={[styles.permissionHelp, { color: colors.mutedForeground }]}>
                 通知權限目前已被瀏覽器封鎖。請到網址旁的網站設定，允許通知後再回來開啟。
               </Text>
             ) : null}
+              <Text style={[styles.testHint, { color: colors.mutedForeground }]}>
+                這只測試目前瀏覽器能否顯示通知，不會測試關閉網頁後的背景排程。
+              </Text>
           </View>
         ) : null}
 
@@ -740,6 +803,8 @@ const styles = StyleSheet.create({
   statusCopy: { flex: 1 },
   statusTitle: { fontSize: 14, fontWeight: '700' },
   statusBody: { fontSize: 12, lineHeight: 18, marginTop: 5 },
+  permissionStatus: { fontSize: 11, lineHeight: 16, marginTop: 7 },
+  testHint: { fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: 9 },
   primaryButton: { minHeight: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingHorizontal: 18 },
   primaryButtonText: { fontSize: 13, fontWeight: '700' },
   permissionHelp: { fontSize: 11, lineHeight: 17, marginTop: 10 },

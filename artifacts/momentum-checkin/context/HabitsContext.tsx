@@ -58,6 +58,7 @@ export interface Habit {
   stepCheckIns: Record<string, string>;
   makeupCheckIns: string[];
   weeklyChallengeTarget?: number;
+  minimumAction?: string;
 }
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
@@ -122,7 +123,7 @@ interface HabitsContextValue {
   rewardTokens: RewardTokens;
   getCheckInReward: (habitId: string) => number;
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns' | 'weeklyChallengeTarget'>) => Promise<void>;
-  updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays'>) => Promise<void>;
+  updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays' | 'minimumAction'>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   toggleCheckIn: (id: string, completedStep?: string) => Promise<number>;
   makeUpYesterday: (id: string) => Promise<number>;
@@ -318,7 +319,10 @@ function normalizeHabits(habits: Habit[]): Habit[] {
       && Number(habit.weeklyChallengeTarget) <= 7
       ? Number(habit.weeklyChallengeTarget)
       : undefined;
-    return { ...habit, rewardCategory, color: categoryColor, steps, restDays, stepCheckIns, makeupCheckIns, weeklyChallengeTarget };
+    const minimumAction = typeof habit.minimumAction === 'string'
+      ? habit.minimumAction.trim().slice(0, 120) || undefined
+      : undefined;
+    return { ...habit, rewardCategory, color: categoryColor, steps, restDays, stepCheckIns, makeupCheckIns, weeklyChallengeTarget, minimumAction };
   });
 }
 
@@ -767,14 +771,16 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addHabit = useCallback(async (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns'>) => {
-    const next = [...habits, { ...habit, id: createId(), createdAt: today, checkIns: [], stepCheckIns: {}, makeupCheckIns: [] }];
+    const minimumAction = habit.minimumAction?.trim().slice(0, 120) || undefined;
+    const next = [...habits, { ...habit, minimumAction, id: createId(), createdAt: today, checkIns: [], stepCheckIns: {}, makeupCheckIns: [] }];
     await save(next);
   }, [habits, save, today]);
 
-  const updateHabit = useCallback(async (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays'>) => {
+  const updateHabit = useCallback(async (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays' | 'minimumAction'>) => {
     await save(habits.map((habit) => habit.id === id ? {
       ...habit,
       ...updates,
+      minimumAction: updates.minimumAction?.trim().slice(0, 120) || undefined,
       stepCheckIns: Object.fromEntries(
         Object.entries(habit.stepCheckIns).filter(([, step]) => updates.steps.includes(step)),
       ),

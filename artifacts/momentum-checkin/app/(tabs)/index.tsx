@@ -44,10 +44,11 @@ function getWeek(todayKey: string) {
   });
 }
 
-function TwoMinuteStarterModal({ habit, reduceMotion, onClose }: {
+function TwoMinuteStarterModal({ habit, reduceMotion, onClose, onCompleteMinimumAction }: {
   habit: Habit;
   reduceMotion: boolean | null;
   onClose: () => void;
+  onCompleteMinimumAction?: () => Promise<boolean>;
 }) {
   const colors = useColors();
   const [endAt, setEndAt] = useState(() => Date.now() + 120_000);
@@ -55,6 +56,7 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose }: {
   const [paused, setPaused] = useState(false);
   const [pausedRemaining, setPausedRemaining] = useState(120_000);
   const [completed, setCompleted] = useState(false);
+  const [isRecordingMinimumAction, setIsRecordingMinimumAction] = useState(false);
   const remainingMs = paused ? pausedRemaining : Math.max(0, endAt - now);
 
   useEffect(() => {
@@ -90,6 +92,18 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose }: {
     setCompleted(false);
   }
 
+  async function recordMinimumAction() {
+    if (!onCompleteMinimumAction || isRecordingMinimumAction) return;
+    setIsRecordingMinimumAction(true);
+    try {
+      if (await onCompleteMinimumAction()) onClose();
+    } catch {
+      Alert.alert('沒有儲存成功', '最小行動尚未記錄，請再試一次。');
+    } finally {
+      setIsRecordingMinimumAction(false);
+    }
+  }
+
   const seconds = Math.ceil(remainingMs / 1000);
   const timerLabel = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   const elapsedPercent = Math.min(100, Math.max(0, ((120_000 - remainingMs) / 120_000) * 100));
@@ -110,13 +124,22 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose }: {
               <Feather name="clock" size={18} color={colors.candyCaramelDark} />
             </View>
             <View style={styles.focusTitleCopy}>
-              <Text style={[styles.focusTitle, { color: colors.foreground }]} accessibilityRole="header">先開始兩分鐘</Text>
+                <Text style={[styles.focusTitle, { color: colors.foreground }]} accessibilityRole="header">
+                  {habit.minimumAction ? '先做最小行動' : '先開始兩分鐘'}
+                </Text>
               <Text style={[styles.focusSubtitle, { color: colors.mutedForeground }]} numberOfLines={2}>{habit.title}</Text>
             </View>
             <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="關閉計時器" testID="close-two-minute-timer" style={styles.focusClose}>
               <Feather name="x" size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
+
+          {habit.minimumAction ? (
+            <View style={[styles.minimumActionCard, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.minimumActionLabel, { color: colors.primary }]}>今天的最小行動</Text>
+              <Text style={[styles.minimumActionDetail, { color: colors.foreground }]}>{habit.minimumAction}</Text>
+            </View>
+          ) : null}
 
           <Text style={[styles.focusTimer, { color: colors.primary }]} accessibilityLabel={`計時剩餘 ${timerLabel}`}>
             {timerLabel}
@@ -125,10 +148,31 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose }: {
             <View style={[styles.focusFill, { backgroundColor: colors.primary, width: `${elapsedPercent}%` }]} />
           </View>
           <Text style={[styles.focusMessage, { color: colors.mutedForeground }]}>
-            {completed
-              ? '兩分鐘完成了！願意的話，再做一小步。'
-              : '不用一次做到完美，先開始就很好。計時不會自動打卡或發放金幣。'}
+            {habit.minimumAction
+              ? completed
+                ? '兩分鐘完成了！確認完成小步驟後，才會記錄今天的打卡。'
+                : '做完小步驟後，可以立即確認打卡，不需要等計時結束。'
+              : completed
+                ? '兩分鐘完成了！願意的話，再做一小步。'
+                : '不用一次做到完美，先開始就很好。計時不會自動打卡或發放金幣。'}
           </Text>
+
+          {onCompleteMinimumAction ? (
+            <Pressable
+              onPress={() => void recordMinimumAction()}
+              disabled={isRecordingMinimumAction}
+              accessibilityRole="button"
+              accessibilityLabel={`確認完成最小行動：${habit.minimumAction}，並記錄${habit.title}打卡`}
+              accessibilityState={{ disabled: isRecordingMinimumAction, busy: isRecordingMinimumAction }}
+              testID={`complete-minimum-action-${habit.id}`}
+              style={[styles.minimumCompleteButton, { backgroundColor: colors.candyMint, opacity: isRecordingMinimumAction ? 0.6 : 1 }]}
+            >
+              <Feather name="check-circle" size={16} color={colors.foreground} />
+              <Text style={[styles.minimumCompleteText, { color: colors.foreground }]}>
+                {isRecordingMinimumAction ? '記錄中…' : '完成最小行動並打卡'}
+              </Text>
+            </Pressable>
+          ) : null}
 
           <View style={styles.focusActions}>
             {completed ? (
@@ -142,8 +186,16 @@ function TwoMinuteStarterModal({ habit, reduceMotion, onClose }: {
                 <Text style={[styles.focusPrimaryText, { color: colors.primaryForeground }]}>{paused ? '繼續' : '暫停'}</Text>
               </Pressable>
             )}
-            <Pressable onPress={onClose} accessibilityRole="button" testID="finish-two-minute-timer" style={[styles.focusSecondary, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.focusSecondaryText, { color: colors.primary }]}>{completed ? '知道了' : '先到這裡'}</Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel={habit.minimumAction ? '改做正常目標' : '先到這裡'}
+              testID="finish-two-minute-timer"
+              style={[styles.focusSecondary, { backgroundColor: colors.secondary }]}
+            >
+              <Text style={[styles.focusSecondaryText, { color: colors.primary }]}>
+                {habit.minimumAction ? '改做正常目標' : completed ? '知道了' : '先到這裡'}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -161,7 +213,7 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
   showMakeUp: boolean;
   makeUpRewardAlreadyEarned: boolean;
   completedStep?: string;
-  onToggle: (step?: string) => Promise<void>;
+  onToggle: (step?: string) => Promise<unknown>;
   onMakeUp: () => Promise<void>;
   onStartTwoMinute: () => void;
   onEdit: () => void;
@@ -200,6 +252,11 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
         {isRestDay && !done ? (
           <Text style={[styles.habitRestNote, { color: colors.primary }]}>今天是安排好的休息日</Text>
         ) : null}
+        {habit.minimumAction && !done && !isRestDay ? (
+          <Text style={[styles.minimumActionNote, { color: colors.mutedForeground }]} numberOfLines={2}>
+            最小行動：{habit.minimumAction}
+          </Text>
+        ) : null}
         {habit.steps.length > 0 && !done && !isRestDay ? (
           <View style={styles.stepList}>
             {habit.steps.map((step) => (
@@ -227,12 +284,16 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
           <Pressable
             onPress={onStartTwoMinute}
             accessibilityRole="button"
-            accessibilityLabel={`為${habit.title}開始兩分鐘計時，不會自動打卡`}
+            accessibilityLabel={habit.minimumAction
+              ? `開始${habit.title}的最小行動：${habit.minimumAction}，並開啟兩分鐘計時`
+              : `為${habit.title}開始兩分鐘計時，不會自動打卡`}
             testID={`focus-start-${habit.id}`}
             style={({ pressed }) => [styles.focusStartButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 }]}
           >
             <Feather name="clock" size={11} color={colors.primary} />
-            <Text style={[styles.focusStartText, { color: colors.primary }]}>開始 2 分鐘</Text>
+            <Text style={[styles.focusStartText, { color: colors.primary }]}>
+              {habit.minimumAction ? '開始最小行動 · 2 分鐘' : '開始 2 分鐘'}
+            </Text>
           </Pressable>
         ) : null}
         {!done && reward > 0 && (
@@ -274,16 +335,25 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
       >
         <Feather name="more-horizontal" size={18} color={colors.mutedForeground} />
       </Pressable>
-      <Pressable
-        style={[styles.checkButton, { backgroundColor: done ? colors.primary : colors.secondary }]}
-        onPress={() => void onToggle()}
-        disabled={!done && isRestDay}
-        accessibilityRole="button"
-        accessibilityLabel={done ? `取消${habit.title}打卡` : isRestDay ? `${habit.title}今天是休息日` : `完成${habit.title}`}
-        testID={`checkin-${habit.id}`}
-      >
-        <Feather name={done ? 'check' : 'plus'} size={20} color={done ? colors.primaryForeground : colors.primary} />
-      </Pressable>
+      <View style={habit.minimumAction && !done ? styles.checkActionGroup : undefined}>
+        <Pressable
+          style={[styles.checkButton, { backgroundColor: done ? colors.primary : colors.secondary }]}
+          onPress={() => void onToggle()}
+          disabled={!done && isRestDay}
+          accessibilityRole="button"
+          accessibilityLabel={done
+            ? `取消${habit.title}打卡`
+            : isRestDay
+              ? `${habit.title}今天是休息日`
+              : habit.minimumAction ? `正常完成${habit.title}` : `完成${habit.title}`}
+          testID={`checkin-${habit.id}`}
+        >
+          <Feather name={done ? 'check' : 'plus'} size={20} color={done ? colors.primaryForeground : colors.primary} />
+        </Pressable>
+        {habit.minimumAction && !done ? (
+          <Text style={[styles.checkActionLabel, { color: colors.mutedForeground }]}>正常</Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -358,7 +428,7 @@ export function TodayScreen() {
     }
   }
 
-  async function handleToggle(habit: Habit, step?: string) {
+  async function handleToggle(habit: Habit, step?: string): Promise<boolean> {
     try {
       const reward = await toggleCheckIn(habit.id, step);
       if (Platform.OS === 'web') {
@@ -376,15 +446,21 @@ export function TodayScreen() {
           })
           .catch(() => {});
       }
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // A haptics failure must not make a successfully saved check-in look incomplete.
+      }
       if (reward > 0) {
         Alert.alert(
           '太棒了，完成一小步！',
           `獲得 ${reward} 金幣！可以免費換取喜歡的商店、設施或裝修。`,
         );
       }
+      return true;
     } catch {
       Alert.alert('沒有儲存成功', '請再試一次。');
+      return false;
     }
   }
 
@@ -690,7 +766,12 @@ export function TodayScreen() {
         </View>
       </Modal>
       {focusHabit ? (
-        <TwoMinuteStarterModal habit={focusHabit} reduceMotion={reduceMotion} onClose={() => setFocusHabit(null)} />
+        <TwoMinuteStarterModal
+          habit={focusHabit}
+          reduceMotion={reduceMotion}
+          onClose={() => setFocusHabit(null)}
+          onCompleteMinimumAction={focusHabit.minimumAction ? () => handleToggle(focusHabit) : undefined}
+        />
       ) : null}
     </SafeAreaView>
   );
@@ -751,12 +832,15 @@ const styles = StyleSheet.create({
   doneText: { textDecorationLine: 'line-through', opacity: 0.62 },
   habitReason: { fontSize: 11, marginTop: 5 },
   habitRestNote: { fontSize: 10, fontWeight: '700', marginTop: 6 },
+  minimumActionNote: { fontSize: 10, lineHeight: 15, marginTop: 6 },
   stepList: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 7 },
   stepChip: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 5, borderRadius: 9 },
   stepChipText: { fontSize: 10, maxWidth: 160 },
   habitStepDone: { fontSize: 10, marginTop: 6 },
   focusStartButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 9 },
   focusStartText: { fontSize: 10, fontWeight: '700' },
+  checkActionGroup: { alignItems: 'center', gap: 2 },
+  checkActionLabel: { fontSize: 9, fontWeight: '600' },
   makeupButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7, paddingHorizontal: 7, paddingVertical: 5, borderRadius: 9 },
   makeupText: { fontSize: 10, fontWeight: '700' },
   rewardHint: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, marginTop: 6 },
@@ -793,6 +877,11 @@ const styles = StyleSheet.create({
   focusTrack: { height: 8, borderRadius: 99, overflow: 'hidden', marginTop: 14 },
   focusFill: { height: '100%', borderRadius: 99 },
   focusMessage: { textAlign: 'center', fontSize: 12, lineHeight: 18, marginTop: 15, minHeight: 36 },
+  minimumActionCard: { borderRadius: 15, padding: 13, marginTop: 19 },
+  minimumActionLabel: { fontSize: 10, fontWeight: '700' },
+  minimumActionDetail: { fontSize: 14, lineHeight: 21, fontWeight: '600', marginTop: 4 },
+  minimumCompleteButton: { minHeight: 47, borderRadius: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 15 },
+  minimumCompleteText: { fontSize: 12, fontWeight: '700' },
   focusActions: { gap: 9, marginTop: 22 },
   focusPrimary: { minHeight: 47, borderRadius: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   focusPrimaryText: { fontSize: 13, fontWeight: '700' },

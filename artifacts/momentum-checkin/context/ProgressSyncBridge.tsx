@@ -45,7 +45,8 @@ function hasMeaningfulLocalProgress(snapshot: ProgressSnapshot) {
         && (habit.restDays?.length ?? 0) === 0
         && Object.keys(habit.stepCheckIns ?? {}).length === 0
         && (habit.makeupCheckIns?.length ?? 0) === 0
-        && habit.weeklyChallengeTarget === undefined,
+        && habit.weeklyChallengeTarget === undefined
+        && habit.minimumAction === undefined,
       );
     });
   const mall = snapshot.mall;

@@ -29,6 +29,7 @@ export default function HabitEditorScreen() {
   const [title, setTitle] = useState(existing?.title ?? '');
   const [reason, setReason] = useState(existing?.reason ?? '');
   const [stepsDraft, setStepsDraft] = useState(existing?.steps.join('\n') ?? '');
+  const [minimumAction, setMinimumAction] = useState(existing?.minimumAction ?? '');
   const [restDays, setRestDays] = useState<number[]>(existing?.restDays ?? []);
   const [selected, setSelected] = useState(() => {
     const found = options.find((option) => option.icon === existing?.icon);
@@ -58,6 +59,7 @@ export default function HabitEditorScreen() {
           rewardCategory,
           steps: [...new Set(stepsDraft.split('\n').map((step) => step.trim()).filter(Boolean))].slice(0, 5),
           restDays,
+          minimumAction: minimumAction.trim(),
         });
       } else {
         await addHabit({
@@ -68,6 +70,7 @@ export default function HabitEditorScreen() {
           rewardCategory,
           steps: [...new Set(stepsDraft.split('\n').map((step) => step.trim()).filter(Boolean))].slice(0, 5),
           restDays,
+          minimumAction: minimumAction.trim(),
         });
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -151,6 +154,24 @@ export default function HabitEditorScreen() {
           accessibilityLabel="目標的小步驟，每行一項，最多五項"
           testID="habit-steps-input"
         />
+
+        <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>最小行動（選填）</Text>
+        <Text style={[styles.sectionHint, { color: colors.mutedForeground }]}>
+          設定後，今天可以選擇做這個小步驟，或照常完成原目標。
+        </Text>
+        <TextInput
+          value={minimumAction}
+          onChangeText={setMinimumAction}
+          placeholder="例如：讀 1 頁、先穿上運動鞋"
+          placeholderTextColor={colors.mutedForeground}
+          maxLength={120}
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+          accessibilityLabel="可選的最小行動"
+          testID="habit-minimum-action-input"
+        />
+        <Text style={[styles.sectionHint, { color: colors.mutedForeground, marginTop: 7 }]}>
+          確認完成最小行動後會記錄為今日完成；同一目標每天仍只領一次金幣。
+        </Text>
 
         <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>安排每週休息日</Text>
         <Text style={[styles.sectionHint, { color: colors.mutedForeground }]}>

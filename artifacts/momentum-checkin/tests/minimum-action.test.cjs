@@ -30,7 +30,9 @@ test('today offers a minimum-action timer and a separate normal completion choic
   assert.match(today, /habit\.minimumAction \?\? recommendMinimumAction\(habit\)/);
   assert.match(today, /完成最小行動並打卡/);
   assert.match(today, /正常完成\$\{habit\.title\}/);
-  assert.match(today, /onCompleteMinimumAction=\{focusHabit\.minimumAction \? \(\) => handleToggle\(focusHabit\) : undefined\}/);
+  assert.match(today, /onCompleteMinimumAction=\{focusHabit\.minimumAction[\s\S]*?getMinimumActionReward\(focusHabit\.title, focusHabit\.minimumAction/);
+  assert.match(today, /完整 \+\{reward\} · 小步 \+\{minimumActionReward\} 金幣/);
+  assert.match(today, /完成小步 \+\{minimumActionReward\} 金幣 · 完整目標 \+\{FULL_CHECK_IN_REWARD\} 金幣/);
 });
 
 test('the timer does not check in automatically', () => {

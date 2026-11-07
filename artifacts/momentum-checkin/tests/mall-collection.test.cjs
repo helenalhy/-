@@ -99,8 +99,24 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       MALL_ITEM_BY_ID: {
         a: { id: 'a', name: '雲朵香氛館', category: 'shop', shopType: 'general' },
         b: { id: 'b', name: '一般商店', category: 'shop', shopType: 'general' },
+        c: { id: 'c', name: '測試裝飾', category: 'decor' },
         'skyline-tea': { id: 'skyline-tea', floor: 20, category: 'shop' },
       },
+    };
+    if (name === '@/constants/progress-milestones') return {
+      getRewardedCheckInCount: (rewardedCheckIns) => rewardedCheckIns.filter((item) => !item.startsWith('makeup-used:')).length,
+    };
+    if (name === '@/lib/habit-schedule') return {
+      MAKEUP_USE_PREFIX: 'makeup-used:',
+      getWeekday: (dateKey) => new Date(`${dateKey}T12:00:00`).getDay(),
+      getPreviousLocalDate: (dateKey) => {
+        const date = new Date(`${dateKey}T12:00:00`);
+        date.setDate(date.getDate() - 1);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      },
+      getWeeklyChallengeLimit: (restDays) => Math.max(0, 7 - new Set(restDays).size),
+      getStreak: (checkIns) => checkIns.length,
+      canMakeUpYesterday: () => true,
     };
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
@@ -408,6 +424,48 @@ test('different goals completed on the same day each earn and persist their own 
   assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
   assert.ok(app.value.habits.find((habit) => habit.id === 'starter-read').checkIns.includes(today));
   assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [firstRewardKey, secondRewardKey]);
+});
+
+test('a minimum-action check-in earns its proportional amount once and persists with the completion', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  let app = await mount(storage);
+  const today = app.value.today;
+
+  assert.equal(await app.value.toggleCheckIn('starter-read', undefined, 2), 2);
+  assert.equal(app.value.coins, 2);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-read').checkIns.includes(today));
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [`starter-read:${today}`]);
+
+  app = await mount(storage);
+  assert.equal(app.value.coins, 2);
+  await app.value.toggleCheckIn('starter-read');
+  assert.equal(await app.value.toggleCheckIn('starter-read'), 0, 'unchecking and checking again cannot award twice');
+  assert.equal(app.value.coins, 2);
+});
+
+test('a failed partial-reward transaction leaves the check-in and coin balance unchanged', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  const app = await mount(storage);
+  const today = app.value.today;
+
+  app.setFailWrites(true);
+  await assert.rejects(app.value.toggleCheckIn('starter-read', undefined, 2), /無法儲存打卡紀錄/);
+
+  assert.ok(!app.value.habits.find((habit) => habit.id === 'starter-read').checkIns.includes(today));
+  assert.equal(app.value.coins, 0);
+  assert.equal(storage[checkInTransactionKey], undefined);
 });
 
 test('a failed write-ahead record leaves both the completion and coin balance unchanged', async () => {

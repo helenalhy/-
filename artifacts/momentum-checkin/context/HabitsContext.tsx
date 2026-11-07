@@ -125,7 +125,7 @@ interface HabitsContextValue {
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns' | 'weeklyChallengeTarget'>) => Promise<void>;
   updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays' | 'minimumAction'>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
-  toggleCheckIn: (id: string, completedStep?: string) => Promise<number>;
+  toggleCheckIn: (id: string, completedStep?: string, rewardAmount?: number) => Promise<number>;
   makeUpYesterday: (id: string) => Promise<number>;
   setWeeklyChallenge: (habitId: string | null, target: number | null) => Promise<void>;
   purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
@@ -791,7 +791,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     await save(habits.filter((habit) => habit.id !== id));
   }, [habits, save]);
 
-  const toggleCheckIn = useCallback(async (id: string, completedStep?: string) => {
+  const toggleCheckIn = useCallback(async (id: string, completedStep?: string, rewardAmount?: number) => {
     if (actionLock.current) return 0;
     actionLock.current = true;
     try {
@@ -820,7 +820,12 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       let reward = 0;
       if (!alreadyDone) {
         const rewardKey = `${id}:${checkInDate}`;
-        if (!rewardedCheckIns.includes(rewardKey)) reward = CHECK_IN_REWARD;
+        const requestedReward = rewardAmount === undefined
+          ? CHECK_IN_REWARD
+          : Number.isFinite(rewardAmount)
+            ? Math.max(0, Math.min(CHECK_IN_REWARD, Math.floor(rewardAmount)))
+            : 0;
+        if (!rewardedCheckIns.includes(rewardKey)) reward = requestedReward;
       }
       if (reward > 0) {
         const rewardKey = `${id}:${checkInDate}`;

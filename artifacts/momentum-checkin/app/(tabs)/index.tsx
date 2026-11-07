@@ -23,6 +23,7 @@ import { canMakeUpYesterday, getPreviousLocalDate, getPreviousScheduledDate, get
 import { DogCompanionPicker, DEFAULT_DOG_COMPANION_ID } from '@/components/DogCompanionPicker';
 import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
 import { recommendMinimumAction } from '@/lib/minimum-action-suggestions';
+import { FULL_CHECK_IN_REWARD, getMinimumActionReward } from '@/lib/proportional-checkin-reward';
 import {
   getStreak,
   useHabits,
@@ -80,6 +81,10 @@ function TwoMinuteStarterModal({
   const [isSchedulingSnooze, setIsSchedulingSnooze] = useState(false);
   const [snoozeScheduled, setSnoozeScheduled] = useState(false);
   const [rescueError, setRescueError] = useState('');
+  const minimumActionReward = getMinimumActionReward(
+    habit.title,
+    habit.minimumAction ?? '先做 2 分鐘',
+  );
   const remainingMs = paused ? pausedRemaining : Math.max(0, endAt - now);
 
   useEffect(() => {
@@ -230,6 +235,9 @@ function TwoMinuteStarterModal({
               </Text>
               <Text style={[styles.minimumActionDetail, { color: colors.foreground }]}>
                 {habit.minimumAction ?? '只做兩分鐘，從最容易開始的一步做起，不需要完成整個目標。'}
+              </Text>
+              <Text style={[styles.minimumRewardCopy, { color: colors.mutedForeground }]}>
+                完成小步 +{minimumActionReward} 金幣 · 完整目標 +{FULL_CHECK_IN_REWARD} 金幣
               </Text>
             </View>
           ) : null}
@@ -403,6 +411,7 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
   const colors = useColors();
   const longPressTriggered = useRef(false);
   const recommendedMinimumAction = habit.minimumAction ?? recommendMinimumAction(habit);
+  const minimumActionReward = getMinimumActionReward(habit.title, recommendedMinimumAction);
   return (
     <View style={[styles.habitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
@@ -424,7 +433,7 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
         }}
         delayLongPress={450}
         accessibilityRole="button"
-        accessibilityLabel={`編輯${habit.title}${!done && reward > 0 ? `，今日首次打卡可獲得 ${reward} 金幣` : ''}`}
+        accessibilityLabel={`編輯${habit.title}${!done && reward > 0 ? `，完整目標可獲得 ${reward} 金幣，最小行動可獲得 ${minimumActionReward} 金幣` : ''}`}
         accessibilityHint="長按可開啟修改或刪除選項"
         testID={`habit-info-${habit.id}`}
       >
@@ -487,7 +496,7 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
           >
             <Feather name="circle" size={11} color={colors.candyCaramelDark} />
             <Text style={[styles.rewardHintText, { color: colors.candyCaramelDark }]}>
-              首次打卡 +{reward} 金幣
+              完整 +{reward} · 小步 +{minimumActionReward} 金幣
             </Text>
           </View>
         )}
@@ -631,9 +640,9 @@ export function TodayScreen() {
     }
   }
 
-  async function handleToggle(habit: Habit, step?: string): Promise<boolean> {
+  async function handleToggle(habit: Habit, step?: string, rewardAmount?: number): Promise<boolean> {
     try {
-      const reward = await toggleCheckIn(habit.id, step);
+      const reward = await toggleCheckIn(habit.id, step, rewardAmount);
       if (Platform.OS === 'web') {
         const wasDone = habit.checkIns.includes(today);
         const hasCheckedInToday = !wasDone || habits.some(
@@ -981,7 +990,13 @@ export function TodayScreen() {
             setFocusHabit(null);
             setFocusActionIsRecommendation(false);
           }}
-          onCompleteMinimumAction={focusHabit.minimumAction ? () => handleToggle(focusHabit) : undefined}
+          onCompleteMinimumAction={focusHabit.minimumAction
+            ? () => handleToggle(
+              focusHabit,
+              undefined,
+              getMinimumActionReward(focusHabit.title, focusHabit.minimumAction ?? '先做 2 分鐘'),
+            )
+            : undefined}
           onSnooze={() => scheduleHabitSnooze(focusHabit)}
           onOpenReminderSettings={openReminderSettingsFromSnooze}
         />
@@ -1095,6 +1110,7 @@ const styles = StyleSheet.create({
   minimumActionCard: { borderRadius: 15, padding: 13, marginTop: 19 },
   minimumActionLabel: { fontSize: 10, fontWeight: '700' },
   minimumActionDetail: { fontSize: 14, lineHeight: 21, fontWeight: '600', marginTop: 4 },
+  minimumRewardCopy: { fontSize: 10, lineHeight: 15, marginTop: 5, fontWeight: '600' },
   minimumCompleteButton: { minHeight: 47, borderRadius: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 15 },
   minimumCompleteText: { fontSize: 12, fontWeight: '700' },
   focusActions: { gap: 9, marginTop: 22 },

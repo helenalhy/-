@@ -2008,6 +2008,61 @@ test('today shows only an unclaimed first-check-in reward and hides it after ear
   assert.equal(findByTestId(rowTree, 'habit-reward-starter-walk'), undefined);
 });
 
+test('quick start opens the chosen goal with its recommended action and situation prompt', async () => {
+  const app = createHarness();
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let todayTree = app.renderToday();
+  await press(todayTree, 'start-scenario-low-energy');
+  todayTree = app.renderToday();
+  assert.ok(findByTestId(todayTree, 'quick-start-choices'));
+  assert.ok(findByTestId(todayTree, 'quick-start-habit-starter-walk'));
+
+  await press(todayTree, 'quick-start-habit-starter-walk');
+  todayTree = app.renderToday();
+  const starterModal = findNodes(todayTree, (node) =>
+    typeof node.type === 'function' && node.type.name === 'TwoMinuteStarterModal',
+  )[0];
+  assert.ok(starterModal, 'selecting a goal opens the existing two-minute flow');
+
+  const modalTree = app.render('quick-start-modal', () => starterModal.type(starterModal.props));
+  assert.match(textContent(findByTestId(modalTree, 'quick-start-prompt')), /今天不用做很多/);
+  assert.match(textContent(modalTree), /先做兩分鐘版本/);
+  assert.match(textContent(modalTree), /先走 2 分鐘/);
+});
+
+test('focus mode shows one selected goal and restores every goal when cleared', async () => {
+  const app = createHarness();
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let todayTree = app.renderToday();
+  const totalGoalCount = app.contextExports.useHabits().habits.length;
+  await press(todayTree, 'today-focus-toggle');
+  todayTree = app.renderToday();
+  assert.ok(findByTestId(todayTree, 'today-focus-chooser'));
+  await press(todayTree, 'choose-focus-habit-starter-walk');
+
+  todayTree = app.renderToday();
+  const focusedRows = findNodes(todayTree, (node) =>
+    typeof node.type === 'function' && node.type.name === 'HabitRow',
+  );
+  assert.equal(focusedRows.length, 1);
+  assert.equal(focusedRows[0].props.habit.id, 'starter-walk');
+  assert.ok(findByTestId(todayTree, 'today-focused-notice'));
+
+  await press(todayTree, 'show-all-habits');
+  todayTree = app.renderToday();
+  const allRows = findNodes(todayTree, (node) =>
+    typeof node.type === 'function' && node.type.name === 'HabitRow',
+  );
+  assert.equal(allRows.length, totalGoalCount);
+  assert.equal(findByTestId(todayTree, 'today-focused-notice'), undefined);
+});
+
 test('deleting a goal confirms lost check-in history and preserves earned coins after reload', async () => {
   const app = createHarness();
   app.storage.set(storageKeys.mall, JSON.stringify({

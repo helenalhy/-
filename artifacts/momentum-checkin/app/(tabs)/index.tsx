@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Redirect, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +25,12 @@ import { DogCompanionPicker, DEFAULT_DOG_COMPANION_ID } from '@/components/DogCo
 import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
 import { recommendMinimumAction } from '@/lib/minimum-action-suggestions';
 import { FULL_CHECK_IN_REWARD, getMinimumActionReward } from '@/lib/proportional-checkin-reward';
+import {
+  DailyDogGreetingCard,
+  DailyMallVisitorCard,
+  DailyRecapCard,
+  WeeklyMallEventCard,
+} from '@/components/DailyEngagement';
 import {
   getStreak,
   useHabits,
@@ -63,6 +70,7 @@ function getWeek(todayKey: string) {
 }
 
 const SNOOZE_DELAY_MINUTES = 30;
+const DAILY_RECAP_REWARD_KEY = 'momentum.daily-recap-rewards.v1';
 
 function TwoMinuteStarterModal({
   habit,
@@ -588,6 +596,9 @@ export function TodayScreen() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [todayEarnedCoins, setTodayEarnedCoins] = useState<number | null>(null);
+  const recapRewardWriteQueue = useRef<Promise<void>>(Promise.resolve());
+  const recapRewardCache = useRef<{ date: string; coins: number } | null>(null);
   const dailyQuote = getDailyMotivationalQuote(today);
   const week = getWeek(today);
   const scheduledToday = habits.filter((habit) => !habit.restDays.includes(getWeekday(today)));
@@ -602,6 +613,71 @@ export function TodayScreen() {
   const date = new Date(`${today}T12:00:00`);
   const weekday = dayNames[date.getDay()];
   const dateLabel = `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
+  useEffect(() => {
+    let active = true;
+    void AsyncStorage.getItem(DAILY_RECAP_REWARD_KEY)
+      .then((raw) => {
+        if (!active || recapRewardCache.current?.date === today) return;
+        let coinsForToday = 0;
+        let hasRecordForToday = false;
+        if (raw) {
+          try {
+            const parsed: unknown = JSON.parse(raw);
+            if (
+              parsed
+              && typeof parsed === 'object'
+              && 'date' in parsed
+              && parsed.date === today
+              && 'coins' in parsed
+              && typeof parsed.coins === 'number'
+              && Number.isFinite(parsed.coins)
+              && parsed.coins >= 0
+            ) {
+              coinsForToday = parsed.coins;
+              hasRecordForToday = true;
+            }
+          } catch {
+            coinsForToday = 0;
+          }
+        }
+        recapRewardCache.current = { date: today, coins: coinsForToday };
+        setTodayEarnedCoins(hasRecordForToday ? coinsForToday : null);
+      })
+      .catch(() => {
+        if (active && recapRewardCache.current?.date !== today) setTodayEarnedCoins(null);
+      });
+    return () => { active = false; };
+  }, [today]);
+
+  function recordTodayEarnedCoins(reward: number) {
+    if (reward <= 0) return;
+    const write = recapRewardWriteQueue.current.then(async () => {
+      const raw = await AsyncStorage.getItem(DAILY_RECAP_REWARD_KEY);
+      let currentCoins = 0;
+      if (raw) {
+        try {
+          const parsed: unknown = JSON.parse(raw);
+          if (
+            parsed
+            && typeof parsed === 'object'
+            && 'date' in parsed
+            && parsed.date === today
+            && 'coins' in parsed
+            && typeof parsed.coins === 'number'
+            && Number.isFinite(parsed.coins)
+            && parsed.coins >= 0
+          ) currentCoins = parsed.coins;
+        } catch {
+          currentCoins = 0;
+        }
+      }
+      const nextCoins = currentCoins + reward;
+      await AsyncStorage.setItem(DAILY_RECAP_REWARD_KEY, JSON.stringify({ date: today, coins: nextCoins }));
+      recapRewardCache.current = { date: today, coins: nextCoins };
+      setTodayEarnedCoins(nextCoins);
+    });
+    recapRewardWriteQueue.current = write.catch(() => {});
+  }
   async function scheduleHabitSnooze(habit: Habit): Promise<void> {
     const settings = await readReminderSettings();
     if (!settings.enabled || !settings.endpoint) {
@@ -675,6 +751,7 @@ export function TodayScreen() {
   async function handleToggle(habit: Habit, step?: string, rewardAmount?: number): Promise<boolean> {
     try {
       const reward = await toggleCheckIn(habit.id, step, rewardAmount);
+      recordTodayEarnedCoins(reward);
       if (Platform.OS === 'web') {
         const wasDone = habit.checkIns.includes(today);
         const hasCheckedInToday = !wasDone || habits.some(
@@ -826,6 +903,28 @@ export function TodayScreen() {
             <Text style={[styles.progressLabel, { color: colors.primaryForeground }]}>{percent}%</Text>
           </View>
         </View>
+
+        {!isLoading && habits.length > 0 ? (
+          <>
+            <DailyDogGreetingCard
+              key={`daily-dog-${today}`}
+              today={today}
+              celebrationCount={scheduledTodayDone}
+            />
+            <DailyMallVisitorCard
+              today={today}
+              checkInDates={habits.flatMap((habit) => habit.checkIns)}
+              hasCheckedInToday={scheduledTodayDone > 0}
+            />
+            <WeeklyMallEventCard habits={habits} today={today} />
+            <DailyRecapCard
+              today={today}
+              habits={habits}
+              coins={coins}
+              earnedCoins={todayEarnedCoins}
+            />
+          </>
+        ) : null}
 
         {restartHabit ? (
           <View style={[styles.restartCard, { backgroundColor: colors.secondary }] } testID="gentle-restart-card">

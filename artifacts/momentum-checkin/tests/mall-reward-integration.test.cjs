@@ -141,6 +141,12 @@ function createHarness() {
   const colorsHook = { useColors: () => palette.light };
   const componentStubs = {
     '@/components/CatalogPager': { CatalogPager: function CatalogPager() {} },
+    '@/components/DailyEngagement': {
+      DailyDogGreetingCard: 'DailyDogGreetingCard',
+      DailyMallVisitorCard: 'DailyMallVisitorCard',
+      DailyRecapCard: 'DailyRecapCard',
+      WeeklyMallEventCard: 'WeeklyMallEventCard',
+    },
     '@/components/MallWingPager': { MallWingPager: function MallWingPager() {} },
     '@/components/MallVisuals': { MallAmbience: 'MallAmbience', MallObjectVisual: 'MallObjectVisual' },
     '@/hooks/useColors': colorsHook,
@@ -819,6 +825,17 @@ test('mall to today and back preserves the filtered catalog, purchase preview an
   assert.ok(findNodes(todayTree, (node) =>
     node.type?.name === 'HabitRow' && node.props?.habit?.id === 'starter-walk',
   )[0], 'the pushed today route renders its real goal list');
+  for (const componentName of [
+    'DailyDogGreetingCard',
+    'DailyMallVisitorCard',
+    'WeeklyMallEventCard',
+    'DailyRecapCard',
+  ]) {
+    assert.ok(
+      findNodes(todayTree, (node) => node.type === componentName)[0],
+      `the Today route renders ${componentName}`,
+    );
+  }
 
   app.goBack();
   assert.deepEqual(app.navigationStack, ['/']);

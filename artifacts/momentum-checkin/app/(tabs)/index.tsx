@@ -31,6 +31,20 @@ import {
 } from '@/context/HabitsContext';
 const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
 
+type StartScenario = 'low-energy' | 'short-time' | 'stuck';
+
+const START_SCENARIOS: { id: StartScenario; label: string; icon: keyof typeof Feather.glyphMap }[] = [
+  { id: 'low-energy', label: '沒精神', icon: 'cloud' },
+  { id: 'short-time', label: '時間少', icon: 'clock' },
+  { id: 'stuck', label: '卡住了', icon: 'help-circle' },
+];
+
+const START_SCENARIO_PROMPTS: Record<StartScenario, string> = {
+  'low-energy': '今天不用做很多，先完成一個最小步驟就好。',
+  'short-time': '只留兩分鐘給這個目標，做一小步也算進展。',
+  stuck: '先跟著建議做第一步，不用先想完整計畫。',
+};
+
 function getWeek(todayKey: string) {
   const [year, month, day] = todayKey.split('-').map(Number);
   const today = new Date(year, month - 1, day);
@@ -54,6 +68,7 @@ function TwoMinuteStarterModal({
   habit,
   reduceMotion,
   minimumActionIsRecommendation,
+  startPrompt,
   onClose,
   onCompleteMinimumAction,
   onSnooze,
@@ -62,6 +77,7 @@ function TwoMinuteStarterModal({
   habit: Habit;
   reduceMotion: boolean | null;
   minimumActionIsRecommendation: boolean;
+  startPrompt: string | null;
   onClose: () => void;
   onCompleteMinimumAction?: () => Promise<boolean>;
   onSnooze: () => Promise<void>;
@@ -225,6 +241,12 @@ function TwoMinuteStarterModal({
             celebrating={completed || minimumActionRecorded}
             reduceMotion={reduceMotion}
           />
+
+          {startPrompt ? (
+            <Text style={[styles.focusPrompt, { color: colors.mutedForeground }]} testID="quick-start-prompt">
+              {startPrompt}
+            </Text>
+          ) : null}
 
           {focusMode === 'minimum' ? (
             <View style={[styles.minimumActionCard, { backgroundColor: colors.secondary }]}>
@@ -558,6 +580,10 @@ export function TodayScreen() {
   const { habits, isLoading, storageError, today, coins, rewardedCheckIns, getCheckInReward, toggleCheckIn, makeUpYesterday, deleteHabit } = useHabits();
   const [focusHabit, setFocusHabit] = useState<Habit | null>(null);
   const [focusActionIsRecommendation, setFocusActionIsRecommendation] = useState(false);
+  const [focusStartPrompt, setFocusStartPrompt] = useState<string | null>(null);
+  const [startScenario, setStartScenario] = useState<StartScenario | null>(null);
+  const [isChoosingFocusedHabit, setIsChoosingFocusedHabit] = useState(false);
+  const [focusedHabitId, setFocusedHabitId] = useState<string | null>(null);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -565,6 +591,11 @@ export function TodayScreen() {
   const dailyQuote = getDailyMotivationalQuote(today);
   const week = getWeek(today);
   const scheduledToday = habits.filter((habit) => !habit.restDays.includes(getWeekday(today)));
+  const startableHabits = habits.filter((habit) => (
+    !habit.checkIns.includes(today) && !habit.restDays.includes(getWeekday(today))
+  ));
+  const focusedHabit = habits.find((habit) => habit.id === focusedHabitId) ?? null;
+  const visibleHabits = focusedHabit ? [focusedHabit] : habits;
   const scheduledTodayDone = scheduledToday.filter((habit) => habit.checkIns.includes(today)).length;
   const percent = scheduledToday.length === 0 ? 100 : Math.min(100, Math.round((scheduledTodayDone / scheduledToday.length) * 100));
   const todayCounter = scheduledToday.length === 0 ? '休息日' : `${scheduledTodayDone}/${scheduledToday.length}`;
@@ -587,6 +618,7 @@ export function TodayScreen() {
   function openReminderSettingsFromSnooze() {
     setFocusHabit(null);
     setFocusActionIsRecommendation(false);
+    setFocusStartPrompt(null);
     router.push('/reminders');
   }
   const totalStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today, habit.restDays)));
@@ -807,7 +839,11 @@ export function TodayScreen() {
               </Text>
             </View>
             <Pressable
-              onPress={() => setFocusHabit(restartHabit)}
+              onPress={() => {
+                setFocusHabit(restartHabit);
+                setFocusActionIsRecommendation(false);
+                setFocusStartPrompt(null);
+              }}
               accessibilityRole="button"
               accessibilityLabel={`從兩分鐘開始重新進行${restartHabit.title}`}
               testID="gentle-restart-action"
@@ -823,8 +859,165 @@ export function TodayScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>今天的練習</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>長按目標或點「⋯」即可修改或刪除</Text>
           </View>
-          <Text style={[styles.counter, { color: colors.primary }]}>{todayCounter}</Text>
+          <View style={styles.sectionTools}>
+            <Text style={[styles.counter, { color: colors.primary }]}>{todayCounter}</Text>
+            <Pressable
+              onPress={() => {
+                if (focusedHabitId) {
+                  setFocusedHabitId(null);
+                  setIsChoosingFocusedHabit(false);
+                } else {
+                  setIsChoosingFocusedHabit((current) => !current);
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={focusedHabitId ? '顯示全部目標' : '選擇今天專注的一個目標'}
+              testID="today-focus-toggle"
+              style={({ pressed }) => [
+                styles.focusToggle,
+                { backgroundColor: focusedHabitId ? colors.primary : colors.secondary, opacity: pressed ? 0.72 : 1 },
+              ]}
+            >
+              <Feather name={focusedHabitId ? 'list' : 'target'} size={13} color={focusedHabitId ? colors.primaryForeground : colors.primary} />
+              <Text style={[styles.focusToggleText, { color: focusedHabitId ? colors.primaryForeground : colors.primary }]}>
+                {focusedHabitId ? '全部' : '專注一項'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
+
+        {!isLoading && habits.length > 0 ? (
+          <View style={[styles.quickStartCard, { backgroundColor: colors.card, borderColor: colors.border }]} testID="quick-start-card">
+            <View style={styles.quickStartHeading}>
+              <View style={[styles.quickStartIcon, { backgroundColor: colors.candyLemon }]}>
+                <Feather name="zap" size={16} color={colors.candyCaramelDark} />
+              </View>
+              <View style={styles.quickStartCopy}>
+                <Text style={[styles.quickStartTitle, { color: colors.foreground }]}>選一種方式，輕鬆開始</Text>
+                <Text style={[styles.quickStartSubtitle, { color: colors.mutedForeground }]}>不用等有動力，先做一小步就可以</Text>
+              </View>
+            </View>
+            <View style={styles.scenarioRow}>
+              {START_SCENARIOS.map((scenario) => {
+                const selected = startScenario === scenario.id;
+                return (
+                  <Pressable
+                    key={scenario.id}
+                    onPress={() => setStartScenario(selected ? null : scenario.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`我${scenario.label}，幫我開始一個目標`}
+                    testID={`start-scenario-${scenario.id}`}
+                    style={({ pressed }) => [
+                      styles.scenarioButton,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.secondary,
+                        borderColor: selected ? colors.primary : colors.border,
+                        opacity: pressed ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    <Feather name={scenario.icon} size={13} color={selected ? colors.primaryForeground : colors.primary} />
+                    <Text style={[styles.scenarioText, { color: selected ? colors.primaryForeground : colors.primary }]}>{scenario.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {startScenario ? (
+              <View style={[styles.quickStartChoices, { backgroundColor: colors.background }]} testID="quick-start-choices">
+                <Text style={[styles.quickStartPrompt, { color: colors.foreground }]}>
+                  {START_SCENARIO_PROMPTS[startScenario]} 選一個目標開始：
+                </Text>
+                {startableHabits.length > 0 ? startableHabits.map((habit) => {
+                  const action = habit.minimumAction ?? recommendMinimumAction(habit);
+                  return (
+                    <Pressable
+                      key={habit.id}
+                      onPress={() => {
+                        setFocusHabit({ ...habit, minimumAction: action });
+                        setFocusActionIsRecommendation(!habit.minimumAction);
+                        setFocusStartPrompt(START_SCENARIO_PROMPTS[startScenario]);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`開始${habit.title}：${action}，兩分鐘`}
+                      testID={`quick-start-habit-${habit.id}`}
+                      style={({ pressed }) => [
+                        styles.quickStartHabit,
+                        { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.72 : 1 },
+                      ]}
+                    >
+                      <View style={[styles.quickStartHabitIcon, { backgroundColor: habit.color }]}>
+                        <Feather name={habit.icon as keyof typeof Feather.glyphMap} size={14} color={colors.foreground} />
+                      </View>
+                      <View style={styles.quickStartHabitCopy}>
+                        <Text style={[styles.quickStartHabitTitle, { color: colors.foreground }]} numberOfLines={1}>{habit.title}</Text>
+                        <Text style={[styles.quickStartHabitAction, { color: colors.mutedForeground }]} numberOfLines={1}>{action}</Text>
+                      </View>
+                      <Feather name="play-circle" size={20} color={colors.primary} />
+                    </Pressable>
+                  );
+                }) : (
+                  <Text style={[styles.quickStartEmpty, { color: colors.mutedForeground }]}>今天的目標都完成了，現在可以安心休息。</Text>
+                )}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {isChoosingFocusedHabit ? (
+          <View style={[styles.focusChooser, { backgroundColor: colors.secondary }]} testID="today-focus-chooser">
+            <Text style={[styles.focusChooserTitle, { color: colors.foreground }]}>今天先專注哪一項？</Text>
+            <Text style={[styles.focusChooserSubtitle, { color: colors.mutedForeground }]}>其他目標會保留，稍後可再顯示全部。</Text>
+            {startableHabits.length > 0 ? startableHabits.map((habit) => (
+              <Pressable
+                key={habit.id}
+                onPress={() => {
+                  setFocusedHabitId(habit.id);
+                  setIsChoosingFocusedHabit(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`今天專注${habit.title}`}
+                testID={`choose-focus-habit-${habit.id}`}
+                style={({ pressed }) => [
+                  styles.focusChoice,
+                  { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.72 : 1 },
+                ]}
+              >
+                <Feather name="target" size={15} color={colors.primary} />
+                <Text style={[styles.focusChoiceText, { color: colors.foreground }]} numberOfLines={1}>{habit.title}</Text>
+                <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
+              </Pressable>
+            )) : (
+              <Text style={[styles.quickStartEmpty, { color: colors.mutedForeground }]}>今天沒有待完成目標，可以先休息。</Text>
+            )}
+            <Pressable
+              onPress={() => setIsChoosingFocusedHabit(false)}
+              accessibilityRole="button"
+              testID="cancel-focus-choice"
+              style={styles.focusChooserCancel}
+            >
+              <Text style={[styles.focusChooserCancelText, { color: colors.primary }]}>取消</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {focusedHabit ? (
+          <View style={[styles.focusedNotice, { backgroundColor: colors.candyPink }]} testID="today-focused-notice">
+            <Feather name="target" size={14} color={colors.primary} />
+            <Text style={[styles.focusedNoticeText, { color: colors.foreground }]} numberOfLines={1}>
+              目前專注：{focusedHabit.title}
+            </Text>
+            <Pressable
+              onPress={() => setFocusedHabitId(null)}
+              accessibilityRole="button"
+              accessibilityLabel="顯示全部目標"
+              testID="show-all-habits"
+              style={styles.showAllButton}
+            >
+              <Text style={[styles.showAllText, { color: colors.primary }]}>顯示全部</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {storageError && (
           <View style={[styles.errorBox, { backgroundColor: colors.candyPink }]}>
@@ -845,7 +1038,7 @@ export function TodayScreen() {
           </View>
         ) : (
           <View style={styles.habitList}>
-            {habits.map((habit) => (
+            {visibleHabits.map((habit) => (
               <HabitRow
                 key={habit.id}
                 habit={habit}
@@ -865,6 +1058,7 @@ export function TodayScreen() {
                 onStartTwoMinute={(minimumAction, isRecommendation) => {
                   setFocusHabit({ ...habit, minimumAction });
                   setFocusActionIsRecommendation(isRecommendation);
+                  setFocusStartPrompt(null);
                 }}
                 onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
                 onManage={() => openHabitActions(habit)}
@@ -986,9 +1180,11 @@ export function TodayScreen() {
           habit={focusHabit}
           reduceMotion={reduceMotion}
           minimumActionIsRecommendation={focusActionIsRecommendation}
+          startPrompt={focusStartPrompt}
           onClose={() => {
             setFocusHabit(null);
             setFocusActionIsRecommendation(false);
+            setFocusStartPrompt(null);
           }}
           onCompleteMinimumAction={focusHabit.minimumAction
             ? () => handleToggle(
@@ -1049,7 +1245,38 @@ const styles = StyleSheet.create({
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, marginBottom: 13 },
   sectionTitle: { fontSize: 18, fontWeight: '700' },
   sectionSubtitle: { fontSize: 12, marginTop: 4 },
+  sectionTools: { alignItems: 'flex-end', gap: 7 },
+  focusToggle: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, borderRadius: 10 },
+  focusToggleText: { fontSize: 10, fontWeight: '700' },
   counter: { fontSize: 14, fontWeight: '700' },
+  quickStartCard: { borderWidth: 1, borderRadius: 19, padding: 13, marginBottom: 12 },
+  quickStartHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  quickStartIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  quickStartCopy: { flex: 1, minWidth: 0 },
+  quickStartTitle: { fontSize: 13, fontWeight: '700' },
+  quickStartSubtitle: { fontSize: 10, marginTop: 3 },
+  scenarioRow: { flexDirection: 'row', gap: 7, marginTop: 12 },
+  scenarioButton: { flex: 1, minHeight: 37, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderWidth: 1, borderRadius: 11, paddingHorizontal: 5 },
+  scenarioText: { fontSize: 10, fontWeight: '700' },
+  quickStartChoices: { borderRadius: 13, padding: 9, marginTop: 11, gap: 6 },
+  quickStartPrompt: { fontSize: 10, lineHeight: 15, marginBottom: 2 },
+  quickStartHabit: { minHeight: 49, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 8 },
+  quickStartHabitIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  quickStartHabitCopy: { flex: 1, minWidth: 0 },
+  quickStartHabitTitle: { fontSize: 11, fontWeight: '700' },
+  quickStartHabitAction: { fontSize: 9, marginTop: 3 },
+  quickStartEmpty: { fontSize: 11, lineHeight: 16, paddingVertical: 6 },
+  focusChooser: { borderRadius: 17, padding: 13, marginBottom: 11 },
+  focusChooserTitle: { fontSize: 13, fontWeight: '700' },
+  focusChooserSubtitle: { fontSize: 10, marginTop: 4, marginBottom: 7 },
+  focusChoice: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 11, paddingHorizontal: 10, marginTop: 6 },
+  focusChoiceText: { flex: 1, fontSize: 11, fontWeight: '600' },
+  focusChooserCancel: { alignSelf: 'flex-end', paddingHorizontal: 9, paddingVertical: 7, marginTop: 3 },
+  focusChooserCancelText: { fontSize: 10, fontWeight: '700' },
+  focusedNotice: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, paddingHorizontal: 10, marginBottom: 10 },
+  focusedNoticeText: { flex: 1, fontSize: 10, fontWeight: '700' },
+  showAllButton: { paddingVertical: 7, paddingLeft: 5 },
+  showAllText: { fontSize: 10, fontWeight: '700' },
   habitList: { gap: 10 },
   habitCard: { minHeight: 75, borderRadius: 19, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
   habitIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
@@ -1102,6 +1329,7 @@ const styles = StyleSheet.create({
   focusTitleCopy: { flex: 1, minWidth: 0 },
   focusTitle: { fontSize: 17, fontWeight: '700' },
   focusSubtitle: { fontSize: 11, marginTop: 3 },
+  focusPrompt: { fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 17, paddingHorizontal: 8 },
   focusClose: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   focusTimer: { textAlign: 'center', fontSize: 54, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 27 },
   focusTrack: { height: 8, borderRadius: 99, overflow: 'hidden', marginTop: 14 },

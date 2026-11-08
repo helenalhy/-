@@ -35,6 +35,26 @@ test('today offers a minimum-action timer and a separate normal completion choic
   assert.match(today, /完成小步 \+\{minimumActionReward\} 金幣 · 完整目標 \+\{FULL_CHECK_IN_REWARD\} 金幣/);
 });
 
+test('today offers situation-based quick starts with each unfinished goal and its recommended first step', () => {
+  assert.match(today, /START_SCENARIOS:[\s\S]*low-energy[\s\S]*short-time[\s\S]*stuck/);
+  assert.match(today, /testID="quick-start-card"/);
+  assert.match(today, /testID=\{`start-scenario-\$\{scenario\.id\}`\}/);
+  assert.match(today, /testID=\{`quick-start-habit-\$\{habit\.id\}`\}/);
+  assert.match(today, /const action = habit\.minimumAction \?\? recommendMinimumAction\(habit\)/);
+  assert.match(today, /setFocusStartPrompt\(START_SCENARIO_PROMPTS\[startScenario\]\)/);
+  assert.match(today, /testID="quick-start-prompt"/);
+});
+
+test('today can temporarily focus one unfinished goal and restore the full list', () => {
+  assert.match(today, /testID="today-focus-toggle"/);
+  assert.match(today, /testID="today-focus-chooser"/);
+  assert.match(today, /testID=\{`choose-focus-habit-\$\{habit\.id\}`\}/);
+  assert.match(today, /const visibleHabits = focusedHabit \? \[focusedHabit\] : habits/);
+  assert.match(today, /visibleHabits\.map\(\(habit\)/);
+  assert.match(today, /testID="show-all-habits"/);
+  assert.match(today, /其他目標會保留/);
+});
+
 test('the timer does not check in automatically', () => {
   const modal = today.split('function TwoMinuteStarterModal')[1].split('function HabitRow')[0];
   assert.doesNotMatch(modal, /toggleCheckIn/);

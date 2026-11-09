@@ -1,4 +1,4 @@
-import { DOG_ATTENDANT_LOOKS } from '@/constants/dog-attendant-looks';
+import { DOG_ATTENDANT_LOOKS, LONG_TAIL_DOG_KINDS } from '@/constants/dog-attendant-looks';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -179,9 +179,12 @@ function legacyDogArtwork(dog: DailyPostcardDog, outline: string): string {
       : dog.outfit.cut === 'animal-costume'
         ? `<ellipse cx="0" cy="145" rx="24" ry="20" fill="${trim}" stroke="${outline}" stroke-width="3"/><circle cx="0" cy="145" r="8" fill="${outfit}"/>`
         : '';
+  const tail = (LONG_TAIL_DOG_KINDS as readonly string[]).includes(dog.kind)
+    ? `<path d="M-71 169 Q-132 141 -112 107 Q-101 89 -83 109" fill="none" stroke="${fur}" stroke-width="20" stroke-linecap="round"/>`
+    : `<circle cx="-88" cy="124" r="17" fill="${fur}" stroke="${outline}" stroke-width="4"/><circle cx="-82" cy="118" r="4" fill="#FFFDF8" opacity=".72"/>`;
 
   return `<g transform="translate(360 560)">
-    <path d="M-71 169 Q-132 141 -112 107 Q-101 89 -83 109" fill="none" stroke="${fur}" stroke-width="20" stroke-linecap="round"/>
+    ${tail}
     <path d="${earShape}" fill="${fur}" stroke="${outline}" stroke-width="4"/>
     <ellipse cx="0" cy="153" ${bodyLength} fill="${fur}" stroke="${outline}" stroke-width="4"/>
     ${clothingBase}

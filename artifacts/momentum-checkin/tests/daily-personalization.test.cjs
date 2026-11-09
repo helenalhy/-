@@ -26,6 +26,7 @@ function loadTs(relativePath, extraModules = {}) {
 test('daily postcard art changes every day and safely includes the daily quote', () => {
   const { buildDailyPostcardSvg, getDailyStyleIndex } = loadTs('lib/daily-postcard.ts', {
     '@/constants/dog-attendant-looks': {
+      LONG_TAIL_DOG_KINDS: ['xiaoniu', 'pudding', 'wonton', 'poppy'],
       DOG_ATTENDANT_LOOKS: {
         tangtang: {
           coat: '#FFFBF4',
@@ -100,6 +101,10 @@ test('daily postcard art changes every day and safely includes the daily quote',
   const longTailCard = buildDailyPostcardSvg('2026-01-01', '今天也一步一步來。', longTailDog, shop);
   assert.match(longTailCard, /M36 34 Q44 28 48 33 Q49 38 40 38/);
   assert.doesNotMatch(longTailCard, /<circle cx="41\.5" cy="34\.5" r="3\.6"/);
+
+  const legacyDog = { ...dog, name: '訪客狗狗', kind: 'legacy-dog' };
+  const legacyCard = buildDailyPostcardSvg('2026-01-01', '今天也一步一步來。', legacyDog, shop);
+  assert.match(legacyCard, /<circle cx="-88" cy="124" r="17"/);
 });
 
 test('dog illustration tail styles use round puffs except naturally long-tailed breeds', () => {
@@ -107,11 +112,13 @@ test('dog illustration tail styles use round puffs except naturally long-tailed 
   const { DOG_ATTENDANT_LOOKS } = loadTs('constants/dog-attendant-looks.ts', {
     './colors': { __esModule: true, default: { light: colors } },
   });
-  const longTailBreeds = ['xiaoniu', 'pudding', 'wonton', 'poppy'];
+  const { LONG_TAIL_DOG_KINDS } = loadTs('constants/dog-attendant-looks.ts', {
+    './colors': { __esModule: true, default: { light: colors } },
+  });
 
   assert.equal(Object.keys(DOG_ATTENDANT_LOOKS).length, 14);
   for (const [kind, look] of Object.entries(DOG_ATTENDANT_LOOKS)) {
-    assert.equal(look.tailStyle, longTailBreeds.includes(kind) ? 'long' : 'round', kind);
+    assert.equal(look.tailStyle, LONG_TAIL_DOG_KINDS.includes(kind) ? 'long' : 'round', kind);
   }
 });
 

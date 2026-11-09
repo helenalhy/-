@@ -53,13 +53,18 @@ function getOrdinal(dateKey: string): number {
   return Math.floor(timestamp / DAY_MS);
 }
 
+export function getDailyStyleIndex(dateKey: string, profileCount: number, optionCount: number): number {
+  if (profileCount < 1 || optionCount < 1) return 0;
+  return Math.floor(getOrdinal(dateKey) / profileCount) % optionCount;
+}
+
 function escapeXml(value: string): string {
   return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 function wrapText(text: string, maxCharacters = 18): string[] {
@@ -88,7 +93,123 @@ function makeDecoration(ordinal: number, accent: string, softAccent: string, mot
   return marks.join('');
 }
 
-export function buildDailyPostcardSvg(dateKey: string, quote: string, dogName: string): string {
+export interface DailyPostcardDog {
+  name: string;
+  kind: string;
+  coatColor: string;
+  outfit: {
+    name: string;
+    color: string;
+    accentColor: string;
+    cut: string;
+    pattern: string;
+    lace?: boolean;
+  };
+  accessory: {
+    name: string;
+    color: string;
+    accentColor: string;
+    shape: string;
+    animalKind?: string;
+  };
+}
+
+export interface DailyPostcardShop {
+  floor: number;
+  name: string;
+  roomImageUri: string;
+}
+
+function dogArtwork(dog: DailyPostcardDog, outline: string): string {
+  const fur = escapeXml(dog.coatColor);
+  const outfit = escapeXml(dog.outfit.color);
+  const trim = escapeXml(dog.outfit.accentColor);
+  const accessory = escapeXml(dog.accessory.color);
+  const accessoryTrim = escapeXml(dog.accessory.accentColor);
+  const earShape = dog.kind === 'poppy' || dog.kind === 'butter' || dog.kind === 'wonton'
+    ? 'M-70 -30 Q-123 8 -91 60 Q-69 45 -54 -3 Z M70 -30 Q123 8 91 60 Q69 45 54 -3 Z'
+    : dog.kind === 'xiaoniu'
+      ? 'M-67 -43 Q-124 -93 -112 -10 Q-99 30 -61 21 Z M67 -43 Q124 -93 112 -10 Q99 30 61 21 Z'
+      : 'M-70 -34 Q-118 -66 -108 -5 Q-98 31 -58 21 Z M70 -34 Q118 -66 108 -5 Q98 31 58 21 Z';
+  const bodyLength = dog.kind === 'poppy' ? 'rx="94" ry="67"' : 'rx="76" ry="76"';
+  const facePatch = dog.kind === 'xiaoniu'
+    ? `<path d="M-4 -82 Q18 -91 31 -66 L25 -19 Q15 -3 4 -20 Z" fill="#FFFDF8" opacity=".92"/><ellipse cx="-49" cy="-22" rx="22" ry="28" fill="#36323C" opacity=".84"/>`
+    : dog.kind === 'sesame'
+      ? `<ellipse cx="-51" cy="-21" rx="22" ry="24" fill="#37333D" opacity=".85"/><ellipse cx="52" cy="-21" rx="21" ry="24" fill="#37333D" opacity=".85"/>`
+      : dog.kind === 'snowball'
+        ? `<path d="M-34 16 Q0 4 34 16 L24 42 Q0 55 -24 42 Z" fill="#FFFDF8" stroke="${outline}" stroke-width="2"/>`
+        : '';
+  const clothingBase = dog.outfit.cut === 'cape'
+    ? `<path d="M-70 82 Q0 58 70 82 L111 202 Q0 234 -111 202 Z" fill="${outfit}" stroke="${outline}" stroke-width="4"/><path d="M-62 93 Q0 116 62 93" fill="none" stroke="${trim}" stroke-width="7"/>`
+    : dog.outfit.cut === 'dress' || dog.outfit.cut === 'princess' || dog.outfit.cut === 'little-skirt'
+      || dog.outfit.cut === 'magical-girl' || dog.outfit.cut.includes('dress')
+      ? `<path d="M-47 87 Q0 69 47 87 L99 202 Q0 224 -99 202 Z" fill="${outfit}" stroke="${outline}" stroke-width="4"/><path d="M-91 191 Q0 217 91 191 L99 205 Q0 234 -99 205 Z" fill="${trim}" stroke="${outline}" stroke-width="3"/>`
+      : `<path d="M-64 86 Q0 63 64 86 L81 205 Q0 224 -81 205 Z" fill="${outfit}" stroke="${outline}" stroke-width="4"/>`;
+  const pattern = dog.outfit.pattern === 'stripes'
+    ? `<path d="M-52 116 H52 M-60 146 H60 M-65 176 H65" stroke="${trim}" stroke-width="7" opacity=".92"/>`
+    : dog.outfit.pattern === 'checks'
+      ? `<path d="M-40 118 H40 M-50 146 H50 M-58 174 H58 M-20 105 V190 M18 105 V190" stroke="${trim}" stroke-width="5" opacity=".82"/>`
+      : dog.outfit.pattern === 'stars'
+        ? `<path d="M-38 123 l5 10 11 2-8 8 2 11-10-5-10 5 2-11-8-8 11-2z M34 155 l4 8 9 1-7 6 2 9-8-4-8 4 2-9-7-6 9-1z" fill="${trim}"/>`
+        : dog.outfit.pattern === 'flowers'
+          ? `<circle cx="-35" cy="138" r="7" fill="${trim}"/><circle cx="-42" cy="138" r="4" fill="#FFFDF8"/><circle cx="-28" cy="138" r="4" fill="#FFFDF8"/><circle cx="32" cy="167" r="7" fill="${trim}"/><circle cx="25" cy="167" r="4" fill="#FFFDF8"/><circle cx="39" cy="167" r="4" fill="#FFFDF8"/>`
+          : `<circle cx="-34" cy="145" r="5" fill="${trim}"/><circle cx="34" cy="164" r="5" fill="${trim}"/>`;
+  const lace = dog.outfit.lace
+    ? `<path d="M-86 201 Q-75 186 -64 201 Q-53 216 -42 201 Q-31 186 -20 201 Q-9 216 2 201 Q13 186 24 201 Q35 216 46 201 Q57 186 68 201 Q79 216 90 201" fill="none" stroke="#FFFDF8" stroke-width="7" stroke-linecap="round"/>`
+    : '';
+  const headAccessory = dog.accessory.shape === 'animal-ears'
+    ? dog.accessory.animalKind === 'rabbit'
+      ? `<path d="M-48 -74 Q-70 -156 -36 -160 Q-15 -147 -22 -71 Z M48 -74 Q70 -156 36 -160 Q15 -147 22 -71 Z" fill="${accessory}" stroke="${outline}" stroke-width="4"/><path d="M-42 -82 Q-53 -132 -39 -138 Q-30 -129 -30 -78 Z M42 -82 Q53 -132 39 -138 Q30 -129 30 -78 Z" fill="${accessoryTrim}"/>`
+      : `<path d="M-68 -70 Q-88 -139 -47 -133 Q-17 -120 -24 -68 Z M68 -70 Q88 -139 47 -133 Q17 -120 24 -68 Z" fill="${accessory}" stroke="${outline}" stroke-width="4"/><path d="M-56 -82 Q-66 -115 -48 -116 L-39 -76 Z M56 -82 Q66 -115 48 -116 L39 -76 Z" fill="${accessoryTrim}"/>`
+    : dog.accessory.shape === 'beret'
+      ? `<ellipse cx="0" cy="-83" rx="55" ry="19" fill="${accessory}" stroke="${outline}" stroke-width="4"/><path d="M-44 -84 Q-35 -135 14 -126 Q53 -119 52 -83 Z" fill="${accessory}" stroke="${outline}" stroke-width="4"/><circle cx="13" cy="-125" r="7" fill="${accessoryTrim}"/>`
+      : dog.accessory.shape === 'headband'
+        ? `<path d="M-68 -45 Q0 -119 68 -45" fill="none" stroke="${accessory}" stroke-width="12" stroke-linecap="round"/><path d="M-10 -105 Q0 -121 10 -105 Q0 -92 -10 -105Z" fill="${accessoryTrim}"/>`
+        : dog.accessory.shape === 'scarf'
+          ? `<path d="M-50 73 Q0 91 50 73 L43 96 Q0 112 -43 96 Z" fill="${accessory}" stroke="${outline}" stroke-width="3"/><path d="M35 93 L54 132 L29 126Z" fill="${accessoryTrim}"/>`
+          : dog.accessory.shape === 'flower'
+            ? `<g transform="translate(55 -88)"><circle r="13" fill="${accessoryTrim}"/><circle cx="0" cy="-12" r="9" fill="${accessory}"/><circle cx="12" cy="0" r="9" fill="${accessory}"/><circle cy="12" r="9" fill="${accessory}"/><circle cx="-12" r="9" fill="${accessory}"/></g>`
+            : `<path d="M-15 -87 Q-40 -112 -53 -94 Q-57 -78 -31 -74 Q-42 -51 -21 -52 Q-5 -56 -5 -77 Q18 -58 32 -73 Q40 -91 13 -96 Q24 -120 3 -120 Q-11 -117 -15 -87Z" fill="${accessory}" stroke="${outline}" stroke-width="3"/><circle cx="-8" cy="-84" r="6" fill="${accessoryTrim}"/>`;
+  const magicalAccents = dog.outfit.cut === 'magical-girl'
+    ? `<path d="M0 92 L8 110 L28 112 L13 125 L17 145 L0 135 L-17 145 L-13 125 L-28 112 L-8 110 Z" fill="#FFF5AE" stroke="${outline}" stroke-width="2"/><path d="M-37 83 Q-17 61 0 83 Q17 61 37 83 L19 100 L0 91 L-19 100Z" fill="${trim}" stroke="${outline}" stroke-width="3"/><circle cx="0" cy="91" r="7" fill="#FFF5AE"/>`
+    : dog.outfit.cut === 'sweater'
+      ? `<path d="M-43 101 H43 M-48 116 H48" stroke="${trim}" stroke-width="6" stroke-linecap="round"/><path d="M-26 145 l9 9 9-9 M12 170 l9 9 9-9" fill="none" stroke="${trim}" stroke-width="4"/>`
+      : dog.outfit.cut === 'animal-costume'
+        ? `<ellipse cx="0" cy="145" rx="24" ry="20" fill="${trim}" stroke="${outline}" stroke-width="3"/><circle cx="0" cy="145" r="8" fill="${outfit}"/>`
+        : '';
+
+  return `<g transform="translate(360 560)">
+    <path d="M-71 169 Q-132 141 -112 107 Q-101 89 -83 109" fill="none" stroke="${fur}" stroke-width="20" stroke-linecap="round"/>
+    <path d="${earShape}" fill="${fur}" stroke="${outline}" stroke-width="4"/>
+    <ellipse cx="0" cy="153" ${bodyLength} fill="${fur}" stroke="${outline}" stroke-width="4"/>
+    ${clothingBase}
+    ${pattern}
+    ${lace}
+    <path d="M-18 89 Q0 110 18 89" fill="none" stroke="${trim}" stroke-width="6" stroke-linecap="round"/>
+    ${magicalAccents}
+    <ellipse cx="-40" cy="220" rx="23" ry="17" fill="${fur}" stroke="${outline}" stroke-width="3"/>
+    <ellipse cx="40" cy="220" rx="23" ry="17" fill="${fur}" stroke="${outline}" stroke-width="3"/>
+    <ellipse cx="0" cy="0" rx="93" ry="82" fill="${fur}" stroke="${outline}" stroke-width="4"/>
+    <ellipse cx="-38" cy="34" rx="21" ry="13" fill="#F5B0B5" opacity=".7"/>
+    <ellipse cx="38" cy="34" rx="21" ry="13" fill="#F5B0B5" opacity=".7"/>
+    ${facePatch}
+    <ellipse cx="-33" cy="-9" rx="9" ry="12" fill="${outline}"/>
+    <ellipse cx="33" cy="-9" rx="9" ry="12" fill="${outline}"/>
+    <circle cx="-30" cy="-13" r="3" fill="#FFFDF8"/>
+    <circle cx="36" cy="-13" r="3" fill="#FFFDF8"/>
+    <ellipse cx="0" cy="17" rx="12" ry="9" fill="#754C58"/>
+    <path d="M0 25 Q-5 39 -17 37 M0 25 Q5 39 17 37" fill="none" stroke="#754C58" stroke-width="3" stroke-linecap="round"/>
+    ${headAccessory}
+    ${dog.kind === 'huahua' ? `<circle cx="-74" cy="-32" r="8" fill="#FFFDF8" stroke="${trim}" stroke-width="3"/><circle cx="76" cy="-17" r="7" fill="#FFFDF8" stroke="${trim}" stroke-width="3"/>` : ''}
+  </g>`;
+}
+
+export function buildDailyPostcardSvg(
+  dateKey: string,
+  quote: string,
+  dog: DailyPostcardDog,
+  shop: DailyPostcardShop,
+): string {
   const ordinal = getOrdinal(dateKey);
   const paletteIndex = ordinal % POSTCARD_PALETTES.length;
   const motifIndex = Math.floor(ordinal / POSTCARD_PALETTES.length) % 7;
@@ -100,26 +221,33 @@ export function buildDailyPostcardSvg(dateKey: string, quote: string, dogName: s
     `<text x="360" y="${firstLineY + index * 48}" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="600" fill="${ink}">${escapeXml(line)}</text>`,
   ).join('');
   const decorations = makeDecoration(ordinal, accent, paper, motifIndex);
-  const dateText = escapeXml(dateKey.replaceAll('-', ' / '));
-  const safeDogName = escapeXml(dogName);
+  const dateText = escapeXml(dateKey.replace(/-/g, ' / '));
   const title = escapeXml(POSTCARD_TITLES[titleIndex]);
+  const dogImage = dogArtwork(dog, ink);
+  const shopName = escapeXml(shop.name);
+  const outfitName = escapeXml(dog.outfit.name);
+  const accessoryName = escapeXml(dog.accessory.name);
+  const roomImage = escapeXml(shop.roomImageUri);
+  const shopFloor = escapeXml(`${shop.floor}F`);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 720 960">
     <defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${background}"/><stop offset="1" stop-color="${paper}"/></linearGradient>
+      <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${ink}" stop-opacity=".18"/><stop offset=".44" stop-color="${paper}" stop-opacity=".28"/><stop offset="1" stop-color="${ink}" stop-opacity=".3"/></linearGradient>
     </defs>
-    <rect width="720" height="960" rx="46" fill="url(#bg)"/>
+    <image href="${roomImage}" x="0" y="0" width="720" height="960" preserveAspectRatio="xMidYMid slice"/>
+    <rect width="720" height="960" rx="46" fill="url(#shade)"/>
+    <rect x="38" y="40" width="644" height="880" rx="38" fill="none" stroke="${paper}" stroke-opacity=".9" stroke-width="4"/>
     <g>${decorations}</g>
-    <rect x="54" y="64" width="612" height="832" rx="38" fill="${paper}" opacity=".92" stroke="${accent}" stroke-opacity=".5" stroke-width="2"/>
-    <rect x="83" y="93" width="554" height="774" rx="28" fill="none" stroke="${accent}" stroke-opacity=".45" stroke-width="2" stroke-dasharray="${motifIndex % 2 === 0 ? '2 13' : '8 9'}"/>
-    <circle cx="360" cy="206" r="70" fill="${background}" stroke="${accent}" stroke-width="3"/>
-    <path d="M360 146 L374 184 L414 185 L382 208 L394 247 L360 224 L326 247 L338 208 L306 185 L346 184 Z" fill="${accent}" opacity=".9"/>
-    <circle cx="360" cy="204" r="12" fill="${paper}"/>
-    <text x="360" y="322" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="700" letter-spacing="4" fill="${accent}">MOMENTUM · 每日小卡</text>
-    <text x="360" y="378" text-anchor="middle" font-family="sans-serif" font-size="27" font-weight="700" fill="${ink}">${title}</text>
+    <rect x="66" y="74" width="588" height="365" rx="30" fill="${paper}" opacity=".88" stroke="${accent}" stroke-width="3"/>
+    <circle cx="360" cy="132" r="29" fill="${background}" stroke="${accent}" stroke-width="2"/>
+    <path d="M360 111 L366 127 L384 128 L370 139 L375 157 L360 147 L345 157 L350 139 L336 128 L354 127 Z" fill="${accent}"/>
+    <text x="360" y="193" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="700" letter-spacing="3" fill="${accent}">MOMENTUM · 每日小卡</text>
+    <text x="360" y="234" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="700" fill="${ink}">${title}</text>
     ${quoteSvg}
-    <path d="M238 650 Q360 621 482 650" fill="none" stroke="${accent}" stroke-width="3" stroke-linecap="round" opacity=".65"/>
-    <text x="360" y="715" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="700" fill="${ink}">${safeDogName}今天陪你</text>
-    <text x="360" y="770" text-anchor="middle" font-family="sans-serif" font-size="19" fill="${accent}">願你記得，今天的努力也值得肯定</text>
-    <text x="360" y="827" text-anchor="middle" font-family="sans-serif" font-size="17" letter-spacing="2" fill="${ink}" opacity=".68">${dateText}</text>
+    <ellipse cx="360" cy="800" rx="126" ry="17" fill="${ink}" opacity=".18"/>
+    ${dogImage}
+    <rect x="66" y="832" width="588" height="96" rx="24" fill="${paper}" opacity=".93" stroke="${accent}" stroke-width="2"/>
+    <text x="360" y="863" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="700" fill="${ink}">${escapeXml(dog.name)}今天陪你 · ${shopFloor} ${shopName}</text>
+    <text x="360" y="893" text-anchor="middle" font-family="sans-serif" font-size="14" fill="${accent}">${outfitName} · ${accessoryName}</text>
+    <text x="360" y="916" text-anchor="middle" font-family="sans-serif" font-size="13" letter-spacing="1" fill="${ink}" opacity=".72">${dateText} · 今日的努力值得收藏</text>
   </svg>`;
 }

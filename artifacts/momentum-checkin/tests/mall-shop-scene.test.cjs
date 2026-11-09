@@ -101,7 +101,8 @@ test('interior page retains accessible slots and routes placement operations thr
 
 test('every shop interior keeps its specialty illustration and adds a unique floor-aware design', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
-  assert.match(scene, /source=\{SCENES\[sceneKey\]\}/, 'keep the correct illustrated room for each shop category');
+  assert.match(scene, /source=\{SHOP_ROOM_IMAGES\[sceneKey\]\}/, 'keep the correct illustrated room for each shop category');
+  assert.match(scene, /import \{ SHOP_ROOM_IMAGES \} from '@\/constants\/shop-room-images'/);
   assert.match(scene, /getMallFloorArtProfile\(floor, shopId\)/, 'use the shop identity and its actual floor');
   assert.match(scene, /testID=\{`shop-interior-identity-\$\{floor\}-\$\{shopId\}`\}/);
   assert.match(scene, /testID=\{`shop-interior-display-\$\{floor\}-\$\{shopId\}`\}/);
@@ -266,7 +267,8 @@ test('every one of twenty-two scenes defines in-bounds anchors for all eight slo
 
 test('all 22 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
-  const sceneAssets = [...scene.matchAll(/require\('\.\.\/assets\/images\/(shop-room-[^']+\.jpg)'\)/g)]
+  const roomAssetsSource = fs.readFileSync(path.join(__dirname, '../constants/shop-room-images.ts'), 'utf8');
+  const sceneAssets = [...roomAssetsSource.matchAll(/require\('\.\.\/assets\/images\/(shop-room-[^']+\.jpg)'\)/g)]
     .map(([, asset]) => asset);
   assert.equal(sceneAssets.length, 22);
   assert.equal(new Set(sceneAssets).size, 22);

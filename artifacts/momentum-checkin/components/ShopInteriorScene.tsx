@@ -4,6 +4,7 @@ import { AccessibilityInfo, Animated, Easing, findNodeHandle, ImageBackground, M
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { SHOP_INTERIOR_SLOTS, type ShopInteriorAreaId, type ShopInteriorDecoration, type ShopInteriorSlotId, type ShopInteriorSceneKey } from '@/constants/mall-shop-interior';
+import { SHOP_ROOM_IMAGES } from '@/constants/shop-room-images';
 import { classifyDecoration, mapCoverPoint, resolveObjectAnchor, separateHotspotPoints } from '@/constants/mall-shop-scene-anchors';
 import { getMallFloorArtProfile } from '@/constants/mall-floor-art';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
@@ -63,31 +64,6 @@ function getDogCareColor(dogKey: string, colors: ReturnType<typeof useColors>) {
   const token = DOG_CARE_COLOR_TOKENS[dogKey];
   return token ? colors[token] : colors.primary;
 }
-
-const SCENES: Record<ShopInteriorSceneKey, number> = {
-  general: require('../assets/images/shop-room-gifts.jpg'),
-  cafe: require('../assets/images/shop-room-cafe.jpg'),
-  candy: require('../assets/images/shop-room-candy.jpg'),
-  icecream: require('../assets/images/shop-room-icecream.jpg'),
-  bakery: require('../assets/images/shop-room-bakery.jpg'),
-  tea: require('../assets/images/shop-room-tea.jpg'),
-  food: require('../assets/images/shop-room-food.jpg'),
-  flower: require('../assets/images/shop-room-florist.jpg'),
-  book: require('../assets/images/shop-room-bookshop.jpg'),
-  toy: require('../assets/images/shop-room-toy.jpg'),
-  craft: require('../assets/images/shop-room-craft.jpg'),
-  womenswear: require('../assets/images/shop-room-fashion.jpg'),
-  bridal: require('../assets/images/shop-room-bridal.jpg'),
-  eveningwear: require('../assets/images/shop-room-eveningwear.jpg'),
-  kimono: require('../assets/images/shop-room-kimono.jpg'),
-  supermarket: require('../assets/images/shop-room-market.jpg'),
-  hyakuen: require('../assets/images/shop-room-hyakuen.jpg'),
-  swimwear: require('../assets/images/shop-room-swimwear.jpg'),
-  cosplay: require('../assets/images/shop-room-cosplay.jpg'),
-  electronics: require('../assets/images/shop-room-electronics.jpg'),
-  boutique: require('../assets/images/shop-room-boutique.jpg'),
-  cosmetics: require('../assets/images/shop-room-cosmetics.jpg'),
-};
 
 export function ShopInteriorScene({
   testID,
@@ -257,7 +233,7 @@ export function ShopInteriorScene({
         },
       ]}
     >
-      <ImageBackground onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} source={SCENES[sceneKey]} resizeMode="cover" style={styles.imageStage} imageStyle={styles.imageShape}>
+      <ImageBackground onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })} source={SHOP_ROOM_IMAGES[sceneKey]} resizeMode="cover" style={styles.imageStage} imageStyle={styles.imageShape}>
         <View style={styles.topScrim} pointerEvents="none" />
         <View
           pointerEvents="none"

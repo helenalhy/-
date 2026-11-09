@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
+import { Asset } from 'expo-asset';
 import {
   Modal,
   Platform,
@@ -12,8 +13,12 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useColors } from '@/hooks/useColors';
-import { getDailyDogGreeting } from '@/lib/daily-engagement';
+import { getDailyDogGreeting, getDateOrdinal } from '@/lib/daily-engagement';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
+import { DOG_STAFF_PROFILES, DOG_STAFF_STYLE_CATALOGS } from '@/constants/dog-staff-customization';
+import { MALL_ITEMS } from '@/constants/mall';
+import { SHOP_ROOM_IMAGES } from '@/constants/shop-room-images';
+import { getShopInteriorSceneKey } from '@/constants/mall-shop-interior';
 import {
   DAILY_MOOD_OPTIONS,
   readMoodHistory,
@@ -21,7 +26,38 @@ import {
   type DailyMood,
   type MoodEntry,
 } from '@/lib/daily-personalization';
-import { buildDailyPostcardSvg } from '@/lib/daily-postcard';
+import { buildDailyPostcardSvg, getDailyStyleIndex } from '@/lib/daily-postcard';
+
+const DAILY_POSTCARD_SHOPS = MALL_ITEMS
+  .filter((item) => item.category === 'shop')
+  .sort((left, right) => left.floor - right.floor || left.id.localeCompare(right.id));
+
+function getDailyPostcardArtwork(today: string, quote: string): string {
+  const { dog } = getDailyDogGreeting(today);
+  const ordinal = getDateOrdinal(today);
+  const dogCatalog = DOG_STAFF_STYLE_CATALOGS[dog.decorationId];
+  const outfit = dogCatalog.outfits[getDailyStyleIndex(today, DOG_STAFF_PROFILES.length, dogCatalog.outfits.length)];
+  const accessory = dogCatalog.accessories[getDailyStyleIndex(today, DOG_STAFF_PROFILES.length, dogCatalog.accessories.length)];
+  const shop = DAILY_POSTCARD_SHOPS[ordinal % DAILY_POSTCARD_SHOPS.length];
+  const sceneKey = getShopInteriorSceneKey(shop.shopType, shop.id, shop.name);
+  const roomAsset = Asset.fromModule(SHOP_ROOM_IMAGES[sceneKey]);
+  return buildDailyPostcardSvg(
+    today,
+    quote,
+    {
+      name: dog.name,
+      kind: dog.kind,
+      coatColor: dog.color,
+      outfit,
+      accessory,
+    },
+    {
+      floor: shop.floor,
+      name: shop.name,
+      roomImageUri: roomAsset.uri,
+    },
+  );
+}
 
 function getRecentDateKeys(today: string): string[] {
   const date = new Date(`${today}T12:00:00`);
@@ -158,10 +194,11 @@ async function downloadPostcardPng(svg: string, date: string): Promise<void> {
   const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
   const imageUrl = URL.createObjectURL(svgBlob);
   try {
-    const image = new Image();
+    const image = new window.Image();
     await new Promise<void>((resolve, reject) => {
       image.onload = () => resolve();
       image.onerror = () => reject(new Error('明信片圖片產生失敗。'));
+      image.crossOrigin = 'anonymous';
       image.src = imageUrl;
     });
     const canvas = document.createElement('canvas');
@@ -186,7 +223,7 @@ export function DailyPostcardCard({ today }: { today: string }) {
   const [error, setError] = useState('');
   const quote = getDailyMotivationalQuote(today);
   const { dog } = getDailyDogGreeting(today);
-  const svg = buildDailyPostcardSvg(today, quote, dog.name);
+  const svg = getDailyPostcardArtwork(today, quote);
 
   async function savePostcard() {
     setBusy(true);

@@ -24,16 +24,44 @@ function loadTs(relativePath, extraModules = {}) {
 }
 
 test('daily postcard art changes every day and safely includes the daily quote', () => {
-  const { buildDailyPostcardSvg } = loadTs('lib/daily-postcard.ts');
+  const { buildDailyPostcardSvg, getDailyStyleIndex } = loadTs('lib/daily-postcard.ts');
+  const dog = {
+    name: '糖糖',
+    kind: 'tangtang',
+    coatColor: '#FFF7EA',
+    outfit: {
+      name: '糖糖・粉彩星願裙',
+      color: '#E9B8D5',
+      accentColor: '#FFF4C1',
+      cut: 'magical-girl',
+      pattern: 'stars',
+    },
+    accessory: {
+      name: '糖糖・小熊耳朵帽',
+      color: '#E6C49C',
+      accentColor: '#FFF1D9',
+      shape: 'animal-ears',
+      animalKind: 'bear',
+    },
+  };
+  const shop = { floor: 6, name: '毛茸茸棉花糖CAFE', roomImageUri: 'https://example.com/shop-room-cafe.jpg' };
   const cards = Array.from({ length: 40 }, (_, index) => {
     const date = new Date(Date.UTC(2026, 0, 1 + index));
     const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-    return buildDailyPostcardSvg(dateKey, '不必急著抵達，<今天>也值得收藏。', '糖糖 & 花花');
+    return buildDailyPostcardSvg(dateKey, '不必急著抵達，<今天>也值得收藏。', dog, shop);
   });
   assert.equal(new Set(cards).size, cards.length);
   assert.match(cards[0], /&lt;今天&gt;/);
-  assert.match(cards[0], /糖糖 &amp; 花花今天陪你/);
+  assert.match(cards[0], /糖糖今天陪你/);
+  assert.match(cards[0], /shop-room-cafe\.jpg/);
+  assert.match(cards[0], /糖糖・粉彩星願裙 · 糖糖・小熊耳朵帽/);
+  assert.match(cards[0], /<ellipse cx="-33" cy="-9"/);
   assert.match(cards[0], /viewBox="0 0 720 960"/);
+  assert.notEqual(
+    getDailyStyleIndex('2026-01-01', 14, 50),
+    getDailyStyleIndex('2026-01-15', 14, 50),
+    'a returning dog receives a different outfit on its next daily appearance',
+  );
 });
 
 test('encouragement style and daily moods persist locally without replacing a date entry', async () => {

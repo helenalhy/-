@@ -224,7 +224,7 @@ export function DailyDogGreetingCard({
         </Animated.View>
       </View>
       <View style={styles.copy}>
-        <Text style={[styles.eyebrow, { color: colors.primary }]}>狗狗每日招呼</Text>
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>狗狗每日打招呼</Text>
         <Text style={[styles.title, { color: colors.foreground }]}>{dog.name}今天陪你</Text>
         <Text style={[styles.body, { color: colors.mutedForeground }]} numberOfLines={2}>
           {greeted ? `${dog.name}：很高興今天也見到你！` : greeting}

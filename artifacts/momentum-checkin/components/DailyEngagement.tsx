@@ -29,6 +29,7 @@ import {
   getWeeklyMomentumDays,
 } from '@/lib/daily-engagement';
 import type { Habit } from '@/context/HabitsContext';
+import type { EncouragementStyle } from '@/lib/daily-personalization';
 
 function VisitorPortrait({ date, size = 52 }: { date: string; size?: number }) {
   const colors = useColors();
@@ -191,13 +192,15 @@ export function WeeklyMallEventCard({ habits, today }: { habits: readonly Habit[
 export function DailyDogGreetingCard({
   today,
   celebrationCount,
+  style,
 }: {
   today: string;
   celebrationCount: number;
+  style: EncouragementStyle;
 }) {
   const colors = useColors();
   const reduceMotion = useReducedMotion();
-  const { dog, greeting } = getDailyDogGreeting(today);
+  const { dog, greeting } = getDailyDogGreeting(today, style);
   const native = Platform.OS !== 'web';
   const bounce = useRef(new Animated.Value(1)).current;
   const previousCelebrationCount = useRef(celebrationCount);

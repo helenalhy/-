@@ -93,6 +93,14 @@ test('daily companion rotates through all fourteen profiles and greetings', () =
     getDailyDogGreeting('2026-01-01').greeting,
     getDailyDogGreeting('2026-01-01').greeting,
   );
+  assert.notEqual(
+    getDailyDogGreeting('2026-01-01', 'gentle').greeting,
+    getDailyDogGreeting('2026-01-01', 'concise').greeting,
+  );
+  assert.notEqual(
+    getDailyDogGreeting('2026-01-01', 'gentle').greeting,
+    getDailyDogGreeting('2026-01-01', 'energetic').greeting,
+  );
 });
 
 test('engagement cards show up in Today without adding reward or changing restart behavior', () => {
@@ -102,6 +110,10 @@ test('engagement cards show up in Today without adding reward or changing restar
   assert.match(today, /<DailyMallVisitorCard/);
   assert.match(today, /<WeeklyMallEventCard/);
   assert.match(today, /<DailyRecapCard/);
+  assert.match(today, /<DailyMoodCard/);
+  assert.match(today, /<DailyPostcardCard/);
+  assert.match(today, /readEncouragementStyle/);
+  assert.match(today, /toggle-low-energy-mode/);
   assert.match(today, /gentle-restart-card/);
   assert.match(components, /平常的目標就會累積/);
   assert.match(components, /本週活動完成/);

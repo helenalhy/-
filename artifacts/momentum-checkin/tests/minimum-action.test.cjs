@@ -36,12 +36,15 @@ test('today offers a minimum-action timer and a separate normal completion choic
 });
 
 test('today offers situation-based quick starts with each unfinished goal and its recommended first step', () => {
-  assert.match(today, /START_SCENARIOS:[\s\S]*low-energy[\s\S]*short-time[\s\S]*stuck/);
+  assert.match(today, /START_SCENARIOS:[\s\S]*short-time[\s\S]*stuck/);
+  assert.match(today, /testID="toggle-low-energy-mode"/);
+  assert.match(today, /低電量模式/);
+  assert.match(today, /LOW_ENERGY_PROMPT/);
   assert.match(today, /testID="quick-start-card"/);
   assert.match(today, /testID=\{`start-scenario-\$\{scenario\.id\}`\}/);
   assert.match(today, /testID=\{`quick-start-habit-\$\{habit\.id\}`\}/);
   assert.match(today, /const action = habit\.minimumAction \?\? recommendMinimumAction\(habit\)/);
-  assert.match(today, /setFocusStartPrompt\(START_SCENARIO_PROMPTS\[startScenario\]\)/);
+  assert.match(today, /setFocusStartPrompt\(lowEnergyMode \? LOW_ENERGY_PROMPT/);
   assert.match(today, /testID="quick-start-prompt"/);
 });
 

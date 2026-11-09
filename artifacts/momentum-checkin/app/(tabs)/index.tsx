@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
@@ -31,6 +31,13 @@ import {
   DailyRecapCard,
   WeeklyMallEventCard,
 } from '@/components/DailyEngagement';
+import { DailyMoodCard, DailyPostcardCard } from '@/components/DailyPersonalization';
+import {
+  DEFAULT_ENCOURAGEMENT_STYLE,
+  getEncouragementText,
+  readEncouragementStyle,
+  type EncouragementStyle,
+} from '@/lib/daily-personalization';
 import {
   getStreak,
   useHabits,
@@ -38,19 +45,19 @@ import {
 } from '@/context/HabitsContext';
 const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
 
-type StartScenario = 'low-energy' | 'short-time' | 'stuck';
+type StartScenario = 'short-time' | 'stuck';
 
 const START_SCENARIOS: { id: StartScenario; label: string; icon: keyof typeof Feather.glyphMap }[] = [
-  { id: 'low-energy', label: '沒精神', icon: 'cloud' },
   { id: 'short-time', label: '時間少', icon: 'clock' },
   { id: 'stuck', label: '卡住了', icon: 'help-circle' },
 ];
 
 const START_SCENARIO_PROMPTS: Record<StartScenario, string> = {
-  'low-energy': '今天不用做很多，先完成一個最小步驟就好。',
   'short-time': '只留兩分鐘給這個目標，做一小步也算進展。',
   stuck: '先跟著建議做第一步，不用先想完整計畫。',
 };
+
+const LOW_ENERGY_PROMPT = '今天先選最輕鬆的版本，不用改動平常的目標設定。';
 
 function getWeek(todayKey: string) {
   const [year, month, day] = todayKey.split('-').map(Number);
@@ -423,7 +430,7 @@ function TwoMinuteStarterModal({
   );
 }
 
-function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeUpRewardAlreadyEarned, completedStep, onToggle, onMakeUp, onStartTwoMinute, onEdit, onManage }: {
+function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeUpRewardAlreadyEarned, completedStep, lowEnergyMode, onToggle, onMakeUp, onStartTwoMinute, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
   reward: number;
@@ -432,6 +439,7 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
   showMakeUp: boolean;
   makeUpRewardAlreadyEarned: boolean;
   completedStep?: string;
+  lowEnergyMode: boolean;
   onToggle: (step?: string) => Promise<unknown>;
   onMakeUp: () => Promise<void>;
   onStartTwoMinute: (minimumAction: string, isRecommendation: boolean) => void;
@@ -513,9 +521,9 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
             testID={`focus-start-${habit.id}`}
             style={({ pressed }) => [styles.focusStartButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 }]}
           >
-            <Feather name="clock" size={11} color={colors.primary} />
+            <Feather name={lowEnergyMode ? 'heart' : 'clock'} size={11} color={colors.primary} />
             <Text style={[styles.focusStartText, { color: colors.primary }]}>
-              {habit.minimumAction ? '開始最小行動 · 2 分鐘' : '試試建議 · 2 分鐘'}
+              {lowEnergyMode ? `低電量 · ${recommendedMinimumAction}` : habit.minimumAction ? '開始最小行動 · 2 分鐘' : '試試建議 · 2 分鐘'}
             </Text>
           </Pressable>
         ) : null}
@@ -592,6 +600,8 @@ export function TodayScreen() {
   const [startScenario, setStartScenario] = useState<StartScenario | null>(null);
   const [isChoosingFocusedHabit, setIsChoosingFocusedHabit] = useState(false);
   const [focusedHabitId, setFocusedHabitId] = useState<string | null>(null);
+  const [lowEnergyMode, setLowEnergyMode] = useState(false);
+  const [encouragementStyle, setEncouragementStyle] = useState<EncouragementStyle>(DEFAULT_ENCOURAGEMENT_STYLE);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -613,6 +623,17 @@ export function TodayScreen() {
   const date = new Date(`${today}T12:00:00`);
   const weekday = dayNames[date.getDay()];
   const dateLabel = `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void readEncouragementStyle().then((style) => {
+        if (active) setEncouragementStyle(style);
+      }).catch(() => {
+        if (active) setEncouragementStyle(DEFAULT_ENCOURAGEMENT_STYLE);
+      });
+      return () => { active = false; };
+    }, []),
+  );
   useEffect(() => {
     let active = true;
     void AsyncStorage.getItem(DAILY_RECAP_REWARD_KEY)
@@ -827,7 +848,7 @@ export function TodayScreen() {
 
         <View style={styles.greeting}>
           <Text style={[styles.greetingTitle, { color: colors.foreground }]}>今天，先完成一小步。</Text>
-          <Text style={[styles.greetingBody, { color: colors.mutedForeground }]}>不用一次做到完美，願意開始就很了不起。</Text>
+          <Text style={[styles.greetingBody, { color: colors.mutedForeground }]}>{getEncouragementText(encouragementStyle)}</Text>
         </View>
 
         <Pressable
@@ -910,6 +931,7 @@ export function TodayScreen() {
               key={`daily-dog-${today}`}
               today={today}
               celebrationCount={scheduledTodayDone}
+              style={encouragementStyle}
             />
             <DailyMallVisitorCard
               today={today}
@@ -923,8 +945,13 @@ export function TodayScreen() {
               coins={coins}
               earnedCoins={todayEarnedCoins}
             />
+            <DailyMoodCard
+              today={today}
+              hasCheckedIn={habits.some((habit) => habit.checkIns.includes(today))}
+            />
           </>
         ) : null}
+        {!isLoading ? <DailyPostcardCard today={today} /> : null}
 
         {restartHabit ? (
           <View style={[styles.restartCard, { backgroundColor: colors.secondary }] } testID="gentle-restart-card">
@@ -997,12 +1024,36 @@ export function TodayScreen() {
               </View>
             </View>
             <View style={styles.scenarioRow}>
+              <Pressable
+                onPress={() => {
+                  setLowEnergyMode((previous) => !previous);
+                  setStartScenario(null);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: lowEnergyMode }}
+                accessibilityLabel={lowEnergyMode ? '關閉今天低電量模式' : '開啟今天低電量模式，使用最小行動建議'}
+                testID="toggle-low-energy-mode"
+                style={({ pressed }) => [
+                  styles.scenarioButton,
+                  {
+                    backgroundColor: lowEnergyMode ? colors.primary : colors.secondary,
+                    borderColor: lowEnergyMode ? colors.primary : colors.border,
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}
+              >
+                <Feather name="heart" size={13} color={lowEnergyMode ? colors.primaryForeground : colors.primary} />
+                <Text style={[styles.scenarioText, { color: lowEnergyMode ? colors.primaryForeground : colors.primary }]}>低電量模式</Text>
+              </Pressable>
               {START_SCENARIOS.map((scenario) => {
                 const selected = startScenario === scenario.id;
                 return (
                   <Pressable
                     key={scenario.id}
-                    onPress={() => setStartScenario(selected ? null : scenario.id)}
+                    onPress={() => {
+                      setLowEnergyMode(false);
+                      setStartScenario(selected ? null : scenario.id);
+                    }}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     accessibilityLabel={`我${scenario.label}，幫我開始一個目標`}
@@ -1022,10 +1073,10 @@ export function TodayScreen() {
                 );
               })}
             </View>
-            {startScenario ? (
+            {startScenario || lowEnergyMode ? (
               <View style={[styles.quickStartChoices, { backgroundColor: colors.background }]} testID="quick-start-choices">
                 <Text style={[styles.quickStartPrompt, { color: colors.foreground }]}>
-                  {START_SCENARIO_PROMPTS[startScenario]} 選一個目標開始：
+                  {lowEnergyMode ? LOW_ENERGY_PROMPT : START_SCENARIO_PROMPTS[startScenario!]} 選一個目標開始：
                 </Text>
                 {startableHabits.length > 0 ? startableHabits.map((habit) => {
                   const action = habit.minimumAction ?? recommendMinimumAction(habit);
@@ -1035,7 +1086,7 @@ export function TodayScreen() {
                       onPress={() => {
                         setFocusHabit({ ...habit, minimumAction: action });
                         setFocusActionIsRecommendation(!habit.minimumAction);
-                        setFocusStartPrompt(START_SCENARIO_PROMPTS[startScenario]);
+                        setFocusStartPrompt(lowEnergyMode ? LOW_ENERGY_PROMPT : START_SCENARIO_PROMPTS[startScenario!]);
                       }}
                       accessibilityRole="button"
                       accessibilityLabel={`開始${habit.title}：${action}，兩分鐘`}
@@ -1144,6 +1195,7 @@ export function TodayScreen() {
                 done={habit.checkIns.includes(today)}
                 reward={getCheckInReward(habit.id)}
                 isRestDay={habit.restDays.includes(getWeekday(today))}
+                lowEnergyMode={lowEnergyMode}
                 canMakeUp={canMakeUpYesterday(habit, today, makeupDatesThisAccount)}
                 showMakeUp={
                   habit.createdAt <= getPreviousLocalDate(today)

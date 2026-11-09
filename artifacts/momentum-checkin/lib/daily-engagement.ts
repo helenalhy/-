@@ -2,6 +2,7 @@ import { MALL_FLOORS } from '@/constants/mall';
 import { GUEST_COUNTS_BY_FLOOR } from '@/constants/mall-guests';
 import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
 import { getLocalWeekStart } from '@/lib/habit-schedule';
+import type { EncouragementStyle } from '@/lib/daily-personalization';
 import type { Habit } from '@/context/HabitsContext';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,22 +41,56 @@ const WEEKLY_EVENTS = [
   { title: '彩虹回憶週', description: '把完成的小事串起來，留下一道彩虹。', icon: 'heart' },
 ] as const;
 
-const DOG_GREETINGS = [
-  '早安！今天不用急，我陪你先做一小步。',
-  '看到你打開 App，我就知道今天又有新的可能。',
-  '先深呼吸一下吧，我會在旁邊陪你開始。',
-  '今天也可以照自己的速度來，完成一點就很棒。',
-  '準備好了嗎？我們先挑一件最容易的事。',
-  '如果有點累也沒關係，我們一起慢慢來。',
-  '你願意回來看看自己，這件事本身就很值得肯定。',
-  '今天的小進度，也會變成商場裡的新回憶。',
-  '不需要一次做到全部，我陪你走下一小步。',
-  '休息過後再出發也很好，今天由你決定節奏。',
-  '記得喝口水、放鬆肩膀，再選一件想做的事。',
-  '把目標變小一點，開始就會容易一些。',
-  '謝謝你今天來打招呼，我也替你加油。',
-  '不和昨天比較，今天的你只要往前一點點。',
-] as const;
+const DOG_GREETINGS: Record<EncouragementStyle, readonly string[]> = {
+  gentle: [
+    '早安！今天不用急，我陪你先做一小步。',
+    '看到你打開 App，我就知道今天又有新的可能。',
+    '先深呼吸一下吧，我會在旁邊陪你開始。',
+    '今天也可以照自己的速度來，完成一點就很棒。',
+    '準備好了嗎？我們先挑一件最容易的事。',
+    '如果有點累也沒關係，我們一起慢慢來。',
+    '你願意回來看看自己，這件事本身就很值得肯定。',
+    '今天的小進度，也會變成商場裡的新回憶。',
+    '不需要一次做到全部，我陪你走下一小步。',
+    '休息過後再出發也很好，今天由你決定節奏。',
+    '記得喝口水、放鬆肩膀，再選一件想做的事。',
+    '把目標變小一點，開始就會容易一些。',
+    '謝謝你今天來打招呼，我也替你加油。',
+    '不和昨天比較，今天的你只要往前一點點。',
+  ],
+  energetic: [
+    '早安！今天也有新機會，我們先完成一小步！',
+    '你回來了！今天的進度就從現在開始發亮。',
+    '深呼吸、伸個懶腰，準備好就出發！',
+    '照自己的速度前進，今天也能收穫小勝利。',
+    '來挑一件最容易的事，完成後替自己喝采！',
+    '有點累也沒關係，做一小步就很值得慶祝。',
+    '你願意回來就是很棒的開始，替你加油！',
+    '每個小進度都在替商場添上新的光彩。',
+    '不用一次完成全部，我們先拿下一小步！',
+    '現在重新開始也來得及，今天由你掌握！',
+    '喝口水、放鬆肩膀，讓好心情一起出發。',
+    '把目標縮小一點，開始後就會越來越順！',
+    '謝謝你來打招呼，今天也一起加油！',
+    '不必比較，今天往前一點就是好消息。',
+  ],
+  concise: [
+    '早安。先做一小步。',
+    '你回來了，今天可以開始。',
+    '深呼吸，挑一件容易的事。',
+    '照自己的速度完成一點。',
+    '先做最容易的那件事。',
+    '累了就慢一點，仍算進步。',
+    '願意回來，就是好的開始。',
+    '今天的小進度也值得記下。',
+    '先走下一步，不必一次做完。',
+    '現在開始也來得及。',
+    '喝口水，放鬆一下再開始。',
+    '把目標縮小，現在就開始。',
+    '謝謝你來，我陪著你。',
+    '只和昨天的自己比較。',
+  ],
+};
 
 export interface DailyMallVisitor {
   date: string;
@@ -115,12 +150,13 @@ export function getWeeklyMomentumDays(habits: readonly Pick<Habit, 'checkIns'>[]
   ).size;
 }
 
-export function getDailyDogGreeting(today: string) {
+export function getDailyDogGreeting(today: string, style: EncouragementStyle = 'gentle') {
   const ordinal = getDateOrdinal(today);
   const profileIndex = positiveModulo(ordinal, DOG_STAFF_PROFILES.length);
-  const greetingIndex = positiveModulo(ordinal, DOG_GREETINGS.length);
+  const greetings = DOG_GREETINGS[style] ?? DOG_GREETINGS.gentle;
+  const greetingIndex = positiveModulo(ordinal, greetings.length);
   return {
     dog: DOG_STAFF_PROFILES[profileIndex],
-    greeting: DOG_GREETINGS[greetingIndex],
+    greeting: greetings[greetingIndex],
   };
 }

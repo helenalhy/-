@@ -7,6 +7,13 @@ import { useAuth } from '@clerk/expo';
 import { useHabits } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
 import { DEFAULT_REMINDER_SETTINGS, readReminderSettings, type ReminderSettings } from '@/lib/reminder-settings';
+import {
+  DEFAULT_ENCOURAGEMENT_STYLE,
+  ENCOURAGEMENT_STYLES,
+  readEncouragementStyle,
+  saveEncouragementStyle,
+  type EncouragementStyle,
+} from '@/lib/daily-personalization';
 
 function SettingsRow({
   icon,
@@ -57,6 +64,8 @@ export default function SettingsScreen() {
   const { isSignedIn } = useAuth();
   const { cloudSyncStatus } = useHabits();
   const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(DEFAULT_REMINDER_SETTINGS);
+  const [encouragementStyle, setEncouragementStyle] = useState<EncouragementStyle>(DEFAULT_ENCOURAGEMENT_STYLE);
+  const [encouragementError, setEncouragementError] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -65,6 +74,11 @@ export default function SettingsScreen() {
         if (active) setReminderSettings(settings);
       }).catch(() => {
         if (active) setReminderSettings(DEFAULT_REMINDER_SETTINGS);
+      });
+      void readEncouragementStyle().then((style) => {
+        if (active) setEncouragementStyle(style);
+      }).catch(() => {
+        if (active) setEncouragementStyle(DEFAULT_ENCOURAGEMENT_STYLE);
       });
       return () => { active = false; };
     }, []),
@@ -84,6 +98,18 @@ export default function SettingsScreen() {
   const reminderSummary = reminderSettings.enabled
     ? `已開啟 · 每日 ${reminderSettings.reminderTimes.join('、')} · ${habitReminderCount} 項習慣提醒`
     : `設定每日時段與 ${habitReminderCount} 項習慣提醒`;
+
+  async function chooseEncouragementStyle(style: EncouragementStyle) {
+    const previous = encouragementStyle;
+    setEncouragementStyle(style);
+    setEncouragementError('');
+    try {
+      await saveEncouragementStyle(style);
+    } catch {
+      setEncouragementStyle(previous);
+      setEncouragementError('偏好沒有保存成功，請再試一次。');
+    }
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -127,6 +153,45 @@ export default function SettingsScreen() {
               </View>
             </View>
           )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>鼓勵方式</Text>
+          <Text style={[styles.sectionNote, { color: colors.mutedForeground }]}>
+            選擇狗狗和今天頁面使用的鼓勵語氣。
+          </Text>
+          <View style={styles.encouragementOptions}>
+            {ENCOURAGEMENT_STYLES.map((option) => {
+              const selected = encouragementStyle === option.id;
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => void chooseEncouragementStyle(option.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`${option.label}：${option.description}`}
+                  testID={`encouragement-style-${option.id}`}
+                  style={({ pressed }) => [
+                    styles.encouragementOption,
+                    {
+                      backgroundColor: selected ? colors.candyPink : colors.card,
+                      borderColor: selected ? colors.primary : colors.border,
+                      opacity: pressed ? 0.75 : 1,
+                    },
+                  ]}
+                >
+                  <View style={styles.encouragementOptionTitle}>
+                    <Text style={[styles.rowTitle, { color: selected ? colors.primary : colors.foreground }]}>{option.label}</Text>
+                    {selected ? <Feather name="check-circle" size={16} color={colors.primary} /> : null}
+                  </View>
+                  <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>{option.description}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {encouragementError ? (
+            <Text style={[styles.sectionNote, { color: colors.destructive }]} accessibilityRole="alert">{encouragementError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -174,6 +239,9 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.78 },
   sectionNote: { fontSize: 11, lineHeight: 17, paddingHorizontal: 3 },
   infoCard: { borderRadius: 19, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  encouragementOptions: { gap: 9 },
+  encouragementOption: { minHeight: 70, borderWidth: 1, borderRadius: 17, padding: 13, justifyContent: 'center' },
+  encouragementOptionTitle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   aboutCard: { marginTop: 30, borderRadius: 22, padding: 19, alignItems: 'center' },
   aboutIcon: { width: 43, height: 43, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 11 },
   aboutTitle: { fontSize: 15, fontWeight: '700' },

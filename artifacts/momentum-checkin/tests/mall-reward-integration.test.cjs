@@ -118,6 +118,7 @@ function createHarness() {
     async selectionAsync() {},
   };
   const expoRouter = {
+    useFocusEffect: (effect) => { effect(); },
     router: {
       push: (route) => {
         navigation.push(['push', route]);
@@ -146,6 +147,10 @@ function createHarness() {
       DailyMallVisitorCard: 'DailyMallVisitorCard',
       DailyRecapCard: 'DailyRecapCard',
       WeeklyMallEventCard: 'WeeklyMallEventCard',
+    },
+    '@/components/DailyPersonalization': {
+      DailyMoodCard: 'DailyMoodCard',
+      DailyPostcardCard: 'DailyPostcardCard',
     },
     '@/components/MallWingPager': { MallWingPager: function MallWingPager() {} },
     '@/components/MallVisuals': { MallAmbience: 'MallAmbience', MallObjectVisual: 'MallObjectVisual' },
@@ -667,7 +672,7 @@ test('goal reward updates an active affordable catalog and survives provider rel
   app.renderProvider();
 
   let mallTree = app.renderMall();
-  assert.equal(findCatalogPager(mallTree).props.total, 151);
+  assert.equal(findCatalogPager(mallTree).props.total, 152);
   await press(mallTree, 'mall-affordable-toggle');
   mallTree = app.renderMall();
   assert.equal(findCatalogPager(mallTree).props.total, 0);
@@ -697,7 +702,10 @@ test('goal reward updates an active affordable catalog and survives provider rel
   const expectedAvailable = app.mallCatalog.MALL_ITEMS.filter((item) =>
     item.floor === 1
     && item.price <= 20
-    && item.id !== ownedItem.id,
+    && item.id !== ownedItem.id
+    && (item.unlockCheckIns === undefined
+      || item.unlockCheckIns <= app.contextExports.useHabits().rewardedCheckIns
+        .filter((key) => !key.startsWith('makeup-used:')).length),
   );
   assert.equal(findCatalogPager(mallTree).props.total, expectedAvailable.length);
   assert.match(
@@ -830,6 +838,8 @@ test('mall to today and back preserves the filtered catalog, purchase preview an
     'DailyMallVisitorCard',
     'WeeklyMallEventCard',
     'DailyRecapCard',
+    'DailyMoodCard',
+    'DailyPostcardCard',
   ]) {
     assert.ok(
       findNodes(todayTree, (node) => node.type === componentName)[0],
@@ -1992,10 +2002,10 @@ test('today shows only an unclaimed first-check-in reward and hides it after ear
   let rowTree = renderHabitRow(app, initialRow);
   assert.equal(
     findByTestId(rowTree, 'habit-info-starter-walk').props.accessibilityLabel,
-    '編輯散步 20 分鐘，今日首次打卡可獲得 20 金幣',
+    '編輯散步 20 分鐘，完整目標可獲得 20 金幣，最小行動可獲得 2 金幣',
     'the accessible goal button announces its available first-check-in reward',
   );
-  assert.match(textContent(findByTestId(rowTree, 'habit-reward-starter-walk')), /首次打卡 \+20 金幣/);
+  assert.match(textContent(findByTestId(rowTree, 'habit-reward-starter-walk')), /完整 \+20 · 小步 \+2 金幣/);
 
   assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 20);
   app.renderProvider();
@@ -2032,7 +2042,7 @@ test('quick start opens the chosen goal with its recommended action and situatio
   app.renderProvider();
 
   let todayTree = app.renderToday();
-  await press(todayTree, 'start-scenario-low-energy');
+  await press(todayTree, 'toggle-low-energy-mode');
   todayTree = app.renderToday();
   assert.ok(findByTestId(todayTree, 'quick-start-choices'));
   assert.ok(findByTestId(todayTree, 'quick-start-habit-starter-walk'));
@@ -2045,7 +2055,7 @@ test('quick start opens the chosen goal with its recommended action and situatio
   assert.ok(starterModal, 'selecting a goal opens the existing two-minute flow');
 
   const modalTree = app.render('quick-start-modal', () => starterModal.type(starterModal.props));
-  assert.match(textContent(findByTestId(modalTree, 'quick-start-prompt')), /今天不用做很多/);
+  assert.match(textContent(findByTestId(modalTree, 'quick-start-prompt')), /今天先選最輕鬆的版本/);
   assert.match(textContent(modalTree), /先做兩分鐘版本/);
   assert.match(textContent(modalTree), /先走 2 分鐘/);
 });

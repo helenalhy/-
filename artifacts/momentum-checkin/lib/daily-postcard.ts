@@ -216,6 +216,7 @@ function dogArtwork(dog: DailyPostcardDog, _outline: string): string {
     marking: '#FFFBF4',
     earStyle: 'small',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: false,
   };
@@ -240,9 +241,9 @@ function dogArtwork(dog: DailyPostcardDog, _outline: string): string {
       : look.facePattern === 'schnauzer'
         ? `<path d="M21 23 Q25 20 29 23 L28 27 Q25 29 22 27Z" fill="${marking}" stroke="${ear}" stroke-width=".45"/>`
         : '';
-  const tail = look.bodyStyle === 'long'
-    ? `<path d="M39 33 Q47 30 46 36 Q44 39 40 37" fill="none" stroke="${fur}" stroke-width="2.6" stroke-linecap="round"/>`
-    : `<path d="M37 34 Q44 30 44 35 Q43 38 39 37" fill="none" stroke="${fur}" stroke-width="2.5" stroke-linecap="round"/>`;
+  const tail = look.tailStyle === 'long'
+    ? `<path d="M36 34 Q44 28 48 33 Q49 38 40 38" fill="none" stroke="${fur}" stroke-width="2.6" stroke-linecap="round"/>`
+    : `<circle cx="41.5" cy="34.5" r="3.6" fill="${fur}" stroke="${ear}" stroke-width=".8"/><circle cx="42.5" cy="33.5" r=".8" fill="#FFFDF8" opacity=".75"/>`;
   const bodyWidth = look.bodyStyle === 'long' ? 31 : look.bodyStyle === 'low' ? 29 : 25;
   const bodyX = (50 - bodyWidth) / 2;
   const bodyY = look.bodyStyle === 'low' ? 27 : 25;

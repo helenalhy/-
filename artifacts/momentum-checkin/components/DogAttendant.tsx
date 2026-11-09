@@ -101,7 +101,13 @@ export function DogAttendant({
 
   return (
     <View testID={`dog-attendant-${kind}`} accessible={false} style={s.canvas}>
-      <View style={[s.tail, { backgroundColor: look.coat, borderColor: look.ear }]} />
+      <View
+        style={[
+          s.tail,
+          look.tailStyle === 'long' ? s.longTail : s.roundTail,
+          { backgroundColor: look.coat, borderColor: look.ear },
+        ]}
+      />
       <View style={[
         s.body,
         look.bodyStyle === 'low' && s.lowBody,
@@ -288,7 +294,9 @@ export function DogAttendant({
 
 const s = StyleSheet.create({
   canvas: { width: 50, height: 45, alignItems: 'center', justifyContent: 'flex-end', position: 'relative' },
-  tail: { position: 'absolute', width: 10, height: 8, right: 8, bottom: 13, borderRadius: 7, borderWidth: 1.5, transform: [{ rotate: '-25deg' }] },
+  tail: { position: 'absolute', right: 8, bottom: 13, borderWidth: 1.5, zIndex: 0 },
+  roundTail: { width: 9, height: 9, borderRadius: 99 },
+  longTail: { width: 14, height: 5, borderRadius: 99, bottom: 15, transform: [{ rotate: '-25deg' }] },
   body: { position: 'absolute', width: 25, height: 15, left: 13, bottom: 5, borderRadius: 10, borderWidth: 1.2, overflow: 'hidden' },
   lowBody: { width: 29, left: 11, height: 13, bottom: 5, borderRadius: 8 },
   longBody: { width: 31, left: 10, height: 13, bottom: 5, borderRadius: 8 },

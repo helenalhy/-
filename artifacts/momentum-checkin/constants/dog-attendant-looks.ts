@@ -2,6 +2,8 @@ import palette from './colors';
 
 const c = palette.light;
 
+export const LONG_TAIL_DOG_KINDS = ['xiaoniu', 'pudding', 'wonton', 'poppy'] as const;
+
 export interface DogAttendantLook {
   coat: string;
   ear: string;
@@ -10,6 +12,7 @@ export interface DogAttendantLook {
   marking: string;
   earStyle: 'small' | 'upright' | 'floppy';
   bodyStyle: 'regular' | 'low' | 'long';
+  tailStyle: 'round' | 'long';
   facePattern: 'none' | 'collie' | 'shih-tzu' | 'schnauzer';
   fluffy: boolean;
 }
@@ -23,6 +26,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyCream,
     earStyle: 'small',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: true,
   },
@@ -34,6 +38,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyPeach,
     earStyle: 'small',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: true,
   },
@@ -45,6 +50,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyCream,
     earStyle: 'upright',
     bodyStyle: 'regular',
+    tailStyle: 'long',
     facePattern: 'collie',
     fluffy: false,
   },
@@ -56,6 +62,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyPeach,
     earStyle: 'floppy',
     bodyStyle: 'regular',
+    tailStyle: 'long',
     facePattern: 'none',
     fluffy: false,
   },
@@ -67,6 +74,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyPeach,
     earStyle: 'small',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: true,
   },
@@ -78,6 +86,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyCream,
     earStyle: 'upright',
     bodyStyle: 'low',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: false,
   },
@@ -89,6 +98,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyCream,
     earStyle: 'small',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: true,
   },
@@ -100,6 +110,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyPeach,
     earStyle: 'upright',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: true,
   },
@@ -111,6 +122,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyLavender,
     earStyle: 'floppy',
     bodyStyle: 'regular',
+    tailStyle: 'long',
     facePattern: 'none',
     fluffy: false,
   },
@@ -122,6 +134,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyPeach,
     earStyle: 'floppy',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: true,
   },
@@ -133,6 +146,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyPeach,
     earStyle: 'floppy',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'shih-tzu',
     fluffy: false,
   },
@@ -144,6 +158,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candySky,
     earStyle: 'upright',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'schnauzer',
     fluffy: true,
   },
@@ -155,6 +170,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyCream,
     earStyle: 'upright',
     bodyStyle: 'regular',
+    tailStyle: 'round',
     facePattern: 'none',
     fluffy: true,
   },
@@ -166,6 +182,7 @@ export const DOG_ATTENDANT_LOOKS: Record<string, DogAttendantLook> = {
     marking: c.candyPeach,
     earStyle: 'floppy',
     bodyStyle: 'long',
+    tailStyle: 'long',
     facePattern: 'none',
     fluffy: false,
   },

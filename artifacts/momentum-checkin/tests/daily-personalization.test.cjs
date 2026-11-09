@@ -35,8 +35,21 @@ test('daily postcard art changes every day and safely includes the daily quote',
           marking: '#FFE3CE',
           earStyle: 'small',
           bodyStyle: 'regular',
+          tailStyle: 'round',
           facePattern: 'none',
           fluffy: true,
+        },
+        xiaoniu: {
+          coat: '#36323C',
+          ear: '#36323C',
+          muzzle: '#FFFFFF',
+          collar: '#A9DDD1',
+          marking: '#FFFFFF',
+          earStyle: 'upright',
+          bodyStyle: 'regular',
+          tailStyle: 'long',
+          facePattern: 'collie',
+          fluffy: false,
         },
       },
     },
@@ -74,6 +87,7 @@ test('daily postcard art changes every day and safely includes the daily quote',
   assert.match(cards[0], /translate\(220 540\) scale\(5\.6\)/);
   assert.match(cards[0], /<ellipse cx="20\.5" cy="16" rx="1\.2" ry="1\.5" fill="#493348"/);
   assert.match(cards[0], /<circle cx="16" cy="18" r="3\.2" fill="#FFFBF4"/);
+  assert.match(cards[0], /<circle cx="41\.5" cy="34\.5" r="3\.6" fill="#FFFBF4"/);
   assert.doesNotMatch(cards[0], /<path d="<path/);
   assert.match(cards[0], /viewBox="0 0 720 960"/);
   assert.notEqual(
@@ -81,6 +95,24 @@ test('daily postcard art changes every day and safely includes the daily quote',
     getDailyStyleIndex('2026-01-15', 14, 50),
     'a returning dog receives a different outfit on its next daily appearance',
   );
+
+  const longTailDog = { ...dog, name: '小牛', kind: 'xiaoniu' };
+  const longTailCard = buildDailyPostcardSvg('2026-01-01', '今天也一步一步來。', longTailDog, shop);
+  assert.match(longTailCard, /M36 34 Q44 28 48 33 Q49 38 40 38/);
+  assert.doesNotMatch(longTailCard, /<circle cx="41\.5" cy="34\.5" r="3\.6"/);
+});
+
+test('dog illustration tail styles use round puffs except naturally long-tailed breeds', () => {
+  const colors = new Proxy({}, { get: (_target, key) => `#${String(key).padEnd(6, '0').slice(0, 6)}` });
+  const { DOG_ATTENDANT_LOOKS } = loadTs('constants/dog-attendant-looks.ts', {
+    './colors': { __esModule: true, default: { light: colors } },
+  });
+  const longTailBreeds = ['xiaoniu', 'pudding', 'wonton', 'poppy'];
+
+  assert.equal(Object.keys(DOG_ATTENDANT_LOOKS).length, 14);
+  for (const [kind, look] of Object.entries(DOG_ATTENDANT_LOOKS)) {
+    assert.equal(look.tailStyle, longTailBreeds.includes(kind) ? 'long' : 'round', kind);
+  }
 });
 
 test('encouragement style and daily moods persist locally without replacing a date entry', async () => {

@@ -118,7 +118,7 @@ export function getWeeklyMomentumDays(habits: readonly Pick<Habit, 'checkIns'>[]
 export function getDailyDogGreeting(today: string) {
   const ordinal = getDateOrdinal(today);
   const profileIndex = positiveModulo(ordinal, DOG_STAFF_PROFILES.length);
-  const greetingIndex = positiveModulo(Math.floor(ordinal / DOG_STAFF_PROFILES.length), DOG_GREETINGS.length);
+  const greetingIndex = positiveModulo(ordinal, DOG_GREETINGS.length);
   return {
     dog: DOG_STAFF_PROFILES[profileIndex],
     greeting: DOG_GREETINGS[greetingIndex],

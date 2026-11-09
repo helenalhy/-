@@ -87,7 +87,12 @@ test('daily companion rotates through all fourteen profiles and greetings', () =
     return getDailyDogGreeting(`2026-01-${day}`);
   });
   assert.equal(new Set(companions.map(({ dog }) => dog.key)).size, 14);
+  assert.equal(new Set(companions.map(({ greeting }) => greeting)).size, 14);
   assert.ok(companions.every(({ greeting }) => typeof greeting === 'string' && greeting.length > 0));
+  assert.equal(
+    getDailyDogGreeting('2026-01-01').greeting,
+    getDailyDogGreeting('2026-01-01').greeting,
+  );
 });
 
 test('engagement cards show up in Today without adding reward or changing restart behavior', () => {

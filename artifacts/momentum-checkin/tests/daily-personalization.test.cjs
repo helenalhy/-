@@ -24,7 +24,23 @@ function loadTs(relativePath, extraModules = {}) {
 }
 
 test('daily postcard art changes every day and safely includes the daily quote', () => {
-  const { buildDailyPostcardSvg, getDailyStyleIndex } = loadTs('lib/daily-postcard.ts');
+  const { buildDailyPostcardSvg, getDailyStyleIndex } = loadTs('lib/daily-postcard.ts', {
+    '@/constants/dog-attendant-looks': {
+      DOG_ATTENDANT_LOOKS: {
+        tangtang: {
+          coat: '#FFFBF4',
+          ear: '#FFFBF4',
+          muzzle: '#FFFFFF',
+          collar: '#FFE1EC',
+          marking: '#FFE3CE',
+          earStyle: 'small',
+          bodyStyle: 'regular',
+          facePattern: 'none',
+          fluffy: true,
+        },
+      },
+    },
+  });
   const dog = {
     name: '糖糖',
     kind: 'tangtang',
@@ -55,7 +71,9 @@ test('daily postcard art changes every day and safely includes the daily quote',
   assert.match(cards[0], /糖糖今天陪你/);
   assert.match(cards[0], /shop-room-cafe\.jpg/);
   assert.match(cards[0], /糖糖・粉彩星願裙 · 糖糖・小熊耳朵帽/);
-  assert.match(cards[0], /<ellipse cx="-33" cy="-9"/);
+  assert.match(cards[0], /translate\(220 540\) scale\(5\.6\)/);
+  assert.match(cards[0], /<ellipse cx="20\.5" cy="16" rx="1\.2" ry="1\.5" fill="#493348"/);
+  assert.match(cards[0], /<circle cx="16" cy="18" r="3\.2" fill="#FFFBF4"/);
   assert.match(cards[0], /viewBox="0 0 720 960"/);
   assert.notEqual(
     getDailyStyleIndex('2026-01-01', 14, 50),

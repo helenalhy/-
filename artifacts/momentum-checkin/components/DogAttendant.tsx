@@ -2,6 +2,7 @@ import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import palette from '@/constants/colors';
+import { DOG_ATTENDANT_LOOKS } from '@/constants/dog-attendant-looks';
 import {
   DOG_STAFF_ACCESSORY_BY_ID,
   DOG_STAFF_OUTFIT_BY_ID,
@@ -26,173 +27,6 @@ export type DogAttendantKind =
   | 'maomao'
   | 'poppy';
 
-const dogLooks: Record<DogAttendantKind, {
-  coat: string;
-  ear: string;
-  muzzle: string;
-  collar: string;
-  marking: string;
-  earStyle: 'small' | 'upright' | 'floppy';
-  bodyStyle: 'regular' | 'low' | 'long';
-  facePattern: 'none' | 'collie' | 'shih-tzu' | 'schnauzer';
-  fluffy: boolean;
-}> = {
-  huahua: {
-    coat: c.candyCaramel,
-    ear: c.candyCaramelDark,
-    muzzle: c.candyCream,
-    collar: c.candyPink,
-    marking: c.candyCream,
-    earStyle: 'small',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: true,
-  },
-  milkshake: {
-    coat: c.candyCream,
-    ear: c.candyPeach,
-    muzzle: c.card,
-    collar: c.candyLavender,
-    marking: c.candyPeach,
-    earStyle: 'small',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: true,
-  },
-  xiaoniu: {
-    coat: c.candyInk,
-    ear: c.candyInk,
-    muzzle: c.candyCream,
-    collar: c.candyMintDark,
-    marking: c.candyCream,
-    earStyle: 'upright',
-    bodyStyle: 'regular',
-    facePattern: 'collie',
-    fluffy: false,
-  },
-  pudding: {
-    coat: c.candyCaramel,
-    ear: c.candyCaramelDark,
-    muzzle: c.candyCream,
-    collar: c.candyLemon,
-    marking: c.candyPeach,
-    earStyle: 'floppy',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: false,
-  },
-  tangtang: {
-    coat: c.candyCream,
-    ear: c.candyCream,
-    muzzle: c.card,
-    collar: c.candyPink,
-    marking: c.candyPeach,
-    earStyle: 'small',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: true,
-  },
-  pipi: {
-    coat: c.candyCaramel,
-    ear: c.candyCaramelDark,
-    muzzle: c.candyCream,
-    collar: c.candySky,
-    marking: c.candyCream,
-    earStyle: 'upright',
-    bodyStyle: 'low',
-    facePattern: 'none',
-    fluffy: false,
-  },
-  amber: {
-    coat: c.candyPeach,
-    ear: c.candyCaramel,
-    muzzle: c.candyCream,
-    collar: c.candyLavender,
-    marking: c.candyCream,
-    earStyle: 'small',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: true,
-  },
-  cloud: {
-    coat: c.candyCream,
-    ear: c.candyLavender,
-    muzzle: c.card,
-    collar: c.candySky,
-    marking: c.candyPeach,
-    earStyle: 'upright',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: true,
-  },
-  wonton: {
-    coat: c.candyCream,
-    ear: c.candyPeach,
-    muzzle: c.card,
-    collar: c.candyMint,
-    marking: c.candyLavender,
-    earStyle: 'floppy',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: false,
-  },
-  butter: {
-    coat: c.candyLemon,
-    ear: c.candyPeach,
-    muzzle: c.candyCream,
-    collar: c.candyRose,
-    marking: c.candyPeach,
-    earStyle: 'floppy',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: true,
-  },
-  sesame: {
-    coat: c.candyInk,
-    ear: c.candyInk,
-    muzzle: c.candyCream,
-    collar: c.candyRose,
-    marking: c.candyPeach,
-    earStyle: 'floppy',
-    bodyStyle: 'regular',
-    facePattern: 'shih-tzu',
-    fluffy: false,
-  },
-  snowball: {
-    coat: c.card,
-    ear: c.candySkyDark,
-    muzzle: c.candyCream,
-    collar: c.candyMintDark,
-    marking: c.candySky,
-    earStyle: 'upright',
-    bodyStyle: 'regular',
-    facePattern: 'schnauzer',
-    fluffy: true,
-  },
-  maomao: {
-    coat: c.candyCream,
-    ear: c.card,
-    muzzle: c.card,
-    collar: c.candyLemon,
-    marking: c.candyCream,
-    earStyle: 'upright',
-    bodyStyle: 'regular',
-    facePattern: 'none',
-    fluffy: true,
-  },
-  poppy: {
-    coat: c.candyCaramel,
-    ear: c.candyCaramelDark,
-    muzzle: c.candyCream,
-    collar: c.candyPink,
-    marking: c.candyPeach,
-    earStyle: 'floppy',
-    bodyStyle: 'long',
-    facePattern: 'none',
-    fluffy: false,
-  },
-};
-
 export function DogAttendant({
   kind,
   outfitId,
@@ -204,7 +38,7 @@ export function DogAttendant({
   accessoryId?: string;
   happy?: boolean;
 }) {
-  const look = dogLooks[kind];
+  const look = DOG_ATTENDANT_LOOKS[kind];
   const outfit = outfitId ? DOG_STAFF_OUTFIT_BY_ID[outfitId] : undefined;
   const accessory = accessoryId ? DOG_STAFF_ACCESSORY_BY_ID[accessoryId] : undefined;
   const animalEarKind = accessory?.shape === 'animal-ears'

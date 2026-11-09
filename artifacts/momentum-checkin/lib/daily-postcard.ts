@@ -229,10 +229,10 @@ function dogArtwork(dog: DailyPostcardDog, _outline: string): string {
   const accessory = escapeXml(dog.accessory.color);
   const accessoryTrim = escapeXml(dog.accessory.accentColor);
   const earShapes = look.earStyle === 'upright'
-    ? `<path d="M16 12 Q12 -3 20 2 L23 14Z M28 14 L31 2 Q39 -3 35 12Z"/>`
+    ? 'M16 12 Q12 -3 20 2 L23 14Z M28 14 L31 2 Q39 -3 35 12Z'
     : look.earStyle === 'floppy'
-      ? `<path d="M15 12 Q7 8 10 20 Q13 25 19 20Z M31 12 Q39 8 36 20 Q33 25 27 20Z"/>`
-      : `<path d="M15 13 Q10 5 18 6 L22 15Z M28 15 L32 6 Q40 5 35 13Z"/>`;
+      ? 'M15 12 Q7 8 10 20 Q13 25 19 20Z M31 12 Q39 8 36 20 Q33 25 27 20Z'
+      : 'M15 13 Q10 5 18 6 L22 15Z M28 15 L32 6 Q40 5 35 13Z';
   const facePattern = look.facePattern === 'collie'
     ? `<path d="M24 11 Q27 8 29 11 L28 18 Q27 21 25 19Z" fill="${marking}"/><ellipse cx="20" cy="16" rx="3" ry="4" fill="${ear}"/>`
     : look.facePattern === 'shih-tzu'

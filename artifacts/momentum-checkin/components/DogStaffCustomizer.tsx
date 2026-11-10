@@ -98,6 +98,10 @@ export function DogStaffCustomizer({
 
   async function redeemOrMoveDog() {
     if (working || busyDogId !== null) return;
+    if (!isOwned && !canRedeem) {
+      reportNotice(`金幣不足：目前有 ${coins} 枚，兌換${activeDog.name}需要 ${activeDog.price} 枚，還差 ${activeDog.price - coins} 枚。完成目標即可賺取金幣。`);
+      return;
+    }
     setWorking(true);
     setNotice('');
     try {
@@ -323,15 +327,17 @@ export function DogStaffCustomizer({
             ? alreadyAtArea
               ? `${activeDog.name}已在${selectedAreaLabel}`
               : `免費將${activeDog.name}安排到${selectedAreaLabel}`
-            : `使用${activeDog.price}金幣兌換${activeDog.name}並安排到${selectedAreaLabel}`}
-          accessibilityState={{ disabled: (isOwned && alreadyAtArea) || (!isOwned && !canRedeem) || busyDogId !== null }}
-          disabled={(isOwned && alreadyAtArea) || (!isOwned && !canRedeem) || busyDogId !== null || working}
+            : canRedeem
+              ? `使用${activeDog.price}金幣兌換${activeDog.name}並安排到${selectedAreaLabel}`
+              : `金幣不足，兌換${activeDog.name}還差${activeDog.price - coins}枚`}
+          accessibilityState={{ disabled: (isOwned && alreadyAtArea) || busyDogId !== null }}
+          disabled={(isOwned && alreadyAtArea) || busyDogId !== null || working}
           onPress={() => void redeemOrMoveDog()}
           style={[
             styles.actionButton,
             {
               backgroundColor: isOwned ? colors.secondary : colors.primary,
-              opacity: (isOwned && alreadyAtArea) || (!isOwned && !canRedeem) || busyDogId !== null || working ? 0.5 : 1,
+              opacity: (isOwned && alreadyAtArea) || busyDogId !== null || working ? 0.5 : 1,
             },
           ]}
         >

@@ -186,6 +186,13 @@ export default function MallShopInteriorScreen() {
   async function placeDecoration(decorationId: string, price: number) {
     if (!shop || !hasAccess || workingDecoration) return;
     const alreadyOwned = owned.has(decorationId);
+    if (!alreadyOwned && coins < price) {
+      const missing = price - coins;
+      const message = `金幣不足：目前有 ${coins} 枚，兌換需要 ${price} 枚，還差 ${missing} 枚。完成目標即可賺取金幣。`;
+      setNotice(message);
+      setSlotAccessibilityResult('');
+      return;
+    }
     setWorkingDecoration(decorationId);
     setNotice('');
     setSlotAccessibilityResult('');
@@ -541,7 +548,7 @@ export default function MallShopInteriorScreen() {
                   ? `${getShopInteriorAreaLabel(currentPlacement.areaId)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === currentPlacement.slotId)?.label ?? ''}`
                   : null;
                 const affordable = coins >= decoration.price;
-                const disabled = workingDecoration !== null || alreadyHere || (!isOwned && !affordable);
+                const disabled = workingDecoration !== null || alreadyHere;
                 return (
                   <View
                     key={decoration.id}
@@ -593,7 +600,7 @@ export default function MallShopInteriorScreen() {
                     <Pressable
                       testID={`shop-decoration-place-${decoration.id}`}
                       accessibilityRole="button"
-                      accessibilityLabel={alreadyHere ? `${decoration.name}已在${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : isOwned ? `免費佈置${decoration.name}於${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : `兌換${decoration.name}並佈置於${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}，${decoration.price}金幣${affordable ? '' : `，還差 ${decoration.price - coins} 枚`}`}
+                      accessibilityLabel={alreadyHere ? `${decoration.name}已在${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : isOwned ? `免費佈置${decoration.name}於${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}` : `兌換${decoration.name}並佈置於${getShopInteriorAreaLabel(selectedArea)}${SHOP_INTERIOR_SLOTS.find(({ id }) => id === selectedSlot)?.label}，${decoration.price}金幣${affordable ? '' : `，金幣不足，還差 ${decoration.price - coins} 枚`}`}
                       accessibilityState={{ disabled }}
                       disabled={disabled}
                       onPress={() => void placeDecoration(decoration.id, decoration.price)}

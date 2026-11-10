@@ -1358,6 +1358,68 @@ test('shop interior page shows its matching decor catalog and charges only goal-
   );
 });
 
+test('insufficient coin actions explain the exact shortfall without spending coins', async () => {
+  const shopApp = createHarness();
+  const fashionShop = shopApp.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');
+  assert.ok(fashionShop);
+  shopApp.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 5,
+    purchasedItems: [fashionShop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  shopApp.renderProvider();
+  await shopApp.runEffects('provider');
+  shopApp.renderProvider();
+  shopApp.setLocalSearchParams({ itemId: fashionShop.id });
+
+  let interiorTree = shopApp.renderShopInterior();
+  const rackAction = findByTestIdPrefixAndSuffix(
+    interiorTree,
+    'shop-decoration-place-store-',
+    'womenswear-clothing-rack',
+  );
+  assert.equal(rackAction.props.disabled, false, 'an unaffordable choice remains actionable so it can explain why it cannot be redeemed');
+  await press(interiorTree, rackAction.props.testID);
+  interiorTree = shopApp.renderShopInterior();
+  assert.match(textContent(findByTestId(interiorTree, 'shop-interior-notice')), /金幣不足.*目前有 5 枚.*還差 25 枚/);
+  assert.equal(shopApp.contextExports.useHabits().coins, 5);
+  assert.deepEqual(shopApp.contextExports.useHabits().shopInteriors[fashionShop.id]?.ownedDecorations ?? [], []);
+
+  const dogApp = createHarness();
+  const cafe = dogApp.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  assert.ok(cafe);
+  dogApp.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [cafe.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  dogApp.renderProvider();
+  await dogApp.runEffects('provider');
+  dogApp.renderProvider();
+  dogApp.setLocalSearchParams({ itemId: cafe.id });
+
+  interiorTree = dogApp.renderShopInterior();
+  let customizerTree = dogApp.renderDogStaffCustomizer(interiorTree);
+  const redeemDog = findByTestId(customizerTree, 'dog-staff-redeem-fluffy-staff-huahua');
+  assert.equal(redeemDog.props.disabled, false, 'the dog redeem action remains available to show the shortfall');
+  await press(customizerTree, redeemDog.props.testID);
+  customizerTree = dogApp.renderDogStaffCustomizer(interiorTree);
+  assert.match(textContent(findByTestId(customizerTree, 'dog-staff-customizer-notice')), /金幣不足.*目前有 0 枚.*還差/);
+  assert.equal(dogApp.contextExports.useHabits().coins, 0);
+  assert.equal(
+    dogApp.contextExports.useHabits().shopInteriors[cafe.id]?.ownedDecorations?.includes('general-fluffy-staff-huahua') ?? false,
+    false,
+  );
+});
+
 test('screen readers can identify and use every shop-interior position', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'ladies-fashion-boutique');

@@ -552,7 +552,7 @@ export default function MallScreen() {
       return;
     }
     if (coins < item.price) {
-      Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
+      Alert.alert('金幣不足', `目前有 ${coins} 枚，兌換${item.name}需要 ${item.price} 枚，還差 ${item.price - coins} 枚。完成目標即可賺取金幣。`);
       return;
     }
     setWarehouseNotice(null);
@@ -582,7 +582,7 @@ export default function MallScreen() {
       return;
     }
     if (!ownedIds.has(item.id) && coins < item.price) {
-      Alert.alert('金幣還差一點', `完成更多目標就能再賺 ${item.price - coins} 金幣。`);
+      Alert.alert('金幣不足', `目前有 ${coins} 枚，兌換${item.name}需要 ${item.price} 枚，還差 ${item.price - coins} 枚。完成目標即可賺取金幣。`);
       return;
     }
     Keyboard.dismiss();

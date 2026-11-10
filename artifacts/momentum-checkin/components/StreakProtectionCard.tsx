@@ -30,7 +30,12 @@ export function StreakProtectionCard() {
   }, []);
 
   async function buyCard() {
-    if (busy || !canBuy) return;
+    if (busy || leaveCards >= 2) return;
+    if (!canBuy) {
+      setMessage(null);
+      setError(`金幣不足：目前有 ${coins} 枚，兌換請假卡需要 50 枚，還差 ${50 - coins} 枚。完成目標即可賺取金幣。`);
+      return;
+    }
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -45,7 +50,12 @@ export function StreakProtectionCard() {
   }
 
   async function rescue() {
-    if (busy || !canRescue) return;
+    if (busy || !rescueDate) return;
+    if (!canRescue) {
+      setMessage(null);
+      setError(`金幣不足：目前有 ${coins} 枚，補救連續日數需要 80 枚，還差 ${80 - coins} 枚。完成目標即可賺取金幣。`);
+      return;
+    }
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -91,39 +101,39 @@ export function StreakProtectionCard() {
       <View style={styles.actions}>
         <Pressable
           onPress={() => void buyCard()}
-          disabled={busy || leaveCards >= 2 || !canBuy}
+          disabled={busy || leaveCards >= 2}
           accessibilityRole="button"
-          accessibilityState={{ disabled: busy || leaveCards >= 2 || !canBuy, busy }}
-          accessibilityLabel={leaveCards >= 2 ? '已持有最多兩張請假卡' : '用50金幣兌換一張請假卡'}
+          accessibilityState={{ disabled: busy || leaveCards >= 2, busy }}
+          accessibilityLabel={leaveCards >= 2 ? '已持有最多兩張請假卡' : canBuy ? '用50金幣兌換一張請假卡' : `金幣不足，兌換請假卡還差${50 - coins}枚`}
           testID="buy-streak-leave-card"
           style={({ pressed }) => [
             styles.actionButton,
-            { backgroundColor: leaveCards >= 2 || !canBuy ? colors.background : colors.secondary },
+            { backgroundColor: leaveCards >= 2 ? colors.background : colors.secondary },
             { opacity: pressed || busy ? 0.66 : 1 },
           ]}
         >
           <Feather name="plus-circle" size={15} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.primary }]}>
-            {leaveCards >= 2 ? '已達持有上限' : '兌換請假卡 · 50'}
+            {leaveCards >= 2 ? '已達持有上限' : canBuy ? '兌換請假卡 · 50' : `金幣不足 · 還差 ${50 - coins}`}
           </Text>
         </Pressable>
         {rescueDate ? (
           <Pressable
             onPress={() => void rescue()}
-            disabled={busy || !canRescue}
+            disabled={busy}
             accessibilityRole="button"
-            accessibilityState={{ disabled: busy || !canRescue, busy }}
-            accessibilityLabel="在24小時內用80金幣補救連續日數"
+            accessibilityState={{ disabled: busy, busy }}
+            accessibilityLabel={canRescue ? '在24小時內用80金幣補救連續日數' : `金幣不足，補救連續日數還差${80 - coins}枚`}
             testID="rescue-streak-break"
             style={({ pressed }) => [
               styles.actionButton,
-              { backgroundColor: canRescue ? colors.candyPink : colors.background },
+              { backgroundColor: colors.candyPink },
               { opacity: pressed || busy ? 0.66 : 1 },
             ]}
           >
             <Feather name="rotate-ccw" size={15} color={colors.primary} />
             <Text style={[styles.actionText, { color: colors.primary }]}>
-              {canRescue ? '補救連續日數 · 80' : '補救需要 80 金幣'}
+              {canRescue ? '補救連續日數 · 80' : `金幣不足 · 還差 ${80 - coins}`}
             </Text>
           </Pressable>
         ) : null}

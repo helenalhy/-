@@ -23,6 +23,13 @@ function formatTime(value: string): string {
     : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function formatRecordDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString([], { month: 'numeric', day: 'numeric' });
+}
+
 function formatCountdown(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
@@ -37,6 +44,7 @@ export function UrgeSupportCard({ today }: { today: string }) {
   const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
   const [triggerNote, setTriggerNote] = useState('');
   const [triggerFormOpen, setTriggerFormOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [replacementOpen, setReplacementOpen] = useState(false);
   const [replacementIndex, setReplacementIndex] = useState(-1);
   const [durationMinutes, setDurationMinutes] = useState<number>(5);
@@ -156,7 +164,11 @@ export function UrgeSupportCard({ today }: { today: string }) {
     };
     finishingSession.current = null;
     setNow(startedAt);
-    await persist(next, `${dog.name}會陪你 ${durationMinutes} 分鐘。這段時間不會自動打卡。`);
+    if (await persist(next, `${dog.name}會陪你 ${durationMinutes} 分鐘。這段時間不會自動打卡。`)) {
+      setSelectedTrigger(null);
+      setTriggerNote('');
+      setTriggerFormOpen(false);
+    }
   }
 
   async function finishCompanionEarly(): Promise<void> {
@@ -366,9 +378,42 @@ export function UrgeSupportCard({ today }: { today: string }) {
       )}
 
       {data.records.length > 0 ? (
-        <Text style={[styles.history, { color: colors.mutedForeground }]} testID="urge-record-summary">
-          已記錄 {data.records.length} 次 · 最近：{data.records[0].trigger} {formatTime(data.records[0].occurredAt)}
-        </Text>
+        <>
+          <Pressable
+            onPress={() => setHistoryOpen((open) => !open)}
+            accessibilityRole="button"
+            accessibilityLabel={`${historyOpen ? '收起' : '查看'}觸發記錄，共 ${data.records.length} 次`}
+            accessibilityState={{ expanded: historyOpen }}
+            testID="toggle-urge-record-history"
+            style={styles.historyToggle}
+          >
+            <Text style={[styles.history, { color: colors.mutedForeground }]} testID="urge-record-summary">
+              已記錄 {data.records.length} 次 · 最近：{data.records[0].trigger} {formatTime(data.records[0].occurredAt)}
+            </Text>
+            <Feather name={historyOpen ? 'chevron-up' : 'chevron-down'} size={14} color={colors.mutedForeground} />
+          </Pressable>
+          {historyOpen ? (
+            <View style={[styles.recordList, { borderColor: colors.border, backgroundColor: colors.background }]} testID="urge-record-history">
+              {data.records.slice(0, 5).map((record) => (
+                <View key={record.id} style={[styles.recordItem, { borderBottomColor: colors.border }]}>
+                  <View style={styles.recordHeading}>
+                    <Text style={[styles.recordTrigger, { color: colors.foreground }]}>{record.trigger}</Text>
+                    <Text style={[styles.recordTime, { color: colors.mutedForeground }]}>
+                      {formatRecordDate(record.occurredAt)} {formatTime(record.occurredAt)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.recordHabit, { color: colors.mutedForeground }]}>{record.habitName}</Text>
+                  {record.note ? (
+                    <Text style={[styles.recordNote, { color: colors.foreground }]}>{record.note}</Text>
+                  ) : null}
+                </View>
+              ))}
+              {data.records.length > 5 ? (
+                <Text style={[styles.history, { color: colors.mutedForeground }]}>先顯示最近 5 次；其餘記錄仍保存在本機。</Text>
+              ) : null}
+            </View>
+          ) : null}
+        </>
       ) : null}
       <Text style={[styles.privacy, { color: colors.mutedForeground }]}>
         記錄只保存在這部裝置，不同步雲端；陪伴倒數不會自動打卡或扣金幣。
@@ -422,6 +467,14 @@ const styles = StyleSheet.create({
   countdown: { fontSize: 23, lineHeight: 29, fontWeight: '900', fontVariant: ['tabular-nums'], marginTop: 1 },
   stopButton: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   history: { fontSize: 11, lineHeight: 16 },
+  historyToggle: { minHeight: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  recordList: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10 },
+  recordItem: { paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth },
+  recordHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  recordTrigger: { fontSize: 12, fontWeight: '800' },
+  recordTime: { fontSize: 10 },
+  recordHabit: { fontSize: 10, marginTop: 3 },
+  recordNote: { fontSize: 11, lineHeight: 16, marginTop: 3 },
   privacy: { fontSize: 10, lineHeight: 15 },
   feedback: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
 });

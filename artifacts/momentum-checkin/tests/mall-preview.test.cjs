@@ -1046,8 +1046,9 @@ test('real catalog covers twenty distinct themes and includes eleven specialized
     const result = app.find(`search-select-${item.id}`);
     assert.ok(result, `${item.id} appears in the search results`);
     assert.match(result.props.accessibilityLabel, new RegExp(`前往 ${item.floor}F`));
+    const catalogPrice = item.unlockCheckIns !== undefined ? '里程碑裝飾' : `${item.price} 金幣`;
     assert.ok(
-      app.nodes().some((node) => textContent(node) === `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.price} 金幣`),
+      app.nodes().some((node) => textContent(node) === `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${catalogPrice}`),
       `${item.id} shows its original floor and floor name`,
     );
   }
@@ -1095,7 +1096,7 @@ test('search whitespace, empty results, category counts, pagination and clear re
 
   app.find('mall-search-input').props.onChangeText('');
   app.render();
-  assert.equal(pager(app).props.total, 151);
+  assert.equal(pager(app).props.total, 152);
   assert.equal(pager(app).props.page, 1);
   assert.ok(app.find(`build-${floorOneItems[0].id}`), 'clearing search returns to the original floor list');
 });

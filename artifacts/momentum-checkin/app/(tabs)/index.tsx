@@ -22,6 +22,7 @@ import { scheduleReminderSnooze, updateReminderCheckInStatus } from '@workspace/
 import { readReminderSettings } from '@/lib/reminder-settings';
 import { canMakeUpYesterday, getPreviousLocalDate, getPreviousScheduledDate, getWeekday, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
 import { MALL_ITEM_BY_ID } from '@/constants/mall';
+import { getDailyLoginDecorationPrize } from '@/lib/daily-login-rewards';
 import { DogCompanionPicker, DEFAULT_DOG_COMPANION_ID } from '@/components/DogCompanionPicker';
 import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
 import { recommendMinimumAction } from '@/lib/minimum-action-suggestions';
@@ -603,6 +604,7 @@ export function TodayScreen() {
     storageError,
     today,
     coins,
+    purchasedItems,
     rewardedCheckIns,
     protectedStreakDates,
     dailyLoginLastDate,
@@ -969,7 +971,8 @@ export function TodayScreen() {
             today={today}
             lastLoginDate={dailyLoginLastDate}
             streak={dailyLoginStreak}
-            lastPrizeName={dailyLoginLastPrizeItemId ? MALL_ITEM_BY_ID[dailyLoginLastPrizeItemId]?.name ?? null : null}
+            lastPrizeItem={dailyLoginLastPrizeItemId ? MALL_ITEM_BY_ID[dailyLoginLastPrizeItemId] ?? null : null}
+            nextPrizeItem={getDailyLoginDecorationPrize(purchasedItems)}
             onClaim={claimDailyLoginReward}
           />
         ) : null}

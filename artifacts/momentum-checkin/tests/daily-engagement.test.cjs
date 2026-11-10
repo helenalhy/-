@@ -125,6 +125,8 @@ test('engagement cards show up in Today without adding reward or changing restar
   assert.match(components, /claim-daily-dog-task/);
   assert.match(components, /每日簽到獎勵/);
   assert.match(components, /claim-daily-login-reward/);
+  assert.match(components, /daily-login-prize-preview/);
+  assert.match(components, /daily-login-prize-modal/);
   assert.match(components, /DAILY_DOG_TASK_REWARD/);
   assert.match(components, /celebrationCount <= previousCelebrationCount\.current/);
   assert.match(components, /outputRange: \[0, -20\]/);

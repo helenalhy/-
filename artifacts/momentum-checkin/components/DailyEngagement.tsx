@@ -15,6 +15,8 @@ import {
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
+import { MallObjectVisual } from '@/components/MallVisuals';
+import type { MallItem } from '@/constants/mall';
 import {
   DAILY_LOGIN_COINS,
   DAILY_LOGIN_STREAK_BONUS_COINS,
@@ -407,21 +409,26 @@ export function DailyLoginRewardCard({
   today,
   lastLoginDate,
   streak,
-  lastPrizeName,
+  lastPrizeItem,
+  nextPrizeItem,
   onClaim,
 }: {
   today: string;
   lastLoginDate: string | null;
   streak: number;
-  lastPrizeName: string | null;
+  lastPrizeItem: MallItem | null;
+  nextPrizeItem: MallItem | null;
   onClaim: () => Promise<void>;
 }) {
   const colors = useColors();
   const claimed = lastLoginDate === today;
   const displayStreak = claimed ? streak : getNextDailyLoginStreak(today, lastLoginDate, streak);
+  const [showPrizePreview, setShowPrizePreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const claimLock = useRef(false);
+  const claimedDaySevenPrize = claimed && displayStreak === DAILY_LOGIN_STREAK_LENGTH;
+  const previewPrizeItem = claimedDaySevenPrize ? lastPrizeItem : nextPrizeItem;
 
   async function claimReward() {
     if (claimed || busy || claimLock.current) return;
@@ -460,28 +467,41 @@ export function DailyLoginRewardCard({
 
       <View style={styles.loginProgress} accessibilityLabel={`七日簽到進度 ${displayStreak} / ${DAILY_LOGIN_STREAK_LENGTH}`}>
         {Array.from({ length: DAILY_LOGIN_STREAK_LENGTH }, (_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.loginProgressDay,
-              { backgroundColor: index < displayStreak ? colors.candyPink : colors.secondary },
-              index === DAILY_LOGIN_STREAK_LENGTH - 1 && { backgroundColor: index < displayStreak ? colors.candyLemon : colors.secondary },
-            ]}
-          >
-            {index === DAILY_LOGIN_STREAK_LENGTH - 1 ? (
-              <Feather name="gift" size={11} color={index < displayStreak ? colors.primary : colors.mutedForeground} />
-            ) : (
+          index === DAILY_LOGIN_STREAK_LENGTH - 1 ? (
+            <Pressable
+              key={index}
+              onPress={() => setShowPrizePreview(true)}
+              accessibilityRole="button"
+              accessibilityLabel="預覽連續七日簽到大獎"
+              testID="daily-login-prize-preview"
+              style={[
+                styles.loginProgressDay,
+                { backgroundColor: index < displayStreak ? colors.candyLemon : colors.secondary },
+              ]}
+            >
+              <Feather name="gift" size={13} color={index < displayStreak ? colors.primary : colors.mutedForeground} />
+            </Pressable>
+          ) : (
+            <View
+              key={index}
+              style={[
+                styles.loginProgressDay,
+                { backgroundColor: index < displayStreak ? colors.candyPink : colors.secondary },
+              ]}
+            >
               <Text style={[styles.loginProgressNumber, { color: index < displayStreak ? colors.primary : colors.mutedForeground }]}>{index + 1}</Text>
-            )}
-          </View>
+            </View>
+          )
         ))}
       </View>
 
       <View style={styles.loginFooter}>
         <Text style={[styles.loginBonus, { color: colors.primary }]}>
-          {claimed && displayStreak === DAILY_LOGIN_STREAK_LENGTH && lastPrizeName
-            ? `七日大獎已領取：${lastPrizeName} · +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣`
-            : displayStreak === DAILY_LOGIN_STREAK_LENGTH
+          {claimedDaySevenPrize && lastPrizeItem
+            ? `七日大獎已領取：${lastPrizeItem.name} · +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣`
+            : claimed && displayStreak === DAILY_LOGIN_STREAK_LENGTH
+              ? `七日簽到已完成 · +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣`
+              : displayStreak === DAILY_LOGIN_STREAK_LENGTH
               ? `今日可領七日大獎 · 額外 +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣及商場裝飾`
               : `連續七日可得額外 +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣及商場裝飾`}
         </Text>
@@ -500,8 +520,72 @@ export function DailyLoginRewardCard({
           </Pressable>
         ) : null}
       </View>
-      <Text style={[styles.loginFootnote, { color: colors.mutedForeground }]}>漏掉一天會重新計算連續天數，不會扣除已領取的金幣。</Text>
+      <Text style={[styles.loginFootnote, { color: colors.mutedForeground }]}>點按第 7 日禮物預覽大獎；漏掉一天會重新計算連續天數。</Text>
       {error ? <Text style={[styles.dailyTaskError, { color: colors.destructive }]} accessibilityRole="alert">{error}</Text> : null}
+
+      <Modal
+        visible={showPrizePreview}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPrizePreview(false)}
+      >
+        <View style={styles.prizeBackdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowPrizePreview(false)}
+            accessibilityRole="button"
+            accessibilityLabel="關閉大獎預覽"
+          />
+          <View style={[styles.prizePanel, { backgroundColor: colors.card, borderColor: colors.border }]} testID="daily-login-prize-modal">
+            <View style={styles.prizeHeader}>
+              <View style={styles.copy}>
+                <Text style={[styles.eyebrow, { color: colors.primary }]}>連續 7 日簽到大獎</Text>
+                <Text style={[styles.title, { color: colors.foreground }]}>第 7 日禮物</Text>
+              </View>
+              <Pressable
+                onPress={() => setShowPrizePreview(false)}
+                accessibilityRole="button"
+                accessibilityLabel="關閉大獎預覽"
+                style={styles.prizeClose}
+              >
+                <Feather name="x" size={18} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <View style={[styles.prizeArt, { backgroundColor: previewPrizeItem?.color ?? colors.candyLemon }]}>
+              {previewPrizeItem ? (
+                <MallObjectVisual
+                  id={previewPrizeItem.visual ?? previewPrizeItem.id}
+                  itemId={previewPrizeItem.id}
+                  itemName={previewPrizeItem.name}
+                  floor={previewPrizeItem.floor}
+                  color={previewPrizeItem.color}
+                  icon={previewPrizeItem.icon}
+                  category="decor"
+                  isActive
+                />
+              ) : (
+                <Feather name="star" size={32} color={colors.primary} />
+              )}
+            </View>
+            <Text style={[styles.prizeName, { color: colors.foreground }]}>
+              {previewPrizeItem?.name ?? '額外 30 金幣'}
+            </Text>
+            <Text style={[styles.prizeDescription, { color: colors.mutedForeground }]}>
+              {previewPrizeItem
+                ? '連續簽到 7 日即可免費獲得這件商場裝飾，並額外領取 30 金幣。'
+                : '可兌換的裝飾已全部擁有；連續簽到 7 日仍會額外領取 30 金幣。'}
+            </Text>
+            <Pressable
+              onPress={() => setShowPrizePreview(false)}
+              accessibilityRole="button"
+              accessibilityLabel="返回每日簽到"
+              style={[styles.prizeDone, { backgroundColor: colors.primary }]}
+            >
+              <Text style={[styles.prizeDoneText, { color: colors.primaryForeground }]}>知道了</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -601,6 +685,15 @@ const styles = StyleSheet.create({
   loginButton: { minHeight: 34, borderRadius: 12, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   loginButtonText: { fontSize: 10, fontWeight: '700' },
   loginFootnote: { fontSize: 9, lineHeight: 13, marginTop: 7 },
+  prizeBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(38, 25, 42, 0.42)' },
+  prizePanel: { width: '100%', maxWidth: 360, borderWidth: 1, borderRadius: 23, padding: 18, alignItems: 'center' },
+  prizeHeader: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  prizeClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  prizeArt: { width: 124, height: 100, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  prizeName: { fontSize: 16, fontWeight: '700', marginTop: 12, textAlign: 'center' },
+  prizeDescription: { fontSize: 12, lineHeight: 18, marginTop: 7, textAlign: 'center' },
+  prizeDone: { minHeight: 42, alignSelf: 'stretch', borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  prizeDoneText: { fontSize: 12, fontWeight: '700' },
   confettiPiece: { position: 'absolute', left: 23, top: 20, width: 5, height: 8, borderRadius: 2, zIndex: 2 },
   recapCard: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 18, padding: 12, marginTop: 11 },
   recapReward: { fontSize: 9, lineHeight: 14, fontWeight: '700', marginTop: 4 },

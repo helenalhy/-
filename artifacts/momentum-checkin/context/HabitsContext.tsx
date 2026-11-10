@@ -21,7 +21,7 @@ import {
   parseShopInteriorPlacementId,
   type ShopInteriorPlacementId,
 } from '@/constants/mall-shop-interior';
-import { MALL_ITEM_BY_ID, MALL_ITEMS } from '@/constants/mall';
+import { MALL_ITEM_BY_ID } from '@/constants/mall';
 import { getRewardedCheckInCount } from '@/constants/progress-milestones';
 import {
   canMakeUpYesterday,
@@ -43,6 +43,7 @@ import {
   DAILY_LOGIN_COINS,
   DAILY_LOGIN_STREAK_BONUS_COINS,
   DAILY_LOGIN_STREAK_LENGTH,
+  getDailyLoginDecorationPrize,
   getNextDailyLoginStreak,
 } from '@/lib/daily-login-rewards';
 import {
@@ -1322,12 +1323,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       await recoverPendingCheckInTransaction();
       const nextStreak = getNextDailyLoginStreak(today, dailyLoginLastDate, dailyLoginStreak);
       const prizeItem = nextStreak === DAILY_LOGIN_STREAK_LENGTH
-        ? MALL_ITEMS.find((item) => (
-          item.category === 'decor'
-          && item.unlockCheckIns === undefined
-          && item.price >= 40
-          && !purchasedItems.includes(item.id)
-        ))
+        ? getDailyLoginDecorationPrize(purchasedItems) ?? undefined
         : undefined;
       const nextPurchasedItems = prizeItem
         ? [...new Set([...purchasedItems, prizeItem.id])]
@@ -1395,6 +1391,13 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     weeklyChallengeRewardPlans,
     weeklyChallengeRewardedWeeks,
   ]);
+
+  useEffect(() => {
+    if (isLoading || mallLoadErrorRef.current || dailyLoginLastDate === today) return;
+    void claimDailyLoginReward().catch(() => {
+      // The Today card remains available as a manual retry if storage was busy.
+    });
+  }, [claimDailyLoginReward, dailyLoginLastDate, isLoading, today]);
 
   const purchaseStreakLeaveCard = useCallback(async () => {
     if (actionLock.current) throw new Error('正在處理上一個操作');

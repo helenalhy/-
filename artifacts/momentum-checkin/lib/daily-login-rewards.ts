@@ -1,8 +1,18 @@
 import { getPreviousLocalDate } from '@/lib/habit-schedule';
+import { MALL_ITEMS, type MallItem } from '@/constants/mall';
 
 export const DAILY_LOGIN_COINS = 5;
 export const DAILY_LOGIN_STREAK_LENGTH = 7;
 export const DAILY_LOGIN_STREAK_BONUS_COINS = 30;
+
+export function getDailyLoginDecorationPrize(purchasedItemIds: readonly string[]): MallItem | null {
+  return MALL_ITEMS.find((item) => (
+    item.category === 'decor'
+    && item.unlockCheckIns === undefined
+    && item.price >= 40
+    && !purchasedItemIds.includes(item.id)
+  )) ?? null;
+}
 
 export function getNextDailyLoginStreak(
   today: string,

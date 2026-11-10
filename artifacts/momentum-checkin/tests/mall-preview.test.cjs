@@ -2262,6 +2262,9 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
       DAILY_LOGIN_COINS: 5,
       DAILY_LOGIN_STREAK_LENGTH: 7,
       DAILY_LOGIN_STREAK_BONUS_COINS: 30,
+      getDailyLoginDecorationPrize: (ownedIds) => ownedIds.includes('streak-prize')
+        ? null
+        : { id: 'streak-prize', name: '七日星光裝飾', category: 'decor', price: 50 },
       getNextDailyLoginStreak: (dateKey, lastDate, streak) => {
         if (dateKey === lastDate) return streak;
         const date = new Date(`${dateKey}T12:00:00`);

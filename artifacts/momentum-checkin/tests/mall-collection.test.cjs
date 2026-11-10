@@ -174,6 +174,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       DAILY_LOGIN_COINS: 5,
       DAILY_LOGIN_STREAK_LENGTH: 7,
       DAILY_LOGIN_STREAK_BONUS_COINS: 30,
+      getDailyLoginDecorationPrize: () => null,
       getNextDailyLoginStreak: (dateKey, lastDate, streak) => {
         if (dateKey === lastDate) return streak;
         const date = new Date(`${dateKey}T12:00:00`);

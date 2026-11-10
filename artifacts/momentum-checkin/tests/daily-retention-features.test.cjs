@@ -33,24 +33,36 @@ const dateHelpers = {
   },
 };
 
-const login = loadTypeScript('lib/daily-login-rewards.ts', { '@/lib/habit-schedule': dateHelpers });
 const dogs = Array.from({ length: 14 }, (_, index) => ({ name: `狗狗${index + 1}`, kind: `dog-${index + 1}` }));
 const decorations = Array.from({ length: 24 }, (_, index) => ({
   id: `decor-${index + 1}`,
   name: `裝飾${index + 1}`,
   category: 'decor',
+  price: 50,
   unlockCheckIns: undefined,
 }));
+const login = loadTypeScript('lib/daily-login-rewards.ts', {
+  '@/lib/habit-schedule': dateHelpers,
+  '@/constants/mall': { MALL_ITEMS: decorations },
+});
 const surprise = loadTypeScript('lib/daily-mall-surprise.ts', {
   '@/constants/dog-staff-customization': { DOG_STAFF_PROFILES: dogs },
   '@/constants/mall': { MALL_ITEMS: decorations },
 });
 
 test('daily login streak advances consecutively and resets after a missed date', () => {
-  const { DAILY_LOGIN_COINS, DAILY_LOGIN_STREAK_BONUS_COINS, DAILY_LOGIN_STREAK_LENGTH, getNextDailyLoginStreak } = login;
+  const {
+    DAILY_LOGIN_COINS,
+    DAILY_LOGIN_STREAK_BONUS_COINS,
+    DAILY_LOGIN_STREAK_LENGTH,
+    getDailyLoginDecorationPrize,
+    getNextDailyLoginStreak,
+  } = login;
   assert.equal(DAILY_LOGIN_COINS, 5);
   assert.equal(DAILY_LOGIN_STREAK_BONUS_COINS, 30);
   assert.equal(DAILY_LOGIN_STREAK_LENGTH, 7);
+  assert.equal(getDailyLoginDecorationPrize([]).id, 'decor-1');
+  assert.equal(getDailyLoginDecorationPrize(['decor-1']).id, 'decor-2');
   assert.equal(getNextDailyLoginStreak(dateKey(1), dateKey(0), 1), 2);
   assert.equal(getNextDailyLoginStreak(dateKey(6), dateKey(5), 6), 7);
   assert.equal(getNextDailyLoginStreak(dateKey(7), dateKey(6), 7), 1, 'the next week starts a new streak');

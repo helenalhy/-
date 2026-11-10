@@ -151,23 +151,38 @@ test('engagement cards show up in Today without adding reward or changing restar
   assert.match(components, /styles\.confettiPiece/);
 });
 
-test('all 56 README-mapped fluffy dog poses are bundled as static app assets', () => {
+test('all 56 README-mapped dog poses and transparent staff images are bundled', () => {
   const assetDir = path.join(appRoot, 'assets/dogs-fluffy');
   const readme = fs.readFileSync(path.join(assetDir, 'README.txt'), 'utf8');
   const expectedNames = [...readme.matchAll(/^(\S+\.webp)\s*=/gm)].map((match) => match[1]).sort();
   const bundledNames = fs.readdirSync(assetDir).filter((name) => name.endsWith('.webp')).sort();
   const imageMap = fs.readFileSync(path.join(appRoot, 'constants/dog-fluffy-images.ts'), 'utf8');
   const profileSource = fs.readFileSync(path.join(appRoot, 'constants/dog-staff-customization.ts'), 'utf8');
-  const mappedNames = [...imageMap.matchAll(/require\(['"]\.\.\/assets\/dogs-fluffy\/([^'"]+\.webp)['"]\)/g)]
+  const staffCustomizer = fs.readFileSync(path.join(appRoot, 'components/DogStaffCustomizer.tsx'), 'utf8');
+  const dailyEngagement = fs.readFileSync(path.join(appRoot, 'components/DailyEngagement.tsx'), 'utf8');
+  const expectedTransparentNames = expectedNames
+    .filter((name) => /-1-wave\.webp$/.test(name))
+    .map((name) => name.replace(/\.webp$/, '-nobg.png'))
+    .sort();
+  const mappedPoseNames = [...imageMap.matchAll(/require\(['"]\.\.\/assets\/dogs-fluffy\/([^'"]+\.webp)['"]\)/g)]
+    .map((match) => match[1])
+    .sort();
+  const bundledTransparentNames = fs.readdirSync(assetDir).filter((name) => name.endsWith('-nobg.png')).sort();
+  const mappedTransparentNames = [...imageMap.matchAll(/require\(['"]\.\.\/assets\/dogs-fluffy\/([^'"]+-nobg\.png)['"]\)/g)]
     .map((match) => match[1])
     .sort();
   const mappedProfileKeys = [...imageMap.matchAll(/^  '([^']+)': \{$/gm)].map((match) => match[1]).sort();
   const profileKeys = [...profileSource.matchAll(/key: '(fluffy-staff-[^']+)'/g)].map((match) => match[1]).sort();
   assert.equal(expectedNames.length, 56);
   assert.deepEqual(bundledNames, expectedNames);
-  assert.deepEqual(mappedNames, expectedNames);
+  assert.deepEqual(mappedPoseNames, expectedNames);
+  assert.deepEqual(bundledTransparentNames, expectedTransparentNames);
+  assert.deepEqual(mappedTransparentNames, expectedTransparentNames);
   assert.deepEqual(mappedProfileKeys, profileKeys);
   assert.match(imageMap, /'fluffy-staff-amber':[\s\S]*hupo-1-wave\.webp/);
   assert.match(imageMap, /'fluffy-staff-cloud':[\s\S]*yunduo-1-wave\.webp/);
   assert.match(imageMap, /'fluffy-staff-poppy':[\s\S]*bobi-1-wave\.webp/);
+  assert.match(imageMap, /getDogFluffyStaffImage/);
+  assert.match(staffCustomizer, /source=\{getDogFluffyStaffImage\(dog\.key\)\}/);
+  assert.match(dailyEngagement, /source=\{getDogFluffyImage\(dog\.key, displayedPose\)\}/);
 });

@@ -89,10 +89,35 @@ const DOG_FLUFFY_IMAGES: Record<string, DogPoseAssets> = {
   },
 };
 
+const DOG_FLUFFY_STAFF_IMAGES: Record<string, number> = {
+  'fluffy-staff-huahua': require('../assets/dogs-fluffy/huahua-1-wave-nobg.png'),
+  'fluffy-staff-milkshake': require('../assets/dogs-fluffy/naixi-1-wave-nobg.png'),
+  'fluffy-staff-xiaoniu': require('../assets/dogs-fluffy/xiaoniu-1-wave-nobg.png'),
+  'fluffy-staff-pudding': require('../assets/dogs-fluffy/buding-1-wave-nobg.png'),
+  'fluffy-staff-tangtang': require('../assets/dogs-fluffy/tangtang-1-wave-nobg.png'),
+  'fluffy-staff-pipi': require('../assets/dogs-fluffy/pipi-1-wave-nobg.png'),
+  'fluffy-staff-amber': require('../assets/dogs-fluffy/hupo-1-wave-nobg.png'),
+  'fluffy-staff-cloud': require('../assets/dogs-fluffy/yunduo-1-wave-nobg.png'),
+  'fluffy-staff-wonton': require('../assets/dogs-fluffy/yuntun-1-wave-nobg.png'),
+  'fluffy-staff-butter': require('../assets/dogs-fluffy/naiyou-1-wave-nobg.png'),
+  'fluffy-staff-sesame': require('../assets/dogs-fluffy/zhima-1-wave-nobg.png'),
+  'fluffy-staff-snowball': require('../assets/dogs-fluffy/xueqiu-1-wave-nobg.png'),
+  'fluffy-staff-maomao': require('../assets/dogs-fluffy/maomao-1-wave-nobg.png'),
+  'fluffy-staff-poppy': require('../assets/dogs-fluffy/bobi-1-wave-nobg.png'),
+};
+
 export function getDogFluffyImage(dogProfileKey: string, pose: DogFluffyPose): number {
   const source = DOG_FLUFFY_IMAGES[dogProfileKey]?.[pose];
   if (source === undefined) {
     throw new Error(`Missing bundled fluffy dog image for ${dogProfileKey}, pose ${pose}.`);
+  }
+  return source;
+}
+
+export function getDogFluffyStaffImage(dogProfileKey: string): number {
+  const source = DOG_FLUFFY_STAFF_IMAGES[dogProfileKey];
+  if (source === undefined) {
+    throw new Error(`Missing bundled transparent staff dog image for ${dogProfileKey}.`);
   }
   return source;
 }

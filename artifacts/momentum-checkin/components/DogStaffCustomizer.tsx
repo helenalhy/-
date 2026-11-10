@@ -4,7 +4,7 @@ import { Image as ExpoImage } from 'expo-image';
 import React, { useEffect, useState } from 'react';
 import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
-import { getDogFluffyImage } from '@/constants/dog-fluffy-images';
+import { getDogFluffyStaffImage } from '@/constants/dog-fluffy-images';
 import {
   DOG_STAFF_STYLE_CATALOGS,
   getDogStaffAreaLabel,
@@ -352,7 +352,7 @@ export function DogStaffCustomizer({
               <View style={styles.dogChipPreview}>
                 {dogListArtStyle === 'fluffy' ? (
                   <ExpoImage
-                    source={getDogFluffyImage(dog.key, 1)}
+                    source={getDogFluffyStaffImage(dog.key)}
                     style={styles.dogChipImage}
                     contentFit="contain"
                     accessible={false}

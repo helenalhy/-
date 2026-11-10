@@ -2227,7 +2227,8 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     };
     if (name === '@/constants/mall') {
       const newItem = { id: 'new-item', name: '測試裝飾', category: 'decor', price: 20 };
-      return { MALL_ITEM_BY_ID: { [newItem.id]: newItem }, MALL_ITEMS: [newItem] };
+      const streakPrize = { id: 'streak-prize', name: '七日星光裝飾', category: 'decor', price: 50 };
+      return { MALL_ITEM_BY_ID: { [newItem.id]: newItem, [streakPrize.id]: streakPrize }, MALL_ITEMS: [newItem, streakPrize] };
     }
     if (name === '@/constants/progress-milestones') return {
       getRewardedCheckInCount: (rewardedCheckIns = []) => rewardedCheckIns.filter((item) => !item.startsWith('makeup-used:')).length,
@@ -2252,6 +2253,22 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     };
     if (name === '@/lib/weekly-challenge-rewards') return {
       getWeeklyChallengeRewardItemId: () => null,
+    };
+    if (name === '@/lib/daily-dog-task') return {
+      DAILY_DOG_TASK_REWARD: 10,
+      getDailyDogTaskRewardKey: (dateKey) => `daily-dog-task:${dateKey}`,
+    };
+    if (name === '@/lib/daily-login-rewards') return {
+      DAILY_LOGIN_COINS: 5,
+      DAILY_LOGIN_STREAK_LENGTH: 7,
+      DAILY_LOGIN_STREAK_BONUS_COINS: 30,
+      getNextDailyLoginStreak: (dateKey, lastDate, streak) => {
+        if (dateKey === lastDate) return streak;
+        const date = new Date(`${dateKey}T12:00:00`);
+        date.setDate(date.getDate() - 1);
+        const previous = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return lastDate === previous ? (streak >= 7 ? 1 : streak + 1) : 1;
+      },
     };
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
@@ -2353,6 +2370,109 @@ for (const mirrorKey of ['momentum.habits.v1', 'momentum.mall.v1']) {
     );
   });
 }
+
+test('daily dog task reward is committed once and recovers after a mall mirror failure', async () => {
+  const app = mountHabitsContext();
+  await new Promise((resolve) => setImmediate(resolve));
+  let habits = app.render();
+  const rewardKey = `daily-dog-task:${habits.today}`;
+  app.failNextWriteForKey('momentum.mall.v1');
+
+  assert.equal(await habits.claimDailyDogTask(), 10);
+  habits = app.render();
+  assert.equal(habits.coins, 10);
+  assert.ok(habits.rewardedCheckIns.includes(rewardKey));
+  assert.equal(await habits.claimDailyDogTask(), 0, 'a second tap cannot claim another daily reward');
+  const pending = JSON.parse(app.storage.get('momentum.checkin-transaction.v1'));
+  assert.equal(pending.mall.coins, 10);
+  assert.ok(pending.mall.rewardedCheckIns.includes(rewardKey));
+
+  const recovered = mountHabitsContext(app.storage);
+  await new Promise((resolve) => setImmediate(resolve));
+  habits = recovered.render();
+  assert.equal(habits.coins, 10);
+  assert.ok(habits.rewardedCheckIns.includes(rewardKey));
+  assert.equal(await habits.claimDailyDogTask(), 0, 'reloading does not award the daily task twice');
+  assert.equal(recovered.storage.has('momentum.checkin-transaction.v1'), false);
+});
+
+test('daily dog task does not grant coins if its recovery record cannot be saved', async () => {
+  const app = mountHabitsContext();
+  await new Promise((resolve) => setImmediate(resolve));
+  let habits = app.render();
+  const rewardKey = `daily-dog-task:${habits.today}`;
+  app.failNextWriteForKey('momentum.checkin-transaction.v1');
+  await assert.rejects(habits.claimDailyDogTask(), /無法儲存每日小任務獎勵/);
+  habits = app.render();
+  assert.equal(habits.coins, 0);
+  assert.equal(habits.rewardedCheckIns.includes(rewardKey), false);
+  assert.equal(await habits.claimDailyDogTask(), 10, 'the user can retry after the failed write');
+});
+
+test('daily login reward is saved once and grants the seventh-day bonus decoration', async () => {
+  const baseDate = new Date();
+  baseDate.setDate(baseDate.getDate() - 1);
+  const yesterday = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(baseDate.getDate()).padStart(2, '0')}`;
+  const initialMall = {
+    schemaVersion: 6,
+    coins: 40,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+    dailyLoginLastDate: yesterday,
+    dailyLoginStreak: 6,
+    dailyLoginLastPrizeItemId: null,
+  };
+  const app = mountHabitsContext(new Map([['momentum.mall.v1', JSON.stringify(initialMall)]]));
+  await new Promise((resolve) => setImmediate(resolve));
+  let habits = app.render();
+  assert.equal(habits.isLoading, false);
+  assert.equal(await habits.claimDailyLoginReward(), undefined);
+  habits = app.render();
+  assert.equal(habits.coins, 75, 'day seven grants the daily 5 plus the 30 coin bonus');
+  assert.equal(habits.dailyLoginLastDate, habits.today);
+  assert.equal(habits.dailyLoginStreak, 7);
+  assert.equal(habits.dailyLoginLastPrizeItemId, 'streak-prize');
+  assert.ok(habits.purchasedItems.includes('streak-prize'));
+  assert.equal(await habits.claimDailyLoginReward(), undefined);
+  assert.equal(app.render().coins, 75, 'opening or claiming again the same day does not duplicate rewards');
+});
+
+test('daily login reward recovers from a mall mirror failure without duplicate coins', async () => {
+  const app = mountHabitsContext();
+  await new Promise((resolve) => setImmediate(resolve));
+  let habits = app.render();
+  app.failNextWriteForKey('momentum.mall.v1');
+  await habits.claimDailyLoginReward();
+  habits = app.render();
+  assert.equal(habits.coins, 5);
+  assert.equal(habits.dailyLoginLastDate, habits.today);
+  assert.ok(app.storage.has('momentum.checkin-transaction.v1'));
+
+  const recovered = mountHabitsContext(app.storage);
+  await new Promise((resolve) => setImmediate(resolve));
+  habits = recovered.render();
+  assert.equal(habits.coins, 5);
+  assert.equal(habits.dailyLoginLastDate, habits.today);
+  await habits.claimDailyLoginReward();
+  assert.equal(recovered.render().coins, 5);
+  assert.equal(recovered.storage.has('momentum.checkin-transaction.v1'), false);
+});
+
+test('daily login reward does not credit coins if its journal write fails', async () => {
+  const app = mountHabitsContext();
+  await new Promise((resolve) => setImmediate(resolve));
+  let habits = app.render();
+  app.failNextWriteForKey('momentum.checkin-transaction.v1');
+  await assert.rejects(habits.claimDailyLoginReward(), /無法儲存每日簽到獎勵/);
+  habits = app.render();
+  assert.equal(habits.coins, 0);
+  assert.equal(habits.dailyLoginLastDate, null);
+  await habits.claimDailyLoginReward();
+  assert.equal(app.render().coins, 5);
+});
 
 test('AsyncStorage mall write failures preserve ownership, coins and placement after reload', async () => {
   const mallKey = 'momentum.mall.v1';

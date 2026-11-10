@@ -21,12 +21,15 @@ import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 import { scheduleReminderSnooze, updateReminderCheckInStatus } from '@workspace/api-client-react';
 import { readReminderSettings } from '@/lib/reminder-settings';
 import { canMakeUpYesterday, getPreviousLocalDate, getPreviousScheduledDate, getWeekday, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
+import { MALL_ITEM_BY_ID } from '@/constants/mall';
 import { DogCompanionPicker, DEFAULT_DOG_COMPANION_ID } from '@/components/DogCompanionPicker';
 import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
 import { recommendMinimumAction } from '@/lib/minimum-action-suggestions';
 import { FULL_CHECK_IN_REWARD, getMinimumActionReward } from '@/lib/proportional-checkin-reward';
 import {
   DailyDogGreetingCard,
+  DailyDogTaskCard,
+  DailyLoginRewardCard,
   DailyMallVisitorCard,
   DailyRecapCard,
   WeeklyMallEventCard,
@@ -602,7 +605,12 @@ export function TodayScreen() {
     coins,
     rewardedCheckIns,
     protectedStreakDates,
+    dailyLoginLastDate,
+    dailyLoginStreak,
+    dailyLoginLastPrizeItemId,
     getCheckInReward,
+    claimDailyDogTask,
+    claimDailyLoginReward,
     toggleCheckIn,
     makeUpYesterday,
     deleteHabit,
@@ -941,13 +949,32 @@ export function TodayScreen() {
         </View>
 
         {!isLoading && habits.length > 0 ? (
+          <DailyDogGreetingCard
+            key={`daily-dog-${today}`}
+            today={today}
+            celebrationCount={scheduledTodayDone}
+            style={encouragementStyle}
+          />
+        ) : null}
+        {!isLoading ? (
+          <DailyDogTaskCard
+            today={today}
+            style={encouragementStyle}
+            rewardedCheckIns={rewardedCheckIns}
+            onClaim={claimDailyDogTask}
+          />
+        ) : null}
+        {!isLoading ? (
+          <DailyLoginRewardCard
+            today={today}
+            lastLoginDate={dailyLoginLastDate}
+            streak={dailyLoginStreak}
+            lastPrizeName={dailyLoginLastPrizeItemId ? MALL_ITEM_BY_ID[dailyLoginLastPrizeItemId]?.name ?? null : null}
+            onClaim={claimDailyLoginReward}
+          />
+        ) : null}
+        {!isLoading && habits.length > 0 ? (
           <>
-            <DailyDogGreetingCard
-              key={`daily-dog-${today}`}
-              today={today}
-              celebrationCount={scheduledTodayDone}
-              style={encouragementStyle}
-            />
             <DailyMallVisitorCard
               today={today}
               checkInDates={habits.flatMap((habit) => habit.checkIns)}

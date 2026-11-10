@@ -166,6 +166,22 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
     if (name === '@/lib/weekly-challenge-rewards') return {
       getWeeklyChallengeRewardItemId: () => 'c',
     };
+    if (name === '@/lib/daily-dog-task') return {
+      DAILY_DOG_TASK_REWARD: 10,
+      getDailyDogTaskRewardKey: (dateKey) => `daily-dog-task:${dateKey}`,
+    };
+    if (name === '@/lib/daily-login-rewards') return {
+      DAILY_LOGIN_COINS: 5,
+      DAILY_LOGIN_STREAK_LENGTH: 7,
+      DAILY_LOGIN_STREAK_BONUS_COINS: 30,
+      getNextDailyLoginStreak: (dateKey, lastDate, streak) => {
+        if (dateKey === lastDate) return streak;
+        const date = new Date(`${dateKey}T12:00:00`);
+        date.setDate(date.getDate() - 1);
+        const previous = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return lastDate === previous ? (streak >= 7 ? 1 : streak + 1) : 1;
+      },
+    };
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: (decoration) => /shelf|rack|display|展示|貨架/i.test(`${decoration.id} ${decoration.name}`),

@@ -5,7 +5,10 @@ export const PROGRESS_MILESTONES = [
 ] as const;
 
 export function getRewardedCheckInCount(rewardedCheckIns: readonly string[]) {
-  return rewardedCheckIns.filter((key) => !key.startsWith('makeup-used:')).length;
+  return rewardedCheckIns.filter((key) => (
+    !key.startsWith('makeup-used:')
+    && !key.startsWith('daily-dog-task:')
+  )).length;
 }
 
 export function getUnlockedMilestones(totalCompletedCheckIns: number) {

@@ -22,6 +22,7 @@ test('milestone decorations unlock at their exact cumulative reward thresholds',
   assert.equal(getNextMilestone(75).id, 'rainbow-sparkles');
   assert.equal(getNextMilestone(150), null);
   assert.equal(getRewardedCheckInCount(['walk:2026-01-01', 'makeup-used:2026-01-02']), 1);
+  assert.equal(getRewardedCheckInCount(['walk:2026-01-01', 'daily-dog-task:2026-01-02']), 1);
 });
 
 test('milestone rewards are free decor items for existing floors, not new themes or floors', () => {

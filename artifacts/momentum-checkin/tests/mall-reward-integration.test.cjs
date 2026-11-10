@@ -144,6 +144,7 @@ function createHarness() {
     '@/components/CatalogPager': { CatalogPager: function CatalogPager() {} },
     '@/components/DailyEngagement': {
       DailyDogGreetingCard: 'DailyDogGreetingCard',
+      DailyDogTaskCard: 'DailyDogTaskCard',
       DailyMallVisitorCard: 'DailyMallVisitorCard',
       DailyRecapCard: 'DailyRecapCard',
       WeeklyMallEventCard: 'WeeklyMallEventCard',

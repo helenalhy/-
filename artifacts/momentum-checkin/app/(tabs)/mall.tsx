@@ -29,6 +29,7 @@ import {
 } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
 import { MallAmbience, MallObjectVisual } from '@/components/MallVisuals';
+import { MallDailySurpriseCard } from '@/components/MallDailySurpriseCard';
 import { MALL_FLOORS, MALL_ITEMS, MALL_ITEM_BY_ID, type MallItem } from '@/constants/mall';
 import { getRewardedCheckInCount } from '@/constants/progress-milestones';
 import { getWeeklyCheckInCount } from '@/lib/habit-schedule';
@@ -818,6 +819,8 @@ export default function MallScreen() {
             完全免費 · 每個目標每日首次完成 +20 金幣 · 所有項目只用金幣兌換，沒有儲值或付費。
           </Text>
         </View>
+
+        <MallDailySurpriseCard today={today} />
 
         {IS_DEVELOPMENT_PREVIEW && (
           <View style={[styles.testCoinPanel, { backgroundColor: colors.candyCream, borderColor: colors.secondary }]}>

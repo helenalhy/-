@@ -1,7 +1,8 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   Image,
   Modal,
   Platform,
@@ -14,6 +15,12 @@ import {
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
+import {
+  DAILY_LOGIN_COINS,
+  DAILY_LOGIN_STREAK_BONUS_COINS,
+  DAILY_LOGIN_STREAK_LENGTH,
+  getNextDailyLoginStreak,
+} from '@/lib/daily-login-rewards';
 import {
   GUEST_COLUMNS,
   GUEST_FRAME_CELLS,
@@ -28,6 +35,11 @@ import {
   getWeeklyMallEvent,
   getWeeklyMomentumDays,
 } from '@/lib/daily-engagement';
+import {
+  DAILY_DOG_TASK_REWARD,
+  getDailyDogTask,
+  getDailyDogTaskRewardKey,
+} from '@/lib/daily-dog-task';
 import type { Habit } from '@/context/HabitsContext';
 import type { EncouragementStyle } from '@/lib/daily-personalization';
 
@@ -202,27 +214,95 @@ export function DailyDogGreetingCard({
   const reduceMotion = useReducedMotion();
   const { dog, greeting } = getDailyDogGreeting(today, style);
   const native = Platform.OS !== 'web';
-  const bounce = useRef(new Animated.Value(1)).current;
+  const jump = useRef(new Animated.Value(0)).current;
+  const confetti = useRef(new Animated.Value(0)).current;
   const previousCelebrationCount = useRef(celebrationCount);
   const [greeted, setGreeted] = useState(false);
 
-  useEffect(() => {
+  const playCelebration = useCallback(() => {
     if (reduceMotion !== false) return undefined;
+    jump.setValue(0);
+    confetti.setValue(0);
+    const animation = Animated.parallel([
+      Animated.sequence([
+        Animated.timing(jump, {
+          toValue: 1,
+          duration: 210,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: native,
+        }),
+        Animated.timing(jump, {
+          toValue: 0,
+          duration: 330,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: native,
+        }),
+      ]),
+      Animated.timing(confetti, {
+        toValue: 1,
+        duration: 760,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: native,
+      }),
+    ]);
+    animation.start(({ finished }) => {
+      if (finished) confetti.setValue(0);
+    });
+    return animation;
+  }, [confetti, jump, native, reduceMotion]);
+
+  useEffect(() => {
     if (celebrationCount <= previousCelebrationCount.current) return;
     previousCelebrationCount.current = celebrationCount;
-    bounce.setValue(0.86);
-    const animation = Animated.sequence([
-      Animated.spring(bounce, { toValue: 1.12, useNativeDriver: native, speed: 22, bounciness: 10 }),
-      Animated.spring(bounce, { toValue: 1, useNativeDriver: native, speed: 18, bounciness: 5 }),
-    ]);
-    animation.start();
-    return () => animation.stop();
-  }, [bounce, celebrationCount, native, reduceMotion]);
+    const animation = playCelebration();
+    return () => animation?.stop();
+  }, [celebrationCount, playCelebration]);
+
+  const confettiColors = [
+    colors.candyPink,
+    colors.candyLemon,
+    colors.candyMint,
+    colors.candySky,
+    colors.candyLavender,
+    colors.candyPeach,
+    colors.candyRose,
+    colors.candyMintDark,
+  ];
+  const confettiPieces = [
+    { x: -22, y: -24, rotate: '300deg' },
+    { x: -8, y: -31, rotate: '220deg' },
+    { x: 10, y: -29, rotate: '320deg' },
+    { x: 24, y: -18, rotate: '240deg' },
+    { x: -25, y: 0, rotate: '300deg' },
+    { x: 26, y: 2, rotate: '220deg' },
+    { x: -18, y: 22, rotate: '320deg' },
+    { x: 18, y: 23, rotate: '240deg' },
+  ];
 
   return (
     <View style={[styles.dogCard, { backgroundColor: colors.card, borderColor: colors.border }]} testID="daily-dog-greeting">
       <View style={[styles.dogPortrait, { backgroundColor: dog.color }]}>
-        <Animated.View style={{ transform: [{ scale: bounce }] }}>
+        {confettiPieces.map((piece, index) => (
+          <Animated.View
+            key={`confetti-${index}`}
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[
+              styles.confettiPiece,
+              { backgroundColor: confettiColors[index] },
+              {
+                opacity: confetti.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 1, 0] }),
+                transform: [
+                  { translateX: confetti.interpolate({ inputRange: [0, 1], outputRange: [0, piece.x] }) },
+                  { translateY: confetti.interpolate({ inputRange: [0, 1], outputRange: [0, piece.y] }) },
+                  { rotate: confetti.interpolate({ inputRange: [0, 1], outputRange: ['0deg', piece.rotate] }) },
+                ],
+              },
+            ]}
+          />
+        ))}
+        <Animated.View style={{ transform: [{ translateY: jump.interpolate({ inputRange: [0, 1], outputRange: [0, -20] }) }] }}>
           <DogAttendant kind={dog.kind as DogAttendantKind} happy={greeted || celebrationCount > 0} />
         </Animated.View>
       </View>
@@ -236,12 +316,7 @@ export function DailyDogGreetingCard({
       <Pressable
         onPress={() => {
           setGreeted(true);
-          if (reduceMotion !== false) return;
-          bounce.setValue(0.86);
-          Animated.sequence([
-            Animated.spring(bounce, { toValue: 1.12, useNativeDriver: native, speed: 22, bounciness: 10 }),
-            Animated.spring(bounce, { toValue: 1, useNativeDriver: native, speed: 18, bounciness: 5 }),
-          ]).start();
+          playCelebration();
         }}
         accessibilityRole="button"
         accessibilityLabel={`和${dog.name}打招呼`}
@@ -250,6 +325,183 @@ export function DailyDogGreetingCard({
       >
         <Feather name="heart" size={16} color={colors.primary} />
       </Pressable>
+    </View>
+  );
+}
+
+export function DailyDogTaskCard({
+  today,
+  style,
+  rewardedCheckIns,
+  onClaim,
+}: {
+  today: string;
+  style: EncouragementStyle;
+  rewardedCheckIns: readonly string[];
+  onClaim: () => Promise<number>;
+}) {
+  const colors = useColors();
+  const { dog } = getDailyDogGreeting(today, style);
+  const task = getDailyDogTask(today);
+  const claimed = rewardedCheckIns.includes(getDailyDogTaskRewardKey(today));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const claimLock = useRef(false);
+
+  async function completeTask() {
+    if (claimed || busy || claimLock.current) return;
+    claimLock.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      const reward = await onClaim();
+      if (reward <= 0) setError('今日任務已領取，明天再和狗狗一起挑戰。');
+    } catch {
+      setError('獎勵暫時未能保存，請再試一次。');
+    } finally {
+      claimLock.current = false;
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={[styles.dailyTaskCard, { backgroundColor: colors.card, borderColor: colors.border }]} testID="daily-dog-task">
+      <View style={styles.dailyTaskMain}>
+        <View style={[styles.dailyTaskPortrait, { backgroundColor: dog.color }]}>
+          <DogAttendant kind={dog.kind as DogAttendantKind} happy={claimed} />
+        </View>
+        <View style={styles.copy}>
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>狗狗陪伴 · 每日小任務</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{dog.name}今天想和你一起完成</Text>
+          <Text style={[styles.dailyTaskPrompt, { color: colors.foreground }]}>{task.title}</Text>
+        </View>
+      </View>
+      <View style={styles.dailyTaskFooter}>
+        <Text style={[styles.dailyTaskReward, { color: claimed ? colors.candyMintDark : colors.primary }]}>
+          {claimed ? `已完成 · +${DAILY_DOG_TASK_REWARD} 金幣已入帳` : `完成後獲得 +${DAILY_DOG_TASK_REWARD} 金幣`}
+        </Text>
+        <Pressable
+          onPress={() => void completeTask()}
+          disabled={claimed || busy}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: claimed || busy, busy }}
+          accessibilityLabel={claimed ? '今日狗狗小任務已領取獎勵' : `完成今日狗狗小任務並領取 ${DAILY_DOG_TASK_REWARD} 金幣`}
+          testID="claim-daily-dog-task"
+          style={[
+            styles.dailyTaskButton,
+            { backgroundColor: claimed ? colors.candyMint : colors.candyPink, opacity: busy ? 0.65 : 1 },
+          ]}
+        >
+          <Feather name={claimed ? 'check' : busy ? 'loader' : 'gift'} size={14} color={colors.primary} />
+          <Text style={[styles.dailyTaskButtonText, { color: colors.primary }]}>
+            {claimed ? '已領取' : busy ? '保存中…' : '我完成了'}
+          </Text>
+        </Pressable>
+      </View>
+      {error ? <Text style={[styles.dailyTaskError, { color: colors.destructive }]} accessibilityRole="alert">{error}</Text> : null}
+    </View>
+  );
+}
+
+export function DailyLoginRewardCard({
+  today,
+  lastLoginDate,
+  streak,
+  lastPrizeName,
+  onClaim,
+}: {
+  today: string;
+  lastLoginDate: string | null;
+  streak: number;
+  lastPrizeName: string | null;
+  onClaim: () => Promise<void>;
+}) {
+  const colors = useColors();
+  const claimed = lastLoginDate === today;
+  const displayStreak = claimed ? streak : getNextDailyLoginStreak(today, lastLoginDate, streak);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const claimLock = useRef(false);
+
+  async function claimReward() {
+    if (claimed || busy || claimLock.current) return;
+    claimLock.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      await onClaim();
+    } catch {
+      setError('簽到獎勵暫時未能保存，請再試一次。');
+    } finally {
+      claimLock.current = false;
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View
+      style={[styles.loginCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      testID="daily-login-reward"
+    >
+      <View style={styles.loginHeader}>
+        <View style={[styles.loginIcon, { backgroundColor: colors.candyPink }]}>
+          <Feather name={claimed && displayStreak === DAILY_LOGIN_STREAK_LENGTH ? 'award' : 'calendar'} size={17} color={colors.primary} />
+        </View>
+        <View style={styles.copy}>
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>每日簽到獎勵</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            連續第 {displayStreak} / {DAILY_LOGIN_STREAK_LENGTH} 日
+          </Text>
+          <Text style={[styles.body, { color: colors.mutedForeground }]}>
+            {claimed ? `今日已自動領取 +${DAILY_LOGIN_COINS} 金幣` : `開啟 App 即可領取 +${DAILY_LOGIN_COINS} 金幣`}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.loginProgress} accessibilityLabel={`七日簽到進度 ${displayStreak} / ${DAILY_LOGIN_STREAK_LENGTH}`}>
+        {Array.from({ length: DAILY_LOGIN_STREAK_LENGTH }, (_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.loginProgressDay,
+              { backgroundColor: index < displayStreak ? colors.candyPink : colors.secondary },
+              index === DAILY_LOGIN_STREAK_LENGTH - 1 && { backgroundColor: index < displayStreak ? colors.candyLemon : colors.secondary },
+            ]}
+          >
+            {index === DAILY_LOGIN_STREAK_LENGTH - 1 ? (
+              <Feather name="gift" size={11} color={index < displayStreak ? colors.primary : colors.mutedForeground} />
+            ) : (
+              <Text style={[styles.loginProgressNumber, { color: index < displayStreak ? colors.primary : colors.mutedForeground }]}>{index + 1}</Text>
+            )}
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.loginFooter}>
+        <Text style={[styles.loginBonus, { color: colors.primary }]}>
+          {claimed && displayStreak === DAILY_LOGIN_STREAK_LENGTH && lastPrizeName
+            ? `七日大獎已領取：${lastPrizeName} · +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣`
+            : displayStreak === DAILY_LOGIN_STREAK_LENGTH
+              ? `今日可領七日大獎 · 額外 +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣及商場裝飾`
+              : `連續七日可得額外 +${DAILY_LOGIN_STREAK_BONUS_COINS} 金幣及商場裝飾`}
+        </Text>
+        {!claimed ? (
+          <Pressable
+            onPress={() => void claimReward()}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={busy ? '正在保存每日簽到獎勵' : `領取今日 ${DAILY_LOGIN_COINS} 金幣簽到獎勵`}
+            accessibilityState={{ disabled: busy, busy }}
+            testID="claim-daily-login-reward"
+            style={[styles.loginButton, { backgroundColor: colors.primary, opacity: busy ? 0.65 : 1 }]}
+          >
+            <Feather name={busy ? 'loader' : 'check'} size={13} color={colors.primaryForeground} />
+            <Text style={[styles.loginButtonText, { color: colors.primaryForeground }]}>{busy ? '保存中…' : '今日簽到'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <Text style={[styles.loginFootnote, { color: colors.mutedForeground }]}>漏掉一天會重新計算連續天數，不會扣除已領取的金幣。</Text>
+      {error ? <Text style={[styles.dailyTaskError, { color: colors.destructive }]} accessibilityRole="alert">{error}</Text> : null}
     </View>
   );
 }
@@ -328,7 +580,28 @@ const styles = StyleSheet.create({
   eventFill: { height: '100%', borderRadius: 99 },
   eventStatus: { fontSize: 9, lineHeight: 13, fontWeight: '600', marginTop: 5 },
   dogCard: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 18, padding: 10, marginTop: 11 },
-  dogPortrait: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  dogPortrait: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'visible', zIndex: 1 },
+  dailyTaskCard: { borderWidth: 1, borderRadius: 18, padding: 12, marginTop: 10 },
+  dailyTaskMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dailyTaskPortrait: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  dailyTaskPrompt: { fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: 4 },
+  dailyTaskFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10 },
+  dailyTaskReward: { flex: 1, fontSize: 10, fontWeight: '700' },
+  dailyTaskButton: { minHeight: 34, borderRadius: 12, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  dailyTaskButtonText: { fontSize: 10, fontWeight: '700' },
+  dailyTaskError: { fontSize: 10, lineHeight: 14, marginTop: 7 },
+  loginCard: { borderWidth: 1, borderRadius: 18, padding: 12, marginTop: 10 },
+  loginHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  loginIcon: { width: 38, height: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  loginProgress: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  loginProgressDay: { flex: 1, height: 27, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  loginProgressNumber: { fontSize: 10, fontWeight: '700' },
+  loginFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10 },
+  loginBonus: { flex: 1, fontSize: 10, lineHeight: 15, fontWeight: '700' },
+  loginButton: { minHeight: 34, borderRadius: 12, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  loginButtonText: { fontSize: 10, fontWeight: '700' },
+  loginFootnote: { fontSize: 9, lineHeight: 13, marginTop: 7 },
+  confettiPiece: { position: 'absolute', left: 23, top: 20, width: 5, height: 8, borderRadius: 2, zIndex: 2 },
   recapCard: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 18, padding: 12, marginTop: 11 },
   recapReward: { fontSize: 9, lineHeight: 14, fontWeight: '700', marginTop: 4 },
 });

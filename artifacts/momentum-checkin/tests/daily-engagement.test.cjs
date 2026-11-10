@@ -107,6 +107,8 @@ test('engagement cards show up in Today without adding reward or changing restar
   const today = fs.readFileSync(path.join(appRoot, 'app/(tabs)/index.tsx'), 'utf8');
   const components = fs.readFileSync(path.join(appRoot, 'components/DailyEngagement.tsx'), 'utf8');
   assert.match(today, /<DailyDogGreetingCard/);
+  assert.match(today, /<DailyDogTaskCard/);
+  assert.match(today, /<DailyLoginRewardCard/);
   assert.match(today, /<DailyMallVisitorCard/);
   assert.match(today, /<WeeklyMallEventCard/);
   assert.match(today, /<DailyRecapCard/);
@@ -119,4 +121,13 @@ test('engagement cards show up in Today without adding reward or changing restar
   assert.match(components, /平常的目標就會累積/);
   assert.match(components, /本週活動完成/);
   assert.match(components, /商場訪客日記/);
+  assert.match(components, /每日小任務/);
+  assert.match(components, /claim-daily-dog-task/);
+  assert.match(components, /每日簽到獎勵/);
+  assert.match(components, /claim-daily-login-reward/);
+  assert.match(components, /DAILY_DOG_TASK_REWARD/);
+  assert.match(components, /celebrationCount <= previousCelebrationCount\.current/);
+  assert.match(components, /outputRange: \[0, -20\]/);
+  assert.match(components, /const confettiPieces =/);
+  assert.match(components, /styles\.confettiPiece/);
 });

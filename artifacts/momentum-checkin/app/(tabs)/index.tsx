@@ -32,6 +32,7 @@ import {
   WeeklyMallEventCard,
 } from '@/components/DailyEngagement';
 import { DailyMoodCard, DailyPostcardCard } from '@/components/DailyPersonalization';
+import { UrgeSupportCard } from '@/components/UrgeSupportCard';
 import {
   DEFAULT_ENCOURAGEMENT_STYLE,
   getEncouragementText,
@@ -951,6 +952,7 @@ export function TodayScreen() {
             />
           </>
         ) : null}
+        {!isLoading ? <UrgeSupportCard today={today} /> : null}
         {!isLoading ? <DailyPostcardCard today={today} /> : null}
 
         {restartHabit ? (

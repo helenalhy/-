@@ -112,6 +112,7 @@ test('engagement cards show up in Today without adding reward or changing restar
   assert.match(today, /<DailyRecapCard/);
   assert.match(today, /<DailyMoodCard/);
   assert.match(today, /<DailyPostcardCard/);
+  assert.match(today, /<UrgeSupportCard today=\{today\} \/>/);
   assert.match(today, /readEncouragementStyle/);
   assert.match(today, /toggle-low-energy-mode/);
   assert.match(today, /gentle-restart-card/);

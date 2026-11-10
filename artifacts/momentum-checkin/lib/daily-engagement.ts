@@ -160,3 +160,9 @@ export function getDailyDogGreeting(today: string, style: EncouragementStyle = '
     greeting: greetings[greetingIndex],
   };
 }
+
+export type DailyDogPose = 2 | 3 | 4;
+
+export function getNextDailyDogPose(pose: DailyDogPose): DailyDogPose {
+  return pose === 2 ? 3 : pose === 3 ? 4 : 2;
+}

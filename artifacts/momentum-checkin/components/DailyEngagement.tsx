@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -15,6 +16,7 @@ import {
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
+import { getDogFluffyImage } from '@/constants/dog-fluffy-images';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import type { MallItem } from '@/constants/mall';
 import {
@@ -32,7 +34,9 @@ import {
 } from '@/constants/mall-guests';
 import {
   getDailyDogGreeting,
+  getNextDailyDogPose,
   getDailyMallVisitor,
+  type DailyDogPose,
   getVisitorDiaryDates,
   getWeeklyMallEvent,
   getWeeklyMomentumDays,
@@ -220,6 +224,11 @@ export function DailyDogGreetingCard({
   const confetti = useRef(new Animated.Value(0)).current;
   const previousCelebrationCount = useRef(celebrationCount);
   const [greeted, setGreeted] = useState(false);
+  const [poseState, setPoseState] = useState<{ dogKey: string; pose: DailyDogPose }>({
+    dogKey: dog.key,
+    pose: 2,
+  });
+  const displayedPose = poseState.dogKey === dog.key ? poseState.pose : 2;
 
   const playCelebration = useCallback(() => {
     if (reduceMotion !== false) return undefined;
@@ -305,7 +314,12 @@ export function DailyDogGreetingCard({
           />
         ))}
         <Animated.View style={{ transform: [{ translateY: jump.interpolate({ inputRange: [0, 1], outputRange: [0, -20] }) }] }}>
-          <DogAttendant kind={dog.kind as DogAttendantKind} happy={greeted || celebrationCount > 0} />
+          <ExpoImage
+            source={getDogFluffyImage(dog.key, displayedPose)}
+            style={styles.dailyDogPose}
+            contentFit="contain"
+            accessible={false}
+          />
         </Animated.View>
       </View>
       <View style={styles.copy}>
@@ -318,6 +332,10 @@ export function DailyDogGreetingCard({
       <Pressable
         onPress={() => {
           setGreeted(true);
+          setPoseState((previous) => {
+            const currentPose = previous.dogKey === dog.key ? previous.pose : 2;
+            return { dogKey: dog.key, pose: getNextDailyDogPose(currentPose) };
+          });
           playCelebration();
         }}
         accessibilityRole="button"
@@ -665,6 +683,7 @@ const styles = StyleSheet.create({
   eventStatus: { fontSize: 9, lineHeight: 13, fontWeight: '600', marginTop: 5 },
   dogCard: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 18, padding: 10, marginTop: 11 },
   dogPortrait: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'visible', zIndex: 1 },
+  dailyDogPose: { width: 50, height: 50 },
   dailyTaskCard: { borderWidth: 1, borderRadius: 18, padding: 12, marginTop: 10 },
   dailyTaskMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dailyTaskPortrait: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },

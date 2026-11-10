@@ -38,6 +38,7 @@ new Function('require', 'module', 'exports', output)(
 const {
   getDailyDogGreeting,
   getDailyMallVisitor,
+  getNextDailyDogPose,
   getVisitorDiaryDates,
   getWeeklyMallEvent,
   getWeeklyMomentumDays,
@@ -103,9 +104,16 @@ test('daily companion rotates through all fourteen profiles and greetings', () =
   );
 });
 
+test('daily dog heart pose cycle stays on poses two through four', () => {
+  assert.equal(getNextDailyDogPose(2), 3);
+  assert.equal(getNextDailyDogPose(3), 4);
+  assert.equal(getNextDailyDogPose(4), 2);
+});
+
 test('engagement cards show up in Today without adding reward or changing restart behavior', () => {
   const today = fs.readFileSync(path.join(appRoot, 'app/(tabs)/index.tsx'), 'utf8');
   const components = fs.readFileSync(path.join(appRoot, 'components/DailyEngagement.tsx'), 'utf8');
+  const dogStaff = fs.readFileSync(path.join(appRoot, 'components/DogStaffCustomizer.tsx'), 'utf8');
   assert.match(today, /<DailyDogGreetingCard/);
   assert.match(today, /<DailyDogTaskCard/);
   assert.match(today, /<DailyLoginRewardCard/);
@@ -118,6 +126,15 @@ test('engagement cards show up in Today without adding reward or changing restar
   assert.match(today, /readEncouragementStyle/);
   assert.match(today, /toggle-low-energy-mode/);
   assert.match(today, /gentle-restart-card/);
+  assert.match(components, /source=\{getDogFluffyImage\(dog\.key, displayedPose\)\}/);
+  assert.match(components, /setGreeted\(true\)/);
+  assert.match(components, /setPoseState/);
+  assert.match(dogStaff, /AsyncStorage\.getItem\(DOG_STAFF_LIST_ART_STYLE_KEY\)/);
+  assert.match(dogStaff, /AsyncStorage\.setItem\(DOG_STAFF_LIST_ART_STYLE_KEY, style\)/);
+  assert.match(dogStaff, /useState<DogStaffListArtStyle>\('fluffy'\)/);
+  assert.match(dogStaff, /id: 'fluffy'/);
+  assert.match(dogStaff, /id: 'original'/);
+  assert.match(dogStaff, /testID=\{`dog-staff-art-style-\$\{option\.id\}`\}/);
   assert.match(components, /平常的目標就會累積/);
   assert.match(components, /本週活動完成/);
   assert.match(components, /商場訪客日記/);
@@ -132,4 +149,25 @@ test('engagement cards show up in Today without adding reward or changing restar
   assert.match(components, /outputRange: \[0, -20\]/);
   assert.match(components, /const confettiPieces =/);
   assert.match(components, /styles\.confettiPiece/);
+});
+
+test('all 56 README-mapped fluffy dog poses are bundled as static app assets', () => {
+  const assetDir = path.join(appRoot, 'assets/dogs-fluffy');
+  const readme = fs.readFileSync(path.join(assetDir, 'README.txt'), 'utf8');
+  const expectedNames = [...readme.matchAll(/^(\S+\.webp)\s*=/gm)].map((match) => match[1]).sort();
+  const bundledNames = fs.readdirSync(assetDir).filter((name) => name.endsWith('.webp')).sort();
+  const imageMap = fs.readFileSync(path.join(appRoot, 'constants/dog-fluffy-images.ts'), 'utf8');
+  const profileSource = fs.readFileSync(path.join(appRoot, 'constants/dog-staff-customization.ts'), 'utf8');
+  const mappedNames = [...imageMap.matchAll(/require\(['"]\.\.\/assets\/dogs-fluffy\/([^'"]+\.webp)['"]\)/g)]
+    .map((match) => match[1])
+    .sort();
+  const mappedProfileKeys = [...imageMap.matchAll(/^  '([^']+)': \{$/gm)].map((match) => match[1]).sort();
+  const profileKeys = [...profileSource.matchAll(/key: '(fluffy-staff-[^']+)'/g)].map((match) => match[1]).sort();
+  assert.equal(expectedNames.length, 56);
+  assert.deepEqual(bundledNames, expectedNames);
+  assert.deepEqual(mappedNames, expectedNames);
+  assert.deepEqual(mappedProfileKeys, profileKeys);
+  assert.match(imageMap, /'fluffy-staff-amber':[\s\S]*hupo-1-wave\.webp/);
+  assert.match(imageMap, /'fluffy-staff-cloud':[\s\S]*yunduo-1-wave\.webp/);
+  assert.match(imageMap, /'fluffy-staff-poppy':[\s\S]*bobi-1-wave\.webp/);
 });

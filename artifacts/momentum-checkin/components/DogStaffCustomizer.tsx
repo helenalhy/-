@@ -1,7 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image as ExpoImage } from 'expo-image';
+import React, { useEffect, useState } from 'react';
 import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
+import { getDogFluffyImage } from '@/constants/dog-fluffy-images';
 import {
   DOG_STAFF_STYLE_CATALOGS,
   getDogStaffAreaLabel,
@@ -18,6 +21,8 @@ import { useColors } from '@/hooks/useColors';
 
 type LookTab = 'outfit' | 'theme' | 'accessory';
 type AccessoryFilter = 'all' | 'animal-ears';
+type DogStaffListArtStyle = 'original' | 'fluffy';
+const DOG_STAFF_LIST_ART_STYLE_KEY = 'momentum.dogStaffListArtStyle.v1';
 const LOOKS_PER_PAGE = 10;
 
 export function DogStaffCustomizer({
@@ -65,9 +70,39 @@ export function DogStaffCustomizer({
   const [savedLookName, setSavedLookName] = useState('');
   const [savingPreset, setSavingPreset] = useState(false);
   const [workingPresetId, setWorkingPresetId] = useState<string | null>(null);
+  const [dogListArtStyle, setDogListArtStyle] = useState<DogStaffListArtStyle>('fluffy');
+  const [dogListArtStyleLoaded, setDogListArtStyleLoaded] = useState(false);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem(DOG_STAFF_LIST_ART_STYLE_KEY)
+      .then((savedStyle) => {
+        if (active && (savedStyle === 'original' || savedStyle === 'fluffy')) {
+          setDogListArtStyle(savedStyle);
+        }
+      })
+      .catch(() => {
+        if (active) setNotice('圖片風格設定暫時無法讀取，將先使用毛茸茸新版。');
+      })
+      .finally(() => {
+        if (active) setDogListArtStyleLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   function reportNotice(message: string) {
     setNotice(message);
     if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+  }
+  async function chooseDogListArtStyle(style: DogStaffListArtStyle) {
+    if (!dogListArtStyleLoaded || style === dogListArtStyle) return;
+    setDogListArtStyle(style);
+    setNotice('');
+    try {
+      await AsyncStorage.setItem(DOG_STAFF_LIST_ART_STYLE_KEY, style);
+    } catch {
+      reportNotice('圖片風格設定未能儲存，請稍後再試。');
+    }
   }
   const activeDog = dogs.find(({ decorationId }) => decorationId === selectedDogId)
     ?? initialDog;
@@ -252,7 +287,36 @@ export function DogStaffCustomizer({
         {selectedAreaLabel} · 狗狗會在地面移動
       </Text>
 
-      <Text style={[styles.subheading, { color: colors.foreground }]}>店員名單</Text>
+      <View style={styles.staffListHeader}>
+        <Text style={[styles.subheading, { color: colors.foreground }]}>店員名單</Text>
+        <View style={[styles.staffArtToggle, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+          {([
+            { id: 'fluffy', label: '毛茸茸新版' },
+            { id: 'original', label: '原裝' },
+          ] as const).map((option) => {
+            const selected = dogListArtStyle === option.id;
+            return (
+              <Pressable
+                key={option.id}
+                testID={`dog-staff-art-style-${option.id}`}
+                accessibilityRole="radio"
+                accessibilityLabel={`店員名單圖片風格：${option.label}`}
+                accessibilityState={{ checked: selected, disabled: !dogListArtStyleLoaded }}
+                disabled={!dogListArtStyleLoaded}
+                onPress={() => void chooseDogListArtStyle(option.id)}
+                style={[
+                  styles.staffArtOption,
+                  { backgroundColor: selected ? colors.card : 'transparent' },
+                ]}
+              >
+                <Text style={[styles.staffArtOptionText, { color: selected ? colors.primary : colors.mutedForeground }]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -286,11 +350,20 @@ export function DogStaffCustomizer({
               ]}
             >
               <View style={styles.dogChipPreview}>
-                <DogAttendant
-                  kind={dog.kind as DogAttendantKind}
-                  outfitId={dogLook.outfitId}
-                  accessoryId={dogLook.accessoryId}
-                />
+                {dogListArtStyle === 'fluffy' ? (
+                  <ExpoImage
+                    source={getDogFluffyImage(dog.key, 1)}
+                    style={styles.dogChipImage}
+                    contentFit="contain"
+                    accessible={false}
+                  />
+                ) : (
+                  <DogAttendant
+                    kind={dog.kind as DogAttendantKind}
+                    outfitId={dogLook.outfitId}
+                    accessoryId={dogLook.accessoryId}
+                  />
+                )}
               </View>
               <Text numberOfLines={1} style={[styles.dogChipName, { color: colors.foreground }]}>{dog.name}</Text>
               <Text style={[styles.ownershipLabel, { color: dogOwned ? colors.primary : colors.mutedForeground }]}>
@@ -595,9 +668,14 @@ const styles = StyleSheet.create({
   areaName: { maxWidth: '100%', fontSize: 9, fontWeight: '800', textAlign: 'center' },
   areaCount: { fontSize: 8, fontWeight: '700' },
   selectedAreaCopy: { fontSize: 10, fontWeight: '800' },
+  staffListHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  staffArtToggle: { flexDirection: 'row', borderWidth: 1, borderRadius: 12, padding: 2 },
+  staffArtOption: { minHeight: 31, borderRadius: 9, justifyContent: 'center', paddingHorizontal: 9 },
+  staffArtOptionText: { fontSize: 9, fontWeight: '800' },
   dogPicker: { gap: 8, paddingVertical: 2, paddingRight: 4 },
   dogChip: { width: 68, minHeight: 87, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 5, gap: 1 },
   dogChipPreview: { width: 54, height: 48, alignItems: 'center', justifyContent: 'center' },
+  dogChipImage: { width: 54, height: 48 },
   dogChipName: { fontSize: 10, fontWeight: '800' },
   ownershipLabel: { fontSize: 8, fontWeight: '700' },
   dogProfile: { minHeight: 82, borderWidth: 1, borderRadius: 15, padding: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },

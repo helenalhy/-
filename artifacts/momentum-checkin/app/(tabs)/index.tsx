@@ -594,7 +594,19 @@ export function TodayScreen() {
   const colors = useColors();
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
-  const { habits, isLoading, storageError, today, coins, rewardedCheckIns, getCheckInReward, toggleCheckIn, makeUpYesterday, deleteHabit } = useHabits();
+  const {
+    habits,
+    isLoading,
+    storageError,
+    today,
+    coins,
+    rewardedCheckIns,
+    protectedStreakDates,
+    getCheckInReward,
+    toggleCheckIn,
+    makeUpYesterday,
+    deleteHabit,
+  } = useHabits();
   const [focusHabit, setFocusHabit] = useState<Habit | null>(null);
   const [focusActionIsRecommendation, setFocusActionIsRecommendation] = useState(false);
   const [focusStartPrompt, setFocusStartPrompt] = useState<string | null>(null);
@@ -719,7 +731,9 @@ export function TodayScreen() {
     setFocusStartPrompt(null);
     router.push('/reminders');
   }
-  const totalStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today, habit.restDays)));
+  const totalStreak = Math.max(0, ...habits.map((habit) => (
+    getStreak(habit.checkIns, today, habit.restDays, protectedStreakDates)
+  )));
   const makeupDatesThisAccount = [
     ...habits.flatMap((habit) => habit.makeupCheckIns),
     ...rewardedCheckIns.flatMap((key) => key.startsWith(MAKEUP_USE_PREFIX) ? [key.slice(MAKEUP_USE_PREFIX.length)] : []),

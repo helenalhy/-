@@ -4,6 +4,7 @@ const net = require('net');
 const { spawn } = require('child_process');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
+const { injectLoadingScreen } = require('./web-loading-screen');
 
 let metroProcess = null;
 let webExportProcess = null;
@@ -206,6 +207,9 @@ function exportWebBuild(domain, expoPublicReplId) {
         return;
       }
 
+      const webHtmlPath = path.join(outputDir, 'index.html');
+      const webHtml = fs.readFileSync(webHtmlPath, 'utf-8');
+      fs.writeFileSync(webHtmlPath, injectLoadingScreen(webHtml));
       console.log('Browser app ready');
       resolve();
     });

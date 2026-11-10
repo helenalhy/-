@@ -85,10 +85,17 @@ export function canMakeUpYesterday(
   return !allMakeupDates.some((dateKey) => getLocalWeekStart(dateKey) === yesterdayWeek);
 }
 
-export function getStreak(checkIns: readonly string[], today: string, restDays: readonly number[] = []): number {
+export function getStreak(
+  checkIns: readonly string[],
+  today: string,
+  restDays: readonly number[] = [],
+  protectedStreakDates: readonly string[] = [],
+): number {
   const dates = new Set(checkIns);
+  const protectedDates = new Set(protectedStreakDates);
   const scheduledRestDays = new Set(restDays);
   let cursor = dates.has(today) || scheduledRestDays.has(getWeekday(today))
+    || protectedDates.has(today)
     ? today
     : getPreviousLocalDate(today);
   let count = 0;
@@ -96,6 +103,8 @@ export function getStreak(checkIns: readonly string[], today: string, restDays: 
   while (scanned < 3660) {
     scanned += 1;
     if (dates.has(cursor)) {
+      count += 1;
+    } else if (protectedDates.has(cursor) && !scheduledRestDays.has(getWeekday(cursor))) {
       count += 1;
     } else if (!scheduledRestDays.has(getWeekday(cursor))) {
       break;

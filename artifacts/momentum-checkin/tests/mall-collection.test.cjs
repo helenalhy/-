@@ -102,6 +102,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
         c: { id: 'c', name: '測試裝飾', category: 'decor' },
         'skyline-tea': { id: 'skyline-tea', floor: 20, category: 'shop' },
       },
+      MALL_ITEMS: [{ id: 'c', name: '測試裝飾', category: 'decor' }],
     };
     if (name === '@/constants/progress-milestones') return {
       getRewardedCheckInCount: (rewardedCheckIns) => rewardedCheckIns.filter((item) => !item.startsWith('makeup-used:')).length,
@@ -115,8 +116,55 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       },
       getWeeklyChallengeLimit: (restDays) => Math.max(0, 7 - new Set(restDays).size),
+      getWeeklyCheckInCount: (checkIns, today) => {
+        const date = new Date(`${today}T12:00:00`);
+        date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+        const weekStart = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return new Set(checkIns.filter((dateKey) => dateKey >= weekStart && dateKey <= today)).size;
+      },
+      getLocalWeekStart: (dateKey) => {
+        const date = new Date(`${dateKey}T12:00:00`);
+        date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      },
       getStreak: (checkIns) => checkIns.length,
       canMakeUpYesterday: () => true,
+    };
+    if (name === '@/lib/streak-protection') return {
+      getMissedScheduledStreakDates: () => [],
+      getStreakRescueDate: (habits, today, protectedDates) => {
+        const date = new Date(`${today}T12:00:00`);
+        date.setDate(date.getDate() - 1);
+        const yesterday = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const activityDates = new Set([
+          ...habits.flatMap((habit) => habit.checkIns ?? []),
+          ...protectedDates,
+        ].filter((dateKey) => dateKey < today));
+        const latest = [...activityDates].sort().at(-1);
+        if (!latest) return null;
+        const next = new Date(`${latest}T12:00:00`);
+        next.setDate(next.getDate() + 1);
+        let cursor = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+        const due = (dateKey) => {
+          const weekday = new Date(`${dateKey}T12:00:00`).getDay();
+          return habits.some((habit) => (!habit.createdAt || habit.createdAt <= dateKey) && !(habit.restDays ?? []).includes(weekday));
+        };
+        while (cursor < yesterday) {
+          if (due(cursor) && !activityDates.has(cursor)) return null;
+          const day = new Date(`${cursor}T12:00:00`);
+          day.setDate(day.getDate() + 1);
+          cursor = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+        }
+        const todayStart = new Date(`${today}T00:00:00`).getTime();
+        return due(yesterday)
+          && !activityDates.has(yesterday)
+          && Date.now() < todayStart + 24 * 60 * 60 * 1000
+          ? yesterday
+          : null;
+      },
+    };
+    if (name === '@/lib/weekly-challenge-rewards') return {
+      getWeeklyChallengeRewardItemId: () => 'c',
     };
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
@@ -219,7 +267,7 @@ test('legacy migration preserves positions and assigns only missing legacy purch
   assert.deepEqual(app.value.mallPlacements, {
     'floor-1-left': 'a', 'floor-3-right': 'b', 'floor-3-left': 'c',
   });
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 5);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 6);
   const noPositions = await mount(seed({ placements: undefined }));
   assert.deepEqual(noPositions.value.mallPlacements, { 'floor-3-left': 'a', 'floor-3-center': 'b' });
 });
@@ -235,7 +283,7 @@ test('legacy Sky Garden placements move to the rooftop while other floor-ten obj
     'floor-20-left': 'skyline-tea',
     'floor-10-center': 'a',
   });
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 5);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 6);
 });
 
 test('store, reload, reward, restore on another floor, swap and reload preserve ownership and balances', async () => {
@@ -250,7 +298,7 @@ test('store, reload, reward, restore on another floor, swap and reload preserve 
   app = await mount(storage);
   assert.deepEqual(app.value.mallPlacements, { 'floor-3-right': 'b' });
   await app.value.toggleCheckIn('starter-walk');
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 5);
+  assert.equal(JSON.parse(storage[key]).schemaVersion, 6);
   app = await mount(storage);
   assert.equal(Object.values(app.value.mallPlacements).includes('a'), false);
   const before = { coins: app.value.coins, tokens: { ...app.value.rewardTokens } };
@@ -729,7 +777,7 @@ test('legacy dedicated dog stations migrate into their matching extension areas'
 });
 
 test('existing versioned habits and mall hydrate without any startup writes on a full device', async () => {
-  const storage = seed({ schemaVersion: 5, placements: { 'floor-1-left': 'a' } });
+  const storage = seed({ schemaVersion: 6, placements: { 'floor-1-left': 'a' } });
   const habits = [{
     id: 'saved-habit', title: '已儲存目標', reason: '保留我的紀錄',
     icon: 'activity', rewardCategory: 'facility', createdAt: '2026-01-01', checkIns: ['2026-10-20'],
@@ -759,4 +807,86 @@ test('failed legacy migration writes still show successfully read habits, owners
   assert.deepEqual(app.value.purchasedItems, ['a', 'b']);
   assert.deepEqual(app.value.mallPlacements, { 'floor-1-left': 'a', 'floor-3-right': 'b' });
   assert.deepEqual(storage, original);
+});
+
+test('streak leave cards cost 50 coins, persist, and cannot exceed two held cards', async () => {
+  const storage = seed({ coins: 100, leaveCards: 0 });
+  let app = await mount(storage);
+  await app.value.purchaseStreakLeaveCard();
+  assert.equal(app.value.coins, 50);
+  assert.equal(app.value.leaveCards, 1);
+  assert.equal(JSON.parse(storage[key]).leaveCards, 1);
+
+  await app.value.purchaseStreakLeaveCard();
+  assert.equal(app.value.coins, 0);
+  assert.equal(app.value.leaveCards, 2);
+  await assert.rejects(app.value.purchaseStreakLeaveCard(), /最多持有 2 張/);
+  assert.equal(app.value.coins, 0);
+
+  app = await mount(storage);
+  assert.equal(app.value.leaveCards, 2);
+  assert.equal(app.value.coins, 0);
+});
+
+test('paid streak repair costs 80 coins and protects continuity without adding a target check-in', async () => {
+  const asKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const today = asKey(new Date());
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const previousDay = new Date(yesterday);
+  previousDay.setDate(previousDay.getDate() - 1);
+  const yesterdayKey = asKey(yesterday);
+  const storage = seed({ coins: 100, leaveCards: 0, protectedStreakDates: [] });
+  storage[habitsKey] = JSON.stringify([{
+    id: 'walk',
+    title: '散步',
+    reason: '',
+    icon: 'activity',
+    color: '#fff',
+    rewardCategory: 'facility',
+    createdAt: asKey(previousDay),
+    checkIns: [asKey(previousDay)],
+    steps: [],
+    restDays: [],
+    stepCheckIns: {},
+    makeupCheckIns: [],
+  }]);
+  const app = await mount(storage);
+  assert.equal(app.value.today, today);
+  assert.equal(await app.value.rescueStreakBreak(), yesterdayKey);
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.protectedStreakDates, [yesterdayKey]);
+  assert.deepEqual(app.value.habits[0].checkIns, [asKey(previousDay)]);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, []);
+  assert.equal(JSON.parse(storage[key]).coins, 20);
+});
+
+test('weekly challenge grants its existing catalog decor and 30 coins only once per week', async () => {
+  const asKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const today = asKey(new Date());
+  const storage = seed({ coins: 75, purchasedItems: [] });
+  storage[habitsKey] = JSON.stringify([{
+    id: 'walk',
+    title: '散步',
+    reason: '',
+    icon: 'activity',
+    color: '#fff',
+    rewardCategory: 'facility',
+    createdAt: today,
+    checkIns: [today],
+    steps: [],
+    restDays: [],
+    stepCheckIns: {},
+    makeupCheckIns: [],
+    weeklyChallengeTarget: 1,
+  }]);
+  const app = await mount(storage);
+  assert.equal(await app.value.claimWeeklyChallengeReward(), 'c');
+  assert.equal(app.value.coins, 105);
+  assert.deepEqual(app.value.purchasedItems, ['c']);
+  assert.equal(await app.value.claimWeeklyChallengeReward(), null);
+  assert.equal(app.value.coins, 105);
+  const saved = JSON.parse(storage[key]);
+  assert.deepEqual(saved.weeklyChallengeRewardedWeeks, [app.value.progressSnapshot.mall.weeklyChallengeRewardedWeeks[0]]);
+  assert.deepEqual(saved.weeklyChallengeRewardPlans, app.value.progressSnapshot.mall.weeklyChallengeRewardPlans);
 });

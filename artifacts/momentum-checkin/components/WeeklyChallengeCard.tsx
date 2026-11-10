@@ -1,17 +1,29 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MALL_ITEM_BY_ID } from '@/constants/mall';
 import { useHabits, type Habit } from '@/context/HabitsContext';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { useColors } from '@/hooks/useColors';
-import { getWeeklyChallengeLimit, getWeeklyCheckInCount } from '@/lib/habit-schedule';
+import { getLocalWeekStart, getWeeklyChallengeLimit, getWeeklyCheckInCount } from '@/lib/habit-schedule';
+import { getWeeklyChallengeRewardItemId } from '@/lib/weekly-challenge-rewards';
 
 const TARGET_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 export function WeeklyChallengeCard() {
   const colors = useColors();
   const reduceMotion = useReducedMotion();
-  const { habits, today, setWeeklyChallenge } = useHabits();
+  const {
+    habits,
+    today,
+    isLoading,
+    purchasedItems,
+    weeklyChallengeRewardPlans,
+    weeklyChallengeRewardedWeeks,
+    setWeeklyChallenge,
+    ensureWeeklyChallengeRewardPlan,
+    claimWeeklyChallengeReward,
+  } = useHabits();
   const challenge = habits.find((habit) => habit.weeklyChallengeTarget !== undefined);
   const challengeHasTooManyRestDays = Boolean(
     challenge && challenge.weeklyChallengeTarget! > getWeeklyChallengeLimit(challenge.restDays),
@@ -25,6 +37,38 @@ export function WeeklyChallengeCard() {
   const [draftTarget, setDraftTarget] = useState<number>(3);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rewardError, setRewardError] = useState<string | null>(null);
+  const [rewardNotice, setRewardNotice] = useState<string | null>(null);
+  const planAttemptRef = useRef<string | null>(null);
+  const claimAttemptRef = useRef<string | null>(null);
+  const weekStart = getLocalWeekStart(today);
+  const rewardItemId = weeklyChallengeRewardPlans[weekStart]
+    ?? getWeeklyChallengeRewardItemId(today, purchasedItems);
+  const rewardItem = rewardItemId ? MALL_ITEM_BY_ID[rewardItemId] : undefined;
+  const rewardClaimed = weeklyChallengeRewardedWeeks.includes(weekStart);
+
+  useEffect(() => {
+    if (isLoading || !challenge || weeklyChallengeRewardPlans[weekStart] || planAttemptRef.current === weekStart) return;
+    planAttemptRef.current = weekStart;
+    void ensureWeeklyChallengeRewardPlan().catch((planError) => {
+      setRewardError(planError instanceof Error ? planError.message : '本週裝飾獎勵暫時無法保存。');
+    });
+  }, [isLoading, challenge?.id, weekStart, weeklyChallengeRewardPlans, ensureWeeklyChallengeRewardPlan]);
+
+  useEffect(() => {
+    if (isLoading || !challenge || !isComplete || rewardClaimed || claimAttemptRef.current === weekStart) return;
+    claimAttemptRef.current = weekStart;
+    setRewardError(null);
+    void claimWeeklyChallengeReward().then((itemId) => {
+      if (itemId) {
+        const item = MALL_ITEM_BY_ID[itemId];
+        setRewardNotice(`已獲得 30 金幣與「${item?.name ?? '本週商場裝飾'}」！`);
+      }
+    }).catch((claimError) => {
+      claimAttemptRef.current = null;
+      setRewardError(claimError instanceof Error ? claimError.message : '本週獎勵沒有領取成功，請再試一次。');
+    });
+  }, [isLoading, challenge?.id, isComplete, rewardClaimed, weekStart, claimWeeklyChallengeReward]);
   const selectedDraftHabit = habits.find((habit) => habit.id === draftHabitId);
   const targetOptions = TARGET_OPTIONS.filter((option) => (
     option <= (selectedDraftHabit ? getWeeklyChallengeLimit(selectedDraftHabit.restDays) : 7)
@@ -109,11 +153,29 @@ export function WeeklyChallengeCard() {
             <View style={[styles.track, { backgroundColor: colors.secondary }]}>
               <View style={[styles.fill, { backgroundColor: isComplete ? colors.candyMintDark : colors.primary, width: `${progress}%` }]} />
             </View>
+            <View style={[styles.rewardPreview, { backgroundColor: colors.secondary }]}>
+              <Feather name={rewardClaimed ? 'check-circle' : 'gift'} size={15} color={colors.primary} />
+              <Text style={[styles.rewardText, { color: colors.foreground }]}>
+                {rewardClaimed
+                  ? `本週獎勵已領取 · +30 金幣${rewardItem ? ` · ${rewardItem.name}` : ''}`
+                  : `達標獎勵：+30 金幣 · 每週限定裝飾「${rewardItem?.name ?? '商場裝飾'}」`}
+              </Text>
+            </View>
+            {rewardNotice ? <Text style={[styles.rewardFeedback, { color: colors.primary }]} accessibilityLiveRegion="polite">{rewardNotice}</Text> : null}
+            {rewardError ? <Text style={[styles.rewardFeedback, { color: colors.destructive }]} accessibilityRole="alert">{rewardError}</Text> : null}
           </>
         ) : (
-          <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            完成後會有商場慶祝動畫，不增加樓層，也不用花金幣。
-          </Text>
+          <>
+            <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+              完成後獲得 +30 金幣和每週限定裝飾，不增加樓層，也不用花金幣。
+            </Text>
+            <View style={[styles.rewardPreview, { backgroundColor: colors.secondary }]}>
+              <Feather name="gift" size={15} color={colors.primary} />
+              <Text style={[styles.rewardText, { color: colors.foreground }]}>
+                本週裝飾獎勵：{rewardItem?.name ?? '商場裝飾'} · 從現有目錄中挑選
+              </Text>
+            </View>
+          </>
         )}
       </View>
 
@@ -266,6 +328,9 @@ const styles = StyleSheet.create({
   track: { height: 7, overflow: 'hidden', borderRadius: 99, marginTop: 8 },
   fill: { height: '100%', borderRadius: 99 },
   hint: { fontSize: 11, lineHeight: 17, marginTop: 12 },
+  rewardPreview: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 10, marginTop: 11 },
+  rewardText: { flex: 1, fontSize: 10, lineHeight: 15, fontWeight: '600' },
+  rewardFeedback: { fontSize: 10, lineHeight: 15, marginTop: 7 },
   backdrop: { flex: 1, justifyContent: 'center', padding: 17, backgroundColor: 'rgba(38, 25, 42, 0.42)' },
   dismissLayer: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   panel: { width: '100%', maxWidth: 440, maxHeight: '90%', alignSelf: 'center', borderWidth: 1, borderRadius: 24, padding: 18 },

@@ -23,7 +23,18 @@ import {
 } from '@/constants/mall-shop-interior';
 import { MALL_ITEM_BY_ID } from '@/constants/mall';
 import { getRewardedCheckInCount } from '@/constants/progress-milestones';
-import { canMakeUpYesterday, getPreviousLocalDate, getWeeklyChallengeLimit, getWeekday, getStreak, MAKEUP_USE_PREFIX } from '@/lib/habit-schedule';
+import {
+  canMakeUpYesterday,
+  getLocalWeekStart,
+  getPreviousLocalDate,
+  getWeeklyChallengeLimit,
+  getWeeklyCheckInCount,
+  getWeekday,
+  getStreak,
+  MAKEUP_USE_PREFIX,
+} from '@/lib/habit-schedule';
+import { getMissedScheduledStreakDates, getStreakRescueDate } from '@/lib/streak-protection';
+import { getWeeklyChallengeRewardItemId } from '@/lib/weekly-challenge-rewards';
 import {
   canDisplayShopProducts,
   getShopFixtureProductCatalog,
@@ -76,6 +87,10 @@ interface CheckInTransaction {
     rewardTokens: RewardTokens;
     placements: Record<string, string>;
     shopInteriors: ShopInteriorCollection;
+    leaveCards: number;
+    protectedStreakDates: string[];
+    weeklyChallengeRewardPlans: Record<string, string>;
+    weeklyChallengeRewardedWeeks: string[];
   };
 }
 
@@ -118,6 +133,10 @@ interface HabitsContextValue {
   coins: number;
   purchasedItems: string[];
   rewardedCheckIns: string[];
+  leaveCards: number;
+  protectedStreakDates: string[];
+  weeklyChallengeRewardPlans: Record<string, string>;
+  weeklyChallengeRewardedWeeks: string[];
   mallPlacements: Record<string, string>;
   shopInteriors: ShopInteriorCollection;
   rewardTokens: RewardTokens;
@@ -127,7 +146,11 @@ interface HabitsContextValue {
   deleteHabit: (id: string) => Promise<void>;
   toggleCheckIn: (id: string, completedStep?: string, rewardAmount?: number) => Promise<number>;
   makeUpYesterday: (id: string) => Promise<number>;
+  purchaseStreakLeaveCard: () => Promise<void>;
+  rescueStreakBreak: () => Promise<string>;
   setWeeklyChallenge: (habitId: string | null, target: number | null) => Promise<void>;
+  ensureWeeklyChallengeRewardPlan: () => Promise<string | null>;
+  claimWeeklyChallengeReward: () => Promise<string | null>;
   purchaseMallItem: (itemId: string, price: number, category: RewardCategory, ticketCost: number, slotId: MallSlotId) => Promise<void>;
   moveMallItem: (itemId: string, slotId: MallSlotId) => Promise<void>;
   storeMallItem: (itemId: string) => Promise<void>;
@@ -146,7 +169,7 @@ const STORAGE_KEY = 'momentum.habits.v1';
 const MALL_STORAGE_KEY = 'momentum.mall.v1';
 const CHECK_IN_TRANSACTION_KEY = 'momentum.checkin-transaction.v1';
 // Version 2 made unplaced items intentional collection items; v3 adds per-shop interiors.
-const MALL_SCHEMA_VERSION = 5;
+const MALL_SCHEMA_VERSION = 6;
 const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
 const IS_DEVELOPMENT_BUILD = typeof __DEV__ !== 'undefined' && __DEV__;
@@ -160,6 +183,10 @@ type StoredMallData = {
   rewardTokens?: Partial<RewardTokens>;
   placements?: Record<string, string>;
   shopInteriors?: ShopInteriorCollection;
+  leaveCards?: number;
+  protectedStreakDates?: string[];
+  weeklyChallengeRewardPlans?: Record<string, string>;
+  weeklyChallengeRewardedWeeks?: string[];
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -198,6 +225,23 @@ function parseMallData(value: string): StoredMallData {
   }
   if (parsed.placements !== undefined && !isStringRecord(parsed.placements)) {
     throw new Error('商場位置資料格式無效');
+  }
+  if (parsed.leaveCards !== undefined
+    && (!Number.isInteger(parsed.leaveCards) || Number(parsed.leaveCards) < 0 || Number(parsed.leaveCards) > 2)) {
+    throw new Error('請假卡數量格式無效');
+  }
+  if (parsed.protectedStreakDates !== undefined
+    && (!isStringArray(parsed.protectedStreakDates)
+      || parsed.protectedStreakDates.some((date) => !/^\d{4}-\d{2}-\d{2}$/.test(date)))) {
+    throw new Error('連續日數保護紀錄格式無效');
+  }
+  if (parsed.weeklyChallengeRewardPlans !== undefined && !isStringRecord(parsed.weeklyChallengeRewardPlans)) {
+    throw new Error('每週挑戰獎勵資料格式無效');
+  }
+  if (parsed.weeklyChallengeRewardedWeeks !== undefined
+    && (!isStringArray(parsed.weeklyChallengeRewardedWeeks)
+      || parsed.weeklyChallengeRewardedWeeks.some((date) => !/^\d{4}-\d{2}-\d{2}$/.test(date)))) {
+    throw new Error('每週挑戰領取紀錄格式無效');
   }
   if (parsed.rewardTokens !== undefined) {
     if (!isRecord(parsed.rewardTokens)) throw new Error('商場獎勵券格式無效');
@@ -274,6 +318,18 @@ function parseCheckInTransaction(value: string | null): CheckInTransaction | nul
   ) {
     throw new Error('打卡交易紀錄格式無效');
   }
+  transaction.mall.leaveCards = Number.isInteger(transaction.mall.leaveCards)
+    ? Math.max(0, Math.min(2, transaction.mall.leaveCards))
+    : 0;
+  transaction.mall.protectedStreakDates = isStringArray(transaction.mall.protectedStreakDates)
+    ? transaction.mall.protectedStreakDates
+    : [];
+  transaction.mall.weeklyChallengeRewardPlans = isStringRecord(transaction.mall.weeklyChallengeRewardPlans)
+    ? transaction.mall.weeklyChallengeRewardPlans
+    : {};
+  transaction.mall.weeklyChallengeRewardedWeeks = isStringArray(transaction.mall.weeklyChallengeRewardedWeeks)
+    ? transaction.mall.weeklyChallengeRewardedWeeks
+    : [];
   return transaction;
 }
 
@@ -519,6 +575,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [shopInteriors, setShopInteriors] = useState<ShopInteriorCollection>({});
   const [rewardTokens, setRewardTokens] = useState<RewardTokens>(EMPTY_TOKENS);
   const [rewardedCheckIns, setRewardedCheckIns] = useState<string[]>([]);
+  const [leaveCards, setLeaveCards] = useState(0);
+  const [protectedStreakDates, setProtectedStreakDates] = useState<string[]>([]);
+  const [weeklyChallengeRewardPlans, setWeeklyChallengeRewardPlans] = useState<Record<string, string>>({});
+  const [weeklyChallengeRewardedWeeks, setWeeklyChallengeRewardedWeeks] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [mallLoadError, setMallLoadError] = useState<string | null>(null);
@@ -526,6 +586,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [cloudSyncMessage, setCloudSyncMessage] = useState<string | null>(null);
   const actionLock = useRef(false);
   const mallLoadErrorRef = useRef(false);
+  const weeklyPlanAttemptRef = useRef<string | null>(null);
+  const weeklyRewardClaimAttemptRef = useRef<string | null>(null);
   const [today, setToday] = useState(() => getLocalDate());
   const setCloudSyncState = useCallback((status: CloudSyncStatus, message: string | null = null) => {
     setCloudSyncStatus(status);
@@ -589,7 +651,16 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         );
         if (active) setHabits(initialHabits);
         const initialMall = checkInTransaction?.mall ?? (savedMall === null
-          ? { coins: 0, purchasedItems: [], rewardedCheckIns: [], rewardTokens: EMPTY_TOKENS }
+          ? {
+            coins: 0,
+            purchasedItems: [],
+            rewardedCheckIns: [],
+            rewardTokens: EMPTY_TOKENS,
+            leaveCards: 0,
+            protectedStreakDates: [],
+            weeklyChallengeRewardPlans: {},
+            weeklyChallengeRewardedWeeks: [],
+          }
           : parseMallData(savedMall));
         const initialPurchasedItems = initialMall.purchasedItems ?? [];
         const initialPlacements = normalizeMallPlacements(initialMall.placements, initialPurchasedItems, initialMall.schemaVersion);
@@ -602,6 +673,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           setShopInteriors(initialShopInteriors);
           setRewardedCheckIns(initialMall.rewardedCheckIns ?? []);
           setRewardTokens({ ...EMPTY_TOKENS, ...initialMall.rewardTokens });
+          setLeaveCards(initialMall.leaveCards ?? 0);
+          setProtectedStreakDates(initialMall.protectedStreakDates ?? []);
+          setWeeklyChallengeRewardPlans(initialMall.weeklyChallengeRewardPlans ?? {});
+          setWeeklyChallengeRewardedWeeks(initialMall.weeklyChallengeRewardedWeeks ?? []);
         }
         // Reading existing data must not depend on being able to write a migration.
         try {
@@ -624,7 +699,11 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
                 ...initialMall,
                 schemaVersion: MALL_SCHEMA_VERSION,
                 placements: initialPlacements,
-              shopInteriors: initialShopInteriors,
+                shopInteriors: initialShopInteriors,
+                leaveCards: initialMall.leaveCards ?? 0,
+                protectedStreakDates: initialMall.protectedStreakDates ?? [],
+                weeklyChallengeRewardPlans: initialMall.weeklyChallengeRewardPlans ?? {},
+                weeklyChallengeRewardedWeeks: initialMall.weeklyChallengeRewardedWeeks ?? [],
               })),
             ] : []),
           ]);
@@ -665,23 +744,83 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const saveMall = useCallback(async (next: { coins: number; purchasedItems: string[]; rewardedCheckIns: string[]; rewardTokens: RewardTokens; placements: Record<string, string>; shopInteriors: ShopInteriorCollection }) => {
+  const saveMall = useCallback(async (next: {
+    coins: number;
+    purchasedItems: string[];
+    rewardedCheckIns: string[];
+    rewardTokens: RewardTokens;
+    placements: Record<string, string>;
+    shopInteriors: ShopInteriorCollection;
+    leaveCards?: number;
+    protectedStreakDates?: string[];
+    weeklyChallengeRewardPlans?: Record<string, string>;
+    weeklyChallengeRewardedWeeks?: string[];
+  }) => {
     if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
     try {
       await recoverPendingCheckInTransaction();
-      await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify({ ...next, schemaVersion: MALL_SCHEMA_VERSION }));
+      const savedMall = {
+        ...next,
+        leaveCards: next.leaveCards ?? leaveCards,
+        protectedStreakDates: next.protectedStreakDates ?? protectedStreakDates,
+        weeklyChallengeRewardPlans: next.weeklyChallengeRewardPlans ?? weeklyChallengeRewardPlans,
+        weeklyChallengeRewardedWeeks: next.weeklyChallengeRewardedWeeks ?? weeklyChallengeRewardedWeeks,
+        schemaVersion: MALL_SCHEMA_VERSION,
+      };
+      await AsyncStorage.setItem(MALL_STORAGE_KEY, JSON.stringify(savedMall));
       setCoins(next.coins);
       setPurchasedItems(next.purchasedItems);
       setMallPlacements(next.placements);
       setShopInteriors(next.shopInteriors);
       setRewardedCheckIns(next.rewardedCheckIns);
       setRewardTokens(next.rewardTokens);
+      setLeaveCards(savedMall.leaveCards);
+      setProtectedStreakDates(savedMall.protectedStreakDates);
+      setWeeklyChallengeRewardPlans(savedMall.weeklyChallengeRewardPlans);
+      setWeeklyChallengeRewardedWeeks(savedMall.weeklyChallengeRewardedWeeks);
       setStorageError(null);
     } catch {
       setStorageError('商場資料儲存失敗，請檢查裝置空間後再試一次。');
       throw new Error('無法儲存商場資料');
     }
-  }, []);
+  }, [leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks]);
+
+  useEffect(() => {
+    if (isLoading || mallLoadErrorRef.current || leaveCards <= 0 || actionLock.current) return;
+    const missedDates = getMissedScheduledStreakDates(habits, today, protectedStreakDates);
+    const datesToProtect = missedDates.slice(0, leaveCards);
+    if (datesToProtect.length === 0) return;
+
+    actionLock.current = true;
+    const nextProtectedDates = [...new Set([...protectedStreakDates, ...datesToProtect])].sort();
+    void saveMall({
+      coins,
+      purchasedItems,
+      rewardedCheckIns,
+      rewardTokens,
+      placements: mallPlacements,
+      shopInteriors,
+      leaveCards: leaveCards - datesToProtect.length,
+      protectedStreakDates: nextProtectedDates,
+    }).catch(() => {
+      // The card is not consumed unless the combined update is stored.
+    }).finally(() => {
+      actionLock.current = false;
+    });
+  }, [
+    habits,
+    today,
+    isLoading,
+    leaveCards,
+    protectedStreakDates,
+    coins,
+    purchasedItems,
+    rewardedCheckIns,
+    rewardTokens,
+    mallPlacements,
+    shopInteriors,
+    saveMall,
+  ]);
 
   const replaceProgressFromCloud = useCallback(async (snapshot: unknown) => {
     if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
@@ -739,6 +878,18 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       Number(rawMall.schemaVersion ?? 1),
     );
     const nextShopInteriors = normalizeShopInteriors(rawInteriors, purchasedItems);
+    const leaveCards = Number.isInteger(rawMall.leaveCards)
+      ? Math.max(0, Math.min(2, Number(rawMall.leaveCards)))
+      : 0;
+    const protectedStreakDates = isStringArray(rawMall.protectedStreakDates)
+      ? rawMall.protectedStreakDates.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+      : [];
+    const weeklyChallengeRewardPlans = isStringRecord(rawMall.weeklyChallengeRewardPlans)
+      ? rawMall.weeklyChallengeRewardPlans
+      : {};
+    const weeklyChallengeRewardedWeeks = isStringArray(rawMall.weeklyChallengeRewardedWeeks)
+      ? rawMall.weeklyChallengeRewardedWeeks.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+      : [];
     const transaction: CheckInTransaction = {
       version: 1,
       habits: nextHabits,
@@ -750,6 +901,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         rewardTokens: nextRewardTokens,
         placements: nextPlacements,
         shopInteriors: nextShopInteriors,
+        leaveCards,
+        protectedStreakDates,
+        weeklyChallengeRewardPlans,
+        weeklyChallengeRewardedWeeks,
       },
     };
 
@@ -763,6 +918,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       setShopInteriors(nextShopInteriors);
       setRewardedCheckIns(rewardedCheckIns);
       setRewardTokens(nextRewardTokens);
+      setLeaveCards(leaveCards);
+      setProtectedStreakDates(protectedStreakDates);
+      setWeeklyChallengeRewardPlans(weeklyChallengeRewardPlans);
+      setWeeklyChallengeRewardedWeeks(weeklyChallengeRewardedWeeks);
       setStorageError(null);
     } catch {
       setStorageError('雲端資料已讀取，但無法安全寫入裝置；原有進度未被覆蓋。');
@@ -840,6 +999,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
             shopInteriors,
             rewardedCheckIns: [...rewardedCheckIns, rewardKey],
             rewardTokens,
+            leaveCards,
+            protectedStreakDates,
+            weeklyChallengeRewardPlans,
+            weeklyChallengeRewardedWeeks,
           },
         };
         // The one-key journal is the commit point. If either legacy mirror write
@@ -870,7 +1033,21 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     } finally {
       actionLock.current = false;
     }
-  }, [habits, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, save]);
+  }, [
+    habits,
+    today,
+    rewardedCheckIns,
+    coins,
+    purchasedItems,
+    mallPlacements,
+    shopInteriors,
+    rewardTokens,
+    leaveCards,
+    protectedStreakDates,
+    weeklyChallengeRewardPlans,
+    weeklyChallengeRewardedWeeks,
+    save,
+  ]);
 
   const makeUpYesterday = useCallback(async (id: string) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');
@@ -911,6 +1088,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           shopInteriors,
           rewardedCheckIns: nextRewardedCheckIns,
           rewardTokens,
+          leaveCards,
+          protectedStreakDates,
+          weeklyChallengeRewardPlans,
+          weeklyChallengeRewardedWeeks,
         },
       };
       await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
@@ -933,7 +1114,181 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     } finally {
       actionLock.current = false;
     }
-  }, [habits, save, today, rewardedCheckIns, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens]);
+  }, [
+    habits,
+    save,
+    today,
+    rewardedCheckIns,
+    coins,
+    purchasedItems,
+    mallPlacements,
+    shopInteriors,
+    rewardTokens,
+    leaveCards,
+    protectedStreakDates,
+    weeklyChallengeRewardPlans,
+    weeklyChallengeRewardedWeeks,
+  ]);
+
+  const purchaseStreakLeaveCard = useCallback(async () => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
+    if (leaveCards >= 2) throw new Error('請假卡最多持有 2 張。');
+    if (coins < 50) throw new Error('金幣不足，需要 50 金幣兌換請假卡。');
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins: coins - 50,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors,
+        leaveCards: leaveCards + 1,
+      });
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // A saved purchase remains successful even if haptics are unavailable.
+      }
+    } finally {
+      actionLock.current = false;
+    }
+  }, [
+    leaveCards,
+    coins,
+    purchasedItems,
+    rewardedCheckIns,
+    rewardTokens,
+    mallPlacements,
+    shopInteriors,
+    saveMall,
+  ]);
+
+  const rescueStreakBreak = useCallback(async () => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
+    const missedDate = getStreakRescueDate(habits, today, protectedStreakDates);
+    if (!missedDate) throw new Error('目前沒有可在 24 小時內補救的連續日數。');
+    if (coins < 80) throw new Error('金幣不足，需要 80 金幣補救連續日數。');
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins: coins - 80,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors,
+        protectedStreakDates: [...new Set([...protectedStreakDates, missedDate])].sort(),
+      });
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // A saved recovery remains successful even if haptics are unavailable.
+      }
+      return missedDate;
+    } finally {
+      actionLock.current = false;
+    }
+  }, [
+    habits,
+    today,
+    protectedStreakDates,
+    coins,
+    purchasedItems,
+    rewardedCheckIns,
+    rewardTokens,
+    mallPlacements,
+    shopInteriors,
+    saveMall,
+  ]);
+
+  const ensureWeeklyChallengeRewardPlan = useCallback(async () => {
+    const challenge = habits.find((habit) => habit.weeklyChallengeTarget !== undefined);
+    if (!challenge) return null;
+    const weekStart = getLocalWeekStart(today);
+    const existing = weeklyChallengeRewardPlans[weekStart];
+    if (existing && MALL_ITEM_BY_ID[existing]?.category === 'decor') return existing;
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    const rewardItemId = getWeeklyChallengeRewardItemId(today, purchasedItems);
+    if (!rewardItemId) throw new Error('目前沒有可作為挑戰獎勵的商場裝飾。');
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors,
+        weeklyChallengeRewardPlans: { ...weeklyChallengeRewardPlans, [weekStart]: rewardItemId },
+      });
+      return rewardItemId;
+    } finally {
+      actionLock.current = false;
+    }
+  }, [
+    habits,
+    today,
+    weeklyChallengeRewardPlans,
+    purchasedItems,
+    coins,
+    rewardedCheckIns,
+    rewardTokens,
+    mallPlacements,
+    shopInteriors,
+    saveMall,
+  ]);
+
+  const claimWeeklyChallengeReward = useCallback(async () => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
+    const challenge = habits.find((habit) => habit.weeklyChallengeTarget !== undefined);
+    if (!challenge || getWeeklyCheckInCount(challenge.checkIns, today) < (challenge.weeklyChallengeTarget ?? 1)) {
+      return null;
+    }
+    const weekStart = getLocalWeekStart(today);
+    if (weeklyChallengeRewardedWeeks.includes(weekStart)) return null;
+    const rewardItemId = weeklyChallengeRewardPlans[weekStart]
+      ?? getWeeklyChallengeRewardItemId(today, purchasedItems);
+    if (!rewardItemId || MALL_ITEM_BY_ID[rewardItemId]?.category !== 'decor') {
+      throw new Error('找不到本週挑戰的裝飾獎勵。');
+    }
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins: coins + 30,
+        purchasedItems: [...new Set([...purchasedItems, rewardItemId])],
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors,
+        weeklyChallengeRewardPlans: { ...weeklyChallengeRewardPlans, [weekStart]: rewardItemId },
+        weeklyChallengeRewardedWeeks: [...new Set([...weeklyChallengeRewardedWeeks, weekStart])].sort(),
+      });
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // The saved reward remains successful even if haptics are unavailable.
+      }
+      return rewardItemId;
+    } finally {
+      actionLock.current = false;
+    }
+  }, [
+    habits,
+    today,
+    weeklyChallengeRewardedWeeks,
+    weeklyChallengeRewardPlans,
+    purchasedItems,
+    coins,
+    rewardedCheckIns,
+    rewardTokens,
+    mallPlacements,
+    shopInteriors,
+    saveMall,
+  ]);
 
   const setWeeklyChallenge = useCallback(async (habitId: string | null, target: number | null) => {
     if (habitId === null) {
@@ -949,11 +1304,68 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (target > getWeeklyChallengeLimit(selectedHabit.restDays)) {
       throw new Error('每週挑戰次數不能多於這個目標每週安排的練習日');
     }
-    await save(habits.map((habit) => ({
-      ...habit,
-      weeklyChallengeTarget: habit.id === habitId ? target : undefined,
-    })));
-  }, [habits, save]);
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    actionLock.current = true;
+    try {
+      await save(habits.map((habit) => ({
+        ...habit,
+        weeklyChallengeTarget: habit.id === habitId ? target : undefined,
+      })));
+      const weekStart = getLocalWeekStart(today);
+      if (!weeklyChallengeRewardPlans[weekStart]) {
+        const rewardItemId = getWeeklyChallengeRewardItemId(today, purchasedItems);
+        if (rewardItemId) {
+          await saveMall({
+            coins,
+            purchasedItems,
+            rewardedCheckIns,
+            rewardTokens,
+            placements: mallPlacements,
+            shopInteriors,
+            weeklyChallengeRewardPlans: { ...weeklyChallengeRewardPlans, [weekStart]: rewardItemId },
+          });
+        }
+      }
+    } finally {
+      actionLock.current = false;
+    }
+  }, [
+    habits,
+    save,
+    today,
+    weeklyChallengeRewardPlans,
+    purchasedItems,
+    coins,
+    rewardedCheckIns,
+    rewardTokens,
+    mallPlacements,
+    shopInteriors,
+    saveMall,
+  ]);
+
+  useEffect(() => {
+    if (isLoading || mallLoadErrorRef.current) return;
+    const challenge = habits.find((habit) => habit.weeklyChallengeTarget !== undefined);
+    if (!challenge) return;
+    const weekStart = getLocalWeekStart(today);
+    if (weeklyChallengeRewardPlans[weekStart] || weeklyPlanAttemptRef.current === weekStart) return;
+    weeklyPlanAttemptRef.current = weekStart;
+    void ensureWeeklyChallengeRewardPlan().catch(() => {
+      weeklyPlanAttemptRef.current = null;
+    });
+  }, [habits, today, isLoading, weeklyChallengeRewardPlans, ensureWeeklyChallengeRewardPlan]);
+
+  useEffect(() => {
+    if (isLoading || mallLoadErrorRef.current) return;
+    const challenge = habits.find((habit) => habit.weeklyChallengeTarget !== undefined);
+    if (!challenge || getWeeklyCheckInCount(challenge.checkIns, today) < (challenge.weeklyChallengeTarget ?? 1)) return;
+    const weekStart = getLocalWeekStart(today);
+    if (weeklyChallengeRewardedWeeks.includes(weekStart) || weeklyRewardClaimAttemptRef.current === weekStart) return;
+    weeklyRewardClaimAttemptRef.current = weekStart;
+    void claimWeeklyChallengeReward().catch(() => {
+      weeklyRewardClaimAttemptRef.current = null;
+    });
+  }, [habits, today, isLoading, weeklyChallengeRewardedWeeks, claimWeeklyChallengeReward]);
 
   // Legacy arguments remain compatible with saved/older clients; only earned coins are spent.
   const purchaseMallItem = useCallback(async (itemId: string, price: number, _category: RewardCategory, _ticketCost: number, slotId: MallSlotId) => {
@@ -1339,15 +1751,31 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       purchasedItems,
       rewardedCheckIns,
       rewardTokens,
+      leaveCards,
+      protectedStreakDates,
+      weeklyChallengeRewardPlans,
+      weeklyChallengeRewardedWeeks,
       placements: mallPlacements,
       shopInteriors,
     },
-  }), [habits, coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors]);
+  }), [
+    habits,
+    coins,
+    purchasedItems,
+    rewardedCheckIns,
+    rewardTokens,
+    leaveCards,
+    protectedStreakDates,
+    weeklyChallengeRewardPlans,
+    weeklyChallengeRewardedWeeks,
+    mallPlacements,
+    shopInteriors,
+  ]);
 
   const value = useMemo(() => ({
       habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
-      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, setWeeklyChallenge, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, setWeeklyChallenge, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
+      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, getCheckInReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

@@ -10,6 +10,8 @@ import { useCloudSyncControls } from '@/context/ProgressSyncBridge';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 import { getNextMilestone, getRewardedCheckInCount, getUnlockedMilestones, PROGRESS_MILESTONES } from '@/constants/progress-milestones';
 import { WeeklyChallengeCard } from '@/components/WeeklyChallengeCard';
+import { StreakProtectionCard } from '@/components/StreakProtectionCard';
+import { MonthlyProgressCalendar } from '@/components/MonthlyProgressCalendar';
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -21,7 +23,14 @@ export default function ProgressScreen() {
   const { user, isLoaded: userLoaded } = useUser();
   const { signOut } = useClerk();
   const { retry } = useCloudSyncControls();
-  const { habits, today, rewardedCheckIns, cloudSyncStatus, cloudSyncMessage } = useHabits();
+  const {
+    habits,
+    today,
+    rewardedCheckIns,
+    protectedStreakDates,
+    cloudSyncStatus,
+    cloudSyncMessage,
+  } = useHabits();
   const [quoteDate, setQuoteDate] = useState(today);
   useEffect(() => {
     const refreshQuoteDate = () => {
@@ -65,7 +74,9 @@ export default function ProgressScreen() {
     ? Math.min(100, Math.round((rewardedCheckInCount / nextMilestone.total) * 100))
     : 100;
   const totalCheckIns = habits.reduce((sum, habit) => sum + habit.checkIns.length, 0);
-  const longestStreak = Math.max(0, ...habits.map((habit) => getStreak(habit.checkIns, today, habit.restDays)));
+  const longestStreak = Math.max(0, ...habits.map((habit) => (
+    getStreak(habit.checkIns, today, habit.restDays, protectedStreakDates)
+  )));
   const mostConsistent = [...habits].sort((a, b) => b.checkIns.length - a.checkIns.length)[0];
   const maxBar = Math.max(1, ...week.map((item) => item.count));
   const accountStatus = cloudSyncStatus === 'synced'
@@ -197,6 +208,7 @@ export default function ProgressScreen() {
         </View>
 
         <WeeklyChallengeCard />
+        <StreakProtectionCard />
 
         <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeading}>
@@ -224,6 +236,12 @@ export default function ProgressScreen() {
             })}
           </View>
         </View>
+
+        <MonthlyProgressCalendar
+          habits={habits}
+          today={today}
+          protectedStreakDates={protectedStreakDates}
+        />
 
         <View style={[styles.milestoneCard, { backgroundColor: colors.secondary }]}>
           <View style={styles.cardHeading}>
@@ -284,7 +302,7 @@ export default function ProgressScreen() {
         ) : (
           <View style={styles.habitStats}>
             {habits.map((habit) => {
-              const streak = getStreak(habit.checkIns, today, habit.restDays);
+              const streak = getStreak(habit.checkIns, today, habit.restDays, protectedStreakDates);
               const isTop = mostConsistent?.id === habit.id && habit.checkIns.length > 0;
               return (
                 <View key={habit.id} style={[styles.habitStat, { backgroundColor: colors.card, borderColor: colors.border }]}>

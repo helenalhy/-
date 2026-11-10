@@ -11,8 +11,9 @@ test('mall shops, facilities and decor use the matching illustrated scene assets
   const assetNames = [...source.matchAll(/require\('\.\.\/assets\/images\/(mall-[^']+\.png)'\)/g)]
     .map((match) => match[1]);
 
-  assert.equal(assetNames.length, 44, 'four storefront illustrations and forty mall/shop fixtures have mapped artwork');
-  assert.equal(new Set(assetNames).size, assetNames.length, 'each mapped artwork path is unique');
+  assert.equal(assetNames.length, 45, 'four storefront illustrations and forty-one mall/shop fixtures have mapped artwork');
+  const sharedAssets = assetNames.filter((name, index) => assetNames.indexOf(name) !== index);
+  assert.deepEqual([...new Set(sharedAssets)], ['mall-craft-station.png'], 'only the two craft-worktable variants share a scene asset');
   for (const assetName of assetNames) {
     const assetPath = path.join(appRoot, 'assets/images', assetName);
     assert.ok(fs.existsSync(assetPath), `missing artwork asset ${assetName}`);

@@ -77,6 +77,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
   const items = catalog ?? [item, owned];
   const habits = {
     coins: 100, purchasedItems: ['owned'], mallPlacements: { 'floor-1-right': 'owned' },
+    habits: [], rewardedCheckIns: [], today: '2026-11-10',
     isLoading: false, mallLoadError: null,
     purchaseMallItem: async (...args) => { calls.push(['purchase', ...args]); },
     moveMallItem: async (...args) => { calls.push(['move', ...args]); },
@@ -129,6 +130,19 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     if (name === 'expo-router') return { router: { push() {}, navigate() {} } };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === '@/constants/colors') return { light: {} };
+    if (name === '@/lib/habit-schedule') return {
+      getStreak: (checkIns) => checkIns.length,
+      getWeeklyCheckInCount: () => 0,
+      getWeeklyChallengeLimit: () => 7,
+      getLocalWeekStart: (dateKey) => dateKey,
+      getWeekday: (dateKey) => new Date(`${dateKey}T12:00:00`).getDay(),
+      getPreviousLocalDate: (dateKey) => {
+        const date = new Date(`${dateKey}T12:00:00`);
+        date.setDate(date.getDate() - 1);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      },
+      canMakeUpYesterday: () => true,
+    };
     if (name === '@/hooks/useColors') return { useColors: () => ({}) };
     if (name === '@/context/HabitsContext') return {
       useHabits: () => ({ ...habits, grantTestCoins: habits.grantTestCoins ?? (async () => {}) }), MALL_FLOOR_COUNT: 20,
@@ -141,6 +155,9 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     if (name === '@/constants/mall') return {
       MALL_ITEMS: items, MALL_ITEM_BY_ID: Object.fromEntries(items.map((entry) => [entry.id, entry])),
       MALL_FLOORS: floorThemes,
+    };
+    if (name === '@/constants/progress-milestones') return {
+      getRewardedCheckInCount: (rewardedCheckIns = []) => rewardedCheckIns.filter((item) => !item.startsWith('makeup-used:')).length,
     };
     if (name === '@/components/MallVisuals') return { MallObjectVisual: 'MallObjectVisual', MallAmbience: 'MallAmbience' };
     if (name === '@/components/CatalogPager') return { CatalogPager: 'CatalogPager' };
@@ -974,7 +991,7 @@ test('elevator opens a direct 20-floor selector and changes floors without touch
 
 test('real catalog covers twenty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 3013);
+  assert.equal(MALL_ITEMS.length, 3016);
   assert.equal(MALL_FLOORS.length, 20);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -984,7 +1001,7 @@ test('real catalog covers twenty distinct themes and includes eleven specialized
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 1013, facility: 1000, decor: 1000 },
+    { shop: 1013, facility: 1000, decor: 1003 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(
@@ -1004,11 +1021,12 @@ test('real catalog covers twenty distinct themes and includes eleven specialized
     ],
   );
   for (let floor = 10; floor <= 19; floor += 1) {
+    const expectedDecorCount = floor === 15 ? 51 : 50;
     assert.deepEqual(
       Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
         category, MALL_ITEMS.filter((item) => item.floor === floor && item.category === category).length,
       ])),
-      { shop: 50, facility: 50, decor: 50 },
+      { shop: 50, facility: 50, decor: expectedDecorCount },
       `${floor}F has fifty choices in every category`,
     );
   }
@@ -1038,13 +1056,13 @@ test('real catalog covers twenty distinct themes and includes eleven specialized
 test('search whitespace, empty results, category counts, pagination and clear restore the current floor list', async () => {
   const app = mount({ purchasedItems: [], mallPlacements: {} }, mallCatalog.MALL_ITEMS);
   const floorOneItems = mallCatalog.MALL_ITEMS.filter((item) => item.floor === 1);
-  assert.equal(floorOneItems.length, 151);
+  assert.equal(floorOneItems.length, 152);
 
   app.find('mall-search-input').props.onChangeText('   ');
   app.render();
-  assert.equal(pager(app).props.total, 151, 'whitespace is treated as an empty search');
+  assert.equal(pager(app).props.total, 152, 'whitespace is treated as an empty search');
   assert.equal(app.find('mall-search-empty'), undefined);
-  for (const [category, expected] of [['shop', 51], ['facility', 50], ['decor', 50]]) {
+  for (const [category, expected] of [['shop', 51], ['facility', 50], ['decor', 51]]) {
     assert.match(textContent(app.find(`mall-category-${category}`)), new RegExp(`${expected}$`));
   }
 
@@ -1135,7 +1153,7 @@ test('description keywords return catalog items with correct category counts, pa
   ), 'description-only result keeps its warehouse status');
   assert.equal(
     app.find('search-select-description-match-0').props.accessibilityLabel,
-    '選擇獨特選物 0，前往 2F，店鋪，20 金幣，已兌換，可免費重擺',
+    '選擇獨特選物 0，前往 2F，店鋪，已兌換，可免費重擺',
     'adding match context does not change the existing selection accessibility label',
   );
   const android = mount({ purchasedItems: ['description-match-0'], mallPlacements: {} }, descriptionCatalog, 'android');
@@ -1149,7 +1167,7 @@ test('description keywords return catalog items with correct category counts, pa
   assert.equal(android.find('search-item-match-description-match-0').props.accessibilityRole, 'text');
   assert.equal(
     android.find('search-select-description-match-0').props.accessibilityLabel,
-    '選擇獨特選物 0，前往 2F，店鋪，20 金幣，已兌換，可免費重擺',
+    '選擇獨特選物 0，前往 2F，店鋪，已兌換，可免費重擺',
     'the TalkBack selection action does not repeat the match reason',
   );
   android.find('mall-search-input').props.onChangeText('雨天小舖');
@@ -1954,7 +1972,7 @@ test('native mall wing changes use one platform-appropriate polite announcement'
 test('preview announces position and unredeemed state; changing and cancelling update the status', async () => {
   const app = mount();
   await preview(app);
-  assert.match(app.announcements.at(-1), /1F 店面區左側.*尚未兌換或扣除金幣/);
+  assert.match(app.announcements.at(-1), /1F 店面區左側.*尚未兌換.*需要 20 金幣/);
   assert.equal(app.slot('floor-1-left').props.accessibilityState.selected, true);
   assert.match(app.find('confirm-purchase-preview').props.accessibilityLabel, /彩色花圃.*1F 店面區左側.*20 金幣/);
   await app.press('mall-slot-floor-1-center');
@@ -2206,7 +2224,34 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
       SHOP_INTERIOR_DECORATION_BY_ID: { 'test-decoration': { price: 10 } },
       getShopInteriorDecorations: () => [],
     };
-    if (name === '@/constants/mall') return { MALL_ITEM_BY_ID: {} };
+    if (name === '@/constants/mall') {
+      const newItem = { id: 'new-item', name: '測試裝飾', category: 'decor', price: 20 };
+      return { MALL_ITEM_BY_ID: { [newItem.id]: newItem }, MALL_ITEMS: [newItem] };
+    }
+    if (name === '@/constants/progress-milestones') return {
+      getRewardedCheckInCount: (rewardedCheckIns = []) => rewardedCheckIns.filter((item) => !item.startsWith('makeup-used:')).length,
+    };
+    if (name === '@/lib/habit-schedule') return {
+      MAKEUP_USE_PREFIX: 'makeup-used:',
+      getWeekday: (dateKey) => new Date(`${dateKey}T12:00:00`).getDay(),
+      getPreviousLocalDate: (dateKey) => {
+        const date = new Date(`${dateKey}T12:00:00`);
+        date.setDate(date.getDate() - 1);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      },
+      getWeeklyChallengeLimit: (restDays) => Math.max(0, 7 - new Set(restDays).size),
+      getWeeklyCheckInCount: () => 0,
+      getLocalWeekStart: (dateKey) => dateKey,
+      getStreak: (checkIns) => checkIns.length,
+      canMakeUpYesterday: () => true,
+    };
+    if (name === '@/lib/streak-protection') return {
+      getMissedScheduledStreakDates: () => [],
+      getStreakRescueDate: () => null,
+    };
+    if (name === '@/lib/weekly-challenge-rewards') return {
+      getWeeklyChallengeRewardItemId: () => null,
+    };
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: () => false,
@@ -2311,7 +2356,7 @@ for (const mirrorKey of ['momentum.habits.v1', 'momentum.mall.v1']) {
 test('AsyncStorage mall write failures preserve ownership, coins and placement after reload', async () => {
   const mallKey = 'momentum.mall.v1';
   const initialMall = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     coins: 100,
     purchasedItems: ['owned'],
     rewardedCheckIns: [],

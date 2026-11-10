@@ -54,6 +54,9 @@ function hasMeaningfulLocalProgress(snapshot: ProgressSnapshot) {
     || mall.coins > 0
     || mall.purchasedItems.length > 0
     || mall.rewardedCheckIns.length > 0
+    || (mall.leaveCards ?? 0) > 0
+    || ((mall.protectedStreakDates as string[] | undefined)?.length ?? 0) > 0
+    || ((mall.weeklyChallengeRewardedWeeks as string[] | undefined)?.length ?? 0) > 0
     || Object.keys(mall.placements).length > 0
     || Object.keys(mall.shopInteriors).length > 0
     || Object.values(mall.rewardTokens).some((count) => count > 0);

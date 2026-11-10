@@ -69,13 +69,49 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function wrapText(text: string, maxCharacters = 18): string[] {
-  const characters = Array.from(text);
+function wrapText(text: string, maxWidth = 440, fontSize = 28): string[] {
+  const widthOf = (value: string) => Array.from(value).reduce((width, character) => {
+    if (/\s/.test(character)) return width + fontSize * 0.3;
+    if (/[^\u0000-\u024f]/u.test(character)) return width + fontSize;
+    if (/[ilI.,'!:;]/.test(character)) return width + fontSize * 0.3;
+    if (/[MW@#%&]/.test(character)) return width + fontSize * 0.82;
+    return width + fontSize * 0.54;
+  }, 0);
+  const tokens = text.match(/\s+|[A-Za-z0-9’'-]+|./gu) ?? [];
   const lines: string[] = [];
-  for (let index = 0; index < characters.length; index += maxCharacters) {
-    lines.push(characters.slice(index, index + maxCharacters).join(''));
+  let line = '';
+
+  for (const token of tokens) {
+    if (/^\s+$/u.test(token) && !line) continue;
+    let remaining = token;
+    while (remaining) {
+      const candidate = line + remaining;
+      const isClosingPunctuation = /^[，。！？、；：）》」』】〉〕]/u.test(remaining);
+      if (widthOf(candidate) <= maxWidth || (isClosingPunctuation && widthOf(candidate) <= maxWidth + fontSize)) {
+        line = candidate;
+        remaining = '';
+        continue;
+      }
+
+      if (line.trim()) {
+        lines.push(line.trimEnd());
+        line = '';
+        remaining = remaining.trimStart();
+        continue;
+      }
+
+      const characters = Array.from(remaining);
+      let fitting = '';
+      while (characters.length && widthOf(fitting + characters[0]) <= maxWidth) {
+        fitting += characters.shift();
+      }
+      if (!fitting) fitting = characters.shift() ?? '';
+      lines.push(fitting);
+      remaining = characters.join('');
+    }
   }
-  return lines.slice(0, 5);
+  if (line.trim()) lines.push(line.trimEnd());
+  return lines;
 }
 
 function makeDecoration(ordinal: number, accent: string, softAccent: string, motif: number): string {
@@ -330,9 +366,10 @@ export function buildDailyPostcardSvg(
   const titleIndex = Math.floor(ordinal / (POSTCARD_PALETTES.length * 7)) % POSTCARD_TITLES.length;
   const [background, accent, ink, paper] = POSTCARD_PALETTES[paletteIndex];
   const lines = wrapText(quote);
-  const firstLineY = 425 - Math.floor(lines.length / 2) * 43;
+  const lineHeight = 38;
+  const firstLineY = 350 - ((lines.length - 1) * lineHeight) / 2;
   const quoteSvg = lines.map((line, index) =>
-    `<text x="360" y="${firstLineY + index * 48}" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="600" fill="${ink}">${escapeXml(line)}</text>`,
+    `<text x="360" y="${firstLineY + index * lineHeight}" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="600" fill="${ink}">${escapeXml(line)}</text>`,
   ).join('');
   const decorations = makeDecoration(ordinal, accent, paper, motifIndex);
   const dateText = escapeXml(dateKey.replace(/-/g, ' / '));

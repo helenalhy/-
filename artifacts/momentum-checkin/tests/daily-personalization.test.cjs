@@ -85,12 +85,24 @@ test('daily postcard art changes every day and safely includes the daily quote',
   assert.match(cards[0], /糖糖今天陪你/);
   assert.match(cards[0], /shop-room-cafe\.jpg/);
   assert.match(cards[0], /糖糖・粉彩星願裙 · 糖糖・小熊耳朵帽/);
+  assert.match(cards[0], /font-size="28"/);
+  assert.match(cards[0], /y="350"/);
   assert.match(cards[0], /translate\(220 540\) scale\(5\.6\)/);
   assert.match(cards[0], /<ellipse cx="20\.5" cy="16" rx="1\.2" ry="1\.5" fill="#493348"/);
   assert.match(cards[0], /<circle cx="16" cy="18" r="3\.2" fill="#FFFBF4"/);
   assert.match(cards[0], /<circle cx="41\.5" cy="34\.5" r="3\.6" fill="#FFFBF4"/);
   assert.doesNotMatch(cards[0], /<path d="<path/);
   assert.match(cards[0], /viewBox="0 0 720 960"/);
+  const longEnglishQuote = buildDailyPostcardSvg(
+    '2026-01-01',
+    'You can begin again at any point in the day.',
+    dog,
+    shop,
+  );
+  const quoteLines = [...longEnglishQuote.matchAll(/<text x="360" y="\d+"[^>]*font-size="28"[^>]*>(.*?)<\/text>/g)]
+    .map((match) => match[1]);
+  assert.equal(quoteLines.join(' '), 'You can begin again at any point in the day.');
+  assert.ok(quoteLines.length <= 4, 'the quote stays within the postcard text panel');
   assert.notEqual(
     getDailyStyleIndex('2026-01-01', 14, 50),
     getDailyStyleIndex('2026-01-15', 14, 50),

@@ -477,7 +477,7 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
         delayLongPress={450}
         accessibilityRole="button"
         accessibilityLabel={`編輯${habit.title}${!done && reward > 0 ? `，完整目標可獲得 ${reward} 金幣，最小行動可獲得 ${minimumActionReward} 金幣` : ''}`}
-        accessibilityHint="長按可開啟修改或刪除選項"
+        accessibilityHint="長按開啟目標管理選單"
         testID={`habit-info-${habit.id}`}
       >
         <Text style={[styles.habitTitle, { color: colors.foreground }, done && styles.doneText]}>{habit.title}</Text>
@@ -578,10 +578,11 @@ function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeU
           disabled={!done && isRestDay}
           accessibilityRole="button"
           accessibilityLabel={done
-            ? `取消${habit.title}打卡`
+            ? `取消${habit.title}的今日打卡`
             : isRestDay
-              ? `${habit.title}今天是休息日`
-              : habit.minimumAction ? `正常完成${habit.title}` : `完成${habit.title}`}
+              ? `${habit.title}今天是休息日，無法打卡`
+              : `${habit.minimumAction ? '正常完成' : '完成'}${habit.title}並記錄今日打卡${reward > 0 ? `，獲得 ${reward} 金幣` : ''}`}
+          accessibilityState={{ disabled: !done && isRestDay }}
           testID={`checkin-${habit.id}`}
         >
           <Feather name={done ? 'check' : 'plus'} size={20} color={done ? colors.primaryForeground : colors.primary} />

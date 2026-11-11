@@ -252,7 +252,12 @@ function createHarness() {
   }
 
   function renderToday(key = 'today') {
-    return render(key, () => todayRouteModule.default());
+    return render(key, () => {
+      const routeElement = todayRouteModule.default();
+      return typeof routeElement?.type === 'function'
+        ? routeElement.type(routeElement.props)
+        : routeElement;
+    });
   }
 
   function renderCurrentRoute() {
@@ -2024,6 +2029,60 @@ test('long-pressing a goal only opens management actions; the plus button only c
   assert.deepEqual(app.navigation, [
     ['push', { pathname: '/habit-editor', params: { id: 'starter-walk' } }],
   ], 'a new ordinary tap still opens the editor');
+});
+
+test('goal edit, management, and check-in controls have distinct screen-reader names and order', async () => {
+  const app = createHarness();
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  const habitRow = findNodes(app.renderToday(), (node) =>
+    typeof node.type === 'function'
+    && node.type.name === 'HabitRow'
+    && node.props?.habit?.id === 'starter-walk',
+  )[0];
+  assert.ok(habitRow);
+  const rowTree = renderHabitRow(app, habitRow);
+  const editButton = findByTestId(rowTree, 'habit-info-starter-walk');
+  const manageButton = findByTestId(rowTree, 'manage-habit-starter-walk');
+  const checkInButton = findByTestId(rowTree, 'checkin-starter-walk');
+
+  for (const [name, control] of [
+    ['edit', editButton],
+    ['manage', manageButton],
+    ['check-in', checkInButton],
+  ]) {
+    assert.equal(control.props.accessibilityRole, 'button', `${name} exposes a button role`);
+    assert.ok(control.props.accessibilityLabel, `${name} has an accessible name`);
+  }
+  assert.equal(editButton.props.accessibilityLabel, '編輯散步 20 分鐘，完整目標可獲得 20 金幣，最小行動可獲得 2 金幣');
+  assert.equal(editButton.props.accessibilityHint, '長按開啟目標管理選單');
+  assert.equal(manageButton.props.accessibilityLabel, '管理散步 20 分鐘');
+  assert.equal(
+    checkInButton.props.accessibilityLabel,
+    '完成散步 20 分鐘並記錄今日打卡，獲得 20 金幣',
+  );
+  assert.equal(checkInButton.props.accessibilityHint, undefined, 'the result is in the name, not repeated in a hint');
+
+  const goalControlsInFocusOrder = findNodes(rowTree, (node) =>
+    ['habit-info-starter-walk', 'manage-habit-starter-walk', 'checkin-starter-walk'].includes(node.props?.testID),
+  ).map((node) => node.props.testID);
+  assert.deepEqual(goalControlsInFocusOrder, [
+    'habit-info-starter-walk',
+    'manage-habit-starter-walk',
+    'checkin-starter-walk',
+  ], 'the row exposes edit, management, then check-in in its rendered accessibility order');
+
+  await press(rowTree, 'checkin-starter-walk');
+  app.renderProvider();
+  const completedRow = findNodes(app.renderToday(), (node) =>
+    typeof node.type === 'function'
+    && node.type.name === 'HabitRow'
+    && node.props?.habit?.id === 'starter-walk',
+  )[0];
+  const completedCheckInButton = findByTestId(renderHabitRow(app, completedRow), 'checkin-starter-walk');
+  assert.equal(completedCheckInButton.props.accessibilityLabel, '取消散步 20 分鐘的今日打卡');
 });
 
 test('today shows only an unclaimed first-check-in reward and hides it after earning', async () => {

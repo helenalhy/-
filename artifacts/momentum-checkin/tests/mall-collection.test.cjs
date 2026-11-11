@@ -594,6 +594,40 @@ test('different goals completed on the same day each earn and persist their own 
   assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [firstRewardKey, secondRewardKey]);
 });
 
+test('simultaneous check-ins for different goals each persist completion and one reward', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  let app = await mount(storage);
+  const today = app.value.today;
+  const goalIds = ['starter-walk', 'starter-read', 'starter-water'];
+  const rewardKeys = goalIds.map((id) => `${id}:${today}`);
+
+  const results = await Promise.all(goalIds.map((id) => app.value.toggleCheckIn(id)));
+
+  assert.deepEqual(results, [20, 20, 20]);
+  assert.equal(app.value.coins, 60);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, rewardKeys);
+  assert.equal(JSON.parse(storage[key]).coins, 60);
+  const savedHabits = JSON.parse(storage[habitsKey]);
+  for (const id of goalIds) {
+    assert.ok(app.value.habits.find((habit) => habit.id === id).checkIns.includes(today));
+    assert.ok(savedHabits.find((habit) => habit.id === id).checkIns.includes(today));
+  }
+  assert.equal(storage[checkInTransactionKey], undefined, 'the committed transactions are fully mirrored');
+
+  app = await mount(storage);
+  assert.equal(app.value.coins, 60);
+  assert.deepEqual(app.value.rewardedCheckIns, rewardKeys);
+  for (const id of goalIds) {
+    assert.ok(app.value.habits.find((habit) => habit.id === id).checkIns.includes(today));
+  }
+});
+
 test('a minimum-action check-in earns its proportional amount once and persists with the completion', async () => {
   const storage = seed({
     schemaVersion: 3,

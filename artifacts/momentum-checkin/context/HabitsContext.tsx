@@ -119,6 +119,23 @@ interface CheckInTransaction {
   };
 }
 
+interface CheckInStateSnapshot {
+  habits: Habit[];
+  coins: number;
+  purchasedItems: string[];
+  mallPlacements: Record<string, string>;
+  shopInteriors: ShopInteriorCollection;
+  rewardTokens: RewardTokens;
+  rewardedCheckIns: string[];
+  leaveCards: number;
+  protectedStreakDates: string[];
+  weeklyChallengeRewardPlans: Record<string, string>;
+  weeklyChallengeRewardedWeeks: string[];
+  dailyLoginLastDate: string | null;
+  dailyLoginStreak: number;
+  dailyLoginLastPrizeItemId: string | null;
+}
+
 export interface ShopInteriorState {
   ownedDecorations: string[];
   placements: Partial<Record<ShopInteriorPlacementId, string>>;
@@ -673,6 +690,25 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('local');
   const [cloudSyncMessage, setCloudSyncMessage] = useState<string | null>(null);
   const actionLock = useRef(false);
+  const checkInQueue = useRef<Promise<void>>(Promise.resolve());
+  const pendingCheckInIds = useRef(new Set<string>());
+  const checkInState = useRef<CheckInStateSnapshot | null>(null);
+  checkInState.current = {
+    habits,
+    coins,
+    purchasedItems,
+    mallPlacements,
+    shopInteriors,
+    rewardTokens,
+    rewardedCheckIns,
+    leaveCards,
+    protectedStreakDates,
+    weeklyChallengeRewardPlans,
+    weeklyChallengeRewardedWeeks,
+    dailyLoginLastDate,
+    dailyLoginStreak,
+    dailyLoginLastPrizeItemId,
+  };
   const mallLoadErrorRef = useRef(false);
   const weeklyPlanAttemptRef = useRef<string | null>(null);
   const weeklyRewardClaimAttemptRef = useRef<string | null>(null);
@@ -1148,110 +1184,115 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     await save(habits.filter((habit) => habit.id !== id));
   }, [habits, save]);
 
-  const toggleCheckIn = useCallback(async (id: string, completedStep?: string, rewardAmount?: number) => {
-    if (actionLock.current) return 0;
-    actionLock.current = true;
-    try {
-      if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
-      await recoverPendingCheckInTransaction();
-      const checkInDate = getLocalDate();
-      const habit = habits.find((item) => item.id === id);
-      if (!habit) return 0;
-      if (!habit.checkIns.includes(checkInDate) && habit.restDays.includes(getWeekday(checkInDate))) {
-        throw new Error('今天是這個目標的休息日。');
-      }
-      const alreadyDone = habit.checkIns.includes(checkInDate);
-      const nextHabits = habits.map((item) => {
-        if (item.id !== id) return item;
-        const stepCheckIns = { ...item.stepCheckIns };
-        if (alreadyDone) delete stepCheckIns[checkInDate];
-        else if (completedStep && item.steps.includes(completedStep)) stepCheckIns[checkInDate] = completedStep;
-        return {
-          ...item,
-          checkIns: alreadyDone
-            ? item.checkIns.filter((date) => date !== checkInDate)
-            : [...item.checkIns, checkInDate],
-          stepCheckIns,
-        };
-      });
-      let reward = 0;
-      if (!alreadyDone) {
-        const rewardKey = `${id}:${checkInDate}`;
-        const requestedReward = rewardAmount === undefined
-          ? CHECK_IN_REWARD
-          : Number.isFinite(rewardAmount)
-            ? Math.max(0, Math.min(CHECK_IN_REWARD, Math.floor(rewardAmount)))
-            : 0;
-        if (!rewardedCheckIns.includes(rewardKey)) reward = requestedReward;
-      }
-      if (reward > 0) {
-        const rewardKey = `${id}:${checkInDate}`;
-        const transaction: CheckInTransaction = {
-          version: 1,
-          habits: nextHabits,
-          mall: {
-            schemaVersion: MALL_SCHEMA_VERSION,
-            coins: coins + reward,
-            purchasedItems,
-            placements: mallPlacements,
-            shopInteriors,
-            rewardedCheckIns: [...rewardedCheckIns, rewardKey],
-            rewardTokens,
-            leaveCards,
-            protectedStreakDates,
-            weeklyChallengeRewardPlans,
-            weeklyChallengeRewardedWeeks,
-            dailyLoginLastDate,
-            dailyLoginStreak,
-            dailyLoginLastPrizeItemId,
-          },
-        };
-        // The one-key journal is the commit point. If either legacy mirror write
-        // fails, hydration can still restore both halves from this transaction.
-        await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
-        setHabits(nextHabits);
-        setCoins(transaction.mall.coins);
-        setRewardedCheckIns(transaction.mall.rewardedCheckIns);
-        setRewardTokens(transaction.mall.rewardTokens);
-        try {
-          await synchronizeCheckInTransaction(transaction);
-          setStorageError(null);
-        } catch {
-          setStorageError('打卡與金幣已一致記錄；部分同步暫時失敗，重新開啟 App 會自動修復。');
-        }
-      } else {
-        await save(nextHabits);
-      }
+  const toggleCheckIn = useCallback((id: string, completedStep?: string, rewardAmount?: number) => {
+    // Keep duplicate taps for one goal idempotent, while queuing independent goals.
+    if (pendingCheckInIds.current.has(id)) return Promise.resolve(0);
+    pendingCheckInIds.current.add(id);
+
+    const operation = checkInQueue.current.then(async () => {
+      if (actionLock.current) throw new Error('正在處理上一個操作');
+      actionLock.current = true;
       try {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (mallLoadErrorRef.current) throw new Error('無法讀取商場資料，請先修復資料並重新開啟 App。');
+        await recoverPendingCheckInTransaction();
+        const snapshot = checkInState.current;
+        if (!snapshot) throw new Error('打卡資料尚未載入');
+
+        const checkInDate = getLocalDate();
+        const habit = snapshot.habits.find((item) => item.id === id);
+        if (!habit) return 0;
+        if (!habit.checkIns.includes(checkInDate) && habit.restDays.includes(getWeekday(checkInDate))) {
+          throw new Error('今天是這個目標的休息日。');
+        }
+        const alreadyDone = habit.checkIns.includes(checkInDate);
+        const nextHabits = snapshot.habits.map((item) => {
+          if (item.id !== id) return item;
+          const stepCheckIns = { ...item.stepCheckIns };
+          if (alreadyDone) delete stepCheckIns[checkInDate];
+          else if (completedStep && item.steps.includes(completedStep)) stepCheckIns[checkInDate] = completedStep;
+          return {
+            ...item,
+            checkIns: alreadyDone
+              ? item.checkIns.filter((date) => date !== checkInDate)
+              : [...item.checkIns, checkInDate],
+            stepCheckIns,
+          };
+        });
+        let reward = 0;
+        if (!alreadyDone) {
+          const rewardKey = `${id}:${checkInDate}`;
+          const requestedReward = rewardAmount === undefined
+            ? CHECK_IN_REWARD
+            : Number.isFinite(rewardAmount)
+              ? Math.max(0, Math.min(CHECK_IN_REWARD, Math.floor(rewardAmount)))
+              : 0;
+          if (!snapshot.rewardedCheckIns.includes(rewardKey)) reward = requestedReward;
+        }
+        if (reward > 0) {
+          const rewardKey = `${id}:${checkInDate}`;
+          const transaction: CheckInTransaction = {
+            version: 1,
+            habits: nextHabits,
+            mall: {
+              schemaVersion: MALL_SCHEMA_VERSION,
+              coins: snapshot.coins + reward,
+              purchasedItems: snapshot.purchasedItems,
+              placements: snapshot.mallPlacements,
+              shopInteriors: snapshot.shopInteriors,
+              rewardedCheckIns: [...snapshot.rewardedCheckIns, rewardKey],
+              rewardTokens: snapshot.rewardTokens,
+              leaveCards: snapshot.leaveCards,
+              protectedStreakDates: snapshot.protectedStreakDates,
+              weeklyChallengeRewardPlans: snapshot.weeklyChallengeRewardPlans,
+              weeklyChallengeRewardedWeeks: snapshot.weeklyChallengeRewardedWeeks,
+              dailyLoginLastDate: snapshot.dailyLoginLastDate,
+              dailyLoginStreak: snapshot.dailyLoginStreak,
+              dailyLoginLastPrizeItemId: snapshot.dailyLoginLastPrizeItemId,
+            },
+          };
+          // The one-key journal is the commit point. If either legacy mirror write
+          // fails, hydration can still restore both halves from this transaction.
+          await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
+          checkInState.current = {
+            ...snapshot,
+            habits: nextHabits,
+            coins: transaction.mall.coins,
+            rewardedCheckIns: transaction.mall.rewardedCheckIns,
+          };
+          setHabits(nextHabits);
+          setCoins(transaction.mall.coins);
+          setRewardedCheckIns(transaction.mall.rewardedCheckIns);
+          setRewardTokens(transaction.mall.rewardTokens);
+          try {
+            await synchronizeCheckInTransaction(transaction);
+            setStorageError(null);
+          } catch {
+            setStorageError('打卡與金幣已一致記錄；部分同步暫時失敗，重新開啟 App 會自動修復。');
+          }
+        } else {
+          await save(nextHabits);
+          checkInState.current = { ...snapshot, habits: nextHabits };
+        }
+        try {
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch {
+          // Feedback failure must not make a durably saved check-in look unsaved.
+        }
+        return reward;
       } catch {
-        // Feedback failure must not make a durably saved check-in look unsaved.
+        setStorageError('打卡沒有儲存成功，請再試一次。');
+        throw new Error('無法儲存打卡紀錄');
+      } finally {
+        actionLock.current = false;
       }
-      return reward;
-    } catch {
-      setStorageError('打卡沒有儲存成功，請再試一次。');
-      throw new Error('無法儲存打卡紀錄');
-    } finally {
-      actionLock.current = false;
-    }
-  }, [
-    habits,
-    today,
-    rewardedCheckIns,
-    coins,
-    purchasedItems,
-    mallPlacements,
-    shopInteriors,
-    rewardTokens,
-    leaveCards,
-    protectedStreakDates,
-    weeklyChallengeRewardPlans,
-    weeklyChallengeRewardedWeeks,
-    dailyLoginLastDate,
-    dailyLoginStreak,
-    dailyLoginLastPrizeItemId,
-    save,
-  ]);
+    });
+    checkInQueue.current = operation.then(() => undefined, () => undefined);
+    void operation.then(
+      () => pendingCheckInIds.current.delete(id),
+      () => pendingCheckInIds.current.delete(id),
+    );
+    return operation;
+  }, [save]);
 
   const makeUpYesterday = useCallback(async (id: string) => {
     if (actionLock.current) throw new Error('正在處理上一個操作');

@@ -10,7 +10,8 @@ description: Product rules for weekly challenges, dog companions, two-minute sta
 - Weekly challenge celebrations may animate mall visitors and decor, but they do not grant extra coins, change floor themes, or unlock new floors.
 - Missed-day restart prompts should acknowledge previous effort and offer a small next action without shaming the user.
 - Daily dog greetings with a small celebratory animation are a positively received way to encourage users to return; keep them gentle and optional.
+- Shareable progress cards should contain only daily goal count, streak, and companion artwork, never account identifiers; sharing and downloading must reuse the same PNG.
 
 **Why:** Small actions should still count while earning less than a full goal; the same-day check-in key and atomic reward transaction prevent repeat payouts or mismatched balances.
 
-**How to apply:** Preserve this proportional reward rule when changing minimum-action flows; regular full check-ins and makeup check-ins keep their existing full reward. Keep daily companion interactions warm, brief, and non-punitive.
+**How to apply:** Preserve this proportional reward rule when changing minimum-action flows; regular full check-ins and makeup check-ins keep their existing full reward. Keep daily companion interactions warm, brief, and non-punitive; share only the same privacy-safe progress image that the user can download.

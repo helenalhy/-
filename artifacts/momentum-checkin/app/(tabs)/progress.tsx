@@ -12,6 +12,7 @@ import { getNextMilestone, getRewardedCheckInCount, getUnlockedMilestones, PROGR
 import { WeeklyChallengeCard } from '@/components/WeeklyChallengeCard';
 import { StreakProtectionCard } from '@/components/StreakProtectionCard';
 import { MonthlyProgressCalendar } from '@/components/MonthlyProgressCalendar';
+import { DailyPostcardCard } from '@/components/DailyPersonalization';
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -236,6 +237,12 @@ export default function ProgressScreen() {
             })}
           </View>
         </View>
+
+        <DailyPostcardCard
+          today={today}
+          completedGoalsCount={habits.filter((habit) => habit.checkIns.includes(today)).length}
+          streakDays={longestStreak}
+        />
 
         <MonthlyProgressCalendar
           habits={habits}

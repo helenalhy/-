@@ -86,7 +86,11 @@ test('daily postcard art changes every day and safely includes the daily quote',
   assert.match(cards[0], /shop-room-cafe\.jpg/);
   assert.match(cards[0], /糖糖・粉彩星願裙 · 糖糖・小熊耳朵帽/);
   assert.match(cards[0], /font-size="28"/);
-  assert.match(cards[0], /y="350"/);
+  assert.match(cards[0], /<text x="360" y="\d+"[^>]*font-size="28"/);
+  assert.match(buildDailyPostcardSvg('2026-01-01', '今天也一步一步來。', dog, shop, {
+    completedGoalsCount: 3,
+    streakDays: 7,
+  }), /今日完成 3 個目標[\s\S]*連續 7 天/);
   assert.match(cards[0], /translate\(220 540\) scale\(5\.6\)/);
   assert.match(cards[0], /<ellipse cx="20\.5" cy="16" rx="1\.2" ry="1\.5" fill="#493348"/);
   assert.match(cards[0], /<circle cx="16" cy="18" r="3\.2" fill="#FFFBF4"/);
@@ -163,13 +167,21 @@ test('encouragement style and daily moods persist locally without replacing a da
 
 test('today and settings expose all four motivation features', () => {
   const today = fs.readFileSync(path.join(appRoot, 'app/(tabs)/index.tsx'), 'utf8');
+  const progress = fs.readFileSync(path.join(appRoot, 'app/(tabs)/progress.tsx'), 'utf8');
   const settings = fs.readFileSync(path.join(appRoot, 'app/(tabs)/settings.tsx'), 'utf8');
   const card = fs.readFileSync(path.join(appRoot, 'components/DailyPersonalization.tsx'), 'utf8');
+  const postcardExport = fs.readFileSync(path.join(appRoot, 'lib/postcard-export.ts'), 'utf8');
   assert.match(today, /<DailyMoodCard/);
   assert.match(today, /<DailyPostcardCard/);
+  assert.match(progress, /<DailyPostcardCard/);
+  assert.match(card, /testID="share-daily-postcard"/);
   assert.match(today, /testID="toggle-low-energy-mode"/);
   assert.match(settings, /ENCOURAGEMENT_STYLES\.map/);
   assert.match(card, /testID="download-daily-postcard"/);
   assert.match(card, /下載明信片 PNG/);
+  assert.match(card, /sharePngBlobOnWeb/);
+  assert.match(card, /expo-sharing/);
+  assert.match(postcardExport, /shareApi\.share/);
+  assert.match(postcardExport, /downloadPngBlob/);
   assert.match(card, /最近 7 天/);
 });

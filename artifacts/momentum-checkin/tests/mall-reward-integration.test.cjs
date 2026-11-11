@@ -2264,4 +2264,22 @@ test('each cafe dog has five uniquely named toys and an interactive frisbee', ()
   assert.match(modal, /onPanResponderRelease/);
   assert.match(modal, /testID="dog-companion-frisbee"/);
   assert.match(modal, /向左或向下拉蓄力/);
+  for (const kind of ['ball', 'plush', 'squeaker']) {
+    assert.match(modal, new RegExp(`activeToyKind === '${kind}'`));
+    assert.match(modal, new RegExp(`testID=\"dog-companion-${kind}\"`));
+  }
+  assert.match(modal, /activeToyKind === 'tug'/);
+  assert.match(modal, /testID="dog-companion-tug-rope"/);
+  assert.match(modal, /輕點彈力球，狗狗會追出去再帶返來/);
+  assert.match(modal, /左右交替拉繩三次/);
+  assert.match(modal, /duration < 1000/);
+  assert.match(modal, /連按啾啾玩具三下/);
+});
+
+test('original companion art keeps the uploaded dog-scene background behind it', () => {
+  const modal = fs.readFileSync(path.join(__dirname, '../components/DogCompanionModal.tsx'), 'utf8');
+  assert.match(modal, /testID="dog-companion-original-art-background"/);
+  assert.match(modal, /source=\{getDogFluffyImage\(dog\.key, 1\)\}/);
+  assert.match(modal, /blurRadius=\{18\}/);
+  assert.match(modal, /originalDogBackdropTint/);
 });

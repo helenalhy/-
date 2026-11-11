@@ -642,6 +642,10 @@ export function TodayScreen() {
   const focusedHabit = habits.find((habit) => habit.id === focusedHabitId) ?? null;
   const visibleHabits = focusedHabit ? [focusedHabit] : habits;
   const scheduledTodayDone = scheduledToday.filter((habit) => habit.checkIns.includes(today)).length;
+  const postcardCompletedGoalsCount = habits.filter((habit) => habit.checkIns.includes(today)).length;
+  const postcardStreakDays = Math.max(0, ...habits.map((habit) => (
+    getStreak(habit.checkIns, today, habit.restDays, protectedStreakDates)
+  )));
   const percent = scheduledToday.length === 0 ? 100 : Math.min(100, Math.round((scheduledTodayDone / scheduledToday.length) * 100));
   const todayCounter = scheduledToday.length === 0 ? '休息日' : `${scheduledTodayDone}/${scheduledToday.length}`;
   const date = new Date(`${today}T12:00:00`);
@@ -998,7 +1002,13 @@ export function TodayScreen() {
           </>
         ) : null}
         {!isLoading ? <UrgeSupportCard today={today} /> : null}
-        {!isLoading ? <DailyPostcardCard today={today} /> : null}
+        {!isLoading ? (
+          <DailyPostcardCard
+            today={today}
+            completedGoalsCount={postcardCompletedGoalsCount}
+            streakDays={postcardStreakDays}
+          />
+        ) : null}
 
         {restartHabit ? (
           <View style={[styles.restartCard, { backgroundColor: colors.secondary }] } testID="gentle-restart-card">

@@ -158,6 +158,11 @@ export interface DailyPostcardShop {
   roomImageUri: string;
 }
 
+export interface DailyPostcardProgress {
+  completedGoalsCount: number;
+  streakDays: number;
+}
+
 function legacyDogArtwork(dog: DailyPostcardDog, outline: string): string {
   const fur = escapeXml(dog.coatColor);
   const outfit = escapeXml(dog.outfit.color);
@@ -359,6 +364,7 @@ export function buildDailyPostcardSvg(
   quote: string,
   dog: DailyPostcardDog,
   shop: DailyPostcardShop,
+  progress: DailyPostcardProgress = { completedGoalsCount: 0, streakDays: 0 },
 ): string {
   const ordinal = getOrdinal(dateKey);
   const paletteIndex = ordinal % POSTCARD_PALETTES.length;
@@ -366,8 +372,8 @@ export function buildDailyPostcardSvg(
   const titleIndex = Math.floor(ordinal / (POSTCARD_PALETTES.length * 7)) % POSTCARD_TITLES.length;
   const [background, accent, ink, paper] = POSTCARD_PALETTES[paletteIndex];
   const lines = wrapText(quote);
-  const lineHeight = 38;
-  const firstLineY = 350 - ((lines.length - 1) * lineHeight) / 2;
+  const lineHeight = 30;
+  const firstLineY = 365 - ((lines.length - 1) * lineHeight) / 2;
   const quoteSvg = lines.map((line, index) =>
     `<text x="360" y="${firstLineY + index * lineHeight}" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="600" fill="${ink}">${escapeXml(line)}</text>`,
   ).join('');
@@ -382,6 +388,8 @@ export function buildDailyPostcardSvg(
   const accessoryName = escapeXml(dog.accessory.name);
   const roomImage = escapeXml(shop.roomImageUri);
   const shopFloor = escapeXml(`${shop.floor}F`);
+  const completedGoalsCount = Math.max(0, Math.floor(Number.isFinite(progress.completedGoalsCount) ? progress.completedGoalsCount : 0));
+  const streakDays = Math.max(0, Math.floor(Number.isFinite(progress.streakDays) ? progress.streakDays : 0));
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 720 960">
     <defs>
       <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${ink}" stop-opacity=".18"/><stop offset=".44" stop-color="${paper}" stop-opacity=".28"/><stop offset="1" stop-color="${ink}" stop-opacity=".3"/></linearGradient>
@@ -395,6 +403,10 @@ export function buildDailyPostcardSvg(
     <path d="M360 111 L366 127 L384 128 L370 139 L375 157 L360 147 L345 157 L350 139 L336 128 L354 127 Z" fill="${accent}"/>
     <text x="360" y="193" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="700" letter-spacing="3" fill="${accent}">MOMENTUM · 每日小卡</text>
     <text x="360" y="234" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="700" fill="${ink}">${title}</text>
+    <rect x="110" y="258" width="240" height="40" rx="20" fill="${background}" stroke="${accent}" stroke-width="2"/>
+    <text x="230" y="284" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="700" fill="${ink}">今日完成 ${completedGoalsCount} 個目標</text>
+    <rect x="370" y="258" width="240" height="40" rx="20" fill="${background}" stroke="${accent}" stroke-width="2"/>
+    <text x="490" y="284" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="700" fill="${ink}">連續 ${streakDays} 天</text>
     ${quoteSvg}
     <ellipse cx="360" cy="800" rx="126" ry="17" fill="${ink}" opacity=".18"/>
     ${dogImage}

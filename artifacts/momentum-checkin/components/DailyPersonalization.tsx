@@ -1,6 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Asset } from 'expo-asset';
+import { Image as ExpoImage } from 'expo-image';
 import {
   Modal,
   Platform,
@@ -15,6 +17,11 @@ import { useColors } from '@/hooks/useColors';
 import { getDailyDogGreeting, getDateOrdinal } from '@/lib/daily-engagement';
 import { getDailyMotivationalQuote } from '@/constants/daily-motivation';
 import { DOG_STAFF_PROFILES, DOG_STAFF_STYLE_CATALOGS } from '@/constants/dog-staff-customization';
+import {
+  getDogFluffyImage,
+  getDogFluffyStaffImage,
+  type DogFluffyPose,
+} from '@/constants/dog-fluffy-images';
 import { MALL_ITEMS } from '@/constants/mall';
 import { SHOP_ROOM_IMAGES } from '@/constants/shop-room-images';
 import { getShopInteriorSceneKey } from '@/constants/mall-shop-interior';
@@ -32,7 +39,18 @@ const DAILY_POSTCARD_SHOPS = MALL_ITEMS
   .filter((item) => item.category === 'shop')
   .sort((left, right) => left.floor - right.floor || left.id.localeCompare(right.id));
 
-function getDailyPostcardArtwork(today: string, quote: string, progress: DailyPostcardProgress): string {
+function getPostcardDogImage(dogProfileKey: string, pose: DogFluffyPose): number {
+  return pose === 1
+    ? getDogFluffyStaffImage(dogProfileKey)
+    : getDogFluffyImage(dogProfileKey, pose);
+}
+
+function getDailyPostcardArtwork(
+  today: string,
+  quote: string,
+  progress: DailyPostcardProgress,
+  dogPose: DogFluffyPose,
+): string {
   const { dog } = getDailyDogGreeting(today);
   const ordinal = getDateOrdinal(today);
   const dogCatalog = DOG_STAFF_STYLE_CATALOGS[dog.decorationId];
@@ -41,6 +59,7 @@ function getDailyPostcardArtwork(today: string, quote: string, progress: DailyPo
   const shop = DAILY_POSTCARD_SHOPS[ordinal % DAILY_POSTCARD_SHOPS.length];
   const sceneKey = getShopInteriorSceneKey(shop.shopType, shop.id, shop.name);
   const roomAsset = Asset.fromModule(SHOP_ROOM_IMAGES[sceneKey]);
+  const dogImageAsset = Asset.fromModule(getPostcardDogImage(dog.key, dogPose));
   return buildDailyPostcardSvg(
     today,
     quote,
@@ -57,6 +76,7 @@ function getDailyPostcardArtwork(today: string, quote: string, progress: DailyPo
       roomImageUri: roomAsset.uri,
     },
     progress,
+    dogImageAsset.uri,
   );
 }
 
@@ -196,16 +216,54 @@ export function DailyPostcardCard({
   const [status, setStatus] = useState('');
   const [pngBlob, setPngBlob] = useState<Blob | null>(null);
   const [preparingPng, setPreparingPng] = useState(false);
+  const [dogPose, setDogPose] = useState<DogFluffyPose>(1);
+  const [dogPoseLoadedForKey, setDogPoseLoadedForKey] = useState<string | null>(null);
   const nativeSvgRef = useRef<NativeSvgExportHandle | null>(null);
   const quote = getDailyMotivationalQuote(today);
   const { dog } = getDailyDogGreeting(today);
+  const dogPoseStorageKey = `momentum.dailyPostcardDogPose.v1.${dog.key}`;
+  const dogPoseLoaded = dogPoseLoadedForKey === dogPoseStorageKey;
   const svg = useMemo(() => getDailyPostcardArtwork(today, quote, {
     completedGoalsCount,
     streakDays,
-  }), [completedGoalsCount, quote, streakDays, today]);
+  }, dogPose), [completedGoalsCount, dogPose, quote, streakDays, today]);
 
   useEffect(() => {
-    if (!open || Platform.OS !== 'web') {
+    if (!open) {
+      setDogPoseLoadedForKey(null);
+      return;
+    }
+    let active = true;
+    setDogPose(1);
+    setDogPoseLoadedForKey(null);
+    void AsyncStorage.getItem(dogPoseStorageKey)
+      .then((savedPose) => {
+        if (!active) return;
+        const parsedPose = Number(savedPose);
+        const nextPose: DogFluffyPose = parsedPose === 2 || parsedPose === 3 || parsedPose === 4
+          ? parsedPose
+          : 1;
+        setDogPose(nextPose);
+        setDogPoseLoadedForKey(dogPoseStorageKey);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDogPose(1);
+        setDogPoseLoadedForKey(dogPoseStorageKey);
+        setError('無法讀取明信片狗狗姿勢，暫時使用姿勢 1。');
+      });
+    return () => { active = false; };
+  }, [dogPoseStorageKey, open]);
+
+  useEffect(() => {
+    if (!open || !dogPoseLoaded) return;
+    void AsyncStorage.setItem(dogPoseStorageKey, String(dogPose)).catch(() => {
+      setError('狗狗姿勢未能儲存，請稍後再試。');
+    });
+  }, [dogPose, dogPoseLoaded, dogPoseStorageKey, open]);
+
+  useEffect(() => {
+    if (!open || Platform.OS !== 'web' || !dogPoseLoaded) {
       setPngBlob(null);
       setPreparingPng(false);
       return;
@@ -226,7 +284,7 @@ export function DailyPostcardCard({
         if (active) setPreparingPng(false);
       });
     return () => { active = false; };
-  }, [open, svg]);
+  }, [dogPoseLoaded, open, svg]);
 
   async function createNativePngFile() {
     const exporter = nativeSvgRef.current;
@@ -365,17 +423,55 @@ export function DailyPostcardCard({
             <ScrollView style={styles.postcardScroll} contentContainerStyle={styles.postcardPreview}>
               <SvgXml xml={svg} width="100%" height={410} accessibilityLabel={`每日明信片：${quote}`} />
             </ScrollView>
+            <View style={styles.dogPoseRow} accessibilityLabel="選擇明信片狗狗姿勢">
+              {([1, 2, 3, 4] as const).map((pose) => {
+                const selected = dogPose === pose;
+                const poseCaption = ['揮手', '捧物', '坐姿', '跳起'][pose - 1];
+                return (
+                  <Pressable
+                    key={pose}
+                    onPress={() => setDogPose(pose)}
+                    disabled={!dogPoseLoaded}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`狗狗姿勢 ${pose}：${poseCaption}`}
+                    accessibilityState={{ checked: selected, disabled: !dogPoseLoaded }}
+                    testID={`daily-postcard-pose-${pose}`}
+                    style={[
+                      styles.dogPoseOption,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.candyPink,
+                        borderColor: colors.primary,
+                        opacity: dogPoseLoaded ? 1 : 0.55,
+                      },
+                    ]}
+                  >
+                    <ExpoImage
+                      source={getPostcardDogImage(dog.key, pose)}
+                      style={styles.dogPoseThumbnail}
+                      contentFit="contain"
+                      accessible={false}
+                    />
+                    <Text style={[styles.dogPoseLabel, { color: selected ? colors.background : colors.primary }]}>
+                      姿勢 {pose}
+                    </Text>
+                    <Text style={[styles.dogPoseCaption, { color: selected ? colors.background : colors.primary }]}>
+                      {poseCaption}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
             {error ? <Text style={[styles.error, { color: colors.destructive }]} accessibilityRole="alert">{error}</Text> : null}
             {status ? <Text style={[styles.status, { color: colors.primary }]}>{status}</Text> : null}
             <View style={styles.postcardActionRow}>
               <Pressable
                 onPress={() => void sharePostcard()}
-                disabled={busy || preparingPng}
+                disabled={busy || preparingPng || !dogPoseLoaded}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: busy || preparingPng, busy: busy || preparingPng }}
+                accessibilityState={{ disabled: busy || preparingPng || !dogPoseLoaded, busy: busy || preparingPng || !dogPoseLoaded }}
                 accessibilityLabel="分享每日進度卡圖片"
                 testID="share-daily-postcard"
-                style={[styles.postcardActionButton, { backgroundColor: colors.secondary, opacity: busy || preparingPng ? 0.65 : 1 }]}
+                style={[styles.postcardActionButton, { backgroundColor: colors.secondary, opacity: busy || preparingPng || !dogPoseLoaded ? 0.65 : 1 }]}
               >
                 <Feather name="share-2" size={16} color={colors.primary} />
                 <Text style={[styles.postcardActionText, { color: colors.primary }]}>
@@ -384,12 +480,12 @@ export function DailyPostcardCard({
               </Pressable>
               <Pressable
                 onPress={() => void savePostcard()}
-                disabled={busy || preparingPng}
+                disabled={busy || preparingPng || !dogPoseLoaded}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: busy || preparingPng, busy: busy || preparingPng }}
+                accessibilityState={{ disabled: busy || preparingPng || !dogPoseLoaded, busy: busy || preparingPng || !dogPoseLoaded }}
                 accessibilityLabel={Platform.OS === 'web' ? '下載每日明信片 PNG' : '儲存每日明信片 PNG'}
                 testID="download-daily-postcard"
-                style={[styles.postcardActionButton, { backgroundColor: colors.primary, opacity: busy || preparingPng ? 0.65 : 1 }]}
+                style={[styles.postcardActionButton, { backgroundColor: colors.primary, opacity: busy || preparingPng || !dogPoseLoaded ? 0.65 : 1 }]}
               >
                 <Feather name={busy ? 'loader' : 'download'} size={16} color={colors.primaryForeground} />
                 <Text style={[styles.postcardActionText, { color: colors.primaryForeground }]}>
@@ -439,6 +535,11 @@ const styles = StyleSheet.create({
   closeButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   postcardScroll: { flexGrow: 0, maxHeight: 430, borderRadius: 16, overflow: 'hidden' },
   postcardPreview: { alignItems: 'center', paddingHorizontal: 6 },
+  dogPoseRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 9 },
+  dogPoseOption: { flex: 1, maxWidth: 78, minHeight: 77, alignItems: 'center', justifyContent: 'center', gap: 2, padding: 4, borderWidth: 2, borderRadius: 13 },
+  dogPoseThumbnail: { width: 34, height: 34 },
+  dogPoseLabel: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
+  dogPoseCaption: { fontSize: 8, lineHeight: 10, fontWeight: '600' },
   openPostcardButton: { height: 44, borderRadius: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14 },
   openPostcardText: { fontSize: 13, fontWeight: '700' },
   postcardActionRow: { flexDirection: 'row', gap: 10, marginTop: 12 },

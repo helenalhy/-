@@ -365,6 +365,7 @@ export function buildDailyPostcardSvg(
   dog: DailyPostcardDog,
   shop: DailyPostcardShop,
   progress: DailyPostcardProgress = { completedGoalsCount: 0, streakDays: 0 },
+  dogImageUri?: string,
 ): string {
   const ordinal = getOrdinal(dateKey);
   const paletteIndex = ordinal % POSTCARD_PALETTES.length;
@@ -380,9 +381,11 @@ export function buildDailyPostcardSvg(
   const decorations = makeDecoration(ordinal, accent, paper, motifIndex);
   const dateText = escapeXml(dateKey.replace(/-/g, ' / '));
   const title = escapeXml(POSTCARD_TITLES[titleIndex]);
-  const dogImage = DOG_ATTENDANT_LOOKS[dog.kind]
-    ? dogArtwork(dog, ink)
-    : legacyDogArtwork(dog, ink);
+  const dogImage = dogImageUri
+    ? `<image href="${escapeXml(dogImageUri)}" x="276" y="534" width="218" height="252" preserveAspectRatio="xMidYMid meet"/>`
+    : DOG_ATTENDANT_LOOKS[dog.kind]
+      ? dogArtwork(dog, ink)
+      : legacyDogArtwork(dog, ink);
   const shopName = escapeXml(shop.name);
   const outfitName = escapeXml(dog.outfit.name);
   const accessoryName = escapeXml(dog.accessory.name);

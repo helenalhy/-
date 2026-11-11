@@ -51,9 +51,13 @@ const DAILY_MOTIVATIONAL_QUOTE_PAIRS = [
   ['不求一口氣改變，只求今天再試一次。', 'There is no wasted effort in learning and trying again.'],
 ] as const;
 
-export const DAILY_MOTIVATIONAL_QUOTES = DAILY_MOTIVATIONAL_QUOTE_PAIRS.flatMap(
-  ([chineseQuote, englishQuote]) => [chineseQuote, englishQuote],
-);
+export const DAILY_MOTIVATIONAL_QUOTES: string[] = [
+  ...DAILY_MOTIVATIONAL_QUOTE_PAIRS.flatMap(
+    ([chineseQuote, englishQuote]) => [chineseQuote, englishQuote],
+  ),
+  "One bad chapter doesn't mean your story is over.",
+  'The best way to predict your future is to create it.',
+];
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 

@@ -50,7 +50,7 @@ function createLoadingMarkup() {
     #momentum-loading-screen.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
     .momentum-loader-inner{width:min(340px,90vw);text-align:center}
     .momentum-loader-halo{width:104px;height:104px;margin:0 auto 18px;border-radius:36px;background:radial-gradient(circle at 35% 28%,#fff 0,#ffe5ee 55%,#f9dbea 100%);display:grid;place-items:center;box-shadow:0 12px 34px rgba(190,105,146,.14)}
-    .momentum-loader-mark{font-size:40px;line-height:1;animation:momentum-heartbeat 1.4s ease-in-out infinite}
+    .momentum-loader-mark{font-size:56px;line-height:1;animation:momentum-heartbeat 1.4s ease-in-out infinite}
     .momentum-loader-dogs{display:grid;grid-template-columns:repeat(7,1fr);gap:2px 6px;max-width:320px;margin:0 auto 14px}
     .loader-dog{display:block;width:38px;height:42px;justify-self:center;animation:momentum-dog-bounce .72s ease-in-out infinite alternate;animation-delay:var(--delay)}
     .loader-dog svg{width:100%;height:100%;overflow:visible}

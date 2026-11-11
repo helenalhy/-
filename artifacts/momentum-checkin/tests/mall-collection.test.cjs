@@ -670,7 +670,7 @@ test('a failed partial-reward transaction leaves the check-in and coin balance u
   assert.equal(storage[checkInTransactionKey], undefined);
 });
 
-test('a failed write-ahead record leaves both the completion and coin balance unchanged', async () => {
+test('a failed write-ahead record can be retried on the same provider and awards only once', async () => {
   const storage = seed({
     schemaVersion: 3,
     coins: 0,
@@ -678,19 +678,43 @@ test('a failed write-ahead record leaves both the completion and coin balance un
     rewardedCheckIns: [],
     placements: {},
   });
-  const app = await mount(storage);
+  let app = await mount(storage);
   const originalHabits = storage[habitsKey];
   const originalMall = storage[key];
   const today = app.value.today;
+  const rewardKey = `starter-walk:${today}`;
 
   app.setFailWrites(true);
   await assert.rejects(app.value.toggleCheckIn('starter-walk'), /無法儲存打卡紀錄/);
 
   assert.ok(!app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
   assert.equal(app.value.coins, 0);
+  assert.deepEqual(app.value.rewardedCheckIns, []);
   assert.equal(storage[habitsKey], originalHabits);
   assert.equal(storage[key], originalMall);
   assert.equal(storage[checkInTransactionKey], undefined);
+
+  app.setFailWrites(false);
+  assert.equal(await app.value.toggleCheckIn('starter-walk'), 20);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey]);
+  assert.ok(JSON.parse(storage[habitsKey]).find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(JSON.parse(storage[key]).coins, 20);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+  assert.equal(storage[checkInTransactionKey], undefined);
+
+  assert.equal(await app.value.toggleCheckIn('starter-walk'), 0);
+  assert.equal(await app.value.toggleCheckIn('starter-walk'), 0);
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+
+  app = await mount(storage);
+  assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey]);
+  assert.equal(JSON.parse(storage[key]).coins, 20);
+  assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
 });
 
 for (const failingMirrorKey of [habitsKey, key]) {

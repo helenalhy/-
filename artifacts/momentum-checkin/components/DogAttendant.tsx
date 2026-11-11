@@ -32,11 +32,15 @@ export function DogAttendant({
   outfitId,
   accessoryId,
   happy = false,
+  eating = false,
+  chewing = false,
 }: {
   kind: DogAttendantKind;
   outfitId?: string;
   accessoryId?: string;
   happy?: boolean;
+  eating?: boolean;
+  chewing?: boolean;
 }) {
   const look = DOG_ATTENDANT_LOOKS[kind];
   const outfit = outfitId ? DOG_STAFF_OUTFIT_BY_ID[outfitId] : undefined;
@@ -206,7 +210,9 @@ export function DogAttendant({
         <View style={[s.muzzle, { backgroundColor: look.muzzle }]}>
           {look.facePattern === 'schnauzer' && <View style={s.schnauzerBeard} />}
           <View style={s.nose} />
-          <View style={[s.smile, happy && s.happySmile]} />
+          {eating && chewing
+            ? <View testID="dog-attendant-eating-mouth" style={s.eatingMouth} />
+            : <View style={[s.smile, happy && s.happySmile]} />}
         </View>
       </View>
       <View style={[s.collar, { backgroundColor: look.collar }]}>
@@ -400,6 +406,7 @@ const s = StyleSheet.create({
   nose: { position: 'absolute', top: 0.5, width: 3, height: 2, borderRadius: 2, backgroundColor: c.candyCaramelDark },
   smile: { position: 'absolute', top: 3, width: 4, height: 2, borderBottomWidth: 0.8, borderColor: c.candyCaramelDark, borderRadius: 4 },
   happySmile: { width: 5, height: 2.5, borderBottomWidth: 1.2 },
+  eatingMouth: { position: 'absolute', top: 2.5, width: 4.5, height: 4, borderRadius: 3, backgroundColor: c.candyCaramelDark },
   collar: { position: 'absolute', width: 16, height: 4, left: 18, bottom: 15, borderRadius: 3, zIndex: 3 },
   bell: { position: 'absolute', width: 3, height: 3, left: 6.5, top: 2, borderRadius: 2, backgroundColor: c.candyLemon },
   accessoryBase: { position: 'absolute', zIndex: 5, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

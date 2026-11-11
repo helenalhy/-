@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Alert,
@@ -17,7 +17,7 @@ import { MallObjectVisual } from '@/components/MallVisuals';
 import { ShopInteriorScene } from '@/components/ShopInteriorScene';
 import { CosmeticsTryOn } from '@/components/CosmeticsTryOn';
 import { ShopDisplayFixturePanel } from '@/components/ShopDisplayFixturePanel';
-import { DogStaffCustomizer } from '@/components/DogStaffCustomizer';
+import { DogStaffCustomizer, type DogStaffListArtStyle } from '@/components/DogStaffCustomizer';
 import { DogCompanionModal } from '@/components/DogCompanionModal';
 import { DogCollectionBook } from '@/components/DogCollectionBook';
 import {
@@ -36,6 +36,8 @@ import {
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_PROFILES,
+  getDefaultDogStaffLook,
+  resolveDogStaffLook,
   type DogStaffAreaId,
   type DogStaffLook,
 } from '@/constants/dog-staff-customization';
@@ -139,7 +141,13 @@ export default function MallShopInteriorScreen() {
   const [slotAccessibilityResult, setSlotAccessibilityResult] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
   const [activeDogCompanionId, setActiveDogCompanionId] = useState<string | null>(null);
+  const [dogStaffListArtStyle, setDogStaffListArtStyle] = useState<DogStaffListArtStyle>('fluffy');
+  const [dogStaffListArtStyleLoaded, setDogStaffListArtStyleLoaded] = useState(false);
   const [dogCollectionVisible, setDogCollectionVisible] = useState(false);
+  const handleDogListArtStyleChange = useCallback((style: DogStaffListArtStyle, loaded?: boolean) => {
+    setDogStaffListArtStyle(style);
+    if (loaded) setDogStaffListArtStyleLoaded(true);
+  }, []);
   const interior = shop ? shopInteriors[shop.id] : undefined;
   const ownedDecorationIds = interior?.ownedDecorations ?? [];
   const ownedDecorationKey = ownedDecorationIds.slice().sort().join('|');
@@ -190,6 +198,12 @@ export default function MallShopInteriorScreen() {
   const dogCompanionAffection = activeDogCompanion
     ? interior?.dogCompanion?.affection[activeDogCompanion.decorationId] ?? 0
     : 0;
+  const activeDogCompanionLook = activeDogCompanion
+    ? resolveDogStaffLook(
+      activeDogCompanion.decorationId,
+      interior?.dogStaffLooks?.[activeDogCompanion.decorationId],
+    ) ?? getDefaultDogStaffLook(activeDogCompanion.decorationId) ?? undefined
+    : undefined;
   const hasAccess = !!shop && shop.category === 'shop' && purchasedItems.includes(shop.id);
   const catalogPageSize = 10;
   const catalogPageCount = Math.max(1, Math.ceil(interiorDecorations.length / catalogPageSize));
@@ -499,6 +513,7 @@ export default function MallShopInteriorScreen() {
                 onSaveLook={saveNamedDogStaffLook}
                 onDeleteLook={deleteNamedDogStaffLook}
                 onOpenDogCompanion={openDogCompanion}
+                onDogListArtStyleChange={handleDogListArtStyleChange}
                 onOpenCollection={() => void openDogCollection()}
               />
             )}
@@ -657,8 +672,10 @@ export default function MallShopInteriorScreen() {
       {shop?.id === DOG_COMPANION_SHOP_ID && (
         <>
           <DogCompanionModal
-            visible={activeDogCompanion !== null}
+            visible={activeDogCompanion !== null && dogStaffListArtStyleLoaded}
             dog={activeDogCompanion}
+            artStyle={dogStaffListArtStyle}
+            dogLook={activeDogCompanionLook}
             owned={Boolean(activeDogCompanion && owned.has(activeDogCompanion.decorationId))}
             coins={coins}
             today={today}

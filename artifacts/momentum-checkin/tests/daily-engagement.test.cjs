@@ -186,3 +186,17 @@ test('all 56 README-mapped dog poses and transparent staff images are bundled', 
   assert.match(staffCustomizer, /source=\{getDogFluffyStaffImage\(dog\.key\)\}/);
   assert.match(dailyEngagement, /source=\{getDogFluffyImage\(dog\.key, displayedPose\)\}/);
 });
+
+test('the saved roster art style also controls companion modal art and pose changes', () => {
+  const dogStaff = fs.readFileSync(path.join(appRoot, 'components/DogStaffCustomizer.tsx'), 'utf8');
+  const shopRoute = fs.readFileSync(path.join(appRoot, 'app/mall-shop/[itemId].tsx'), 'utf8');
+  const companionModal = fs.readFileSync(path.join(appRoot, 'components/DogCompanionModal.tsx'), 'utf8');
+  assert.match(dogStaff, /onDogListArtStyleChange\?\.\(resolvedStyle, true\)/);
+  assert.match(dogStaff, /onDogListArtStyleChange\?\.\(style\)/);
+  assert.match(shopRoute, /artStyle=\{dogStaffListArtStyle\}/);
+  assert.match(shopRoute, /dogLook=\{activeDogCompanionLook\}/);
+  assert.match(shopRoute, /visible=\{activeDogCompanion !== null && dogStaffListArtStyleLoaded\}/);
+  assert.match(companionModal, /artStyle === 'fluffy'/);
+  assert.match(companionModal, /dog-companion-original-art-\$\{dog\.key\}/);
+  assert.match(companionModal, /setPose\(artStyle === 'fluffy' \? poseByAction\[action\] : 1\)/);
+});

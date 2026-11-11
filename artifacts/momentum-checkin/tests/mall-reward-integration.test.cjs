@@ -2234,3 +2234,34 @@ test('deleting a goal confirms lost check-in history and preserves earned coins 
 function renderHabitRow(app, habitRow) {
   return app.render('today-habit-row', () => habitRow.type(habitRow.props));
 }
+
+test('dog companion animates the selected food through flight and three bites', () => {
+  const modal = fs.readFileSync(path.join(__dirname, '../components/DogCompanionModal.tsx'), 'utf8');
+  assert.match(modal, /measureFoodFlightPath\(food\)/);
+  assert.match(modal, /testID="dog-companion-food-flight"/);
+  assert.match(modal, /food=\{flyingFood\}/);
+  assert.match(modal, /foodBiteProgress/);
+  assert.match(modal, /const bites = 3/);
+  assert.match(modal, /dogRect\.height \* 0\.46/);
+  assert.match(modal, /testID="dog-companion-chewing-mouth"/);
+  assert.match(modal, /eating=\{actionKind === 'feed' && !feedFinishedHappy\}/);
+});
+
+test('each cafe dog has five uniquely named toys and an interactive frisbee', () => {
+  const catalog = fs.readFileSync(path.join(__dirname, '../constants/dog-companion-toys.ts'), 'utf8');
+  const modal = fs.readFileSync(path.join(__dirname, '../components/DogCompanionModal.tsx'), 'utf8');
+  const profiles = [...catalog.matchAll(/'fluffy-staff-[^']+': \{\n\s*color: '[^']+',\n\s*names: \[([^\]]+)\],/g)];
+  assert.equal(profiles.length, 14);
+  const allNames = [];
+  for (const profile of profiles) {
+    const names = profile[1].match(/'[^']+'/g) ?? [];
+    assert.equal(names.length, 5);
+    assert.equal(new Set(names).size, 5);
+    allNames.push(...names);
+  }
+  assert.equal(new Set(allNames).size, 70);
+  assert.match(modal, /PanResponder\.create/);
+  assert.match(modal, /onPanResponderRelease/);
+  assert.match(modal, /testID="dog-companion-frisbee"/);
+  assert.match(modal, /向左或向下拉蓄力/);
+});

@@ -21,7 +21,7 @@ import { useColors } from '@/hooks/useColors';
 
 type LookTab = 'outfit' | 'theme' | 'accessory';
 type AccessoryFilter = 'all' | 'animal-ears';
-type DogStaffListArtStyle = 'original' | 'fluffy';
+export type DogStaffListArtStyle = 'original' | 'fluffy';
 const DOG_STAFF_LIST_ART_STYLE_KEY = 'momentum.dogStaffListArtStyle.v1';
 const LOOKS_PER_PAGE = 10;
 
@@ -40,6 +40,7 @@ export function DogStaffCustomizer({
   onSaveLook,
   onDeleteLook,
   onOpenDogCompanion,
+  onDogListArtStyleChange,
   onOpenCollection,
 }: {
   dogs: DogStaffProfile[];
@@ -56,6 +57,7 @@ export function DogStaffCustomizer({
   onSaveLook: (dogDecorationId: string, name: string, look: DogStaffLook) => Promise<void>;
   onDeleteLook: (dogDecorationId: string, savedLookId: string) => Promise<void>;
   onOpenDogCompanion?: (dogDecorationId: string) => void;
+  onDogListArtStyleChange?: (style: DogStaffListArtStyle, loaded?: boolean) => void;
   onOpenCollection?: () => void;
 }) {
   const colors = useColors();
@@ -78,9 +80,11 @@ export function DogStaffCustomizer({
   const [dogListArtStyleLoaded, setDogListArtStyleLoaded] = useState(false);
   useEffect(() => {
     let active = true;
+    let resolvedStyle: DogStaffListArtStyle = 'fluffy';
     AsyncStorage.getItem(DOG_STAFF_LIST_ART_STYLE_KEY)
       .then((savedStyle) => {
         if (active && (savedStyle === 'original' || savedStyle === 'fluffy')) {
+          resolvedStyle = savedStyle;
           setDogListArtStyle(savedStyle);
         }
       })
@@ -88,12 +92,15 @@ export function DogStaffCustomizer({
         if (active) setNotice('圖片風格設定暫時無法讀取，將先使用毛茸茸新版。');
       })
       .finally(() => {
-        if (active) setDogListArtStyleLoaded(true);
+        if (active) {
+          setDogListArtStyleLoaded(true);
+          onDogListArtStyleChange?.(resolvedStyle, true);
+        }
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [onDogListArtStyleChange]);
   function reportNotice(message: string) {
     setNotice(message);
     if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
@@ -101,6 +108,7 @@ export function DogStaffCustomizer({
   async function chooseDogListArtStyle(style: DogStaffListArtStyle) {
     if (!dogListArtStyleLoaded || style === dogListArtStyle) return;
     setDogListArtStyle(style);
+    onDogListArtStyleChange?.(style);
     setNotice('');
     try {
       await AsyncStorage.setItem(DOG_STAFF_LIST_ART_STYLE_KEY, style);

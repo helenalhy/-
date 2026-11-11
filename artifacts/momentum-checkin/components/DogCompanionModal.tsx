@@ -4,7 +4,9 @@ import { Image as ExpoImage } from 'expo-image';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -17,7 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { DogStaffFoodOption } from '@/constants/dog-staff-foods';
 import { DOG_STAFF_FOOD_OPTIONS } from '@/constants/dog-staff-foods';
 import { getDogFluffyImage } from '@/constants/dog-fluffy-images';
-import type { DogStaffProfile } from '@/constants/dog-staff-customization';
+import type { DogStaffLook, DogStaffProfile } from '@/constants/dog-staff-customization';
+import { DogAttendant, type DogAttendantKind } from '@/components/DogAttendant';
 import { useColors } from '@/hooks/useColors';
 import { buildDogCompanionPostcardSvg } from '@/lib/dog-companion-postcard';
 import {
@@ -27,27 +30,13 @@ import {
 } from '@/lib/dog-companion';
 import { downloadSvgAsPng } from '@/lib/postcard-export';
 import { DogFoodIllustration } from '@/components/ShopInteriorScene';
-
-const DOG_TOYS: Record<string, { name: string; icon: keyof typeof Feather.glyphMap }> = {
-  'fluffy-staff-huahua': { name: '粉紅色小球', icon: 'circle' },
-  'fluffy-staff-milkshake': { name: '紫色布球', icon: 'circle' },
-  'fluffy-staff-xiaoniu': { name: '飛碟', icon: 'disc' },
-  'fluffy-staff-pudding': { name: '橙色小球', icon: 'circle' },
-  'fluffy-staff-tangtang': { name: '軟綿綿抱枕', icon: 'square' },
-  'fluffy-staff-pipi': { name: '骨頭玩具', icon: 'award' },
-  'fluffy-staff-amber': { name: '拉繩玩具', icon: 'link' },
-  'fluffy-staff-cloud': { name: '雲朵球', icon: 'cloud' },
-  'fluffy-staff-wonton': { name: '小布偶', icon: 'smile' },
-  'fluffy-staff-butter': { name: '奶油色小球', icon: 'circle' },
-  'fluffy-staff-sesame': { name: '布製飛盤', icon: 'disc' },
-  'fluffy-staff-snowball': { name: '雪花布球', icon: 'circle' },
-  'fluffy-staff-maomao': { name: '蓬鬆玩具', icon: 'feather' },
-  'fluffy-staff-poppy': { name: '小骨頭', icon: 'award' },
-};
+import { getDogCompanionToys, type DogCompanionToy } from '@/constants/dog-companion-toys';
 
 type DogCompanionModalProps = {
   visible: boolean;
   dog: DogStaffProfile | null;
+  artStyle: 'original' | 'fluffy';
+  dogLook?: DogStaffLook;
   owned: boolean;
   coins: number;
   today: string;
@@ -108,9 +97,46 @@ function foodKeyForTest(food: DogStaffFoodOption): string {
   return food.id.replace(/[^a-zA-Z0-9-]/g, '-');
 }
 
+type FoodWindowRect = { x: number; y: number; width: number; height: number };
+type FoodFlightPath = {
+  startX: number;
+  startY: number;
+  middleX: number;
+  middleY: number;
+  endX: number;
+  endY: number;
+};
+type ToyFlightPath = {
+  startX: number;
+  startY: number;
+  middleX: number;
+  middleY: number;
+  endX: number;
+  endY: number;
+};
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function measureInWindow(view: View | null): Promise<FoodWindowRect | null> {
+  if (!view) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    view.measureInWindow((x, y, width, height) => {
+      if (![x, y, width, height].every(Number.isFinite)) {
+        resolve(null);
+        return;
+      }
+      resolve({ x, y, width, height });
+    });
+  });
+}
+
 export function DogCompanionModal({
   visible,
   dog,
+  artStyle,
+  dogLook,
   owned,
   coins,
   today,
@@ -122,10 +148,28 @@ export function DogCompanionModal({
   const motion = useRef(new Animated.Value(0)).current;
   const heartProgress = useRef(new Animated.Value(0)).current;
   const flashOpacity = useRef(new Animated.Value(0)).current;
+  const foodFlightProgress = useRef(new Animated.Value(0)).current;
+  const foodBiteProgress = useRef(new Animated.Value(0)).current;
+  const frisbeeDrag = useRef(new Animated.ValueXY()).current;
+  const frisbeeFlightProgress = useRef(new Animated.Value(0)).current;
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const modalRootRef = useRef<View | null>(null);
+  const dogImageFrameRef = useRef<View | null>(null);
+  const foodTileRefs = useRef<Record<string, View | null>>({});
+  const launchFrisbeeRef = useRef<(dx: number, dy: number) => void>(() => {});
   const [pose, setPose] = useState<1 | 2 | 3 | 4>(1);
   const [busy, setBusy] = useState(false);
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
+  const [flyingFood, setFlyingFood] = useState<DogStaffFoodOption | null>(null);
+  const [foodFlightPath, setFoodFlightPath] = useState<FoodFlightPath | null>(null);
+  const [chewing, setChewing] = useState(false);
+  const [feedFinishedHappy, setFeedFinishedHappy] = useState(false);
+  const [toyPickerOpen, setToyPickerOpen] = useState(false);
+  const [selectedToy, setSelectedToy] = useState<DogCompanionToy | null>(null);
+  const [frisbeeReady, setFrisbeeReady] = useState(false);
+  const [frisbeeLaunching, setFrisbeeLaunching] = useState(false);
+  const [frisbeePath, setFrisbeePath] = useState<ToyFlightPath | null>(null);
+  const [frisbeePower, setFrisbeePower] = useState(0);
   const [photoReady, setPhotoReady] = useState(false);
   const [heartBurstCount, setHeartBurstCount] = useState(0);
   const [feedback, setFeedback] = useState('');
@@ -136,26 +180,48 @@ export function DogCompanionModal({
     () => (dog ? DOG_STAFF_FOOD_OPTIONS[dog.key] ?? [] : []),
     [dog],
   );
+  const toys = useMemo(
+    () => (dog ? getDogCompanionToys(dog.key) : []),
+    [dog?.key],
+  );
   const visibleAffection = lastActionAffection ?? affection;
   const dogColor = dog?.color ?? colors.primary;
-  const toy = dog ? DOG_TOYS[dog.key] : undefined;
+  const selectedPlayToy = selectedToy?.dogKey === dog?.key ? selectedToy : toys[0];
 
   useEffect(() => {
     setPose(1);
     setBusy(false);
     setFoodPickerOpen(false);
+    setFlyingFood(null);
+    setFoodFlightPath(null);
+    setChewing(false);
+    setFeedFinishedHappy(false);
+    setToyPickerOpen(false);
+    setSelectedToy(null);
+    setFrisbeeReady(false);
+    setFrisbeeLaunching(false);
+    setFrisbeePath(null);
+    setFrisbeePower(0);
+    foodFlightProgress.setValue(0);
+    foodBiteProgress.setValue(0);
+    frisbeeDrag.setValue({ x: 0, y: 0 });
+    frisbeeFlightProgress.setValue(0);
     setPhotoReady(false);
     setFeedback('');
     setHeartBurstCount(0);
     setLastActionAffection(null);
-  }, [dog?.decorationId, visible]);
+  }, [artStyle, dog?.decorationId, dog?.key, foodBiteProgress, foodFlightProgress, frisbeeDrag, frisbeeFlightProgress, visible]);
 
   useEffect(() => () => {
     animationRef.current?.stop();
     motion.stopAnimation();
     heartProgress.stopAnimation();
     flashOpacity.stopAnimation();
-  }, [flashOpacity, heartProgress, motion]);
+    foodFlightProgress.stopAnimation();
+    foodBiteProgress.stopAnimation();
+    frisbeeDrag.stopAnimation();
+    frisbeeFlightProgress.stopAnimation();
+  }, [flashOpacity, foodBiteProgress, foodFlightProgress, frisbeeDrag, frisbeeFlightProgress, heartProgress, motion]);
 
   const lift = motion.interpolate({
     inputRange: [0, 0.5, 1],
@@ -168,12 +234,145 @@ export function DogCompanionModal({
   const heartY = heartProgress.interpolate({ inputRange: [0, 1], outputRange: [12, -52] });
   const heartOpacity = heartProgress.interpolate({ inputRange: [0, 0.18, 0.78, 1], outputRange: [0, 1, 1, 0] });
   const heartScale = heartProgress.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0.55, 1.16, 0.92] });
+  const foodFlightX = foodFlightProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: foodFlightPath
+      ? [foodFlightPath.startX, foodFlightPath.middleX, foodFlightPath.endX]
+      : [0, 0, 0],
+  });
+  const foodFlightY = foodFlightProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: foodFlightPath
+      ? [foodFlightPath.startY, foodFlightPath.middleY, foodFlightPath.endY]
+      : [0, 0, 0],
+  });
+  const foodFlightScale = foodFlightProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1],
+  });
+  const foodBiteScale = foodBiteProgress.interpolate({
+    inputRange: [0, 1 / 3, 2 / 3, 1],
+    outputRange: [1, 0.74, 0.42, 0.04],
+  });
+  const foodFlightOpacity = foodFlightProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1],
+  });
+  const frisbeeX = frisbeePath
+    ? frisbeeFlightProgress.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [frisbeePath.startX, frisbeePath.middleX, frisbeePath.endX],
+    })
+    : frisbeeDrag.x;
+  const frisbeeY = frisbeePath
+    ? frisbeeFlightProgress.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [frisbeePath.startY, frisbeePath.middleY, frisbeePath.endY],
+    })
+    : frisbeeDrag.y;
+  const frisbeeRotation = frisbeeFlightProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '720deg'],
+  });
+
+  const frisbeePanResponder = useMemo(
+    () => PanResponder.create({
+      onStartShouldSetPanResponder: () => frisbeeReady && !frisbeeLaunching,
+      onMoveShouldSetPanResponder: (_, gesture) => (
+        frisbeeReady
+        && !frisbeeLaunching
+        && Math.abs(gesture.dx) + Math.abs(gesture.dy) > 4
+      ),
+      onPanResponderGrant: () => {
+        frisbeeDrag.setValue({ x: 0, y: 0 });
+        setFrisbeePower(0);
+      },
+      onPanResponderMove: (_, gesture) => {
+        const x = clamp(gesture.dx, -145, 0);
+        const y = clamp(gesture.dy, 0, 76);
+        frisbeeDrag.setValue({ x, y });
+        setFrisbeePower(clamp(Math.round(Math.hypot(x, y) / 1.6), 0, 100));
+      },
+      onPanResponderRelease: (_, gesture) => launchFrisbeeRef.current(gesture.dx, gesture.dy),
+      onPanResponderTerminate: () => {
+        Animated.spring(frisbeeDrag, {
+          toValue: { x: 0, y: 0 },
+          speed: 20,
+          bounciness: 6,
+          useNativeDriver: false,
+        }).start();
+      },
+      onPanResponderTerminationRequest: () => false,
+    }),
+    [frisbeeDrag, frisbeeLaunching, frisbeeReady],
+  );
 
   if (!dog) return null;
 
   const activeDog = dog;
   const dogImage = getDogFluffyImage(dog.key, pose);
   const imageSource = dogImage as number;
+
+  async function measureFoodFlightPath(food: DogStaffFoodOption): Promise<FoodFlightPath | null> {
+    const [sourceRect, dogRect, rootRect] = await Promise.all([
+      measureInWindow(foodTileRefs.current[food.id]),
+      measureInWindow(dogImageFrameRef.current),
+      measureInWindow(modalRootRef.current),
+    ]);
+    if (!sourceRect || !dogRect || !rootRect || sourceRect.width <= 0 || dogRect.width <= 0) return null;
+    const iconSize = 40;
+    const startX = sourceRect.x - rootRect.x + (sourceRect.width - iconSize) / 2;
+    const startY = sourceRect.y - rootRect.y + (sourceRect.height - iconSize) / 2;
+    const endX = dogRect.x - rootRect.x + (dogRect.width - iconSize) / 2;
+    const endY = dogRect.y - rootRect.y + dogRect.height * 0.46 - iconSize / 2;
+    return {
+      startX,
+      startY,
+      middleX: (startX + endX) / 2,
+      middleY: (startY + endY) / 2 - 22,
+      endX,
+      endY,
+    };
+  }
+
+  async function animateFoodFlight(food: DogStaffFoodOption, path: FoodFlightPath, excited: boolean) {
+    setFoodFlightPath(path);
+    setFlyingFood(food);
+    foodFlightProgress.setValue(0);
+    foodBiteProgress.setValue(0);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const flight = Animated.timing(foodFlightProgress, {
+      toValue: 1,
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    animationRef.current = flight;
+    await new Promise<void>((resolve) => flight.start(() => resolve()));
+    const bites = 3;
+    for (let bite = 1; bite <= bites; bite += 1) {
+      setChewing(true);
+      const shrink = Animated.timing(foodBiteProgress, {
+        toValue: bite / bites,
+        duration: 170,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: Platform.OS !== 'web',
+      });
+      const nod = Animated.sequence([
+        Animated.timing(motion, { toValue: 0.38, duration: 125, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(motion, { toValue: 0, duration: 130, useNativeDriver: Platform.OS !== 'web' }),
+      ]);
+      animationRef.current = Animated.parallel([shrink, nod]);
+      await new Promise<void>((resolve) => animationRef.current?.start(() => resolve()));
+      setChewing(false);
+      await new Promise<void>((resolve) => setTimeout(resolve, 65));
+    }
+    setFlyingFood(null);
+    setFoodFlightPath(null);
+    motion.setValue(0);
+    setFeedFinishedHappy(true);
+    await new Promise<void>((resolve) => setTimeout(resolve, 320));
+  }
 
   async function animateInteraction(action: DogCompanionAction, excited: boolean) {
     animationRef.current?.stop();
@@ -223,7 +422,11 @@ export function DogCompanionModal({
     }).start();
   }
 
-  async function performAction(action: DogCompanionAction, food?: DogStaffFoodOption) {
+  async function performAction(
+    action: DogCompanionAction,
+    food?: DogStaffFoodOption,
+    playToy?: DogCompanionToy,
+  ) {
     if (busy || !owned) return;
     if (action === 'feed' && !food) {
       setFoodPickerOpen(true);
@@ -231,17 +434,35 @@ export function DogCompanionModal({
       return;
     }
     setBusy(true);
-    setActionKind(action);
+    const activeToy = playToy ?? selectedPlayToy;
+    if (action === 'play' && activeToy) setSelectedToy(activeToy);
     setPhotoReady(false);
     setFeedback('');
+    setFeedFinishedHappy(false);
+    setChewing(false);
+    setFrisbeeReady(false);
+    setFrisbeeLaunching(false);
+    setFrisbeePath(null);
+    setToyPickerOpen(false);
+    let foodPath: FoodFlightPath | null = null;
+    if (action === 'feed' && food) {
+      motion.setValue(0);
+      foodPath = await measureFoodFlightPath(food);
+      if (!foodPath) {
+        setBusy(false);
+        setFeedback('未能讀取食物位置，今次沒有扣金幣；請再選一次。');
+        return;
+      }
+    }
+    setActionKind(action);
     const poseByAction: Record<DogCompanionAction, 1 | 2 | 3 | 4> = {
       feed: 2,
       pet: 3,
       play: 4,
       photo: 1,
     };
-    setPose(poseByAction[action]);
-    setFoodPickerOpen(false);
+    setPose(artStyle === 'fluffy' ? poseByAction[action] : 1);
+    if (action !== 'feed') setFoodPickerOpen(false);
     try {
       const result = await onInteract(
         activeDog.decorationId,
@@ -251,7 +472,6 @@ export function DogCompanionModal({
       );
       setLastActionAffection(result.affection);
       const heartCount = result.affectionGained;
-      if (heartCount > 0) void showHearts(action === 'feed' && food?.favorite ? Math.max(2, heartCount) : heartCount);
       if (action === 'photo') setPhotoReady(true);
       if (result.affectionRewardCoins > 0) {
         setFeedback(`親密度達到 10 顆心，已領取 ${result.affectionRewardCoins} 金幣獎勵。`);
@@ -265,15 +485,104 @@ export function DogCompanionModal({
       } else {
         setFeedback('互動已完成。');
       }
-      await animateInteraction(action, action === 'feed' && Boolean(food?.favorite));
+      if (action === 'feed' && food && foodPath) {
+        await animateFoodFlight(food, foodPath, Boolean(food.favorite));
+        setFoodPickerOpen(false);
+        if (heartCount > 0) {
+          void showHearts(food.favorite ? Math.max(2, heartCount) : heartCount);
+        }
+        await new Promise<void>((resolve) => setTimeout(resolve, heartCount > 0 ? 700 : 320));
+        setFeedFinishedHappy(false);
+      } else {
+        if (heartCount > 0) void showHearts(heartCount);
+        await animateInteraction(action, false);
+      }
     } catch (error) {
       setPose(1);
+      setFlyingFood(null);
+      setFoodFlightPath(null);
+      setChewing(false);
+      setFeedFinishedHappy(false);
       setFeedback(error instanceof Error ? error.message : '互動未完成，請稍後再試。');
     } finally {
       setBusy(false);
       setActionKind(null);
       if (action !== 'photo') setPose(1);
     }
+  }
+
+  async function launchFrisbee(dx: number, dy: number) {
+    if (!frisbeeReady || frisbeeLaunching || selectedPlayToy?.kind !== 'frisbee') return;
+    const startX = clamp(dx, -145, 0);
+    const startY = clamp(dy, 0, 76);
+    const pullDistance = Math.hypot(startX, startY);
+    if (pullDistance < 20) {
+      setFeedback('再向後拉一點飛盤，放手就會發射！');
+      Animated.spring(frisbeeDrag, {
+        toValue: { x: 0, y: 0 },
+        speed: 20,
+        bounciness: 7,
+        useNativeDriver: false,
+      }).start();
+      return;
+    }
+
+    const power = clamp(Math.round(pullDistance / 1.6), 15, 100);
+    const endX = clamp(130 + power * 1.15, 150, 255);
+    const endY = -(58 + power * 0.62);
+    setFrisbeePower(power);
+    setFrisbeePath({
+      startX,
+      startY,
+      middleX: (startX + endX) / 2,
+      middleY: (startY + endY) / 2 - 44,
+      endX,
+      endY,
+    });
+    setFrisbeeReady(false);
+    setFrisbeeLaunching(true);
+    frisbeeFlightProgress.setValue(0);
+    const launch = Animated.timing(frisbeeFlightProgress, {
+      toValue: 1,
+      duration: 620 + power * 2,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    animationRef.current = launch;
+    await new Promise<void>((resolve) => launch.start(() => resolve()));
+    setFrisbeeLaunching(false);
+    setFrisbeePath(null);
+    frisbeeFlightProgress.setValue(0);
+    frisbeeDrag.setValue({ x: 0, y: 0 });
+    await performAction('play', undefined, selectedPlayToy);
+  }
+  launchFrisbeeRef.current = (dx, dy) => { void launchFrisbee(dx, dy); };
+
+  function chooseToy(playToy: DogCompanionToy) {
+    setSelectedToy(playToy);
+    setToyPickerOpen(false);
+    setFeedback('');
+    if (playToy.kind === 'frisbee') {
+      setFrisbeePath(null);
+      frisbeeFlightProgress.setValue(0);
+      frisbeeDrag.setValue({ x: 0, y: 0 });
+      setFrisbeePower(0);
+      setFrisbeeReady(true);
+      setActionKind('play');
+      setPose(artStyle === 'fluffy' ? 4 : 1);
+      setFeedback('按住飛盤向左或向下拉蓄力，放開就會飛出去！');
+      return;
+    }
+    void performAction('play', undefined, playToy);
+  }
+
+  function cancelFrisbeeReady() {
+    setFrisbeeReady(false);
+    setActionKind(null);
+    setPose(1);
+    setFrisbeePath(null);
+    setToyPickerOpen(true);
+    setFeedback('選一款玩具開始互動。');
   }
 
   async function savePhotoPostcard() {
@@ -297,7 +606,7 @@ export function DogCompanionModal({
     }
   }
 
-  const interactionDisabled = busy || !owned;
+  const interactionDisabled = busy || !owned || frisbeeReady || frisbeeLaunching;
 
   return (
     <Modal
@@ -306,7 +615,7 @@ export function DogCompanionModal({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <SafeAreaView testID="dog-companion-modal" style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <SafeAreaView ref={modalRootRef} testID="dog-companion-modal" style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={[styles.eyebrow, { color: colors.primary }]}>毛茸茸棉花糖 CAFE</Text>
@@ -326,16 +635,44 @@ export function DogCompanionModal({
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={[styles.hero, foodPickerOpen && styles.heroFoodMode, { backgroundColor: colors.candyCream, borderColor: colors.border }]}>
             <Animated.View
+              ref={dogImageFrameRef}
               testID="dog-companion-image-stage"
               style={[styles.dogImageFrame, foodPickerOpen && styles.dogImageFrameFoodMode, { transform: [{ translateY: lift }, { rotate: tilt }] }]}
             >
-              <ExpoImage
-                testID={`dog-companion-pose-${pose}`}
-                source={imageSource}
-                contentFit="contain"
-                transition={120}
-                style={styles.dogImage}
-              />
+                {artStyle === 'fluffy' ? (
+                  <ExpoImage
+                    testID={`dog-companion-pose-${pose}`}
+                    source={imageSource}
+                    contentFit="contain"
+                    transition={120}
+                    style={styles.dogImage}
+                  />
+                ) : (
+                  <View
+                    testID={`dog-companion-original-art-${dog.key}`}
+                    style={styles.originalDogArtwork}
+                  >
+                    <View style={[styles.originalDogScale, foodPickerOpen && styles.originalDogScaleFoodMode]}>
+                      <DogAttendant
+                        kind={dog.kind as DogAttendantKind}
+                        outfitId={dogLook?.outfitId}
+                        accessoryId={dogLook?.accessoryId}
+                        happy={actionKind === 'pet' || feedFinishedHappy}
+                        eating={actionKind === 'feed' && !feedFinishedHappy}
+                        chewing={chewing}
+                      />
+                    </View>
+                  </View>
+                )}
+              {artStyle === 'fluffy' && actionKind === 'feed' && chewing && (
+                <View
+                  testID="dog-companion-chewing-mouth"
+                  pointerEvents="none"
+                  style={[styles.fluffyChewingMouth, { backgroundColor: colors.foreground }]}
+                >
+                  <View style={styles.fluffyChewingTongue} />
+                </View>
+              )}
               {actionKind === 'photo' && (
                 <View pointerEvents="none" style={styles.cameraFrame}>
                   <View style={styles.cameraCornerTopLeft} />
@@ -344,15 +681,40 @@ export function DogCompanionModal({
                   <View style={styles.cameraCornerBottomRight} />
                 </View>
               )}
-              {actionKind === 'play' && toy && (
+              {actionKind === 'play' && selectedPlayToy && (
                 <View pointerEvents="none" style={[styles.toyBubble, { backgroundColor: colors.card, borderColor: dogColor }]}>
-                  <Feather name={toy.icon} size={18} color={dogColor} />
-                  <Text style={[styles.toyLabel, { color: colors.foreground }]}>{toy.name}</Text>
+                  <Feather name={selectedPlayToy.icon} size={18} color={selectedPlayToy.color} />
+                  <Text style={[styles.toyLabel, { color: colors.foreground }]}>{selectedPlayToy.name}</Text>
                 </View>
+              )}
+              {selectedPlayToy?.kind === 'frisbee' && (frisbeeReady || frisbeeLaunching) && (
+                <Animated.View
+                  {...frisbeePanResponder.panHandlers}
+                  testID="dog-companion-frisbee"
+                  accessibilityRole="button"
+                  accessibilityLabel={frisbeeLaunching ? '布飛盤正在飛行' : `按住飛盤向後拉，蓄力 ${frisbeePower}%`}
+                  style={[
+                    styles.frisbeeDraggable,
+                    {
+                      backgroundColor: selectedPlayToy.color,
+                      borderColor: colors.card,
+                      transform: [
+                        { translateX: frisbeeX },
+                        { translateY: frisbeeY },
+                        { rotate: frisbeeRotation },
+                      ],
+                    },
+                  ]}
+                >
+                  <View style={styles.frisbeeOuterRing} />
+                  <View style={[styles.frisbeeInnerRing, { borderColor: 'rgba(255,255,255,0.92)' }]} />
+                  <View style={styles.frisbeeCenterDot} />
+                </Animated.View>
               )}
               <Animated.View pointerEvents="none" style={[styles.cameraFlash, { opacity: flashOpacity }]} />
               {heartBurstCount > 0 && (
                 <Animated.View
+                  testID="dog-companion-heart-burst"
                   pointerEvents="none"
                   style={[
                     styles.heartBurst,
@@ -424,11 +786,17 @@ export function DogCompanionModal({
                   />
                   <ActionButton
                     testID="dog-companion-play"
-                    icon={toy?.icon ?? 'circle'}
+                    icon={selectedPlayToy?.icon ?? 'disc'}
                     title="一起玩"
-                    detail={`免費 · ${toy?.name ?? '狗狗玩具'}`}
+                    detail={`${toys.length}款玩具 · 點選選擇`}
                     disabled={interactionDisabled}
-                    onPress={() => void performAction('play')}
+                    onPress={() => {
+                      setToyPickerOpen(true);
+                      setFrisbeeReady(false);
+                      setFrisbeeLaunching(false);
+                      setActionKind(null);
+                      setPose(1);
+                    }}
                     color={colors.candyLavenderDark}
                     backgroundColor={colors.card}
                   />
@@ -442,6 +810,76 @@ export function DogCompanionModal({
                     color={colors.candyCaramelDark}
                     backgroundColor={colors.card}
                   />
+                </View>
+              )}
+
+              {toyPickerOpen && (
+                <View testID="dog-companion-toy-picker" style={[styles.toyPicker, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.toyPickerHeading}>
+                    <View style={styles.foodPickerCopy}>
+                      <Text style={[styles.foodPickerTitle, { color: colors.foreground }]}>選一款玩具一起玩</Text>
+                      <Text style={[styles.foodPickerSubtitle, { color: colors.mutedForeground }]}>每隻狗狗有 5 款專屬玩具；布飛盤可以拉住再放手發射。</Text>
+                    </View>
+                    <Pressable
+                      testID="dog-companion-toy-close"
+                      accessibilityRole="button"
+                      accessibilityLabel="關閉玩具選擇"
+                      onPress={() => setToyPickerOpen(false)}
+                      style={[styles.foodClose, { backgroundColor: colors.secondary }]}
+                    >
+                      <Feather name="x" size={16} color={colors.primary} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.toyGrid}>
+                    {toys.map((playToy) => (
+                      <Pressable
+                        key={playToy.id}
+                        testID={`dog-companion-toy-${playToy.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${playToy.name}${playToy.kind === 'frisbee' ? '，可拉動投擲' : ''}`}
+                        disabled={busy}
+                        onPress={() => chooseToy(playToy)}
+                        style={({ pressed }) => [
+                          styles.toyTile,
+                          {
+                            backgroundColor: selectedPlayToy?.id === playToy.id ? colors.secondary : colors.background,
+                            borderColor: selectedPlayToy?.id === playToy.id ? playToy.color : colors.border,
+                            opacity: pressed ? 0.76 : 1,
+                          },
+                        ]}
+                      >
+                        {playToy.kind === 'frisbee' ? (
+                          <View style={[styles.toyDiscPreview, { backgroundColor: playToy.color }]}>
+                            <View style={styles.toyDiscBand} />
+                          </View>
+                        ) : (
+                          <Feather name={playToy.icon} size={21} color={playToy.color} />
+                        )}
+                        <Text style={[styles.toyTileName, { color: colors.foreground }]} numberOfLines={2}>{playToy.name}</Text>
+                        {playToy.kind === 'frisbee' && (
+                          <Text style={[styles.toyTileHint, { color: colors.mutedForeground }]}>拉住投擲</Text>
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {frisbeeReady && selectedPlayToy?.kind === 'frisbee' && (
+                <View testID="dog-companion-frisbee-instructions" style={[styles.frisbeeInstructions, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                  <View style={styles.frisbeeInstructionsCopy}>
+                    <Text style={[styles.frisbeeInstructionsTitle, { color: colors.foreground }]}>按住飛盤向後拉，再放手！</Text>
+                    <Text style={[styles.foodPickerSubtitle, { color: colors.mutedForeground }]}>力度 {frisbeePower}% · 拉得越遠，飛得越遠</Text>
+                  </View>
+                  <Pressable
+                    testID="dog-companion-toy-change"
+                    accessibilityRole="button"
+                    accessibilityLabel="更換一起玩的玩具"
+                    onPress={cancelFrisbeeReady}
+                    style={[styles.foodClose, { backgroundColor: colors.card }]}
+                  >
+                    <Feather name="refresh-cw" size={16} color={colors.primary} />
+                  </Pressable>
                 </View>
               )}
 
@@ -466,6 +904,7 @@ export function DogCompanionModal({
                   <View style={styles.foodGrid}>
                     {foods.map((food) => (
                       <Pressable
+                        ref={(node) => { foodTileRefs.current[food.id] = node; }}
                         key={food.id}
                         testID={`dog-companion-food-${foodKeyForTest(food)}`}
                         accessibilityRole="button"
@@ -478,7 +917,7 @@ export function DogCompanionModal({
                           {
                             backgroundColor: food.favorite ? colors.secondary : colors.background,
                             borderColor: food.favorite ? colors.primary : colors.border,
-                            opacity: pressed ? 0.78 : 1,
+                            opacity: flyingFood?.id === food.id ? 0.18 : pressed ? 0.78 : 1,
                           },
                         ]}
                       >
@@ -499,8 +938,8 @@ export function DogCompanionModal({
                         <Text style={[styles.foodPrice, { color: colors.primary }]}>{DOG_FEED_COST} 金幣</Text>
                       </Pressable>
                     ))}
-                  </View>
-                </View>
+            </View>
+          </View>
               )}
 
               {photoReady && (
@@ -531,6 +970,31 @@ export function DogCompanionModal({
             每種互動每天記錄一次；每隻狗每日最多增加 4 顆心。累積 10 顆心會送 20 金幣，每隻狗一次。
           </Text>
         </ScrollView>
+        {flyingFood && (
+          <Animated.View
+            testID="dog-companion-food-flight"
+            pointerEvents="none"
+            style={[
+              styles.foodFlight,
+              {
+                opacity: foodFlightOpacity,
+                transform: [
+                  { translateX: foodFlightX },
+                  { translateY: foodFlightY },
+                  { scale: foodFlightScale },
+                { scale: foodBiteScale },
+                ],
+              },
+            ]}
+          >
+            <DogFoodIllustration
+              food={flyingFood}
+              dogColor={dogColor}
+              size={36}
+              testID="dog-companion-food-flight-art"
+            />
+          </Animated.View>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -549,6 +1013,11 @@ const styles = StyleSheet.create({
   dogImageFrame: { width: '100%', aspectRatio: 0.96, maxHeight: 360, alignSelf: 'center', borderRadius: 19, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.2)' },
   dogImageFrameFoodMode: { height: 190, maxHeight: 190, aspectRatio: undefined },
   dogImage: { width: '100%', height: '100%' },
+  originalDogArtwork: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  originalDogScale: { transform: [{ scale: 4.8 }] },
+  originalDogScaleFoodMode: { transform: [{ scale: 3.8 }] },
+  fluffyChewingMouth: { position: 'absolute', left: '50%', top: '47%', width: 9, height: 7, marginLeft: -4.5, borderRadius: 5, alignItems: 'center', justifyContent: 'flex-end', zIndex: 12 },
+  fluffyChewingTongue: { width: 4, height: 2.5, marginBottom: 0.8, borderRadius: 2, backgroundColor: '#ef8b9f' },
   cameraFrame: { position: 'absolute', top: '8%', bottom: '8%', left: '8%', right: '8%', borderWidth: 2, borderColor: 'rgba(255,255,255,0.92)', borderRadius: 21 },
   cameraCornerTopLeft: { position: 'absolute', top: -2, left: -2, width: 28, height: 28, borderTopWidth: 5, borderLeftWidth: 5, borderColor: '#FFF9F2', borderTopLeftRadius: 10 },
   cameraCornerTopRight: { position: 'absolute', top: -2, right: -2, width: 28, height: 28, borderTopWidth: 5, borderRightWidth: 5, borderColor: '#FFF9F2', borderTopRightRadius: 10 },
@@ -575,6 +1044,21 @@ const styles = StyleSheet.create({
   actionIcon: { width: 35, height: 35, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   actionTitle: { fontSize: 13, fontWeight: '900' },
   actionDetail: { fontSize: 10, color: '#897783', fontWeight: '600', textAlign: 'center' },
+  toyPicker: { borderWidth: 1, borderRadius: 20, padding: 11, gap: 9 },
+  toyPickerHeading: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  toyGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 7 },
+  toyTile: { width: '18%', minHeight: 82, borderWidth: 1.2, borderRadius: 13, paddingVertical: 7, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  toyTileName: { width: '100%', minHeight: 26, fontSize: 8, lineHeight: 10, fontWeight: '800', textAlign: 'center' },
+  toyTileHint: { fontSize: 7, lineHeight: 9, fontWeight: '700', textAlign: 'center' },
+  toyDiscPreview: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  toyDiscBand: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: 'rgba(255,255,255,0.92)' },
+  frisbeeInstructions: { borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  frisbeeInstructionsCopy: { flex: 1, gap: 3 },
+  frisbeeInstructionsTitle: { fontSize: 11, fontWeight: '900' },
+  frisbeeDraggable: { position: 'absolute', left: '50%', top: '58%', marginLeft: -23, marginTop: -23, width: 46, height: 46, borderRadius: 23, borderWidth: 2, alignItems: 'center', justifyContent: 'center', zIndex: 20, elevation: 20, shadowColor: '#48324A', shadowOpacity: 0.24, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  frisbeeOuterRing: { position: 'absolute', width: 35, height: 35, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.72)' },
+  frisbeeInnerRing: { width: 21, height: 21, borderRadius: 11, borderWidth: 2 },
+  frisbeeCenterDot: { position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.9)' },
   foodPicker: { borderWidth: 1, borderRadius: 19, padding: 11, gap: 9 },
   foodPickerHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   foodPickerCopy: { flex: 1, gap: 3 },
@@ -584,6 +1068,7 @@ const styles = StyleSheet.create({
   foodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   foodTile: { width: '23.5%', minHeight: 106, borderWidth: 1, borderRadius: 13, paddingVertical: 6, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'space-between', gap: 2 },
   foodArt: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  foodFlight: { position: 'absolute', left: 0, top: 0, width: 40, height: 40, zIndex: 30, elevation: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(235, 196, 212, 0.85)', backgroundColor: 'rgba(255, 255, 255, 0.94)', shadowColor: '#7e536c', shadowOpacity: 0.18, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   favoriteBadge: { position: 'absolute', top: -2, right: -5, width: 17, height: 17, borderRadius: 8.5, alignItems: 'center', justifyContent: 'center', elevation: 1 },
   foodName: { width: '100%', minHeight: 27, fontSize: 9, lineHeight: 12, fontWeight: '800', textAlign: 'center' },
   foodPrice: { fontSize: 9, fontWeight: '900' },

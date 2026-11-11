@@ -53,6 +53,7 @@ import {
 } from '@/constants/mall-shop-display';
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
+  DOG_STAFF_PROFILES,
   DOG_STAFF_STATIONS,
   DOG_STAFF_STYLE_CATALOGS,
   isDogStaffAreaId,
@@ -63,6 +64,16 @@ import {
   type DogStaffLook,
   type DogStaffSavedLook,
 } from '@/constants/dog-staff-customization';
+import {
+  claimDogCollectionRewards,
+  isValidDogCompanionState,
+  normalizeDogCompanionState,
+  recordDogCompanionInteraction as applyDogCompanionInteraction,
+  DOG_COMPANION_SHOP_ID,
+  type DogCompanionAction,
+  type DogCompanionInteractionResult,
+  type DogCompanionState,
+} from '@/lib/dog-companion';
 export { MALL_SLOT_IDS } from '@/constants/mall-layout';
 export type { MallSlotId } from '@/constants/mall-layout';
 
@@ -111,6 +122,7 @@ interface CheckInTransaction {
 export interface ShopInteriorState {
   ownedDecorations: string[];
   placements: Partial<Record<ShopInteriorPlacementId, string>>;
+  dogCompanion?: DogCompanionState;
   fixtureContents?: Record<string, (string | null)[]>;
   dogStaffLooks?: Record<string, DogStaffLook>;
   dogStaffOutfits?: Record<string, DogStaffSavedLook[]>;
@@ -179,6 +191,14 @@ interface HabitsContextValue {
   setShopInteriorFixtureProduct: (shopId: string, fixtureDecorationId: string, slotIndex: number, productId: string | null) => Promise<void>;
   placeShopInteriorDogStaff: (shopId: string, dogDecorationId: string, areaId: DogStaffAreaId) => Promise<void>;
   storeShopInteriorDogStaff: (shopId: string, dogDecorationId: string) => Promise<void>;
+  recordDogCompanionInteraction: (
+    shopId: string,
+    dogDecorationId: string,
+    action: DogCompanionAction,
+    requestedAffection: number,
+    coinCost: number,
+  ) => Promise<DogCompanionInteractionResult>;
+  ensureDogCollectionRewards: (shopId: string) => Promise<number>;
   updateShopInteriorDogLook: (shopId: string, dogDecorationId: string, look: DogStaffLook) => Promise<void>;
   saveShopInteriorDogLook: (shopId: string, dogDecorationId: string, name: string, look: DogStaffLook) => Promise<void>;
   deleteShopInteriorDogLook: (shopId: string, dogDecorationId: string, savedLookId: string) => Promise<void>;
@@ -337,6 +357,9 @@ function parseMallData(value: string): StoredMallData {
       }
       if (interior.dogStaffPlacements !== undefined && !isStringRecord(interior.dogStaffPlacements)) {
         throw new Error('店員位置格式無效');
+      }
+      if (interior.dogCompanion !== undefined && !isValidDogCompanionState(interior.dogCompanion)) {
+        throw new Error('狗狗互動資料格式無效');
       }
     }
   }
@@ -523,6 +546,9 @@ function normalizeShopInteriors(
       DOG_STAFF_STATIONS.map((station) => [station.id, station] as const),
     );
     const isFluffyCafe = shopId === 'fluffy-marshmallow-cafe';
+    const dogCompanion = isFluffyCafe && saved.dogCompanion
+      ? normalizeDogCompanionState(saved.dogCompanion)
+      : undefined;
     if (isFluffyCafe) {
       const savedStaffPlacements = saved.dogStaffPlacements as unknown as Record<string, unknown> | undefined;
       for (const [placementKey, savedValue] of Object.entries(savedStaffPlacements ?? {})) {
@@ -592,10 +618,11 @@ function normalizeShopInteriors(
       });
       if (outfits.length > 0) dogStaffOutfits[dogDecorationId] = outfits;
     }
-    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(fixtureContents).length > 0 || Object.keys(dogStaffLooks).length > 0 || Object.keys(dogStaffOutfits).length > 0 || Object.keys(dogStaffPlacements).length > 0) {
+    if (ownedDecorations.length > 0 || Object.keys(placements).length > 0 || Object.keys(fixtureContents).length > 0 || Object.keys(dogStaffLooks).length > 0 || Object.keys(dogStaffOutfits).length > 0 || Object.keys(dogStaffPlacements).length > 0 || dogCompanion) {
       interiors[shopId] = {
         ownedDecorations,
         placements,
+        ...(dogCompanion ? { dogCompanion } : {}),
         ...(Object.keys(fixtureContents).length > 0 ? { fixtureContents } : {}),
         ...(Object.keys(dogStaffLooks).length > 0 ? { dogStaffLooks } : {}),
         ...(Object.keys(dogStaffOutfits).length > 0 ? { dogStaffOutfits } : {}),
@@ -1829,17 +1856,26 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (!alreadyOwned && coins < decoration.price) throw new Error(`金幣還差 ${decoration.price - coins} 枚`);
     actionLock.current = true;
     try {
+      const ownedDecorations = alreadyOwned
+        ? current.ownedDecorations
+        : [...current.ownedDecorations, dogDecorationId];
+      const collectionRewards = claimDogCollectionRewards(
+        current.dogCompanion,
+        ownedDecorations,
+        DOG_STAFF_PROFILES.map(({ decorationId: id }) => id),
+      );
       const dogStaffPlacements = {
         ...current.dogStaffPlacements,
         [dogDecorationId]: areaId,
       };
       const nextInterior = {
         ...current,
-        ownedDecorations: alreadyOwned ? current.ownedDecorations : [...current.ownedDecorations, dogDecorationId],
+        ownedDecorations,
+        dogCompanion: collectionRewards.state,
         dogStaffPlacements,
       };
       await saveMall({
-        coins: alreadyOwned ? coins : coins - decoration.price,
+        coins: (alreadyOwned ? coins : coins - decoration.price) + collectionRewards.bonusCoins,
         purchasedItems,
         rewardedCheckIns,
         rewardTokens,
@@ -1872,6 +1908,85 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
         placements: mallPlacements,
         shopInteriors: { ...shopInteriors, [shopId]: { ...current, dogStaffPlacements } },
       });
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
+  const recordDogCompanionInteraction = useCallback(async (
+    shopId: string,
+    dogDecorationId: string,
+    action: DogCompanionAction,
+    requestedAffection: number,
+    coinCost: number,
+  ) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== DOG_COMPANION_SHOP_ID) throw new Error('狗狗互動只適用於毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換毛茸茸棉花糖CAFE');
+    if (!DOG_STAFF_PROFILE_BY_DECORATION_ID[dogDecorationId]) throw new Error('找不到這位狗狗店員');
+    const current = shopInteriors[shopId];
+    if (!current?.ownedDecorations.includes(dogDecorationId)) throw new Error('請先兌換這位狗狗店員');
+    if (!Number.isInteger(coinCost) || coinCost < 0) throw new Error('金幣扣除數量無效');
+    if (coins < coinCost) {
+      throw new Error(`金幣不足，餵食需要 ${coinCost} 枚金幣，目前有 ${coins} 枚。`);
+    }
+    actionLock.current = true;
+    try {
+      const result = applyDogCompanionInteraction(
+        current.dogCompanion,
+        dogDecorationId,
+        today,
+        action,
+        requestedAffection,
+      );
+      await saveMall({
+        coins: coins - coinCost + result.affectionRewardCoins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: {
+          ...shopInteriors,
+          [shopId]: { ...current, dogCompanion: result.state },
+        },
+      });
+      if (result.affectionRewardCoins > 0) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        await Haptics.selectionAsync();
+      }
+      return result;
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, today, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
+  const ensureDogCollectionRewards = useCallback(async (shopId: string) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== DOG_COMPANION_SHOP_ID) throw new Error('狗狗圖鑑只適用於毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換毛茸茸棉花糖CAFE');
+    const current = shopInteriors[shopId] ?? { ownedDecorations: [], placements: {} };
+    const rewards = claimDogCollectionRewards(
+      current.dogCompanion,
+      current.ownedDecorations,
+      DOG_STAFF_PROFILES.map(({ decorationId: id }) => id),
+    );
+    if (rewards.newlyClaimedTiers.length === 0) return 0;
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins: coins + rewards.bonusCoins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: {
+          ...shopInteriors,
+          [shopId]: { ...current, dogCompanion: rewards.state },
+        },
+      });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return rewards.bonusCoins;
     } finally {
       actionLock.current = false;
     }
@@ -2049,8 +2164,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
       habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
-      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
+      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

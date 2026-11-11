@@ -84,6 +84,7 @@ export function ShopInteriorScene({
   accessibilityResult,
   onSelectSlot,
   onOpenDisplayFixture,
+  onOpenDogCompanion,
 }: {
   testID: string;
   sceneKey: ShopInteriorSceneKey;
@@ -103,6 +104,7 @@ export function ShopInteriorScene({
   accessibilityResult?: string;
   onSelectSlot: (slot: ShopInteriorSlotId) => void;
   onOpenDisplayFixture: (decorationId: string) => void;
+  onOpenDogCompanion?: (dogDecorationId: string) => void;
 }) {
   const colors = useColors();
   const [size, setSize] = useState({ width: 360, height: 383 });
@@ -437,6 +439,10 @@ export function ShopInteriorScene({
                 reducedMotion={reducedMotion}
                 interaction={dogInteraction?.dogDecorationId === dog.decorationId ? dogInteraction : null}
                 onPress={() => {
+                  if (onOpenDogCompanion) {
+                    onOpenDogCompanion(dog.decorationId);
+                    return;
+                  }
                   setSelectedDog({ dog, look, index });
                   setInteractionMessage('');
                 }}
@@ -502,7 +508,7 @@ export function ShopInteriorScene({
                 </View>
                 <Text style={[styles.interactionHelper, { color: colors.mutedForeground }]}>
                   {foodPickerOpen
-                    ? '每隻狗都有 5 款專屬小食 · 選一款開始餵食'
+                    ? '每隻狗都有 8 款專屬小食 · 選一款開始餵食'
                     : '兌換後附送 · 每次互動約 5 秒，不耗金幣'}
                 </Text>
                 {foodPickerOpen ? (
@@ -881,7 +887,7 @@ function DogCareIllustration({
   );
 }
 
-function DogFoodIllustration({
+export function DogFoodIllustration({
   food,
   dogColor,
   size,
@@ -1117,6 +1123,146 @@ function DogFoodIllustration({
           {shape('banana-inner', 0.22, 0.35, 0.58, 0.15, colors.candyCream, '22deg', size * 0.07, colors.candyCream)}
           {stem('banana-tip-a', 0.1, 0.29, 0.14, 0.1, colors.candyCaramelDark, '22deg')}
           {stem('banana-tip-b', 0.79, 0.55, 0.14, 0.1, colors.candyCaramelDark, '22deg')}
+        </>
+      );
+      break;
+    case 'bone':
+      artwork = (
+        <>
+          {shape('bone-center', 0.25, 0.42, 0.5, 0.18, colors.candyCream, '-18deg', size * 0.08, colors.candyCaramel)}
+          {dot('bone-end-a', 0.12, 0.3, 0.28, colors.candyCream)}
+          {dot('bone-end-b', 0.58, 0.48, 0.28, colors.candyCream)}
+          {dot('bone-joint-a', 0.23, 0.37, 0.19, colors.candyCream)}
+          {dot('bone-joint-b', 0.62, 0.43, 0.19, colors.candyCream)}
+        </>
+      );
+      break;
+    case 'oats':
+      artwork = (
+        <>
+          {shape('oat-cookie', 0.16, 0.22, 0.68, 0.62, colors.candyCaramel, '-6deg', size * 0.18)}
+          {dot('oat-flake-a', 0.3, 0.34, 0.1, colors.candyCream)}
+          {dot('oat-flake-b', 0.61, 0.33, 0.08, colors.candyLemon)}
+          {dot('oat-flake-c', 0.49, 0.62, 0.1, colors.candyCream)}
+          {stem('oat-flake-d', 0.22, 0.62, 0.15, 0.06, colors.candyCream, '28deg')}
+        </>
+      );
+      break;
+    case 'cake':
+      artwork = (
+        <>
+          {triangle('cake-slice', 0.16, 0.22, colors.candyRose, '0deg')}
+          {shape('cake-filling', 0.23, 0.56, 0.56, 0.11, colors.candyCream, '0deg', size * 0.04, colors.candyCream)}
+          {shape('cake-plate', 0.11, 0.77, 0.78, 0.08, colors.candySky, '0deg', size * 0.04, colors.candySky)}
+          {dot('cake-berry', 0.44, 0.25, 0.15, colors.candyLavender)}
+          {dot('cake-cream', 0.32, 0.45, 0.12, colors.card)}
+        </>
+      );
+      break;
+    case 'ice-cream':
+      artwork = (
+        <>
+          {triangle('ice-cream-cone', 0.28, 0.46, colors.candyCaramel, '180deg')}
+          {dot('ice-cream-scoop-a', 0.28, 0.24, 0.4, colors.candyPeach)}
+          {dot('ice-cream-scoop-b', 0.48, 0.17, 0.37, colors.candyLavender)}
+          {stem('ice-cream-cone-line-a', 0.42, 0.59, 0.04, 0.25, colors.candyCaramelDark, '-20deg')}
+          {stem('ice-cream-cone-line-b', 0.55, 0.59, 0.04, 0.25, colors.candyCaramelDark, '20deg')}
+        </>
+      );
+      break;
+    case 'egg':
+      artwork = (
+        <>
+          {shape('egg-white', 0.27, 0.13, 0.48, 0.75, colors.card, '-8deg', size * 0.24, colors.candyCream)}
+          {dot('egg-yolk', 0.4, 0.4, 0.24, colors.candyLemon)}
+        </>
+      );
+      break;
+    case 'cookie':
+      artwork = (
+        <>
+          {shape('dog-cookie', 0.16, 0.18, 0.68, 0.68, colors.candyCaramel, '0deg', size * 0.18)}
+          {dot('dog-cookie-dot-a', 0.28, 0.31, 0.08, colors.candyCaramelDark)}
+          {dot('dog-cookie-dot-b', 0.62, 0.3, 0.07, colors.candyCaramelDark)}
+          {dot('dog-cookie-dot-c', 0.46, 0.55, 0.09, colors.candyCaramelDark)}
+          {dot('dog-cookie-dot-d', 0.28, 0.67, 0.06, colors.candyCaramelDark)}
+        </>
+      );
+      break;
+    case 'yogurt':
+      artwork = (
+        <>
+          {shape('yogurt-cup', 0.23, 0.36, 0.54, 0.5, colors.candyCream, '0deg', size * 0.08, colors.candyLavender)}
+          {stem('yogurt-rim', 0.15, 0.28, 0.7, 0.1, colors.candyPink)}
+          {dot('yogurt-berry-a', 0.35, 0.18, 0.12, colors.candyLavender)}
+          {dot('yogurt-berry-b', 0.55, 0.14, 0.12, colors.candyRose)}
+          {shape('yogurt-label', 0.38, 0.51, 0.25, 0.15, colors.candySky, '0deg', size * 0.05, colors.candySky)}
+        </>
+      );
+      break;
+    case 'dumpling':
+      artwork = (
+        <>
+          {shape('dumpling-body', 0.14, 0.32, 0.72, 0.5, colors.candyCream, '-4deg', size * 0.3, colors.candyCaramel)}
+          {stem('dumpling-fold-a', 0.28, 0.31, 0.05, 0.22, colors.candyCaramel, '-32deg')}
+          {stem('dumpling-fold-b', 0.43, 0.27, 0.05, 0.23, colors.candyCaramel, '-12deg')}
+          {stem('dumpling-fold-c', 0.59, 0.28, 0.05, 0.23, colors.candyCaramel, '15deg')}
+          {stem('dumpling-fold-d', 0.72, 0.33, 0.05, 0.2, colors.candyCaramel, '34deg')}
+        </>
+      );
+      break;
+    case 'soup':
+      artwork = (
+        <>
+          {shape('soup-bowl', 0.17, 0.45, 0.66, 0.36, colors.candySky, '0deg', size * 0.14, colors.candyLavender)}
+          {stem('soup-rim', 0.13, 0.4, 0.74, 0.1, colors.candyCream)}
+          {stem('soup-steam-a', 0.34, 0.12, 0.05, 0.2, colors.candyRose, '8deg')}
+          {stem('soup-steam-b', 0.52, 0.08, 0.05, 0.23, colors.candyPeach, '-8deg')}
+          {dot('soup-carrot', 0.42, 0.51, 0.1, colors.candyOrange)}
+          {dot('soup-greens', 0.62, 0.52, 0.08, colors.candyMintDark)}
+        </>
+      );
+      break;
+    case 'cheese':
+      artwork = (
+        <>
+          {triangle('cheese-wedge', 0.14, 0.18, colors.candyLemon, '0deg')}
+          {dot('cheese-hole-a', 0.42, 0.49, 0.1, colors.candyPeach)}
+          {dot('cheese-hole-b', 0.62, 0.6, 0.08, colors.candyPeach)}
+          {dot('cheese-hole-c', 0.34, 0.68, 0.07, colors.candyPeach)}
+        </>
+      );
+      break;
+    case 'corn':
+      artwork = (
+        <>
+          {shape('corn-cob', 0.27, 0.18, 0.46, 0.7, colors.candyLemon, '-8deg', size * 0.2, colors.candyOrange)}
+          {stem('corn-row-a', 0.39, 0.27, 0.05, 0.52, colors.candyOrange, '-8deg')}
+          {stem('corn-row-b', 0.52, 0.25, 0.05, 0.53, colors.candyOrange, '-8deg')}
+          {shape('corn-husk-left', 0.1, 0.47, 0.32, 0.4, colors.candyMint, '-24deg', size * 0.12, colors.candyMintDark)}
+          {shape('corn-husk-right', 0.57, 0.5, 0.31, 0.36, colors.candyMintDark, '22deg', size * 0.12)}
+        </>
+      );
+      break;
+    case 'sesame':
+      artwork = (
+        <>
+          {shape('sesame-biscuit', 0.16, 0.2, 0.68, 0.66, colors.candyCaramel, '-5deg', size * 0.18)}
+          {dot('sesame-seed-a', 0.29, 0.34, 0.06, colors.card)}
+          {dot('sesame-seed-b', 0.61, 0.31, 0.06, colors.card)}
+          {dot('sesame-seed-c', 0.43, 0.53, 0.06, colors.card)}
+          {dot('sesame-seed-d', 0.67, 0.65, 0.055, colors.card)}
+          {dot('sesame-seed-e', 0.27, 0.67, 0.055, colors.card)}
+        </>
+      );
+      break;
+    case 'bread':
+      artwork = (
+        <>
+          {shape('dog-bread', 0.16, 0.25, 0.68, 0.57, colors.candyCaramel, '0deg', size * 0.18)}
+          {shape('dog-bread-crumb', 0.24, 0.38, 0.52, 0.31, colors.candyCream, '0deg', size * 0.12, colors.candyCream)}
+          {stem('bread-score-a', 0.37, 0.31, 0.05, 0.22, colors.candyCaramelDark, '15deg')}
+          {stem('bread-score-b', 0.55, 0.31, 0.05, 0.22, colors.candyCaramelDark, '-15deg')}
         </>
       );
       break;

@@ -39,6 +39,8 @@ export function DogStaffCustomizer({
   onSelectLook,
   onSaveLook,
   onDeleteLook,
+  onOpenDogCompanion,
+  onOpenCollection,
 }: {
   dogs: DogStaffProfile[];
   ownedDecorationIds: string[];
@@ -53,6 +55,8 @@ export function DogStaffCustomizer({
   onSelectLook: (dogDecorationId: string, look: DogStaffLook) => Promise<void>;
   onSaveLook: (dogDecorationId: string, name: string, look: DogStaffLook) => Promise<void>;
   onDeleteLook: (dogDecorationId: string, savedLookId: string) => Promise<void>;
+  onOpenDogCompanion?: (dogDecorationId: string) => void;
+  onOpenCollection?: () => void;
 }) {
   const colors = useColors();
   const owned = new Set(ownedDecorationIds);
@@ -241,10 +245,23 @@ export function DogStaffCustomizer({
         <View style={styles.headingCopy}>
           <Text style={[styles.title, { color: colors.foreground }]}>狗狗店員活動區域</Text>
           <Text style={[styles.copy, { color: colors.mutedForeground }]}>
-            店員可安排在主區或 5 個延伸區並在地面巡走，不佔每區 8 個一般位置；已兌換的狗狗可免費梳毛、摸摸牠、餵食或玩耍。
+            店員可安排在主區或 5 個延伸區並在地面巡走，不佔每區 8 個一般位置；餵食每次 5 金幣，摸摸、玩耍與影相免費。
           </Text>
         </View>
       </View>
+      {onOpenCollection && (
+        <Pressable
+          testID="dog-collection-open"
+          accessibilityRole="button"
+          accessibilityLabel="打開狗狗收集圖鑑"
+          onPress={onOpenCollection}
+          style={[styles.collectionButton, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+        >
+          <Feather name="book-open" size={17} color={colors.primary} />
+          <Text style={[styles.collectionButtonText, { color: colors.primary }]}>狗狗圖鑑</Text>
+          <Feather name="arrow-right" size={15} color={colors.primary} />
+        </Pressable>
+      )}
 
       <ScrollView
         horizontal
@@ -340,6 +357,7 @@ export function DogStaffCustomizer({
                 setSelectedAreaId(areaPlacements?.[dog.decorationId] ?? 'main');
                 setPage(1);
                 setNotice('');
+                onOpenDogCompanion?.(dog.decorationId);
               }}
               style={[
                 styles.dogChip,
@@ -660,6 +678,8 @@ const styles = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   titleIcon: { width: 35, height: 35, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   headingCopy: { flex: 1, gap: 2 },
+  collectionButton: { minHeight: 46, borderWidth: 1, borderRadius: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
+  collectionButtonText: { fontSize: 13, fontWeight: '900' },
   title: { fontSize: 15, fontWeight: '800' },
   copy: { fontSize: 11, lineHeight: 16 },
   subheading: { fontSize: 13, fontWeight: '800' },

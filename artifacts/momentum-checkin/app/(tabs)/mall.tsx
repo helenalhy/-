@@ -18,7 +18,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import palette from '@/constants/colors';
 import {
   MALL_FLOOR_COUNT,
@@ -256,6 +256,7 @@ function MallSceneSlot({
 export default function MallScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { floor: floorParam } = useLocalSearchParams<{ floor?: string | string[] }>();
   const scrollRef = useRef<ScrollView>(null);
   const shopSectionY = useRef(0);
   const mallSceneY = useRef(0);
@@ -298,6 +299,19 @@ export default function MallScreen() {
   const [priceAscending, setPriceAscending] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [testCoinLoading, setTestCoinLoading] = useState(false);
+  useEffect(() => {
+    const rawFloor = Array.isArray(floorParam) ? floorParam[0] : floorParam;
+    const requestedFloor = Number(rawFloor);
+    if (Number.isInteger(requestedFloor) && requestedFloor >= 1 && requestedFloor <= MALL_FLOOR_COUNT) {
+      setCurrentFloor(requestedFloor);
+      setCategory('all');
+      setSearchQuery('');
+      setSearchFloor(null);
+      setSearchPlacementFloor(null);
+      setSearchWing(null);
+      setShowCollection(false);
+    }
+  }, [floorParam]);
   const operationLock = useRef(false);
   const [previewSlotId, setPreviewSlotId] = useState<MallSlotId | null>(null);
   const [placementIntent, setPlacementIntent] = useState<{ itemId: string; mode: 'purchase' | 'move' | 'restore' } | null>(null);

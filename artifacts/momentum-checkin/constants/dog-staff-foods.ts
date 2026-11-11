@@ -4,6 +4,7 @@ export type DogFoodIllustrationKind =
   | 'duck'
   | 'beef'
   | 'fish'
+  | 'bone'
   | 'pumpkin'
   | 'carrot'
   | 'apple'
@@ -14,142 +15,178 @@ export type DogFoodIllustrationKind =
   | 'lamb'
   | 'venison'
   | 'liver'
-  | 'banana';
+  | 'banana'
+  | 'oats'
+  | 'cake'
+  | 'ice-cream'
+  | 'egg'
+  | 'cookie'
+  | 'yogurt'
+  | 'dumpling'
+  | 'soup'
+  | 'cheese'
+  | 'corn'
+  | 'sesame'
+  | 'bread';
 
 export type DogStaffFoodOption = {
   id: string;
   name: string;
   illustration: DogFoodIllustrationKind;
+  favorite?: boolean;
 };
-
-function getFoodIllustrationKind(slug: string, name: string): DogFoodIllustrationKind {
-  if (slug.includes('liver') || name.includes('肝')) return 'liver';
-  if (name.startsWith('火雞')) return 'turkey';
-  if (name.startsWith('鴨')) return 'duck';
-  if (name.startsWith('雞')) return 'chicken';
-  if (name.startsWith('牛')) return 'beef';
-  if (name.startsWith('鮭魚') || name.startsWith('鱈魚') || name.startsWith('鮪魚')) return 'fish';
-  if (name.startsWith('羊肉')) return 'lamb';
-  if (name.startsWith('鹿肉')) return 'venison';
-  if (name.startsWith('南瓜')) return 'pumpkin';
-  if (name.startsWith('胡蘿蔔')) return 'carrot';
-  if (name.startsWith('蘋果')) return 'apple';
-  if (name.startsWith('藍莓')) return 'berry';
-  if (name.startsWith('香蕉')) return 'banana';
-  if (name.startsWith('羊奶')) return 'milk';
-  if (name.startsWith('西蘭花') || name.startsWith('菠菜')) return 'greens';
-  if (name.startsWith('地瓜') || name.startsWith('甜薯')) return 'sweet-potato';
-  throw new Error(`No cartoon illustration is mapped for dog food: ${name}`);
-}
 
 function foodMenu(
   dogKey: string,
-  items: readonly (readonly [slug: string, name: string])[],
+  items: readonly (readonly [slug: string, name: string, illustration: DogFoodIllustrationKind, favorite?: boolean])[],
 ): DogStaffFoodOption[] {
-  return items.map(([slug, name]) => ({
+  return items.map(([slug, name, illustration, favorite]) => ({
     id: `${dogKey}-food-${slug}`,
     name,
-    illustration: getFoodIllustrationKind(slug, name),
+    illustration,
+    ...(favorite ? { favorite: true } : {}),
   }));
 }
 
 export const DOG_STAFF_FOOD_OPTIONS: Record<string, DogStaffFoodOption[]> = {
   'fluffy-staff-huahua': foodMenu('fluffy-staff-huahua', [
-    ['chicken-bites', '雞肉小肉乾'],
-    ['salmon-sweet-potato', '鮭魚地瓜餅'],
-    ['pumpkin-meatballs', '南瓜小肉丸'],
-    ['carrot-oat-crisps', '胡蘿蔔燕麥脆片'],
-    ['apple-goat-milk', '蘋果羊奶凍乾'],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken', true],
+    ['freeze-dried-duck', '凍乾鴨肉', 'duck'],
+    ['chicken-jerky', '雞肉乾', 'chicken'],
+    ['carrot', '紅蘿蔔', 'carrot'],
+    ['apple', '蘋果', 'apple'],
+    ['banana', '香蕉', 'banana'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['strawberry-dog-cake', '狗用無添加糖草莓蛋糕', 'cake'],
   ]),
   'fluffy-staff-milkshake': foodMenu('fluffy-staff-milkshake', [
-    ['beef-cubes', '牛肉小方塊'],
-    ['turkey-strips', '火雞胸肉條'],
-    ['cod-sweet-potato', '鱈魚地瓜脆片'],
-    ['blueberry-oat-bites', '藍莓燕麥餅'],
-    ['lamb-pumpkin', '羊肉南瓜酥'],
+    ['freeze-dried-salmon', '凍乾三文魚', 'fish', true],
+    ['freeze-dried-duck', '凍乾鴨肉', 'duck'],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken'],
+    ['salmon-jerky', '三文魚乾', 'fish'],
+    ['blueberries', '藍莓', 'berry'],
+    ['banana', '香蕉', 'banana'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['banana-ice-cream', '狗用無添加糖香蕉雪糕', 'ice-cream'],
   ]),
   'fluffy-staff-xiaoniu': foodMenu('fluffy-staff-xiaoniu', [
-    ['duck-carrot-rolls', '鴨肉胡蘿蔔卷'],
-    ['tuna-rice-bites', '鮪魚小飯糰'],
-    ['chicken-freeze-dried', '雞胸凍乾'],
-    ['apple-goat-mousse', '羊奶蘋果慕斯'],
-    ['venison-sweet-potato', '鹿肉地瓜丸'],
+    ['bone-biscuit', '骨頭餅乾', 'bone', true],
+    ['freeze-dried-beef', '凍乾牛肉', 'beef'],
+    ['beef-jerky', '牛肉乾', 'beef'],
+    ['carrot', '紅蘿蔔', 'carrot'],
+    ['apple', '蘋果', 'apple'],
+    ['cheese-stick', '芝士條', 'cheese'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['carrot-cake', '狗用無添加糖紅蘿蔔蛋糕', 'cake'],
   ]),
   'fluffy-staff-pudding': foodMenu('fluffy-staff-pudding', [
-    ['lamb-carrot-balls', '羊肉胡蘿蔔球'],
-    ['salmon-spinach-crisps', '鮭魚菠菜脆餅'],
-    ['turkey-pumpkin-soup', '火雞南瓜濃湯'],
-    ['cod-sweet-potato-strips', '鱈魚地瓜條'],
-    ['chicken-apple-cookies', '雞肉蘋果小餅'],
+    ['pumpkin-pudding', '狗用無添加糖南瓜布甸', 'pumpkin', true],
+    ['freeze-dried-duck', '凍乾鴨肉', 'duck'],
+    ['egg', '雞蛋', 'egg'],
+    ['sweet-potato', '番薯', 'sweet-potato'],
+    ['banana', '香蕉', 'banana'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['dog-biscuit', '狗餅乾', 'cookie'],
+    ['blueberry-yogurt', '狗用無添加糖藍莓乳酪', 'yogurt'],
   ]),
   'fluffy-staff-tangtang': foodMenu('fluffy-staff-tangtang', [
-    ['salmon-chicken-duo', '鮭魚雞肉雙拼'],
-    ['lamb-sweet-potato-dice', '羊肉地瓜丁'],
-    ['pumpkin-goat-milk-cup', '南瓜羊奶小杯'],
-    ['blueberry-oat-balls', '藍莓燕麥丸'],
-    ['turkey-carrot-floss', '火雞胡蘿蔔鬆'],
+    ['freeze-dried-salmon', '凍乾三文魚', 'fish', true],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken'],
+    ['banana', '香蕉', 'banana'],
+    ['blueberries', '藍莓', 'berry'],
+    ['apple', '蘋果', 'apple'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['dog-biscuit', '狗餅乾', 'cookie'],
+    ['strawberry-dog-cake', '狗用無添加糖草莓蛋糕', 'cake'],
   ]),
   'fluffy-staff-pipi': foodMenu('fluffy-staff-pipi', [
-    ['beef-liver-nibbles', '牛肝肉粒'],
-    ['duck-pumpkin-strips', '鴨肉南瓜條'],
-    ['cod-apple-crisps', '鱈魚蘋果酥'],
-    ['chicken-sweet-potato-rolls', '雞肉地瓜卷'],
-    ['broccoli-goat-milk-biscuits', '西蘭花羊奶餅'],
+    ['chicken-jerky', '雞肉乾', 'chicken', true],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken'],
+    ['bone-biscuit', '骨頭餅乾', 'bone'],
+    ['sweet-potato', '番薯', 'sweet-potato'],
+    ['carrot', '紅蘿蔔', 'carrot'],
+    ['beef-jerky', '牛肉乾', 'beef'],
+    ['cheese-stick', '芝士條', 'cheese'],
+    ['peanut-banana-pie', '狗用無木糖醇花生醬香蕉批', 'cake'],
   ]),
   'fluffy-staff-amber': foodMenu('fluffy-staff-amber', [
-    ['salmon-goat-milk-balls', '鮭魚羊奶小丸'],
-    ['duck-sweet-potato-chips', '鴨胸甜薯片'],
-    ['beef-pumpkin-soft-bites', '牛肉南瓜軟餅'],
-    ['apple-chicken-tart', '蘋果雞肉小塔'],
-    ['carrot-lamb-crunch', '胡蘿蔔羊肉脆球'],
+    ['honey-chicken-jerky', '蜂蜜雞肉乾', 'chicken', true],
+    ['freeze-dried-beef', '凍乾牛肉', 'beef'],
+    ['egg', '雞蛋', 'egg'],
+    ['apple', '蘋果', 'apple'],
+    ['carrot', '紅蘿蔔', 'carrot'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['sweet-potato', '番薯', 'sweet-potato'],
+    ['honey-yogurt', '狗用無添加糖蜂蜜乳酪', 'yogurt'],
   ]),
   'fluffy-staff-cloud': foodMenu('fluffy-staff-cloud', [
-    ['cod-pumpkin-bites', '鱈魚南瓜小船'],
-    ['turkey-oat-biscuits', '火雞燕麥小餅'],
-    ['banana-goat-milk-crisps', '香蕉羊奶凍乾'],
-    ['duck-sweet-potato-balls', '鴨肉地瓜丸'],
-    ['chicken-broccoli-dice', '雞肉西蘭花粒'],
+    ['freeze-dried-duck', '凍乾鴨肉', 'duck', true],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken'],
+    ['banana', '香蕉', 'banana'],
+    ['blueberries', '藍莓', 'berry'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['egg', '雞蛋', 'egg'],
+    ['dog-biscuit', '狗餅乾', 'cookie'],
+    ['cloud-yogurt-cup', '狗用無添加糖雲朵乳酪杯', 'yogurt'],
   ]),
   'fluffy-staff-wonton': foodMenu('fluffy-staff-wonton', [
-    ['beef-apple-cubes', '牛肉蘋果小方'],
-    ['salmon-carrot-strips', '鮭魚胡蘿蔔條'],
-    ['lamb-oat-cookies', '羊肉燕麥餅'],
-    ['turkey-pumpkin-dice', '火雞南瓜小丁'],
-    ['blueberry-chicken-crisps', '藍莓雞肉脆片'],
+    ['chicken-wontons', '雞肉雲吞', 'dumpling', true],
+    ['doggy-dumplings', '狗仔餃子', 'dumpling'],
+    ['chicken-broth', '無鹽雞湯', 'soup'],
+    ['vegetable-broth', '無鹽蔬菜湯', 'soup'],
+    ['carrot', '紅蘿蔔', 'carrot'],
+    ['corn', '粟米', 'corn'],
+    ['egg', '雞蛋', 'egg'],
+    ['pumpkin-pudding', '狗用無添加糖南瓜布甸', 'pumpkin'],
   ]),
   'fluffy-staff-butter': foodMenu('fluffy-staff-butter', [
-    ['chicken-pumpkin-tart', '雞肉南瓜小塔'],
-    ['duck-apple-rolls', '鴨胸蘋果卷'],
-    ['salmon-goat-milk-crisps', '鮭魚羊奶脆餅'],
-    ['turkey-spinach-balls', '火雞菠菜肉丸'],
-    ['sweet-potato-beef-pastry', '地瓜牛肉酥'],
+    ['freeze-dried-duck', '凍乾鴨肉', 'duck', true],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken'],
+    ['egg', '雞蛋', 'egg'],
+    ['banana', '香蕉', 'banana'],
+    ['blueberries', '藍莓', 'berry'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['dog-biscuit', '狗餅乾', 'cookie'],
+    ['cream-yogurt-cup', '狗用無添加糖乳酪杯', 'yogurt'],
   ]),
   'fluffy-staff-sesame': foodMenu('fluffy-staff-sesame', [
-    ['venison-meatballs', '鹿肉小肉丸'],
-    ['cod-sweet-potato-chips', '鱈魚地瓜小片'],
-    ['chicken-oat-biscuits', '雞胸燕麥餅'],
-    ['lamb-carrot-crisps', '羊肉胡蘿蔔凍乾'],
-    ['salmon-pumpkin-bowl', '鮭魚南瓜小碗'],
+    ['sesame-dog-biscuit', '芝麻狗餅乾', 'sesame', true],
+    ['freeze-dried-beef', '凍乾牛肉', 'beef'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['carrot', '紅蘿蔔', 'carrot'],
+    ['egg', '雞蛋', 'egg'],
+    ['sweet-potato', '番薯', 'sweet-potato'],
+    ['pumpkin', '南瓜', 'pumpkin'],
+    ['sesame-yogurt-cup', '狗用無添加糖芝麻乳酪杯', 'yogurt'],
   ]),
   'fluffy-staff-snowball': foodMenu('fluffy-staff-snowball', [
-    ['turkey-apple-cookies', '火雞肉蘋果小餅'],
-    ['duck-blueberry-balls', '鴨肉藍莓小球'],
-    ['goat-milk-pumpkin-mousse', '羊奶南瓜慕斯'],
-    ['chicken-broccoli-crisps', '雞肉西蘭花脆片'],
-    ['cod-sweet-potato-rolls', '鱈魚甜薯小卷'],
+    ['freeze-dried-salmon', '凍乾三文魚', 'fish', true],
+    ['salmon-jerky', '三文魚乾', 'fish'],
+    ['blueberries', '藍莓', 'berry'],
+    ['banana', '香蕉', 'banana'],
+    ['egg', '雞蛋', 'egg'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['dog-biscuit', '狗餅乾', 'cookie'],
+    ['blueberry-ice-cream', '狗用無添加糖藍莓雪糕', 'ice-cream'],
   ]),
   'fluffy-staff-maomao': foodMenu('fluffy-staff-maomao', [
-    ['lamb-apple-cubes', '羊肉蘋果小方'],
-    ['salmon-oat-strips', '鮭魚燕麥脆條'],
-    ['chicken-liver-carrot-balls', '雞肝胡蘿蔔球'],
-    ['duck-pumpkin-crisps', '鴨肉南瓜凍乾'],
-    ['goat-milk-blueberry-tart', '羊奶藍莓小塔'],
+    ['freeze-dried-beef', '凍乾牛肉', 'beef', true],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken'],
+    ['banana', '香蕉', 'banana'],
+    ['blueberries', '藍莓', 'berry'],
+    ['oat-biscuit', '狗用燕麥餅', 'oats'],
+    ['egg', '雞蛋', 'egg'],
+    ['dog-biscuit', '狗餅乾', 'cookie'],
+    ['banana-ice-cream', '狗用無添加糖香蕉雪糕', 'ice-cream'],
   ]),
   'fluffy-staff-poppy': foodMenu('fluffy-staff-poppy', [
-    ['beef-sweet-potato-cookies', '牛肉地瓜小餅'],
-    ['turkey-spinach-rolls', '火雞肉菠菜卷'],
-    ['cod-goat-milk-balls', '鱈魚羊奶小球'],
-    ['salmon-apple-strips', '鮭魚蘋果條'],
-    ['chicken-pumpkin-mousse', '雞肉南瓜慕斯'],
+    ['freeze-dried-beef', '凍乾牛肉', 'beef', true],
+    ['wholewheat-dog-bread', '全麥狗麵包', 'bread'],
+    ['freeze-dried-chicken', '凍乾雞肉', 'chicken'],
+    ['chicken-jerky', '雞肉乾', 'chicken'],
+    ['sweet-potato', '番薯', 'sweet-potato'],
+    ['carrot', '紅蘿蔔', 'carrot'],
+    ['corn', '粟米', 'corn'],
+    ['pumpkin-pudding', '狗用無添加糖南瓜布甸', 'pumpkin'],
   ]),
 };

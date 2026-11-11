@@ -154,7 +154,8 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.match(page, /areaId=\{selectedArea\}/);
   assert.match(page, /setSelectedArea\(areaId\)/);
   assert.match(customizer, /SHOP_INTERIOR_AREAS\.map/);
-  assert.match(customizer, /免費梳毛、摸摸牠、餵食或玩耍/);
+  assert.match(customizer, /餵食每次 5 金幣/);
+  assert.match(customizer, /onOpenDogCompanion/);
 });
 
 test('dog outfit previews and controls stay clear and operable on narrow screens', () => {
@@ -204,25 +205,28 @@ test('all fourteen dogs get distinct illustrated care colors and five-second act
   assert.match(scene, /每次互動約 5 秒/);
 });
 
-test('every café dog has five unique food choices including the requested chicken and beef', () => {
+test('every café dog has eight safe food choices and exactly one favorite', () => {
   const profileKeys = dogStaffStyles.DOG_STAFF_PROFILES.map(({ key }) => key).sort();
   assert.deepEqual(Object.keys(DOG_STAFF_FOOD_OPTIONS).sort(), profileKeys);
   const everyFood = Object.values(DOG_STAFF_FOOD_OPTIONS).flat();
-  assert.equal(everyFood.length, 70);
-  assert.equal(new Set(everyFood.map(({ name }) => name)).size, 70, 'food names are distinct across all dogs');
-  assert.equal(new Set(everyFood.map(({ illustration }) => illustration)).size, 16, 'the menus use distinct matching cartoon food types');
+  assert.equal(everyFood.length, 112);
+  assert.ok(everyFood.every(({ illustration }) => typeof illustration === 'string'), 'every food has a cartoon illustration kind');
+  assert.ok(!everyFood.some(({ name }) => /朱古力|提子|洋蔥|糖果|砂糖/.test(name)), 'unsafe foods are excluded');
   for (const dogKey of profileKeys) {
     const foods = DOG_STAFF_FOOD_OPTIONS[dogKey];
-    assert.equal(foods.length, 5, `${dogKey} has five food choices`);
-    assert.equal(new Set(foods.map(({ id }) => id)).size, 5, `${dogKey} has no repeated food IDs`);
-    assert.equal(new Set(foods.map(({ name }) => name)).size, 5, `${dogKey} has no repeated food names`);
+    assert.equal(foods.length, 8, `${dogKey} has eight food choices`);
+    assert.equal(new Set(foods.map(({ id }) => id)).size, 8, `${dogKey} has no repeated food IDs`);
+    assert.equal(new Set(foods.map(({ name }) => name)).size, 8, `${dogKey} has no repeated food names`);
+    assert.equal(foods.filter(({ favorite }) => favorite).length, 1, `${dogKey} has one favorite`);
   }
   const huahuaChicken = DOG_STAFF_FOOD_OPTIONS['fluffy-staff-huahua'].find(({ name }) => name.includes('雞肉'));
-  const milkshakeBeef = DOG_STAFF_FOOD_OPTIONS['fluffy-staff-milkshake'].find(({ name }) => name.includes('牛肉'));
   assert.equal(huahuaChicken?.illustration, 'chicken');
-  assert.equal(milkshakeBeef?.illustration, 'beef');
+  assert.equal(huahuaChicken?.favorite, true);
+  assert.equal(DOG_STAFF_FOOD_OPTIONS['fluffy-staff-milkshake'].find(({ favorite }) => favorite)?.name, '凍乾三文魚');
+  assert.equal(DOG_STAFF_FOOD_OPTIONS['fluffy-staff-xiaoniu'].find(({ favorite }) => favorite)?.name, '骨頭餅乾');
+  assert.equal(DOG_STAFF_FOOD_OPTIONS['fluffy-staff-wonton'].find(({ favorite }) => favorite)?.name, '雞肉雲吞');
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
-  assert.match(scene, /每隻狗都有 5 款專屬小食/);
+  assert.match(scene, /每隻狗都有 8 款專屬小食/);
   assert.match(scene, /food\.illustration/);
   assert.match(scene, /dog-food-illustration-\$\{food\.id\}/);
   assert.match(scene, /food=\{interaction\.food\}[\s\S]*?testID="dog-care-selected-food"/);

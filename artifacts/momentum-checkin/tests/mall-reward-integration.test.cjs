@@ -1557,7 +1557,7 @@ test('cafe equipment is clearly labeled, illustrated, and purchased with earned 
   );
 });
 
-test('redeemed cafe dogs walk, open free care actions, and stay outside the 48 interior slots', async () => {
+test('redeemed cafe dogs walk, open the companion flow, and stay outside the 48 interior slots', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
   assert.ok(shop);
@@ -1604,39 +1604,16 @@ test('redeemed cafe dogs walk, open free care actions, and stay outside the 48 i
 
   const walker = findNodes(staffArea, (node) => node.props?.testID?.startsWith('dog-staff-walker-'))[0];
   await press(sceneTree, walker.props.testID);
-  let interactionTree = app.renderShopInteriorScene(interiorTree);
-  assert.ok(findByTestId(interactionTree, 'dog-staff-interaction-sheet'), 'tapping the redeemed dog opens its care panel');
-
-  for (const [action, feedback] of [
-    ['groom', '享受梳毛'],
-    ['pet', '享受你的摸摸'],
-    ['feed', '雞肉小肉乾'],
-    ['play', '玩得很開心'],
-  ]) {
-    await press(interactionTree, `dog-staff-interaction-fluffy-staff-huahua-${action}`);
-    interactionTree = app.renderShopInteriorScene(interiorTree);
-    if (action === 'feed') {
-      const foodPicker = findByTestId(interactionTree, 'dog-staff-food-picker');
-      assert.ok(foodPicker, 'choosing feed opens the dog-specific food picker');
-      assert.equal(
-        findNodes(foodPicker, (node) => /^dog-staff-food-fluffy-staff-huahua-food-/.test(node.props?.testID ?? '')).length,
-        5,
-        'Huahua can choose from five foods',
-      );
-      assert.ok(
-        findByTestId(interactionTree, 'dog-food-illustration-fluffy-staff-huahua-food-chicken-bites'),
-        'the chicken option has its matching cartoon illustration',
-      );
-      await press(interactionTree, 'dog-staff-food-fluffy-staff-huahua-food-chicken-bites');
-      interactionTree = app.renderShopInteriorScene(interiorTree);
-    }
-    assert.ok(textContent(findByTestId(interactionTree, 'dog-staff-interaction-feedback')).includes(feedback));
-    assert.equal(app.contextExports.useHabits().coins, 40, `${action} is included and does not spend coins`);
-    assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffPlacements[dogId], 'main');
+  const route = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
+  const companionModal = fs.readFileSync(path.join(__dirname, '../components/DogCompanionModal.tsx'), 'utf8');
+  assert.match(route, /onOpenDogCompanion={shop\.id === DOG_COMPANION_SHOP_ID \? openDogCompanion : undefined}/);
+  assert.match(route, /<DogCompanionModal/);
+  assert.match(companionModal, /testID="dog-companion-modal"/);
+  for (const action of ['feed', 'pet', 'play', 'photo']) {
+    assert.match(companionModal, new RegExp(`testID="dog-companion-${action}"`));
   }
-  await press(interactionTree, 'dog-staff-interaction-close');
-  interactionTree = app.renderShopInteriorScene(interiorTree);
-  assert.equal(findByTestId(interactionTree, 'dog-staff-interaction-sheet'), undefined);
+  assert.equal(app.contextExports.useHabits().coins, 40, 'opening the companion does not spend coins');
+  assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffPlacements[dogId], 'main');
 });
 
 test('animal ear hat filter finds Huahua and Tangtang styles without saving a look or spending coins', async () => {

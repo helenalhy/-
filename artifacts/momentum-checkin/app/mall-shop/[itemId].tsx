@@ -18,6 +18,8 @@ import { ShopInteriorScene } from '@/components/ShopInteriorScene';
 import { CosmeticsTryOn } from '@/components/CosmeticsTryOn';
 import { ShopDisplayFixturePanel } from '@/components/ShopDisplayFixturePanel';
 import { DogStaffCustomizer } from '@/components/DogStaffCustomizer';
+import { DogCompanionModal } from '@/components/DogCompanionModal';
+import { DogCollectionBook } from '@/components/DogCollectionBook';
 import {
   getShopInteriorDecorations,
   getShopInteriorSceneKey,
@@ -46,6 +48,7 @@ import {
   SHOP_DISPLAY_SLOT_COUNT,
 } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
+import { DOG_COMPANION_SHOP_ID } from '@/lib/dog-companion';
 
 function ShopInteriorAnimatedObject({
   id,
@@ -119,6 +122,9 @@ export default function MallShopInteriorScreen() {
     setShopInteriorFixtureProduct,
     placeShopInteriorDogStaff,
     storeShopInteriorDogStaff,
+    recordDogCompanionInteraction,
+    ensureDogCollectionRewards,
+    today,
     updateShopInteriorDogLook,
     saveShopInteriorDogLook,
     deleteShopInteriorDogLook,
@@ -132,6 +138,8 @@ export default function MallShopInteriorScreen() {
   const [notice, setNotice] = useState('');
   const [slotAccessibilityResult, setSlotAccessibilityResult] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
+  const [activeDogCompanionId, setActiveDogCompanionId] = useState<string | null>(null);
+  const [dogCollectionVisible, setDogCollectionVisible] = useState(false);
   const interior = shop ? shopInteriors[shop.id] : undefined;
   const ownedDecorationIds = interior?.ownedDecorations ?? [];
   const ownedDecorationKey = ownedDecorationIds.slice().sort().join('|');
@@ -178,10 +186,30 @@ export default function MallShopInteriorScreen() {
     ? interior?.fixtureContents?.[activeFixture.id] ?? Array.from({ length: SHOP_DISPLAY_SLOT_COUNT }, () => null)
     : [];
   const floor = shop ? MALL_FLOORS[shop.floor - 1] : MALL_FLOORS[0];
+  const activeDogCompanion = DOG_STAFF_PROFILES.find(({ decorationId }) => decorationId === activeDogCompanionId) ?? null;
+  const dogCompanionAffection = activeDogCompanion
+    ? interior?.dogCompanion?.affection[activeDogCompanion.decorationId] ?? 0
+    : 0;
   const hasAccess = !!shop && shop.category === 'shop' && purchasedItems.includes(shop.id);
   const catalogPageSize = 10;
   const catalogPageCount = Math.max(1, Math.ceil(interiorDecorations.length / catalogPageSize));
   const visibleDecorations = interiorDecorations.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
+
+  function openDogCompanion(dogDecorationId: string) {
+    setDogCollectionVisible(false);
+    setActiveDogCompanionId(dogDecorationId);
+  }
+
+  async function openDogCollection() {
+    if (!shop || shop.id !== DOG_COMPANION_SHOP_ID) return;
+    try {
+      const rewardCoins = await ensureDogCollectionRewards(shop.id);
+      if (rewardCoins > 0) setNotice(`狗狗圖鑑獎勵已領取，共獲得 ${rewardCoins} 金幣。`);
+      setDogCollectionVisible(true);
+    } catch (error) {
+      Alert.alert('狗狗圖鑑無法開啟', error instanceof Error ? error.message : '請稍後再試。');
+    }
+  }
 
   async function placeDecoration(decorationId: string, price: number) {
     if (!shop || !hasAccess || workingDecoration) return;
@@ -401,6 +429,7 @@ export default function MallShopInteriorScreen() {
                 setSelectedDisplaySlot(0);
                 setActiveFixtureId(fixtureId);
               }}
+              onOpenDogCompanion={shop.id === DOG_COMPANION_SHOP_ID ? openDogCompanion : undefined}
             />
 
             {shop.shopType === 'cosmetics' && (
@@ -469,6 +498,8 @@ export default function MallShopInteriorScreen() {
                 onSelectLook={saveDogStaffLook}
                 onSaveLook={saveNamedDogStaffLook}
                 onDeleteLook={deleteNamedDogStaffLook}
+                onOpenDogCompanion={openDogCompanion}
+                onOpenCollection={() => void openDogCollection()}
               />
             )}
 
@@ -623,6 +654,37 @@ export default function MallShopInteriorScreen() {
           </>
         ) : null}
       </ScrollView>
+      {shop?.id === DOG_COMPANION_SHOP_ID && (
+        <>
+          <DogCompanionModal
+            visible={activeDogCompanion !== null}
+            dog={activeDogCompanion}
+            owned={Boolean(activeDogCompanion && owned.has(activeDogCompanion.decorationId))}
+            coins={coins}
+            today={today}
+            affection={dogCompanionAffection}
+            onClose={() => setActiveDogCompanionId(null)}
+            onInteract={(dogDecorationId, action, requestedAffection, coinCost) => (
+              recordDogCompanionInteraction(shop.id, dogDecorationId, action, requestedAffection, coinCost)
+            )}
+          />
+          <DogCollectionBook
+            visible={dogCollectionVisible}
+            dogs={DOG_STAFF_PROFILES}
+            ownedDecorationIds={ownedDecorationIds}
+            companionState={interior?.dogCompanion}
+            onClose={() => setDogCollectionVisible(false)}
+            onOpenOwnedDog={(dogDecorationId) => {
+              setDogCollectionVisible(false);
+              setActiveDogCompanionId(dogDecorationId);
+            }}
+            onGoToMallFloor={() => {
+              setDogCollectionVisible(false);
+              router.push({ pathname: '/(tabs)/mall', params: { floor: String(shop.floor) } });
+            }}
+          />
+        </>
+      )}
       <ShopDisplayFixturePanel
         key={activeFixtureId ?? 'no-fixture'}
         visible={!!activeFixtureId && hasAccess}

@@ -498,6 +498,39 @@ test('renaming a rewarded goal preserves its daily reward record and balance aft
   assert.ok(app.value.habits.find((habit) => habit.id === originalHabit.id).checkIns.includes(today));
 });
 
+test('deleting a rewarded goal preserves earned coins and reward history after reload', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  let app = await mount(storage);
+  const today = app.value.today;
+  const goalId = 'starter-walk';
+  const rewardKey = `${goalId}:${today}`;
+
+  assert.equal(await app.value.toggleCheckIn(goalId), 20);
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey]);
+
+  await app.value.deleteHabit(goalId);
+  assert.equal(app.value.habits.some((habit) => habit.id === goalId), false);
+  assert.equal(app.value.coins, 20, 'deleting a goal must not reclaim earned coins');
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey], 'deleting a goal must not erase its reward history');
+
+  const persistedMall = JSON.parse(storage[key]);
+  assert.equal(persistedMall.coins, 20);
+  assert.deepEqual(persistedMall.rewardedCheckIns, [rewardKey]);
+  assert.equal(JSON.parse(storage[habitsKey]).some((habit) => habit.id === goalId), false);
+
+  app = await mount(storage);
+  assert.equal(app.value.habits.some((habit) => habit.id === goalId), false);
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey]);
+});
+
 test('rapid duplicate check-ins for one goal award and persist the daily reward only once', async () => {
   const storage = seed({
     schemaVersion: 3,

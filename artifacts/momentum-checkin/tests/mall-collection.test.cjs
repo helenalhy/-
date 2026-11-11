@@ -10,6 +10,16 @@ const source = ts.transpileModule(
   fs.readFileSync(path.join(__dirname, '../context/HabitsContext.tsx'), 'utf8'),
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } },
 ).outputText;
+const dogCompanionSource = ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../lib/dog-companion.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },
+).outputText;
+const dogCompanionModule = { exports: {} };
+new Function('require', 'module', 'exports', dogCompanionSource)(
+  (name) => { throw new Error(`Unexpected dog companion dependency: ${name}`); },
+  dogCompanionModule,
+  dogCompanionModule.exports,
+);
 const key = 'momentum.mall.v1';
 const habitsKey = 'momentum.habits.v1';
 const checkInTransactionKey = 'momentum.checkin-transaction.v1';
@@ -183,6 +193,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
         return lastDate === previous ? (streak >= 7 ? 1 : streak + 1) : 1;
       },
     };
+    if (name === '@/lib/dog-companion') return dogCompanionModule.exports;
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: (decoration) => /shelf|rack|display|展示|貨架/i.test(`${decoration.id} ${decoration.name}`),
@@ -192,6 +203,22 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       ],
     };
     if (name === '@/constants/dog-staff-customization') return {
+      DOG_STAFF_PROFILES: [
+        dogId,
+        'general-fluffy-staff-milkshake',
+        'general-fluffy-staff-xiaoniu',
+        'general-fluffy-staff-pudding',
+        'general-fluffy-staff-tangtang',
+        'general-fluffy-staff-pipi',
+        'general-fluffy-staff-amber',
+        'general-fluffy-staff-cloud',
+        'general-fluffy-staff-wonton',
+        'general-fluffy-staff-butter',
+        'general-fluffy-staff-sesame',
+        'general-fluffy-staff-snowball',
+        'general-fluffy-staff-maomao',
+        'general-fluffy-staff-poppy',
+      ].map((decorationId) => ({ decorationId })),
       DOG_STAFF_PROFILE_BY_DECORATION_ID: {
         [dogId]: { decorationId: dogId },
       },
@@ -426,6 +453,49 @@ test('checking out and completing the same goal again today only awards coins on
   assert.ok(app.value.habits.find((habit) => habit.id === 'starter-walk').checkIns.includes(today));
   assert.equal(app.value.coins, 20);
   assert.deepEqual(JSON.parse(storage[key]).rewardedCheckIns, [rewardKey]);
+});
+
+test('renaming a rewarded goal preserves its daily reward record and balance after reload', async () => {
+  const storage = seed({
+    schemaVersion: 3,
+    coins: 0,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    placements: {},
+  });
+  let app = await mount(storage);
+  const today = app.value.today;
+  const rewardKey = `starter-walk:${today}`;
+  const originalHabit = app.value.habits.find((habit) => habit.id === 'starter-walk');
+
+  assert.equal(await app.value.toggleCheckIn(originalHabit.id), 20);
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey]);
+
+  await app.value.updateHabit(originalHabit.id, {
+    title: '改成新的目標名稱',
+    reason: '更新後的說明',
+    icon: originalHabit.icon,
+    color: originalHabit.color,
+    rewardCategory: originalHabit.rewardCategory,
+    steps: originalHabit.steps,
+    restDays: originalHabit.restDays,
+    minimumAction: originalHabit.minimumAction,
+  });
+
+  assert.equal(app.value.coins, 20, 'editing a goal must not change the coin balance');
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey], 'the reward stays keyed to the goal ID and date');
+  assert.equal(app.value.habits.find((habit) => habit.id === originalHabit.id).title, '改成新的目標名稱');
+
+  assert.equal(await app.value.toggleCheckIn(originalHabit.id), 0);
+  assert.equal(await app.value.toggleCheckIn(originalHabit.id), 0, 'the edited goal cannot award the same daily reward again');
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey]);
+
+  app = await mount(storage);
+  assert.equal(app.value.coins, 20);
+  assert.deepEqual(app.value.rewardedCheckIns, [rewardKey]);
+  assert.ok(app.value.habits.find((habit) => habit.id === originalHabit.id).checkIns.includes(today));
 });
 
 test('rapid duplicate check-ins for one goal award and persist the daily reward only once', async () => {

@@ -36,6 +36,7 @@ import {
 import {
   DOG_STAFF_PROFILE_BY_DECORATION_ID,
   DOG_STAFF_PROFILES,
+  getDogStaffDefaultArea,
   getDefaultDogStaffLook,
   resolveDogStaffLook,
   type DogStaffAreaId,
@@ -132,7 +133,10 @@ export default function MallShopInteriorScreen() {
     deleteShopInteriorDogLook,
   } = useHabits();
   const [selectedSlot, setSelectedSlot] = useState<ShopInteriorSlotId>(SHOP_INTERIOR_SLOTS[0].id);
-  const [selectedArea, setSelectedArea] = useState<ShopInteriorAreaId>('main');
+  const [selectedAreaOverride, setSelectedAreaOverride] = useState<{
+    shopId: string;
+    areaId: ShopInteriorAreaId;
+  } | null>(null);
   const [workingDecoration, setWorkingDecoration] = useState<string | null>(null);
   const [activeFixtureId, setActiveFixtureId] = useState<string | null>(null);
   const [selectedDisplaySlot, setSelectedDisplaySlot] = useState(0);
@@ -149,6 +153,9 @@ export default function MallShopInteriorScreen() {
     if (loaded) setDogStaffListArtStyleLoaded(true);
   }, []);
   const interior = shop ? shopInteriors[shop.id] : undefined;
+  const selectedArea = selectedAreaOverride && selectedAreaOverride.shopId === shop?.id
+    ? selectedAreaOverride.areaId
+    : getDogStaffDefaultArea(interior?.dogStaffPlacements);
   const ownedDecorationIds = interior?.ownedDecorations ?? [];
   const ownedDecorationKey = ownedDecorationIds.slice().sort().join('|');
   const decorations = useMemo(
@@ -208,6 +215,10 @@ export default function MallShopInteriorScreen() {
   const catalogPageSize = 10;
   const catalogPageCount = Math.max(1, Math.ceil(interiorDecorations.length / catalogPageSize));
   const visibleDecorations = interiorDecorations.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
+
+  function selectArea(areaId: ShopInteriorAreaId) {
+    if (shop) setSelectedAreaOverride({ shopId: shop.id, areaId });
+  }
 
   function openDogCompanion(dogDecorationId: string) {
     setDogCollectionVisible(false);
@@ -293,7 +304,7 @@ export default function MallShopInteriorScreen() {
     setSlotAccessibilityResult('');
     try {
       await placeShopInteriorDogStaff(shop.id, dogDecorationId, areaId);
-      setSelectedArea(areaId);
+      selectArea(areaId);
     } catch (error) {
       throw error;
     } finally {
@@ -460,7 +471,7 @@ export default function MallShopInteriorScreen() {
                 onPress={() => {
                   const index = SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea);
                   if (index > 0) {
-                    setSelectedArea(SHOP_INTERIOR_AREAS[index - 1].id);
+                    selectArea(SHOP_INTERIOR_AREAS[index - 1].id);
                     setNotice('');
                     setSlotAccessibilityResult('');
                   }
@@ -486,7 +497,7 @@ export default function MallShopInteriorScreen() {
                 onPress={() => {
                   const index = SHOP_INTERIOR_AREAS.findIndex(({ id }) => id === selectedArea);
                   if (index < SHOP_INTERIOR_AREAS.length - 1) {
-                    setSelectedArea(SHOP_INTERIOR_AREAS[index + 1].id);
+                    selectArea(SHOP_INTERIOR_AREAS[index + 1].id);
                     setNotice('');
                     setSlotAccessibilityResult('');
                   }

@@ -108,6 +108,22 @@ export function isDogStaffAreaId(value: unknown): value is DogStaffAreaId {
     || value === 'extension-5';
 }
 
+export function getDogStaffDefaultArea(
+  placements?: DogStaffAreaPlacements,
+): DogStaffAreaId {
+  const extensionAreas: DogStaffExtensionAreaId[] = [
+    'extension-1',
+    'extension-2',
+    'extension-3',
+    'extension-4',
+    'extension-5',
+  ];
+  const assignedDogIds = DOG_STAFF_PROFILES.map(({ decorationId }) => decorationId);
+  return extensionAreas.find((areaId) => (
+    assignedDogIds.some((decorationId) => placements?.[decorationId] === areaId)
+  )) ?? 'main';
+}
+
 export function getDogStaffAreaLabel(areaId: DogStaffAreaId): string {
   return areaId === 'main' ? '主區' : `延伸區 ${areaId.slice('extension-'.length)}`;
 }

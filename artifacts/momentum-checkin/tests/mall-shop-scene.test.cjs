@@ -136,6 +136,26 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.ok(SHOP_INTERIOR_AREAS.every(({ id }) => dogStaffStyles.isDogStaffAreaId(id)));
   assert.equal(dogStaffStyles.getDogStaffAreaLabel('main'), '主區');
   assert.equal(dogStaffStyles.getDogStaffAreaLabel('extension-5'), '延伸區 5');
+  const [firstDog, secondDog] = dogStaffStyles.DOG_STAFF_PROFILES;
+  assert.equal(
+    dogStaffStyles.getDogStaffDefaultArea({ [firstDog.decorationId]: 'extension-4' }),
+    'extension-4',
+  );
+  assert.equal(
+    dogStaffStyles.getDogStaffDefaultArea({
+      [firstDog.decorationId]: 'extension-4',
+      [secondDog.decorationId]: 'extension-2',
+    }),
+    'extension-2',
+    'choose the earliest occupied extension when dogs are in multiple areas',
+  );
+  assert.equal(dogStaffStyles.getDogStaffDefaultArea({ [firstDog.decorationId]: 'main' }), 'main');
+  assert.equal(dogStaffStyles.getDogStaffDefaultArea(), 'main');
+  assert.equal(
+    dogStaffStyles.getDogStaffDefaultArea({ 'unknown-dog': 'extension-3' }),
+    'main',
+    'ignore unknown placement records',
+  );
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const page = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
   const customizer = fs.readFileSync(path.join(__dirname, '../components/DogStaffCustomizer.tsx'), 'utf8');
@@ -152,7 +172,10 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   assert.match(scene, /兌換後附送/);
   assert.match(scene, /onPress=\{onPress\}/);
   assert.match(page, /areaId=\{selectedArea\}/);
-  assert.match(page, /setSelectedArea\(areaId\)/);
+  assert.match(page, /getDogStaffDefaultArea\(interior\?\.dogStaffPlacements\)/);
+  assert.match(page, /selectArea\(areaId\)/);
+  assert.match(page, /testID="shop-interior-area-prev"/);
+  assert.match(page, /testID="shop-interior-area-next"/);
   assert.match(customizer, /SHOP_INTERIOR_AREAS\.map/);
   assert.match(customizer, /餵食每次 5 金幣/);
   assert.match(customizer, /onOpenDogCompanion/);

@@ -29,7 +29,7 @@ const HEART_PATH = 'M24 40 7.8 24.2C-1 14.8 5.1 5 14.4 5c4.2 0 7.5 2.1 9.6 5.2C2
 
 // Folder (relative to the exported index.html) holding the 56
 // transparent head images, copied there by scripts/build.js.
-const IMAGE_BASE = 'dogs-expressions/';
+const IMAGE_BASE = 'dogs-expressions-loader/';
 
 // Shopkeeper list order: top row first, then the bottom row.
 // Each dog has four expression frames in smile, wink, tongue,
@@ -133,7 +133,7 @@ const LOOP_MS = 1800;
 // across the fourteen dogs over one 1.8s loop (negative delay so the
 // wave is already moving when the screen first appears).
 function dogImg(dog, index) {
-  const urls = dog.frames.map((file) => IMAGE_BASE + file);
+  const urls = dog.frames.map((file) => IMAGE_BASE + file.replace(/\.png$/, '.webp'));
   const delay = -(index * Math.round(LOOP_MS / DOGS.length));
   return '<img class="loader-dog" src="' + urls[0] + '" data-frames="' + urls.join('|') + '" alt="' + dog.name + '" draggable="false" style="--delay:' + delay + 'ms">';
 }
@@ -147,7 +147,7 @@ function createLoadingMarkup() {
     + '.momentum-loader-heart{width:72px; height:72px; margin:0 auto 18px; animation:momentum-heartbeat 1.8s ease-in-out infinite}'
     + '.momentum-loader-heart svg{display:block; width:72px; height:72px}'
     + '.momentum-loader-dogs{display:grid; grid-template-columns:repeat(7,1fr); gap:2px 6px; max-width:320px; margin:0 auto 14px; align-items:center}'
-    + '.loader-dog{display:block; width:40px; max-height:56px; height:auto; justify-self:center; object-fit:contain; animation:momentum-dog-bounce 1.8s ease-in-out infinite; animation-delay:var(--delay)}'
+    + '.loader-dog{display:block; width:40px; max-height:56px; height:auto; justify-self:center; object-fit:contain; will-change:transform,opacity; backface-visibility:hidden; transition:opacity .12s ease-in-out; animation:momentum-dog-bounce 1.8s ease-in-out infinite; animation-delay:var(--delay)}'
     + '.momentum-loader-label{font-size:14px; font-weight:700; letter-spacing:.16em}'
     + '.momentum-loader-dots:after{display:inline-block; width:18px; text-align:left; animation:momentum-dots 1.2s steps(4,end) infinite; content:""}'
     + '.momentum-loader-note{font-size:11px; margin-top:6px; color:#947d8c}'
@@ -171,28 +171,56 @@ function createLoadingMarkup() {
 // frame every 300ms. All fourteen dogs change together; the bounce
 // wave (CSS) is what travels. Runs until the app mounts and the
 // loading screen is removed. Frames are preloaded up front so the
-// first loop does not flicker while the other expressions download.
+// expression timing starts only after every small frame has loaded and decoded.
 function createExpressionScript() {
   return `<script>
     (function(){
       var dogs=document.querySelectorAll('#momentum-loading-screen .loader-dog');
       if(!dogs.length)return;
       var frames=[];
+      var preloads=[];
       var order=[0,1,2,3,2,1];
       for(var i=0;i<dogs.length;i++){
         var list=(dogs[i].getAttribute('data-frames')||'').split('|');
         frames.push(list);
-        for(var j=0;j<list.length;j++){var pre=new Image();pre.src=list[j];}
+        for(var j=0;j<list.length;j++){
+          (function(src){
+            preloads.push(new Promise(function(resolve){
+              var image=new Image();
+              var settled=false;
+              var finish=function(){
+                if(settled)return;
+                settled=true;
+                if(typeof image.decode==='function'){
+                  image.decode().catch(function(){}).then(resolve);
+                }else resolve();
+              };
+              image.onload=finish;
+              image.onerror=resolve;
+              image.src=src;
+              if(image.complete)finish();
+            }));
+          })(list[j]);
+        }
       }
       var step=0;
-      window.setInterval(function(){
-        step=(step+1)%order.length;
-        var frame=order[step];
-        for(var k=0;k<dogs.length;k++){
-          var src=frames[k][frame];
-          if(src&&dogs[k].getAttribute('src')!==src){dogs[k].setAttribute('src',src);}
-        }
-      },300);
+      Promise.all(preloads).then(function(){
+        if(!document.getElementById('momentum-loading-screen'))return;
+        window.setInterval(function(){
+          step=(step+1)%order.length;
+          var frame=order[step];
+          for(var k=0;k<dogs.length;k++){
+            var src=frames[k][frame];
+            var dog=dogs[k];
+            if(src&&dog.getAttribute('src')!==src){
+              dog.style.opacity='0';
+              window.setTimeout(function(target,imageSrc){
+                return function(){target.setAttribute('src',imageSrc);target.style.opacity='1';};
+              }(dog,src),80);
+            }
+          }
+        },300);
+      });
     })();
   </script>`;
 }

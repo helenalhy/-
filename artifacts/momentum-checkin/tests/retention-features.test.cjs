@@ -132,7 +132,11 @@ test('published web HTML loader uses the fourteen fluffy heads with four express
     for (const file of dog.frames) {
       assert.match(file, /-nobg\.png$/);
       assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'dogs-expressions', file)), `${file} should exist`);
-      assert.ok(html.includes(IMAGE_BASE + file), `${file} should be referenced by the loader`);
+      const loaderFile = file.replace(/\.png$/, '.webp');
+      const loaderPath = path.join(__dirname, '..', 'assets', 'dogs-expressions-loader', loaderFile);
+      assert.ok(fs.existsSync(loaderPath), `${loaderFile} should exist`);
+      assert.ok(fs.statSync(loaderPath).size < 80 * 1024, `${loaderFile} should stay small for smooth loading`);
+      assert.ok(html.includes(IMAGE_BASE + loaderFile), `${loaderFile} should be referenced by the loader`);
     }
   }
   assert.equal(html.includes('momentum-loader-halo'), false, 'the heart stands alone with no pink square behind it');
@@ -143,4 +147,6 @@ test('published web HTML loader uses the fourteen fluffy heads with four express
   assert.match(html, /translateY\(-10px\)/);
   assert.match(html, /},300\)/);
   assert.match(html, /\[0,1,2,3,2,1\]/);
+  assert.match(html, /Promise\.all\(preloads\)/);
+  assert.match(html, /transition:opacity \.12s ease-in-out/);
 });

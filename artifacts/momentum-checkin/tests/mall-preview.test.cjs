@@ -2608,6 +2608,57 @@ for (const [label, brokenMallData] of [
   });
 }
 
+test('future mall schema stays unavailable and unchanged until this app can read it', async () => {
+  const mallKey = 'momentum.mall.v1';
+  const habitsKey = 'momentum.habits.v1';
+  const futureMallData = JSON.stringify({
+    schemaVersion: 7,
+    coins: 240,
+    purchasedItems: ['owned'],
+    rewardedCheckIns: ['saved-habit:2026-11-11'],
+    rewardTokens: { facility: 2, shop: 1, decor: 3 },
+    placements: { 'floor-1-right': 'owned' },
+    shopInteriors: {},
+    futureOnlyField: { preserve: ['newer app data'] },
+  });
+  const storage = new Map([
+    [habitsKey, JSON.stringify([{ id: 'saved-habit', title: '保留目標', reason: '保留原因', icon: 'activity', color: '#0f0', createdAt: '2026-01-01', checkIns: [] }])],
+    [mallKey, futureMallData],
+  ]);
+  const before = [...storage.entries()];
+  const app = mountHabitsContext(storage);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const habits = app.render();
+  assert.equal(habits.isLoading, false);
+  assert.match(habits.mallLoadError, /無法讀取商場資料/);
+  assert.match(habits.mallLoadError, /原始資料未被更改/);
+  assert.equal(habits.habits[0].id, 'saved-habit', 'unreadable mall data does not discard saved habits');
+
+  const mall = mount({ mallLoadError: habits.mallLoadError });
+  const unavailable = mall.find('mall-load-error');
+  assert.ok(unavailable, 'the mall shows its unavailable-data state');
+  assert.equal(unavailable.props.accessibilityRole, 'alert');
+  assert.match(textContent(unavailable), /商場資料無法讀取/);
+  assert.equal(mall.find('mall-slot-floor-1-left'), undefined, 'the unreadable mall is not rendered as empty');
+  assert.equal(mall.find('floor-catalog-title'), undefined);
+
+  await assert.rejects(
+    habits.purchaseMallItem('new-item', 0, 'decor', 0, 'floor-1-left'),
+    /無法讀取商場資料/,
+  );
+  await assert.rejects(habits.moveMallItem('owned', 'floor-1-left'));
+  await assert.rejects(habits.storeMallItem('owned'));
+
+  assert.deepEqual([...storage.entries()], before, 'loading, migration, and mall actions preserve every saved value');
+  assert.equal(storage.get(mallKey), futureMallData, 'the original future-version JSON remains byte-for-byte unchanged');
+  assert.equal(
+    app.storageCalls.some(([operation]) => operation === 'set' || operation === 'remove'),
+    false,
+    'unsupported mall data triggers no storage writes or removals',
+  );
+});
+
 test('unreadable check-in recovery record preserves saved habits and mall data', async () => {
   const habitsKey = 'momentum.habits.v1';
   const mallKey = 'momentum.mall.v1';

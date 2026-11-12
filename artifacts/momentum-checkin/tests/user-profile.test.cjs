@@ -36,8 +36,19 @@ test('profile normalizer trims and limits nicknames and validates avatar choices
 
 test('settings offers bundled cartoon dog staff images as selectable profile avatars', () => {
   assert.match(settings, /DOG_STAFF_PROFILES/);
-  assert.match(settings, /getDogFluffyStaffImage\(dog\.key\)/);
+  assert.match(settings, /getUserProfileDogImage\(dog\.key\)/);
   assert.match(settings, /testID=\{`profile-avatar-\$\{dog\.key\}`\}/);
+  assert.match(settings, /profileDogAvatarFrame/);
+  assert.doesNotMatch(settings, /getDogFluffyStaffImage/);
+  const imageMap = fs.readFileSync(path.join(appRoot, 'constants/user-profile-images.ts'), 'utf8');
+  const assets = [...imageMap.matchAll(/require\('(\.\.\/assets\/profile-avatars\/[^']+\.png)'\)/g)];
+  assert.equal(assets.length, 14);
+  for (const id of PROFILE_DOG_AVATAR_IDS) assert.ok(imageMap.includes(`'${id}'`), id);
+  for (const [, relativePath] of assets) {
+    const png = fs.readFileSync(path.resolve(appRoot, 'constants', relativePath));
+    assert.equal(png.readUInt32BE(16), 512, `${relativePath} has a padded square canvas`);
+    assert.equal(png.readUInt32BE(20), 512);
+  }
 });
 
 test('only a custom nickname or non-default avatar counts as local profile data', () => {

@@ -14,7 +14,7 @@ import {
   type ProfileAvatarId,
 } from '@/constants/user-profile';
 import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
-import { getDogFluffyStaffImage } from '@/constants/dog-fluffy-images';
+import { getUserProfileDogImage } from '@/constants/user-profile-images';
 import { DEFAULT_REMINDER_SETTINGS, readReminderSettings, type ReminderSettings } from '@/lib/reminder-settings';
 import {
   DEFAULT_ENCOURAGEMENT_STYLE,
@@ -194,7 +194,7 @@ export default function SettingsScreen() {
               ]}>
                 {selectedDogAvatar ? (
                   <Image
-                    source={getDogFluffyStaffImage(selectedDogAvatar.key)}
+                    source={getUserProfileDogImage(selectedDogAvatar.key)}
                     style={styles.profileDogPreviewImage}
                     resizeMode="contain"
                     accessible={false}
@@ -295,7 +295,7 @@ export default function SettingsScreen() {
                     >
                       <View style={styles.profileDogAvatarFrame}>
                         <Image
-                          source={getDogFluffyStaffImage(dog.key)}
+                          source={getUserProfileDogImage(dog.key)}
                           style={styles.profileDogAvatarImage}
                           resizeMode="contain"
                           accessible={false}
@@ -461,9 +461,9 @@ const styles = StyleSheet.create({
   profileAvatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   profileAvatarChoice: { width: '22%', minHeight: 72, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 7 },
   profileAvatarIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  profileDogAvatarFrame: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  profileDogAvatarImage: { width: 40, height: 40 },
-  profileDogPreviewImage: { width: 44, height: 44 },
+  profileDogAvatarFrame: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
+  profileDogAvatarImage: { width: 48, height: 48 },
+  profileDogPreviewImage: { width: 48, height: 48 },
   profileAvatarLabel: { fontSize: 10, fontWeight: '600' },
   profileSaveButton: { minHeight: 44, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 2 },
   profileSaveText: { fontSize: 13, fontWeight: '700' },

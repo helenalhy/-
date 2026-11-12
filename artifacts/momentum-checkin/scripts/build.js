@@ -209,6 +209,15 @@ function exportWebBuild(domain, expoPublicReplId) {
 
       const webHtmlPath = path.join(outputDir, 'index.html');
       const webHtml = fs.readFileSync(webHtmlPath, 'utf-8');
+    // Copy the loading-screen dog heads next to the exported index.html
+    // so the injected screen can load its transparent PNGs.
+    const loaderHeadsSrc = path.join(projectRoot, 'assets', 'dogs-expressions');
+    const loaderHeadsDest = path.join(outputDir, 'dogs-expressions');
+    if (fs.existsSync(loaderHeadsSrc)) {
+      fs.rmSync(loaderHeadsDest, { recursive: true, force: true });
+      fs.cpSync(loaderHeadsSrc, loaderHeadsDest, { recursive: true });
+    }
+
       fs.writeFileSync(webHtmlPath, injectLoadingScreen(webHtml));
       console.log('Browser app ready');
       resolve();

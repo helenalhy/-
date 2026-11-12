@@ -119,3 +119,28 @@ test('published web HTML loader embeds fourteen animated dogs and hides after th
   assert.match(html, /observer\.observe\(root/);
   assert.equal(injectLoadingScreen(html), html, 'the post-export step can be safely rerun');
 });
+
+test('published web HTML loader uses the fourteen fluffy heads with four expressions each', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { injectLoadingScreen, DOGS, IMAGE_BASE } = require('../scripts/web-loading-screen.js');
+  assert.equal(DOGS.length, 14);
+  assert.equal(DOGS.map((dog) => dog.id).join(','), 'huahua,naixi,xiaoniu,buding,tangtang,pipi,hupo,yunduo,yuntun,naiyou,zhima,xueqiu,maomao,bobi');
+  const html = injectLoadingScreen('<html><body><div id="root"></div></body></html>');
+  for (const dog of DOGS) {
+    assert.equal(dog.frames.length, 4, `${dog.id} should have four expression frames`);
+    for (const file of dog.frames) {
+      assert.match(file, /-nobg\.png$/);
+      assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'dogs-expressions', file)), `${file} should exist`);
+      assert.ok(html.includes(IMAGE_BASE + file), `${file} should be referenced by the loader`);
+    }
+  }
+  assert.equal(html.includes('momentum-loader-halo'), false, 'the heart stands alone with no pink square behind it');
+  assert.match(html, /background:#FEF7FA/);
+  assert.match(html, /width="56" height="56"/);
+  assert.match(html, /fill="#E883A9"/);
+  assert.match(html, /momentum-heartbeat 1\.8s/);
+  assert.match(html, /translateY\(-10px\)/);
+  assert.match(html, /},300\)/);
+  assert.match(html, /\[0,1,2,3,2,1\]/);
+});

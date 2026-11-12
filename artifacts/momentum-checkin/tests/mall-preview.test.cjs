@@ -2273,6 +2273,9 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
         return lastDate === previous ? (streak >= 7 ? 1 : streak + 1) : 1;
       },
     };
+    if (name === '@/lib/dog-companion') {
+      return loadTsModule(path.join(__dirname, '../lib/dog-companion.ts'));
+    }
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: () => false,
@@ -2373,6 +2376,53 @@ for (const mirrorKey of ['momentum.habits.v1', 'momentum.mall.v1']) {
     );
   });
 }
+
+test('check-in recovery survives a second mirror failure and restores the reward only once', async () => {
+  const transactionKey = 'momentum.checkin-transaction.v1';
+  const habitsKey = 'momentum.habits.v1';
+  const mallKey = 'momentum.mall.v1';
+  const app = mountHabitsContext();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  app.failNextWriteForKey(habitsKey);
+  let habits = app.render();
+  assert.equal(await habits.toggleCheckIn('starter-walk'), 20);
+  const committedTransaction = JSON.parse(app.storage.get(transactionKey));
+  assert.ok(app.storage.has(transactionKey), 'the first failed mirror leaves the transaction journal');
+
+  const interruptedRecovery = mountHabitsContext(app.storage);
+  interruptedRecovery.failNextWriteForKey(mallKey);
+  await new Promise((resolve) => setImmediate(resolve));
+  habits = interruptedRecovery.render();
+  assert.equal(habits.isLoading, false);
+  assert.equal(habits.coins, 20, 'the committed reward remains visible after recovery is interrupted');
+  assert.ok(app.storage.has(transactionKey), 'a second failed mirror keeps the journal for another launch');
+  assert.equal(
+    JSON.parse(app.storage.get(habitsKey)).find((habit) => habit.id === 'starter-walk').checkIns.length,
+    1,
+    'the check-in mirror may already be repaired when the mall mirror fails',
+  );
+
+  const recovered = mountHabitsContext(app.storage);
+  await new Promise((resolve) => setImmediate(resolve));
+  habits = recovered.render();
+  assert.equal(habits.isLoading, false);
+  assert.equal(habits.coins, 20);
+  assert.equal(habits.habits.find((habit) => habit.id === 'starter-walk').checkIns.length, 1);
+  assert.equal(habits.getCheckInReward('starter-walk'), 0, 'the reward marker prevents another claim');
+  assert.equal(recovered.storage.has(transactionKey), false, 'successful replay clears the journal');
+
+  const savedMall = JSON.parse(recovered.storage.get(mallKey));
+  assert.equal(savedMall.coins, 20);
+  assert.deepEqual(savedMall.rewardedCheckIns, committedTransaction.mall.rewardedCheckIns);
+  assert.equal(await habits.toggleCheckIn('starter-walk'), 0, 'undoing does not award the reward again');
+  assert.equal(await habits.toggleCheckIn('starter-walk'), 0, 'checking in again cannot claim the same reward');
+  assert.equal(recovered.render().coins, 20);
+  assert.deepEqual(
+    JSON.parse(recovered.storage.get(mallKey)).rewardedCheckIns,
+    committedTransaction.mall.rewardedCheckIns,
+  );
+});
 
 test('daily dog task reward is committed once and recovers after a mall mirror failure', async () => {
   const app = mountHabitsContext();

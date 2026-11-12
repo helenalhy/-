@@ -161,12 +161,17 @@ test('cafe dog staff can walk in all six areas without using furniture slots', (
   const customizer = fs.readFileSync(path.join(__dirname, '../components/DogStaffCustomizer.tsx'), 'utf8');
   const imageEnd = scene.indexOf('</ImageBackground>');
   const staffWalkers = scene.indexOf('<WalkingStaffDog');
+  const staffLayer = scene.indexOf('testID={`dog-staff-scene-area-${areaId}`}');
+  const furnitureSlots = scene.indexOf('{SHOP_INTERIOR_SLOTS.map((slot, slotIndex) => {');
   assert.ok(imageEnd >= 0 && staffWalkers >= 0 && staffWalkers < imageEnd, 'dogs walk inside the selected room image');
+  assert.ok(staffLayer >= 0 && staffLayer < furnitureSlots, 'furniture and its eight accessible controls render above walking dogs');
   assert.doesNotMatch(scene, /dog-staff-scene-dock/);
   assert.match(scene, /sceneKey === 'cafe'/);
   assert.match(scene, /DOG_STAFF_PROFILES/);
   assert.match(scene, /dogStaffPlacements\?\.\[dog\.decorationId\] !== areaId/);
   assert.match(scene, /testID=\{`dog-staff-walker-\$\{dog\.key\}`\}/);
+  assert.match(scene, /accessibilityLabel=\{`\$\{dog\.name\}，\$\{areaLabel\}，\$\{dog\.breed\}/);
+  assert.match(scene, /testID=\{`dog-staff-walker-label-\$\{dog\.key\}`\}/);
   assert.match(scene, /useReducedMotion/);
   assert.match(scene, /dog-staff-interaction-sheet/);
   assert.match(scene, /兌換後附送/);

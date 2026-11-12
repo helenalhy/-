@@ -336,6 +336,37 @@ export function ShopInteriorScene({
           })}
           <View style={[styles.interiorDisplayShelf, { backgroundColor: floorArt.accent }]} />
         </Animated.View>
+        {areaDogStaff.length > 0 && (
+          <View
+            testID={`dog-staff-scene-area-${areaId}`}
+            pointerEvents="box-none"
+            style={StyleSheet.absoluteFill}
+          >
+            {areaDogStaff.map(({ dog, look, index }) => (
+              <WalkingStaffDog
+                key={dog.decorationId}
+                testID={`dog-staff-walker-${dog.key}`}
+                dog={dog}
+                look={look}
+                index={index}
+                areaLabel={areaLabel}
+                width={size.width}
+                height={size.height}
+                reducedMotion={reducedMotion}
+                interaction={dogInteraction?.dogDecorationId === dog.decorationId ? dogInteraction : null}
+                onPress={() => {
+                  if (onOpenDogCompanion) {
+                    onOpenDogCompanion(dog.decorationId);
+                    return;
+                  }
+                  setSelectedDog({ dog, look, index });
+                  setInteractionMessage('');
+                }}
+                onInteractionComplete={completeDogInteraction}
+              />
+            ))}
+          </View>
+        )}
         {SHOP_INTERIOR_SLOTS.map((slot, slotIndex) => {
           const decoration = decorations.find(({ id }) => id === placements[slot.id]);
           const dogLook = decoration ? resolveDogStaffLook(decoration.id, dogStaffLooks?.[decoration.id]) : null;
@@ -421,36 +452,6 @@ export function ShopInteriorScene({
             </Pressable>
           );
         })}
-        {areaDogStaff.length > 0 && (
-          <View
-            testID={`dog-staff-scene-area-${areaId}`}
-            pointerEvents="box-none"
-            style={StyleSheet.absoluteFill}
-          >
-            {areaDogStaff.map(({ dog, look, index }) => (
-              <WalkingStaffDog
-                key={dog.decorationId}
-                testID={`dog-staff-walker-${dog.key}`}
-                dog={dog}
-                look={look}
-                index={index}
-                width={size.width}
-                height={size.height}
-                reducedMotion={reducedMotion}
-                interaction={dogInteraction?.dogDecorationId === dog.decorationId ? dogInteraction : null}
-                onPress={() => {
-                  if (onOpenDogCompanion) {
-                    onOpenDogCompanion(dog.decorationId);
-                    return;
-                  }
-                  setSelectedDog({ dog, look, index });
-                  setInteractionMessage('');
-                }}
-                onInteractionComplete={completeDogInteraction}
-              />
-            ))}
-          </View>
-        )}
       </ImageBackground>
       <Modal
         visible={selectedDog !== null}
@@ -615,6 +616,7 @@ function WalkingStaffDog({
   dog,
   look,
   index,
+  areaLabel,
   width,
   height,
   reducedMotion,
@@ -626,6 +628,7 @@ function WalkingStaffDog({
   dog: DogStaffProfile;
   look: DogStaffLook;
   index: number;
+  areaLabel: string;
   width: number;
   height: number;
   reducedMotion: boolean;
@@ -752,11 +755,18 @@ function WalkingStaffDog({
       <Pressable
         testID={testID}
         accessibilityRole="button"
-        accessibilityLabel={`${dog.name}，${dog.breed}，點擊照顧或陪牠玩`}
+        accessibilityLabel={`${dog.name}，${areaLabel}，${dog.breed}，點擊照顧或陪牠玩`}
         accessibilityHint="開啟免費的梳毛、摸摸牠、餵食和玩耍互動"
         onPress={onPress}
         style={styles.staffDogTapTarget}
       >
+        <View
+          testID={`dog-staff-walker-label-${dog.key}`}
+          pointerEvents="none"
+          style={[styles.staffDogNameTag, { backgroundColor: colors.card, borderColor: colors.border }]}
+        >
+          <Text numberOfLines={1} style={[styles.staffDogNameText, { color: colors.foreground }]}>{dog.name}・{areaLabel}</Text>
+        </View>
         <View style={styles.staffDogShadow} pointerEvents="none" />
         <Animated.View
           pointerEvents="none"
@@ -1383,6 +1393,8 @@ const styles = StyleSheet.create({
   slotLabel: { maxWidth: '100%', fontSize: 8, lineHeight: 11, fontWeight: '800', textAlign: 'center' },
   staffDog: { position: 'absolute', width: STAFF_DOG_WIDTH, height: STAFF_DOG_HEIGHT, alignItems: 'center', justifyContent: 'flex-end', overflow: 'visible' },
   staffDogTapTarget: { width: STAFF_DOG_WIDTH, height: STAFF_DOG_HEIGHT, alignItems: 'center', justifyContent: 'flex-end' },
+  staffDogNameTag: { position: 'absolute', top: -15, left: -18, maxWidth: 88, minHeight: 16, borderRadius: 8, paddingHorizontal: 4, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  staffDogNameText: { fontSize: 8, lineHeight: 11, fontWeight: '800', textAlign: 'center' },
   staffDogShadow: { position: 'absolute', bottom: 4, left: 8, width: 26, height: 5, borderRadius: 4, backgroundColor: 'rgba(77,58,46,0.28)' },
   staffDogIllustration: { width: 50, height: 45, alignItems: 'center', justifyContent: 'center', transform: [{ scale: 0.72 }] },
   interactionFloat: { position: 'absolute', top: 0, right: 1, width: 22, height: 22, borderWidth: 1, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },

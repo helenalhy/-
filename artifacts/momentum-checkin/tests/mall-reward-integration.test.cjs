@@ -1621,6 +1621,119 @@ test('redeemed cafe dogs walk, open the companion flow, and stay outside the 48 
   assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffPlacements[dogId], 'main');
 });
 
+test('reopened cafe keeps staff and all furniture clear across five small-screen extensions', async () => {
+  const sourceApp = createHarness();
+  const shop = sourceApp.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  assert.ok(shop);
+
+  const dogIds = [
+    'general-fluffy-staff-huahua',
+    'general-fluffy-staff-milkshake',
+    'general-fluffy-staff-xiaoniu',
+    'general-fluffy-staff-pudding',
+    'general-fluffy-staff-tangtang',
+    'general-fluffy-staff-pipi',
+    'general-fluffy-staff-amber',
+    'general-fluffy-staff-cloud',
+    'general-fluffy-staff-wonton',
+    'general-fluffy-staff-butter',
+    'general-fluffy-staff-sesame',
+    'general-fluffy-staff-snowball',
+    'general-fluffy-staff-maomao',
+  ];
+  const areas = ['extension-1', 'extension-2', 'extension-3', 'extension-4', 'extension-5'];
+  const slots = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table'];
+  const dogCounts = [3, 3, 3, 2, 2];
+  const dogStaffPlacements = {};
+  const assignedDogIds = [];
+  let dogIndex = 0;
+  areas.forEach((areaId, areaIndex) => {
+    for (let count = 0; count < dogCounts[areaIndex]; count += 1) {
+      const dogId = dogIds[dogIndex++];
+      dogStaffPlacements[dogId] = areaId;
+      assignedDogIds.push(dogId);
+    }
+  });
+
+  const shopDecorations = sourceApp.shopInteriorCatalog.getShopInteriorDecorations(
+    shop.shopType,
+    shop.id,
+    shop.name,
+    assignedDogIds,
+  ).filter(({ id }) => !id.includes('fluffy-staff'));
+  assert.ok(shopDecorations.length >= areas.length);
+  const placedDecorationIds = shopDecorations.slice(0, areas.length).map(({ id }) => id);
+  const placements = {};
+  areas.forEach((areaId, areaIndex) => {
+    placements[`${areaId}:front-window`] = placedDecorationIds[areaIndex];
+  });
+  const persistedMall = JSON.stringify({
+    schemaVersion: 3,
+    coins: 1200,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {
+      [shop.id]: {
+        ownedDecorations: [...assignedDogIds, ...placedDecorationIds],
+        placements,
+        dogStaffPlacements,
+      },
+    },
+  });
+
+  sourceApp.storage.set(storageKeys.mall, persistedMall);
+  sourceApp.renderProvider();
+  await sourceApp.runEffects('provider');
+  const savedProgress = sourceApp.storage.get(storageKeys.mall);
+  assert.ok(savedProgress, 'the cafe arrangement is present in saved mall progress');
+
+  const reopenedApp = createHarness();
+  reopenedApp.storage.set(storageKeys.mall, savedProgress);
+  reopenedApp.renderProvider();
+  await reopenedApp.runEffects('provider');
+  reopenedApp.renderProvider();
+  reopenedApp.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = reopenedApp.renderShopInterior();
+  for (let areaIndex = 0; areaIndex < areas.length; areaIndex += 1) {
+    let sceneTree = reopenedApp.renderShopInteriorScene(interiorTree);
+    const imageBackground = findNodes(sceneTree, (node) => node.type === 'ImageBackground')[0];
+    assert.ok(imageBackground?.props?.onLayout, 'the scene reports its measured size');
+    imageBackground.props.onLayout({ nativeEvent: { layout: { width: 320, height: 320 } } });
+    sceneTree = reopenedApp.renderShopInteriorScene(interiorTree);
+
+    const areaLabel = `延伸區 ${areaIndex + 1}`;
+    const staffArea = findByTestId(sceneTree, `dog-staff-scene-area-${areas[areaIndex]}`);
+    assert.ok(staffArea, `${areaLabel} renders after reopening the cafe`);
+    const walkers = findNodes(staffArea, (node) => node.props?.testID?.startsWith('dog-staff-walker-'));
+    assert.equal(walkers.length, dogCounts[areaIndex], `${areaLabel} keeps its assigned dogs`);
+    for (const walker of walkers) {
+      assert.equal(walker.props.areaLabel, areaLabel, 'the dog keeps its station name');
+      assert.equal(walker.props.width, 320, 'the dog route uses the small-screen scene width');
+      assert.equal(walker.props.height, 320, 'the dog route uses the small-screen scene height');
+      assert.ok(assignedDogIds.includes(walker.props.dog.decorationId));
+    }
+
+    for (const slotId of slots) {
+      const hotspot = findByTestId(sceneTree, `shop-interior-slot-${slotId}`);
+      assert.equal(hotspot.props.accessible, true, `${areaLabel} ${slotId} remains accessible`);
+      assert.match(hotspot.props.accessibilityLabel, new RegExp(`${areaLabel}，`), `${areaLabel} keeps its station name visible to assistive technology`);
+      assert.match(
+        hotspot.props.accessibilityLabel,
+        slotId === 'front-window' ? /目前是/ : /尚未佈置/,
+        `${areaLabel} ${slotId} reports whether furniture is present`,
+      );
+    }
+
+    if (areaIndex < areas.length - 1) {
+      await press(interiorTree, 'shop-interior-area-next');
+      interiorTree = reopenedApp.renderShopInterior();
+    }
+  }
+});
+
 test('animal ear hat filter finds Huahua and Tangtang styles without saving a look or spending coins', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');

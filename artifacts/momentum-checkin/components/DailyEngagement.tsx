@@ -218,12 +218,12 @@ export function DailyDogGreetingCard({
 }) {
   const colors = useColors();
   const reduceMotion = useReducedMotion();
-  const { dog, greeting } = getDailyDogGreeting(today, style);
+  const [greeted, setGreeted] = useState(false);
+  const { dog, greeting, reply } = getDailyDogGreeting(today, style);
   const native = Platform.OS !== 'web';
   const jump = useRef(new Animated.Value(0)).current;
   const confetti = useRef(new Animated.Value(0)).current;
   const previousCelebrationCount = useRef(celebrationCount);
-  const [greeted, setGreeted] = useState(false);
   const [poseState, setPoseState] = useState<{ dogKey: string; pose: DailyDogPose }>({
     dogKey: dog.key,
     pose: 2,
@@ -326,7 +326,7 @@ export function DailyDogGreetingCard({
         <Text style={[styles.eyebrow, { color: colors.primary }]}>狗狗每日打招呼</Text>
         <Text style={[styles.title, { color: colors.foreground }]}>{dog.name}今天陪你</Text>
         <Text style={[styles.body, { color: colors.mutedForeground }]} numberOfLines={2}>
-          {greeted ? `${dog.name}：很高興今天也見到你！` : greeting}
+          {greeted ? `${dog.name}：${reply}` : greeting}
         </Text>
       </View>
       <Pressable

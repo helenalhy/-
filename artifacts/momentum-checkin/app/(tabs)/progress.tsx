@@ -13,6 +13,8 @@ import { WeeklyChallengeCard } from '@/components/WeeklyChallengeCard';
 import { StreakProtectionCard } from '@/components/StreakProtectionCard';
 import { MonthlyProgressCalendar } from '@/components/MonthlyProgressCalendar';
 import { DailyPostcardCard } from '@/components/DailyPersonalization';
+import { CheckInMilestoneCards } from '@/components/CheckInMilestoneCards';
+import { getWeeklyProgressStory } from '@/lib/weekly-progress-story';
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -202,12 +204,17 @@ export default function ProgressScreen() {
             <View style={[styles.weeklyProgressFill, { backgroundColor: colors.primary, width: `${weeklyCompletionRate}%` }]} />
           </View>
           <Text style={[styles.weeklyNote, { color: colors.mutedForeground }]}>
-            {bestDay && bestDay.count > 0
-              ? `本週最有行動力的一天是星期${weekdays[(new Date(`${bestDay.key}T12:00:00`).getDay() + 6) % 7]}，完成 ${bestDay.count} 次。`
-              : '每一小步都算數，今天也可以從一件小事開始。'}
+            {getWeeklyProgressStory({
+              completedCount: weeklyDone,
+              bestDayLabel: bestDay && bestDay.count > 0
+                ? weekdays[(new Date(`${bestDay.key}T12:00:00`).getDay() + 6) % 7]
+                : undefined,
+              bestDayCount: bestDay?.count,
+            })}
           </Text>
         </View>
 
+        <CheckInMilestoneCards totalCheckIns={totalCheckIns} />
         <WeeklyChallengeCard />
         <StreakProtectionCard />
 

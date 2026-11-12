@@ -14,6 +14,7 @@ import {
   saveEncouragementStyle,
   type EncouragementStyle,
 } from '@/lib/daily-personalization';
+import { PersonalRewardsSettings } from '@/components/PersonalRewards';
 
 function SettingsRow({
   icon,
@@ -121,6 +122,7 @@ export default function SettingsScreen() {
             paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 32,
           },
         ]}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.eyebrow, { color: colors.primary }]}>MOMENTUM</Text>
@@ -192,6 +194,14 @@ export default function SettingsScreen() {
           {encouragementError ? (
             <Text style={[styles.sectionNote, { color: colors.destructive }]} accessibilityRole="alert">{encouragementError}</Text>
           ) : null}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>完成目標後的小獎勵</Text>
+          <Text style={[styles.sectionNote, { color: colors.mutedForeground }]}>
+            寫下想送給自己的獎勵，今天頁會每天輪換提醒；這是自我鼓勵，不會扣金幣。
+          </Text>
+          <PersonalRewardsSettings />
         </View>
 
         <View style={styles.section}>

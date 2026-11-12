@@ -104,6 +104,18 @@ test('daily companion rotates through all fourteen profiles and greetings', () =
   );
 });
 
+test('daily dog encouragement is different across a full month', () => {
+  for (const style of ['gentle', 'energetic', 'concise']) {
+    const messages = Array.from({ length: 30 }, (_, index) => {
+      const day = String(index + 1).padStart(2, '0');
+      return getDailyDogGreeting(`2026-01-${day}`, style);
+    });
+    assert.equal(new Set(messages.map(({ greeting }) => greeting)).size, 30, `${style} greetings should be unique for 30 days`);
+    assert.equal(new Set(messages.map(({ reply }) => reply)).size, 30, `${style} replies should be unique for 30 days`);
+    assert.ok(messages.every(({ greeting, reply }) => greeting !== reply));
+  }
+});
+
 test('daily dog heart pose cycle stays on poses two through four', () => {
   assert.equal(getNextDailyDogPose(2), 3);
   assert.equal(getNextDailyDogPose(3), 4);

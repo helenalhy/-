@@ -26,9 +26,12 @@ import { MALL_ITEMS } from '@/constants/mall';
 import { SHOP_ROOM_IMAGES } from '@/constants/shop-room-images';
 import { getShopInteriorSceneKey } from '@/constants/mall-shop-interior';
 import {
+  DAILY_ENERGY_OPTIONS,
   DAILY_MOOD_OPTIONS,
   readMoodHistory,
+  saveDailyEnergy,
   saveDailyMood,
+  type DailyEnergy,
   type DailyMood,
   type MoodEntry,
 } from '@/lib/daily-personalization';
@@ -102,8 +105,10 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
   const colors = useColors();
   const [history, setHistory] = useState<MoodEntry[]>([]);
   const [savingMood, setSavingMood] = useState<DailyMood | null>(null);
+  const [savingEnergy, setSavingEnergy] = useState<DailyEnergy | null>(null);
   const [error, setError] = useState('');
   const currentMood = history.find((entry) => entry.date === today)?.mood;
+  const currentEnergy = history.find((entry) => entry.date === today)?.energy;
 
   useEffect(() => {
     let active = true;
@@ -116,9 +121,11 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
   }, [today]);
 
   async function chooseMood(mood: DailyMood) {
-    if (!hasCheckedIn || savingMood) return;
+    if (!hasCheckedIn || savingMood || savingEnergy) return;
     const previous = history;
-    const next = [{ date: today, mood }, ...history.filter((entry) => entry.date !== today)]
+    const current = history.find((entry) => entry.date === today);
+    const nextEntry = { ...current, date: today, mood };
+    const next = [nextEntry, ...history.filter((entry) => entry.date !== today)]
       .sort((left, right) => right.date.localeCompare(left.date))
       .slice(0, 180);
     setHistory(next);
@@ -134,6 +141,34 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
     }
   }
 
+  async function chooseEnergy(energy: DailyEnergy) {
+    if (!hasCheckedIn || savingMood || savingEnergy) return;
+    const previous = history;
+    const current = history.find((entry) => entry.date === today);
+    const nextEntry = { ...current, date: today, energy };
+    const next = [nextEntry, ...history.filter((entry) => entry.date !== today)]
+      .sort((left, right) => right.date.localeCompare(left.date))
+      .slice(0, 180);
+    setHistory(next);
+    setSavingEnergy(energy);
+    setError('');
+    try {
+      await saveDailyEnergy(today, energy);
+    } catch {
+      setHistory(previous);
+      setError('精力紀錄沒有保存成功，請再選一次。');
+    } finally {
+      setSavingEnergy(null);
+    }
+  }
+
+  const energyAdvice = currentEnergy === 'low'
+    ? '今天先做 2 分鐘或最小的一步，不用更改平常目標。'
+    : currentEnergy === 'high'
+      ? '可以趁現在有精神，挑一項最想完成的目標。'
+      : currentEnergy === 'steady'
+        ? '照平常的步調開始，完成一小段就值得肯定。'
+        : null;
   const recentDates = getRecentDateKeys(today);
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} testID="daily-mood-card">
@@ -155,9 +190,9 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
             <Pressable
               key={option.id}
               onPress={() => void chooseMood(option.id)}
-              disabled={!hasCheckedIn || savingMood !== null}
+              disabled={!hasCheckedIn || savingMood !== null || savingEnergy !== null}
               accessibilityRole="button"
-              accessibilityState={{ selected, disabled: !hasCheckedIn || savingMood !== null }}
+              accessibilityState={{ selected, disabled: !hasCheckedIn || savingMood !== null || savingEnergy !== null }}
               accessibilityLabel={`記錄今天的心情：${option.label}`}
               testID={`daily-mood-${option.id}`}
               style={({ pressed }) => [
@@ -165,7 +200,7 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
                 {
                   backgroundColor: selected ? colors.candyPink : colors.secondary,
                   borderColor: selected ? colors.primary : colors.border,
-                  opacity: !hasCheckedIn ? 0.52 : pressed ? 0.72 : 1,
+                  opacity: !hasCheckedIn || savingEnergy !== null ? 0.52 : pressed ? 0.72 : 1,
                 },
               ]}
             >
@@ -175,8 +210,42 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
           );
         })}
       </View>
+      <Text style={[styles.energyTitle, { color: colors.foreground }]}>今天的精力如何？</Text>
+      <View style={styles.energyRow}>
+        {DAILY_ENERGY_OPTIONS.map((option) => {
+          const selected = currentEnergy === option.id;
+          return (
+            <Pressable
+              key={option.id}
+              onPress={() => void chooseEnergy(option.id)}
+              disabled={!hasCheckedIn || savingMood !== null || savingEnergy !== null}
+              accessibilityRole="button"
+              accessibilityState={{ selected, disabled: !hasCheckedIn || savingMood !== null || savingEnergy !== null }}
+              accessibilityLabel={`記錄今天的精力：${option.label}`}
+              testID={`daily-energy-${option.id}`}
+              style={({ pressed }) => [
+                styles.energyOption,
+                {
+                  backgroundColor: selected ? colors.candyMint : colors.secondary,
+                  borderColor: selected ? colors.candyMintDark : colors.border,
+                  opacity: !hasCheckedIn || savingMood !== null ? 0.52 : pressed ? 0.72 : 1,
+                },
+              ]}
+            >
+              <Feather name={option.icon} size={15} color={selected ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.moodLabel, { color: selected ? colors.primary : colors.foreground }]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {energyAdvice ? (
+        <View style={[styles.energyAdvice, { backgroundColor: colors.secondary }]}>
+          <Feather name="zap" size={13} color={colors.primary} />
+          <Text style={[styles.note, { color: colors.foreground, flex: 1 }]}>{energyAdvice}</Text>
+        </View>
+      ) : null}
       <Text style={[styles.note, { color: colors.mutedForeground }]}>
-        {hasCheckedIn ? '只記錄感受，不評分，也不影響目標或金幣。紀錄保存在這台裝置。' : '完成今天第一個目標後，就可以記下感受。'}
+        {hasCheckedIn ? '只記錄感受，不評分，也不影響目標或金幣；紀錄只保存在這台裝置。' : '完成今天第一個目標後，就可以記下心情和精力。'}
       </Text>
       {error ? <Text style={[styles.error, { color: colors.destructive }]} accessibilityRole="alert">{error}</Text> : null}
       <View style={[styles.history, { borderTopColor: colors.border }]}>
@@ -185,12 +254,13 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
           {recentDates.map((date) => {
             const entry = history.find((item) => item.date === date);
             const option = DAILY_MOOD_OPTIONS.find((item) => item.id === entry?.mood);
+            const energy = DAILY_ENERGY_OPTIONS.find((item) => item.id === entry?.energy);
             return (
               <View key={date} style={styles.historyDay} testID={`mood-history-${date}`}>
-                <View style={[styles.historyDot, { backgroundColor: option ? colors.candyPink : colors.secondary }]}>
-                  {option ? <Feather name={option.icon} size={12} color={colors.primary} /> : null}
+                <View style={[styles.historyDot, { backgroundColor: option || energy ? colors.candyPink : colors.secondary }]}>
+                  {option ? <Feather name={option.icon} size={12} color={colors.primary} /> : energy ? <Feather name="zap" size={12} color={colors.primary} /> : null}
                 </View>
-                <Text style={[styles.historyDate, { color: colors.mutedForeground }]}>{shortDate(date)}</Text>
+                <Text style={[styles.historyDate, { color: colors.mutedForeground }]}>{option?.label ?? energy?.label ?? shortDate(date)}</Text>
               </View>
             );
           })}
@@ -520,6 +590,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, lineHeight: 21, fontWeight: '700', marginTop: 3 },
   note: { fontSize: 11, lineHeight: 17, marginTop: 4 },
   moodRow: { flexDirection: 'row', gap: 7, marginTop: 14 },
+  energyTitle: { fontSize: 12, fontWeight: '700', marginTop: 14, marginBottom: -7 },
+  energyRow: { flexDirection: 'row', gap: 7, marginTop: 14 },
+  energyOption: { flex: 1, minHeight: 49, borderWidth: 1, borderRadius: 13, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  energyAdvice: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 10, marginTop: 9 },
   moodOption: { flex: 1, minHeight: 57, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5 },
   moodLabel: { fontSize: 11, fontWeight: '600' },
   history: { marginTop: 13, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },

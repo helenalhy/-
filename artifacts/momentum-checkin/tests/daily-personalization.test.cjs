@@ -158,10 +158,11 @@ test('encouragement style and daily moods persist locally without replacing a da
 
   await personalization.saveDailyMood('2026-11-08', 'tired');
   await personalization.saveDailyMood('2026-11-09', 'happy');
+  await personalization.saveDailyEnergy('2026-11-08', 'low');
   await personalization.saveDailyMood('2026-11-08', 'calm');
   assert.deepEqual(await personalization.readMoodHistory(), [
     { date: '2026-11-09', mood: 'happy' },
-    { date: '2026-11-08', mood: 'calm' },
+    { date: '2026-11-08', mood: 'calm', energy: 'low' },
   ]);
 });
 
@@ -172,11 +173,14 @@ test('today and settings expose all four motivation features', () => {
   const card = fs.readFileSync(path.join(appRoot, 'components/DailyPersonalization.tsx'), 'utf8');
   const postcardExport = fs.readFileSync(path.join(appRoot, 'lib/postcard-export.ts'), 'utf8');
   assert.match(today, /<DailyMoodCard/);
+  assert.match(today, /<DailyPersonalRewardCard/);
   assert.match(today, /<DailyPostcardCard/);
   assert.match(progress, /<DailyPostcardCard/);
   assert.match(card, /testID="share-daily-postcard"/);
   assert.match(today, /testID="toggle-low-energy-mode"/);
   assert.match(settings, /ENCOURAGEMENT_STYLES\.map/);
+  assert.match(settings, /<PersonalRewardsSettings/);
+  assert.match(card, /DAILY_ENERGY_OPTIONS\.map/);
   assert.match(card, /testID="download-daily-postcard"/);
   assert.match(card, /下載明信片 PNG/);
   assert.match(card, /sharePngBlobOnWeb/);

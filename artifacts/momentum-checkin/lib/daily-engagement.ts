@@ -57,6 +57,22 @@ const DOG_GREETINGS: Record<EncouragementStyle, readonly string[]> = {
     '把目標變小一點，開始就會容易一些。',
     '謝謝你今天來打招呼，我也替你加油。',
     '不和昨天比較，今天的你只要往前一點點。',
+    '今天不用證明什麼，願意開始已經很勇敢。',
+    '你可以先休息一下，再決定下一步。',
+    '小小的完成，也值得好好記住。',
+    '如果計畫改變了，我們就從新的地方開始。',
+    '慢慢走沒關係，我會陪你一起走。',
+    '今天挑一件對自己有幫助的小事就好。',
+    '做得少一點，也比責怪自己更溫柔。',
+    '每一次回來，都讓習慣更靠近你一點。',
+    '你不必等到有動力，先做一小步也可以。',
+    '今天留給自己的幾分鐘，同樣很珍貴。',
+    '先照顧好自己，接著再看想做什麼。',
+    '你的進度不用和任何人一樣。',
+    '累的時候縮小步伐，不代表你放棄了。',
+    '我看見你正在努力，慢慢來就好。',
+    '今天有一點點進展，就有一點點新的可能。',
+    '今天值得為自己的選擇點點頭。',
   ],
   energetic: [
     '早安！今天也有新機會，我們先完成一小步！',
@@ -73,6 +89,22 @@ const DOG_GREETINGS: Record<EncouragementStyle, readonly string[]> = {
     '把目標縮小一點，開始後就會越來越順！',
     '謝謝你來打招呼，今天也一起加油！',
     '不必比較，今天往前一點就是好消息。',
+    '新的一天開始了，先完成一件小事！',
+    '你已經回到起點線，現在就能出發！',
+    '做一點就值得慶祝，今天也能有收穫！',
+    '改變計畫也沒關係，找到下一步再前進！',
+    '我會在旁邊陪你，先試試看吧！',
+    '挑一件對自己有幫助的小事，開始累積！',
+    '不必一次完成全部，拿下一小步就好！',
+    '每次回來都讓習慣更有力量！',
+    '先開始再說，動力可能會跟著出現！',
+    '今天留給自己的時間，會成為好收穫！',
+    '照顧好自己，也是在向目標前進！',
+    '你的節奏就是最適合你的節奏！',
+    '縮小步伐也算前進，繼續為自己加油！',
+    '我看見你的努力，下一步我們一起走！',
+    '一點點進展，也能開啟新的可能！',
+    '替自己加上一分，今天就從這裡開始！',
   ],
   concise: [
     '早安。先做一小步。',
@@ -89,6 +121,22 @@ const DOG_GREETINGS: Record<EncouragementStyle, readonly string[]> = {
     '把目標縮小，現在就開始。',
     '謝謝你來，我陪著你。',
     '只和昨天的自己比較。',
+    '開始一小步就好。',
+    '休息後再決定下一步。',
+    '記得肯定自己的完成。',
+    '改變計畫也可以。',
+    '慢慢走，我陪你。',
+    '今天做一件小事。',
+    '少一點，也算前進。',
+    '回來就是新的開始。',
+    '先做兩分鐘看看。',
+    '留幾分鐘給自己。',
+    '先照顧好自己。',
+    '不用跟別人比較。',
+    '放慢速度也沒關係。',
+    '我看見你的努力。',
+    '今天有一點進展。',
+    '今天也值得肯定。',
   ],
 };
 
@@ -155,9 +203,11 @@ export function getDailyDogGreeting(today: string, style: EncouragementStyle = '
   const profileIndex = positiveModulo(ordinal, DOG_STAFF_PROFILES.length);
   const greetings = DOG_GREETINGS[style] ?? DOG_GREETINGS.gentle;
   const greetingIndex = positiveModulo(ordinal, greetings.length);
+  const replyIndex = positiveModulo(greetingIndex + 7, greetings.length);
   return {
     dog: DOG_STAFF_PROFILES[profileIndex],
     greeting: greetings[greetingIndex],
+    reply: greetings[replyIndex],
   };
 }
 

@@ -36,6 +36,7 @@ import {
   WeeklyMallEventCard,
 } from '@/components/DailyEngagement';
 import { DailyMoodCard, DailyPostcardCard } from '@/components/DailyPersonalization';
+import { DailyPersonalRewardCard } from '@/components/PersonalRewards';
 import { UrgeSupportCard } from '@/components/UrgeSupportCard';
 import {
   DEFAULT_ENCOURAGEMENT_STYLE,
@@ -998,6 +999,10 @@ export function TodayScreen() {
             <DailyMoodCard
               today={today}
               hasCheckedIn={habits.some((habit) => habit.checkIns.includes(today))}
+            />
+            <DailyPersonalRewardCard
+              today={today}
+              completedGoalCount={postcardCompletedGoalsCount}
             />
           </>
         ) : null}

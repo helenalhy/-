@@ -293,12 +293,14 @@ export default function SettingsScreen() {
                       ]}
                       testID={`profile-avatar-${dog.key}`}
                     >
-                      <Image
-                        source={getDogFluffyStaffImage(dog.key)}
-                        style={styles.profileDogAvatarImage}
-                        resizeMode="contain"
-                        accessible={false}
-                      />
+                      <View style={styles.profileDogAvatarFrame}>
+                        <Image
+                          source={getDogFluffyStaffImage(dog.key)}
+                          style={styles.profileDogAvatarImage}
+                          resizeMode="contain"
+                          accessible={false}
+                        />
+                      </View>
                       <Text style={[styles.profileAvatarLabel, { color: selected ? colors.primary : colors.mutedForeground }]}>
                         {dog.name}
                       </Text>
@@ -459,8 +461,9 @@ const styles = StyleSheet.create({
   profileAvatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   profileAvatarChoice: { width: '22%', minHeight: 72, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 7 },
   profileAvatarIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  profileDogAvatarImage: { width: 45, height: 45 },
-  profileDogPreviewImage: { width: 52, height: 52 },
+  profileDogAvatarFrame: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  profileDogAvatarImage: { width: 40, height: 40 },
+  profileDogPreviewImage: { width: 44, height: 44 },
   profileAvatarLabel: { fontSize: 10, fontWeight: '600' },
   profileSaveButton: { minHeight: 44, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 2 },
   profileSaveText: { fontSize: 13, fontWeight: '700' },

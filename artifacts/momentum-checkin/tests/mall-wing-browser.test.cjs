@@ -8,6 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net');
+const { firefox, webkit } = require('playwright');
 
 const projectRoot = path.resolve(__dirname, '..');
 const workspaceRoot = path.resolve(projectRoot, '../..');
@@ -480,4 +481,81 @@ test('mall wing tabs keep browser focus and selection in sync', {
     })()`,
     'the selected mall page to stay aligned after restoring the viewport',
   );
+
+  for (const engine of [
+    { name: 'Firefox', browserType: firefox },
+    { name: 'WebKit (Safari engine)', browserType: webkit },
+  ]) {
+    await t.test(`${engine.name} keeps narrow-screen wing keyboard state in sync`, async (engineTest) => {
+      let crossBrowser;
+      try {
+        crossBrowser = await engine.browserType.launch({ headless: true });
+      } catch (error) {
+        if (/Host system is missing dependencies|Executable doesn't exist|cannot open shared object file/.test(error.message)) {
+          const missingLibraries = [...new Set(error.message.match(/lib[\w.-]+\.so(?:\.\d+)?/g) ?? [])];
+          const reason = missingLibraries.length
+            ? `Missing system libraries: ${missingLibraries.join(', ')}`
+            : 'Required browser runtime dependencies are unavailable';
+          engineTest.skip(reason);
+          return;
+        }
+        throw error;
+      }
+
+      try {
+        const page = await crossBrowser.newPage({ viewport: { width: 320, height: 800 } });
+        await page.goto(appUrl);
+        await page.locator('[aria-label="先體驗，不登入"]').click();
+        const tablist = page.locator('[data-testid="mall-wing-tabs"]');
+        await tablist.waitFor({ state: 'visible' });
+
+        const verifyWing = async (wingId) => {
+          await page.waitForFunction((expectedWing) => {
+            const list = document.querySelector('[data-testid="mall-wing-tabs"]');
+            const tab = list?.querySelector(`[data-testid="mall-wing-${expectedWing}"]`);
+            if (!list || !tab || document.activeElement !== tab) return false;
+            const listRect = list.getBoundingClientRect();
+            const tabRect = tab.getBoundingClientRect();
+            return tabRect.left >= listRect.left - 1 && tabRect.right <= listRect.right + 1;
+          }, wingId);
+
+          const state = await page.evaluate(() => {
+            const list = document.querySelector('[data-testid="mall-wing-tabs"]');
+            const tabs = Array.from(list.querySelectorAll('[role="tab"]'));
+            return {
+              listRole: list.getAttribute('role'),
+              tabs: tabs.map((tab) => ({
+                id: tab.dataset.testid,
+                selected: tab.getAttribute('aria-selected'),
+                tabIndex: tab.tabIndex,
+              })),
+              focused: document.activeElement?.dataset?.testid ?? null,
+            };
+          });
+          const activeTab = state.tabs.find((tab) => tab.id === `mall-wing-${wingId}`);
+          assert.equal(state.listRole, 'tablist');
+          assert.equal(activeTab?.selected, 'true', `${wingId} should have aria-selected=true`);
+          assert.equal(activeTab?.tabIndex, 0, `${wingId} should be the only Tab stop`);
+          assert.equal(state.focused, `mall-wing-${wingId}`, `${wingId} should own browser focus`);
+          assert.equal(state.tabs.filter((tab) => tab.selected === 'true').length, 1);
+          assert.equal(state.tabs.filter((tab) => tab.tabIndex === 0).length, 1);
+        };
+
+        await page.locator('[data-testid="mall-wing-main"]').focus();
+        await verifyWing('main');
+        await page.keyboard.press('ArrowRight');
+        await verifyWing('annex');
+        await page.keyboard.press('ArrowRight');
+        await verifyWing('extension');
+        await page.keyboard.press('ArrowLeft');
+        await verifyWing('annex');
+        await page.keyboard.press('End');
+        await verifyWing('extension4');
+        await page.keyboard.press('Home');
+        await verifyWing('main');
+      } finally {
+        await crossBrowser.close();
+      }
+    });
+  }
 });

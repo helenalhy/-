@@ -28,3 +28,9 @@ React Native Web 的 `accessibilityState.selected` 不會自動輸出分頁控�
 **Why:** Chromium 回歸測試中，焦點與 aria-selected 已更新，但上述捲動呼叫仍讓目前標籤留在可視範圍外；直接更新實際捲動容器的 `scrollLeft` 才能可靠顯示目標。
 
 **How to apply:** 新增或修改網頁上的水平分頁列時，在窄視窗真實瀏覽器中同時檢查焦點、選取狀態、單一 Tab 停駐點及標籤邊界是否落在捲動容器內。
+
+Playwright 的 WebKit 執行結果代表 Safari 使用的瀏覽器引擎行為，不等同於在 macOS 或 iOS 上驗證 Safari 應用程式。
+
+**Why:** Safari 應用程式不能在 Linux 測試環境直接啟動；WebKit 版本及系統函式庫亦可能與 Safari 實際版本不同。
+
+**How to apply:** 報告跨瀏覽器結果時，將 Firefox 與 WebKit 引擎分開列示；若需求是 Safari 實機驗證，另行安排 Apple 裝置或 macOS 測試。

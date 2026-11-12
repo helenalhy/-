@@ -12,6 +12,8 @@ export * from './progressRecord';
 export * from './progressSnapshot';
 export * from './progressSnapshotHabitsItem';
 export * from './progressSnapshotMall';
+export * from './progressSnapshotProfile';
+export * from './progressSnapshotProfileAvatarId';
 export * from './reminderCheckInInput';
 export * from './reminderConfig';
 export * from './reminderSnoozeInput';

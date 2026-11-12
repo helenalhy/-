@@ -178,6 +178,45 @@ components:
         mall:
           type: object
           additionalProperties: true
+        profile:
+          type: object
+          additionalProperties: false
+          properties:
+            nickname:
+              type: string
+              maxLength: 24
+            avatarId:
+              type: string
+              enum:
+                - sun
+                - star
+                - heart
+                - moon
+                - cloud
+                - smile
+                - flower
+                - book
+                - gift
+                - coffee
+                - music
+                - compass
+                - fluffy-staff-huahua
+                - fluffy-staff-milkshake
+                - fluffy-staff-xiaoniu
+                - fluffy-staff-pudding
+                - fluffy-staff-tangtang
+                - fluffy-staff-pipi
+                - fluffy-staff-amber
+                - fluffy-staff-cloud
+                - fluffy-staff-wonton
+                - fluffy-staff-butter
+                - fluffy-staff-sesame
+                - fluffy-staff-snowball
+                - fluffy-staff-maomao
+                - fluffy-staff-poppy
+          required:
+            - nickname
+            - avatarId
       required:
         - schemaVersion
         - habits

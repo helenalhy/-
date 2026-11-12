@@ -47,6 +47,12 @@ import {
   getNextDailyLoginStreak,
 } from '@/lib/daily-login-rewards';
 import {
+  DEFAULT_USER_PROFILE,
+  normalizeUserProfile,
+  type UserProfile,
+} from '@/constants/user-profile';
+import { readUserProfile, writeUserProfile } from '@/lib/user-profile-storage';
+import {
   canDisplayShopProducts,
   getShopFixtureProductCatalog,
   SHOP_DISPLAY_SLOT_COUNT,
@@ -152,6 +158,7 @@ export interface ProgressSnapshot {
   schemaVersion: 1;
   habits: Habit[];
   mall: CheckInTransaction['mall'];
+  profile: UserProfile;
 }
 
 export type CloudSyncStatus = 'local' | 'syncing' | 'synced' | 'error';
@@ -168,6 +175,8 @@ interface HabitsContextValue {
   storageError: string | null;
   mallLoadError: string | null;
   progressSnapshot: ProgressSnapshot;
+  userProfile: UserProfile;
+  updateUserProfile: (profile: UserProfile) => Promise<void>;
   cloudSyncStatus: CloudSyncStatus;
   cloudSyncMessage: string | null;
   setCloudSyncState: (status: CloudSyncStatus, message?: string | null) => void;
@@ -685,6 +694,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [dailyLoginLastDate, setDailyLoginLastDate] = useState<string | null>(null);
   const [dailyLoginStreak, setDailyLoginStreak] = useState(0);
   const [dailyLoginLastPrizeItemId, setDailyLoginLastPrizeItemId] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile>({ ...DEFAULT_USER_PROFILE });
   const [isLoading, setIsLoading] = useState(true);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [mallLoadError, setMallLoadError] = useState<string | null>(null);
@@ -717,6 +727,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const setCloudSyncState = useCallback((status: CloudSyncStatus, message: string | null = null) => {
     setCloudSyncStatus(status);
     setCloudSyncMessage(message);
+  }, []);
+  const updateUserProfile = useCallback(async (profile: UserProfile) => {
+    const savedProfile = await writeUserProfile(profile);
+    setUserProfile(savedProfile);
   }, []);
   const getCheckInReward = useCallback((habitId: string) => (
     rewardedCheckIns.includes(`${habitId}:${today}`) ? 0 : CHECK_IN_REWARD
@@ -833,10 +847,11 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     async function load() {
       let mallDataLoaded = false;
       try {
-        const [saved, savedMall, savedCheckInTransaction] = await Promise.all([
+        const [saved, savedMall, savedCheckInTransaction, initialProfile] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY),
           AsyncStorage.getItem(MALL_STORAGE_KEY),
           AsyncStorage.getItem(CHECK_IN_TRANSACTION_KEY),
+          readUserProfile().catch(() => ({ ...DEFAULT_USER_PROFILE })),
         ]);
         let checkInTransaction: CheckInTransaction | null = null;
         let checkInTransactionUnreadable = false;
@@ -852,6 +867,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
             ?? (saved === null ? starterHabits : JSON.parse(saved) as Habit[]),
         );
         if (active) setHabits(initialHabits);
+        if (active) setUserProfile(initialProfile);
         const initialMall = checkInTransaction?.mall ?? (savedMall === null
           ? {
             coins: 0,
@@ -1058,6 +1074,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     if (!Array.isArray(source.habits) || !source.mall || typeof source.mall !== 'object') {
       throw new Error('雲端進度格式無效');
     }
+    const nextUserProfile = normalizeUserProfile(source.profile);
     const validHabits = source.habits.every((item) => (
       item !== null
       && typeof item === 'object'
@@ -1155,7 +1172,9 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     try {
       await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY, JSON.stringify(transaction));
       await synchronizeCheckInTransaction(transaction);
+      await writeUserProfile(nextUserProfile);
       setHabits(nextHabits);
+      setUserProfile(nextUserProfile);
       setCoins(coins);
       setPurchasedItems(purchasedItems);
       setMallPlacements(nextPlacements);
@@ -2199,6 +2218,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       placements: mallPlacements,
       shopInteriors,
     },
+    profile: userProfile,
   }), [
     habits,
     coins,
@@ -2214,12 +2234,13 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     dailyLoginLastPrizeItemId,
     mallPlacements,
     shopInteriors,
+    userProfile,
   ]);
 
   const value = useMemo(() => ({
-      habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
+      habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
       today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

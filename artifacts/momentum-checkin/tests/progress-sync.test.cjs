@@ -12,6 +12,10 @@ const progressRoute = fs.readFileSync(
   path.resolve(appRoot, '../api-server/src/routes/progress.ts'),
   'utf8',
 );
+const apiProgressSchema = fs.readFileSync(
+  path.resolve(appRoot, '../../lib/api-spec/openapi.yaml'),
+  'utf8',
+);
 const userProgressSchema = fs.readFileSync(
   path.resolve(appRoot, '../../lib/db/src/schema/user-progress.ts'),
   'utf8',
@@ -49,6 +53,7 @@ const fullGuestSnapshot = {
     },
     leaveCards: 1,
   },
+  profile: { nickname: '小星星', avatarId: 'star' },
 };
 
 test('a restored connection wakes progress synchronization on native and web', () => {
@@ -187,4 +192,17 @@ test('progress storage is keyed by the authenticated user for both reads and wri
   assert.match(progressRoute, /\.values\(\{ userId, snapshot: parsed\.data \}\)/);
   assert.match(progressRoute, /target: userProgressTable\.userId/);
   assert.match(userProgressSchema, /userId: text\("user_id"\)\.primaryKey\(\)/);
+});
+
+test('nickname and avatar are saved locally, included in cloud snapshots, and restored', () => {
+  const snapshotDeclaration = habitsContext
+    .split('const progressSnapshot = useMemo<ProgressSnapshot>(() => ({')[1]
+    .split('}), [')[0];
+  assert.match(snapshotDeclaration, /profile:\s*userProfile/);
+  assert.match(habitsContext, /await writeUserProfile\(nextUserProfile\)/);
+  assert.match(habitsContext, /setUserProfile\(nextUserProfile\)/);
+  assert.match(syncBridge, /hasCustomUserProfile\(snapshot\.profile\)/);
+  assert.match(syncBridge, /profile:\s*normalizeUserProfile\(source\.profile \?\? DEFAULT_USER_PROFILE\)/);
+  assert.match(apiProgressSchema, /profile:\n\s+type: object/);
+  assert.ok(fullGuestSnapshot.profile);
 });

@@ -21,6 +21,8 @@ export const HealthCheckResponse = zod.object({
  * @summary Get the signed-in user's saved progress
  */
 
+export const getProgressResponseSnapshotProfileNicknameMax = 24;
+
 
 
 export const GetProgressResponse = zod.object({
@@ -28,7 +30,11 @@ export const GetProgressResponse = zod.object({
   "snapshot": zod.object({
   "schemaVersion": zod.number().int().min(1),
   "habits": zod.array(zod.record(zod.string(), zod.unknown())),
-  "mall": zod.record(zod.string(), zod.unknown())
+  "mall": zod.record(zod.string(), zod.unknown()),
+  "profile": zod.object({
+  "nickname": zod.string().max(getProgressResponseSnapshotProfileNicknameMax),
+  "avatarId": zod.enum(['sun', 'star', 'heart', 'moon', 'cloud', 'smile', 'flower', 'book', 'gift', 'coffee', 'music', 'compass', 'fluffy-staff-huahua', 'fluffy-staff-milkshake', 'fluffy-staff-xiaoniu', 'fluffy-staff-pudding', 'fluffy-staff-tangtang', 'fluffy-staff-pipi', 'fluffy-staff-amber', 'fluffy-staff-cloud', 'fluffy-staff-wonton', 'fluffy-staff-butter', 'fluffy-staff-sesame', 'fluffy-staff-snowball', 'fluffy-staff-maomao', 'fluffy-staff-poppy'])
+}).optional()
 }),
   "updatedAt": zod.coerce.date().nullable()
 })
@@ -38,14 +44,22 @@ export const GetProgressResponse = zod.object({
  * @summary Save the signed-in user's progress
  */
 
+export const saveProgressBodyProfileNicknameMax = 24;
+
 
 
 export const SaveProgressBody = zod.object({
   "schemaVersion": zod.number().int().min(1),
   "habits": zod.array(zod.record(zod.string(), zod.unknown())),
-  "mall": zod.record(zod.string(), zod.unknown())
+  "mall": zod.record(zod.string(), zod.unknown()),
+  "profile": zod.object({
+  "nickname": zod.string().max(saveProgressBodyProfileNicknameMax),
+  "avatarId": zod.enum(['sun', 'star', 'heart', 'moon', 'cloud', 'smile', 'flower', 'book', 'gift', 'coffee', 'music', 'compass', 'fluffy-staff-huahua', 'fluffy-staff-milkshake', 'fluffy-staff-xiaoniu', 'fluffy-staff-pudding', 'fluffy-staff-tangtang', 'fluffy-staff-pipi', 'fluffy-staff-amber', 'fluffy-staff-cloud', 'fluffy-staff-wonton', 'fluffy-staff-butter', 'fluffy-staff-sesame', 'fluffy-staff-snowball', 'fluffy-staff-maomao', 'fluffy-staff-poppy'])
+}).optional()
 })
 
+
+export const saveProgressResponseSnapshotProfileNicknameMax = 24;
 
 
 
@@ -54,7 +68,11 @@ export const SaveProgressResponse = zod.object({
   "snapshot": zod.object({
   "schemaVersion": zod.number().int().min(1),
   "habits": zod.array(zod.record(zod.string(), zod.unknown())),
-  "mall": zod.record(zod.string(), zod.unknown())
+  "mall": zod.record(zod.string(), zod.unknown()),
+  "profile": zod.object({
+  "nickname": zod.string().max(saveProgressResponseSnapshotProfileNicknameMax),
+  "avatarId": zod.enum(['sun', 'star', 'heart', 'moon', 'cloud', 'smile', 'flower', 'book', 'gift', 'coffee', 'music', 'compass', 'fluffy-staff-huahua', 'fluffy-staff-milkshake', 'fluffy-staff-xiaoniu', 'fluffy-staff-pudding', 'fluffy-staff-tangtang', 'fluffy-staff-pipi', 'fluffy-staff-amber', 'fluffy-staff-cloud', 'fluffy-staff-wonton', 'fluffy-staff-butter', 'fluffy-staff-sesame', 'fluffy-staff-snowball', 'fluffy-staff-maomao', 'fluffy-staff-poppy'])
+}).optional()
 }),
   "updatedAt": zod.coerce.date().nullable()
 })

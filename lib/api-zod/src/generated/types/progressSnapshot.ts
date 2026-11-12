@@ -7,10 +7,12 @@
  */
 import type { ProgressSnapshotHabitsItem } from './progressSnapshotHabitsItem';
 import type { ProgressSnapshotMall } from './progressSnapshotMall';
+import type { ProgressSnapshotProfile } from './progressSnapshotProfile';
 
 export interface ProgressSnapshot {
   /** @minimum 1 */
   schemaVersion: number;
   habits: ProgressSnapshotHabitsItem[];
   mall: ProgressSnapshotMall;
+  profile?: ProgressSnapshotProfile;
 }

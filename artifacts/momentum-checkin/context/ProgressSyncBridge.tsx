@@ -19,6 +19,7 @@ import {
 import type { ProgressSnapshot as ApiProgressSnapshot } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { useHabits, type ProgressSnapshot } from '@/context/HabitsContext';
+import { DEFAULT_USER_PROFILE, hasCustomUserProfile, normalizeUserProfile } from '@/constants/user-profile';
 
 interface CloudSyncControls {
   retry: () => Promise<void>;
@@ -52,6 +53,7 @@ function hasMeaningfulLocalProgress(snapshot: ProgressSnapshot) {
     });
   const mall = snapshot.mall;
   return !unchangedStarterList
+    || hasCustomUserProfile(snapshot.profile)
     || mall.coins > 0
     || mall.purchasedItems.length > 0
     || mall.rewardedCheckIns.length > 0
@@ -61,6 +63,17 @@ function hasMeaningfulLocalProgress(snapshot: ProgressSnapshot) {
     || Object.keys(mall.placements).length > 0
     || Object.keys(mall.shopInteriors).length > 0
     || Object.values(mall.rewardTokens).some((count) => count > 0);
+}
+
+function getComparableSnapshotKey(snapshot: unknown): string {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    return JSON.stringify(snapshot);
+  }
+  const source = snapshot as Record<string, unknown>;
+  return JSON.stringify({
+    ...source,
+    profile: normalizeUserProfile(source.profile ?? DEFAULT_USER_PROFILE),
+  });
 }
 
 export function useCloudSyncControls() {
@@ -159,8 +172,8 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
       reconcilePendingRef.current = true;
       try {
         if (progressQuery.data.exists) {
-          const localSnapshotKey = JSON.stringify(progressSnapshot);
-          const cloudSnapshotKey = JSON.stringify(progressQuery.data.snapshot);
+          const localSnapshotKey = getComparableSnapshotKey(progressSnapshot);
+          const cloudSnapshotKey = getComparableSnapshotKey(progressQuery.data.snapshot);
           if (
             hasMeaningfulLocalProgress(progressSnapshot)
             && localSnapshotKey !== cloudSnapshotKey

@@ -13,11 +13,50 @@ export type ProgressSnapshotHabitsItem = { [key: string]: unknown };
 
 export type ProgressSnapshotMall = { [key: string]: unknown };
 
+export type ProgressSnapshotProfileAvatarId = typeof ProgressSnapshotProfileAvatarId[keyof typeof ProgressSnapshotProfileAvatarId];
+
+
+export const ProgressSnapshotProfileAvatarId = {
+  sun: 'sun',
+  star: 'star',
+  heart: 'heart',
+  moon: 'moon',
+  cloud: 'cloud',
+  smile: 'smile',
+  flower: 'flower',
+  book: 'book',
+  gift: 'gift',
+  coffee: 'coffee',
+  music: 'music',
+  compass: 'compass',
+  'fluffy-staff-huahua': 'fluffy-staff-huahua',
+  'fluffy-staff-milkshake': 'fluffy-staff-milkshake',
+  'fluffy-staff-xiaoniu': 'fluffy-staff-xiaoniu',
+  'fluffy-staff-pudding': 'fluffy-staff-pudding',
+  'fluffy-staff-tangtang': 'fluffy-staff-tangtang',
+  'fluffy-staff-pipi': 'fluffy-staff-pipi',
+  'fluffy-staff-amber': 'fluffy-staff-amber',
+  'fluffy-staff-cloud': 'fluffy-staff-cloud',
+  'fluffy-staff-wonton': 'fluffy-staff-wonton',
+  'fluffy-staff-butter': 'fluffy-staff-butter',
+  'fluffy-staff-sesame': 'fluffy-staff-sesame',
+  'fluffy-staff-snowball': 'fluffy-staff-snowball',
+  'fluffy-staff-maomao': 'fluffy-staff-maomao',
+  'fluffy-staff-poppy': 'fluffy-staff-poppy',
+} as const;
+
+export type ProgressSnapshotProfile = {
+  /** @maxLength 24 */
+  nickname: string;
+  avatarId: ProgressSnapshotProfileAvatarId;
+};
+
 export interface ProgressSnapshot {
   /** @minimum 1 */
   schemaVersion: number;
   habits: ProgressSnapshotHabitsItem[];
   mall: ProgressSnapshotMall;
+  profile?: ProgressSnapshotProfile;
 }
 
 export interface ProgressRecord {

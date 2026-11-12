@@ -423,4 +423,61 @@ test('mall wing tabs keep browser focus and selection in sync', {
     2,
     'mouse selection should move the horizontal mall pager to the selected wing',
   );
+
+  await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-main"]').focus()`);
+  await sendKey(devTools, 'End', 'End', 35);
+  await assertSelectedAndFocused('extension4');
+  await waitForBrowser(
+    devTools,
+    `(() => {
+      const pager = document.querySelector('[data-testid="mall-wing-pager"]');
+      return pager && Math.abs(pager.scrollLeft - pager.clientWidth * 4) < 2;
+    })()`,
+    'the selected mall page to finish scrolling before resizing',
+  );
+
+  await devTools.send('Emulation.setDeviceMetricsOverride', {
+    width: 220,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  await waitForBrowser(
+    devTools,
+    `document.querySelector('[data-testid="mall-wing-pager"]')?.clientWidth > 0
+      && document.querySelector('[data-testid="mall-wing-pager"]')?.clientWidth < 250`,
+    'the mall pager to finish measuring the resized browser viewport',
+  );
+  await devTools.evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  await assertSelectedAndFocused('extension4');
+  await waitForBrowser(
+    devTools,
+    `(() => {
+      const pager = document.querySelector('[data-testid="mall-wing-pager"]');
+      return pager && Math.abs(pager.scrollLeft - pager.clientWidth * 4) < 2;
+    })()`,
+    'the selected mall page to stay aligned after narrowing the viewport',
+  );
+
+  await devTools.send('Emulation.setDeviceMetricsOverride', {
+    width: 320,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  await waitForBrowser(
+    devTools,
+    `document.querySelector('[data-testid="mall-wing-pager"]')?.clientWidth >= 250`,
+    'the mall pager to finish measuring the restored browser viewport',
+  );
+  await devTools.evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  await assertSelectedAndFocused('extension4');
+  await waitForBrowser(
+    devTools,
+    `(() => {
+      const pager = document.querySelector('[data-testid="mall-wing-pager"]');
+      return pager && Math.abs(pager.scrollLeft - pager.clientWidth * 4) < 2;
+    })()`,
+    'the selected mall page to stay aligned after restoring the viewport',
+  );
 });

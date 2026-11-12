@@ -36,6 +36,8 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   const tabRefs = useRef<Partial<Record<MallWing, React.ElementRef<typeof Pressable>>>>({});
   const [width, setWidth] = useState(360);
   const [activeWing, setActiveWing] = useState<MallWing>('main');
+  const activeWingRef = useRef(activeWing);
+  activeWingRef.current = activeWing;
   const [wingAnnouncement, setWingAnnouncement] = useState('');
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -86,6 +88,16 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
     scrollTabsToWing(focusWing);
   }, [focusWing, focusRequestId, width]);
 
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const selectedWing = activeWingRef.current;
+      const page = WINGS.findIndex((wing) => wing.id === selectedWing);
+      pager.current?.scrollTo({ x: page * width, animated: false });
+      scrollTabsToWing(selectedWing, false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [width]);
+
   function changeWing(wing: MallWing, animated = true) {
     if (wing !== activeWing) {
       onWingChange();
@@ -128,8 +140,6 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
       const nextWidth = event.nativeEvent.layout.width;
       if (nextWidth > 0 && nextWidth !== width) {
         setWidth(nextWidth);
-        requestAnimationFrame(() => pager.current?.scrollTo({ x: WINGS.findIndex((page) => page.id === activeWing) * nextWidth, animated: false }));
-        requestAnimationFrame(() => scrollTabsToWing(activeWing));
       }
     }}>
       <ScrollView ref={tabs} horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" style={[s.tabScroller, { backgroundColor: colors.candyCream }]} contentContainerStyle={s.tabs} testID="mall-wing-tabs">

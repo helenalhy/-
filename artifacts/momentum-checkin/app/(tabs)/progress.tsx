@@ -106,7 +106,7 @@ export default function ProgressScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: Platform.OS === 'web' ? 67 : 12, paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 28 }]}
+        contentContainerStyle={[styles.content, { paddingTop: Platform.OS === 'web' ? 67 : 12, paddingBottom: Platform.OS === 'web' ? 116 : insets.bottom + 28 }]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.eyebrow, { color: colors.primary }]}>YOUR JOURNEY</Text>

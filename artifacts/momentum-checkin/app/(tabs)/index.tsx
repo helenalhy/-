@@ -857,7 +857,7 @@ export function TodayScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 28, paddingTop: Platform.OS === 'web' ? 67 : 12 },
+          { paddingBottom: (Platform.OS === 'web' ? 84 : insets.bottom) + 28, paddingTop: Platform.OS === 'web' ? 67 : 12 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -1524,9 +1524,9 @@ const styles = StyleSheet.create({
   emptyActionText: { fontSize: 13, fontWeight: '600' },
   quoteCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, marginTop: 19, marginBottom: 2, padding: 15 },
   quoteMark: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  quoteCopy: { flex: 1 },
+  quoteCopy: { flex: 1, minWidth: 0 },
   quoteTitle: { fontSize: 13, fontWeight: '600' },
-  quoteText: { fontSize: 11, marginTop: 4 },
+  quoteText: { fontSize: 11, lineHeight: 16, marginTop: 4 },
   restartCard: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 13, borderRadius: 17, padding: 12 },
   restartIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   restartCopy: { flex: 1, minWidth: 0 },

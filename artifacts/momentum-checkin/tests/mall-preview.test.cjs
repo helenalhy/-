@@ -127,7 +127,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     };
     if (name === '@expo/vector-icons') return { Feather: 'Feather' };
     if (name === '@react-native-async-storage/async-storage') return { __esModule: true, default: asyncStorage };
-    if (name === 'expo-router') return { router: { push() {}, navigate() {} } };
+    if (name === 'expo-router') return { router: { push() {}, navigate() {} }, useLocalSearchParams: () => ({}) };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === '@/constants/colors') return { light: {} };
     if (name === '@/lib/habit-schedule') return {
@@ -151,6 +151,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     if (name === '@/constants/mall-layout') return layoutModule.exports;
     if (name === '@/constants/mall-shop-interior') return shopInteriorCatalog;
     if (name === '@/components/MallWingPager') return { MallWingPager: mallWingPager };
+    if (name === '@/components/MallDailySurpriseCard') return { MallDailySurpriseCard: 'MallDailySurpriseCard' };
     if (name === '@/components/MallElevatorPanel') return { MallElevatorPanel: 'MallElevatorPanel' };
     if (name === '@/constants/mall') return {
       MALL_ITEMS: items, MALL_ITEM_BY_ID: Object.fromEntries(items.map((entry) => [entry.id, entry])),
@@ -2606,6 +2607,60 @@ for (const [label, brokenMallData] of [
     assert.deepEqual([...storage.entries()], before, 'check-in actions must not replace unreadable mall data');
   });
 }
+
+test('unreadable check-in recovery record preserves saved habits and mall data', async () => {
+  const habitsKey = 'momentum.habits.v1';
+  const mallKey = 'momentum.mall.v1';
+  const transactionKey = 'momentum.checkin-transaction.v1';
+  const savedHabits = [{
+    id: 'saved-habit',
+    title: '保留目標',
+    reason: '保留原因',
+    icon: 'activity',
+    color: '#0f0',
+    rewardCategory: 'facility',
+    createdAt: '2026-01-01',
+    checkIns: ['2026-11-11'],
+    steps: [],
+    restDays: [],
+    stepCheckIns: {},
+    makeupCheckIns: [],
+  }];
+  const savedMall = {
+    schemaVersion: 6,
+    coins: 145,
+    purchasedItems: [],
+    rewardedCheckIns: ['saved-habit:2026-11-11'],
+    rewardTokens: { facility: 2, shop: 1, decor: 3 },
+    placements: {},
+    shopInteriors: {},
+  };
+  const invalidRecoveryRecord = '{not-json';
+  const storage = new Map([
+    [habitsKey, JSON.stringify(savedHabits)],
+    [mallKey, JSON.stringify(savedMall)],
+    [transactionKey, invalidRecoveryRecord],
+  ]);
+  const before = [...storage.entries()];
+  const app = mountHabitsContext(storage);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const habits = app.render();
+  assert.equal(habits.isLoading, false);
+  assert.match(habits.storageError, /無法讀取打卡交易紀錄/);
+  assert.equal(habits.mallLoadError, null, 'valid mall data remains available');
+  assert.equal(habits.habits[0].id, 'saved-habit');
+  assert.equal(habits.habits[0].title, '保留目標');
+  assert.deepEqual(habits.habits[0].checkIns, ['2026-11-11']);
+  assert.equal(habits.coins, 145);
+  assert.deepEqual(habits.rewardedCheckIns, ['saved-habit:2026-11-11']);
+  assert.deepEqual([...storage.entries()], before, 'loading must preserve both valid mirrors and the unreadable record');
+  assert.equal(
+    app.storageCalls.some(([operation]) => operation === 'set' || operation === 'remove'),
+    false,
+    'an unreadable recovery record must not trigger migration writes or journal removal',
+  );
+});
 
 test('repairing unreadable mall JSON and reopening restores ownership, coins and saved position', async () => {
   const mallKey = 'momentum.mall.v1';

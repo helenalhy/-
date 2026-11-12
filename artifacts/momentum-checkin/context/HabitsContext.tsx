@@ -230,6 +230,7 @@ const CHECK_IN_REWARD = 20;
 const EMPTY_TOKENS: RewardTokens = { facility: 0, shop: 0, decor: 0 };
 const IS_DEVELOPMENT_BUILD = typeof __DEV__ !== 'undefined' && __DEV__;
 const MALL_READ_ERROR_MESSAGE = '無法讀取商場資料；原始資料未被更改，也不會顯示成空商場。請修復資料後重新開啟 App。';
+const CHECK_IN_TRANSACTION_READ_ERROR_MESSAGE = '無法讀取打卡交易紀錄；已保存的目標與商場資料會保留，交易紀錄也未被清除。請修復紀錄後重新開啟 App。';
 
 type StoredMallData = {
   schemaVersion?: number;
@@ -837,7 +838,15 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           AsyncStorage.getItem(MALL_STORAGE_KEY),
           AsyncStorage.getItem(CHECK_IN_TRANSACTION_KEY),
         ]);
-        const checkInTransaction = parseCheckInTransaction(savedCheckInTransaction);
+        let checkInTransaction: CheckInTransaction | null = null;
+        let checkInTransactionUnreadable = false;
+        try {
+          checkInTransaction = parseCheckInTransaction(savedCheckInTransaction);
+        } catch {
+          // Use the last successfully mirrored copies, but preserve the recovery
+          // record and skip migrations until it can be repaired.
+          checkInTransactionUnreadable = true;
+        }
         const initialHabits = normalizeHabits(
           checkInTransaction?.habits
             ?? (saved === null ? starterHabits : JSON.parse(saved) as Habit[]),
@@ -876,6 +885,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           setDailyLoginLastDate(initialMall.dailyLoginLastDate ?? null);
           setDailyLoginStreak(initialMall.dailyLoginStreak ?? 0);
           setDailyLoginLastPrizeItemId(initialMall.dailyLoginLastPrizeItemId ?? null);
+        }
+        if (checkInTransactionUnreadable) {
+          if (active) setStorageError(CHECK_IN_TRANSACTION_READ_ERROR_MESSAGE);
+          return;
         }
         // Reading existing data must not depend on being able to write a migration.
         try {

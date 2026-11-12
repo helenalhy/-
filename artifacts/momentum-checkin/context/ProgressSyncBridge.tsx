@@ -8,6 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import { onlineManager } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@clerk/expo';
 import {
@@ -98,10 +99,27 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
       enabled: isLoaded && Boolean(isSignedIn && userId),
       staleTime: 0,
       refetchOnMount: 'always',
+      refetchOnReconnect: true,
       retry: 0,
     },
   });
   const saveProgress = useSaveProgress();
+
+  const enqueueLatestSnapshot = useCallback(async (targetUserId: string) => {
+    const work = saveQueueRef.current.catch(() => {}).then(async () => {
+      if (currentUserRef.current !== targetUserId) return null;
+      const snapshot = currentSnapshotRef.current as unknown as ApiProgressSnapshot;
+      const snapshotKey = JSON.stringify(currentSnapshotRef.current);
+      await saveProgress.mutateAsync({ data: snapshot });
+      return snapshotKey;
+    });
+    saveQueueRef.current = work.then(() => undefined, () => undefined);
+    const savedSnapshotKey = await work;
+    if (savedSnapshotKey && currentUserRef.current === targetUserId) {
+      lastSyncedSnapshotRef.current = savedSnapshotKey;
+    }
+    return savedSnapshotKey;
+  }, [saveProgress.mutateAsync]);
 
   useEffect(() => {
     const identity = isSignedIn && userId ? userId : null;
@@ -129,7 +147,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     }
     if (progressQuery.isError) {
       reconcilePendingRef.current = true;
-      setReadyUserId(userId);
+      setReadyUserId(null);
       setCloudSyncState('error', '暫時無法連接雲端；進度仍保存在這台裝置。');
       return;
     }
@@ -152,9 +170,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
           }
           await replaceProgressFromCloud(progressQuery.data.snapshot);
         } else {
-          const initialSnapshot = progressSnapshot as unknown as ApiProgressSnapshot;
-          await saveProgress.mutateAsync({ data: initialSnapshot });
-          lastSyncedSnapshotRef.current = JSON.stringify(progressSnapshot);
+          await enqueueLatestSnapshot(userId);
         }
         if (active) {
           reconcilePendingRef.current = false;
@@ -163,7 +179,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
         }
       } catch {
         if (active) {
-          setReadyUserId(userId);
+          setReadyUserId(null);
           setCloudSyncState('error', '同步沒有完成；本機進度仍保留，請稍後重試。');
         }
       }
@@ -187,7 +203,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     pendingConflict,
     progressSnapshot,
     replaceProgressFromCloud,
-    saveProgress.mutateAsync,
+    enqueueLatestSnapshot,
     setCloudSyncState,
   ]);
 
@@ -200,6 +216,8 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
       || isLoading
       || mallLoadError
       || readyUserId !== userId
+      || reconcilePendingRef.current
+      || pendingConflict?.userId === userId
       || cloudSyncStatus === 'error'
       || snapshotKey === lastSyncedSnapshotRef.current
     ) {
@@ -208,15 +226,9 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
 
     setCloudSyncState('syncing');
     const timeout = setTimeout(() => {
-      const queuedSnapshot = progressSnapshot as unknown as ApiProgressSnapshot;
-      const work = saveQueueRef.current.catch(() => {}).then(async () => {
+      void enqueueLatestSnapshot(userId).then((savedSnapshotKey) => {
+        if (!savedSnapshotKey) return;
         if (currentUserRef.current !== userId) return;
-        await saveProgress.mutateAsync({ data: queuedSnapshot });
-      });
-      saveQueueRef.current = work;
-      void work.then(() => {
-        if (currentUserRef.current !== userId) return;
-        lastSyncedSnapshotRef.current = snapshotKey;
         setCloudSyncState('synced');
       }).catch(() => {
         if (currentUserRef.current !== userId) return;
@@ -234,8 +246,8 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     readyUserId,
     cloudSyncStatus,
     snapshotKey,
-    progressSnapshot,
-    saveProgress.mutateAsync,
+    pendingConflict,
+    enqueueLatestSnapshot,
     setCloudSyncState,
   ]);
 
@@ -248,10 +260,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     setCloudSyncState('syncing');
     try {
       if (readyUserId === userId && progressQuery.data && !reconcilePendingRef.current) {
-        await saveProgress.mutateAsync({
-          data: currentSnapshotRef.current as unknown as ApiProgressSnapshot,
-        });
-        lastSyncedSnapshotRef.current = JSON.stringify(currentSnapshotRef.current);
+        await enqueueLatestSnapshot(userId);
         setCloudSyncState('synced');
         return;
       }
@@ -270,9 +279,26 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     readyUserId,
     progressQuery.data,
     progressQuery.refetch,
-    saveProgress.mutateAsync,
+    enqueueLatestSnapshot,
     setCloudSyncState,
   ]);
+
+  useEffect(() => {
+    let wasOnline = onlineManager.isOnline();
+    return onlineManager.subscribe((isOnline) => {
+      const reconnected = !wasOnline && isOnline;
+      wasOnline = isOnline;
+      if (
+        reconnected
+        && cloudSyncStatus === 'error'
+        && readyUserId === userId
+        && progressQuery.data
+        && !reconcilePendingRef.current
+      ) {
+        void retry();
+      }
+    });
+  }, [cloudSyncStatus, readyUserId, userId, progressQuery.data, retry]);
 
   const resolveConflict = useCallback(async (useCloud: boolean) => {
     if (!pendingConflict || pendingConflict.userId !== userId || !userId) return;
@@ -282,9 +308,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
       if (useCloud) {
         await replaceProgressFromCloud(pendingConflict.snapshot);
       } else {
-        const snapshot = currentSnapshotRef.current as unknown as ApiProgressSnapshot;
-        await saveProgress.mutateAsync({ data: snapshot });
-        lastSyncedSnapshotRef.current = JSON.stringify(currentSnapshotRef.current);
+        await enqueueLatestSnapshot(userId);
       }
       reconcilePendingRef.current = false;
       setPendingConflict(null);
@@ -299,7 +323,7 @@ export function ProgressSyncBridge({ children }: { children: ReactNode }) {
     pendingConflict,
     userId,
     replaceProgressFromCloud,
-    saveProgress.mutateAsync,
+    enqueueLatestSnapshot,
     setCloudSyncState,
   ]);
 

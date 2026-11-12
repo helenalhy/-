@@ -1,8 +1,9 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Platform } from 'react-native';
+import * as Network from 'expo-network';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Stack } from 'expo-router';
@@ -15,6 +16,14 @@ import { ReducedMotionProvider, getMotionAwareAnimation, useReducedMotion } from
 import palette from '@/constants/colors';
 
 const queryClient = new QueryClient();
+onlineManager.setEventListener((setOnline) => {
+  const updateOnlineState = (state: Network.NetworkState) => {
+    setOnline(state.isConnected !== false && state.isInternetReachable !== false);
+  };
+  const subscription = Network.addNetworkStateListener(updateOnlineState);
+  void Network.getNetworkStateAsync().then(updateOnlineState).catch(() => {});
+  return () => subscription.remove();
+});
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (publicDomain) setBaseUrl(`https://${publicDomain}`);
 const clerkPublishableKey: string = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';

@@ -14,6 +14,7 @@ import {
   GUEST_SHEETS,
   GUEST_COLUMNS,
   GUEST_COUNTS_BY_FLOOR,
+  getGuestRouteBounds,
 } from '@/constants/mall-guests';
 
 const c = palette.light;
@@ -30,6 +31,7 @@ function Shopper({ index, floor, width, reducedMotion, celebrationKey }: { index
   const frameSize = GUEST_FRAME_SIZES_BY_FLOOR[floor - 1] ?? { width: GUEST_FRAME_WIDTH, height: GUEST_FRAME_HEIGHT };
   const frameWidth = frameSize.width;
   const frameHeight = frameSize.height;
+  const routeBounds = getGuestRouteBounds(route, frameSize, width);
   const carriesBeautyBag = floor === COSMETICS_SHOP_FLOOR
     && (BEAUTY_BAG_GUEST_INDICES as readonly number[]).includes(index);
   const beautyBagColor = beautyBagColors[index % beautyBagColors.length];
@@ -81,8 +83,8 @@ function Shopper({ index, floor, width, reducedMotion, celebrationKey }: { index
   return (
     <Animated.View testID={`mall-guest-${floor}-${index}`} style={[
       s.guest,
-      { left: `${route.from}%`, top: Math.min(route.top * width / 100, Math.max(0, width - frameHeight)), zIndex: route.top, width: frameWidth, height: frameHeight, transform: [
-        { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, (route.to - route.from) * width / 100] }) },
+      { left: routeBounds.fromX, top: routeBounds.top, zIndex: route.top, width: frameWidth, height: frameHeight, transform: [
+        { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, routeBounds.toX - routeBounds.fromX] }) },
         { translateY: bob },
       ] },
     ]}>

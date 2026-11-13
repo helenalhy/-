@@ -72,3 +72,18 @@ export const GUEST_ROUTES: ReadonlyArray<{ from: number; to: number; top: number
   { from: 88, to: 17, top: 78, duration: 14200 },
   { from: 18, to: 76, top: 88, duration: 17600 },
 ];
+
+export function getGuestRouteBounds(
+  route: (typeof GUEST_ROUTES)[number],
+  frameSize: { width: number; height: number },
+  sceneSize: number,
+) {
+  const maxLeft = Math.max(0, sceneSize - frameSize.width);
+  const maxTop = Math.max(0, sceneSize - frameSize.height);
+  const clamp = (value: number, max: number) => Math.max(0, Math.min(max, value));
+  return {
+    fromX: clamp(route.from * sceneSize / 100, maxLeft),
+    toX: clamp(route.to * sceneSize / 100, maxLeft),
+    top: clamp(route.top * sceneSize / 100, maxTop),
+  };
+}

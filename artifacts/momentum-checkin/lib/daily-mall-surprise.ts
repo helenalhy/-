@@ -35,6 +35,13 @@ export function getDailyMallSurprise(dateKey: string): DailyMallSurprise {
   return { kind: 'decoration', item: TEMPORARY_DECORATIONS[index - DOG_VISITORS.length] };
 }
 
+export function getDailyMallSurpriseRedeemPrice(regularPrice: number): number {
+  if (!Number.isFinite(regularPrice) || regularPrice < 0) {
+    throw new RangeError('A daily surprise price must be a non-negative number.');
+  }
+  return Math.max(1, Math.floor(regularPrice / 2));
+}
+
 export function getDailyMallSurpriseRotationLength(): number {
   return DOG_VISITORS.length + TEMPORARY_DECORATIONS.length;
 }

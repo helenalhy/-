@@ -72,7 +72,11 @@ test('daily login streak advances consecutively and resets after a missed date',
 });
 
 test('mall surprise rotates through temporary decorations and dog visitors without same-day persistence', () => {
-  const { getDailyMallSurprise, getDailyMallSurpriseRotationLength } = surprise;
+  const {
+    getDailyMallSurprise,
+    getDailyMallSurpriseRedeemPrice,
+    getDailyMallSurpriseRotationLength,
+  } = surprise;
   const events = Array.from({ length: getDailyMallSurpriseRotationLength() }, (_, index) => getDailyMallSurprise(dateKey(index)));
   const eventIds = events.map((event) => event.kind === 'dog' ? event.dog.kind : event.item.id);
   assert.equal(new Set(eventIds).size, events.length, 'each daily entry in a full rotation is distinct');
@@ -80,4 +84,8 @@ test('mall surprise rotates through temporary decorations and dog visitors witho
   assert.ok(events.some((event) => event.kind === 'decoration'));
   assert.equal(getDailyMallSurprise(dateKey(0)).kind, getDailyMallSurprise(dateKey(0)).kind, 'the same date is deterministic');
   assert.throws(() => getDailyMallSurprise('2026-02-30'), RangeError);
+  assert.equal(getDailyMallSurpriseRedeemPrice(50), 25, 'daily surprise redemption is half the regular price');
+  assert.equal(getDailyMallSurpriseRedeemPrice(15), 7, 'discount rounds down to a whole coin');
+  assert.equal(getDailyMallSurpriseRedeemPrice(0), 1, 'redeemable items have a minimum coin price');
+  assert.throws(() => getDailyMallSurpriseRedeemPrice(-1), RangeError);
 });

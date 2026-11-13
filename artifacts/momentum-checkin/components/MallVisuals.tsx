@@ -259,14 +259,19 @@ function MallStorefrontArt({ itemId, itemName, itemIcon, floor, itemColor }: {
 
 export function MallAmbience({ floor = 1, totalCheckIns = 0, celebrationKey = 0 }: { floor?: number; totalCheckIns?: number; celebrationKey?: number }) {
   const shimmer = useRef(new Animated.Value(0.25)).current;
+  const reducedMotion = useReducedMotion() !== false;
   useEffect(() => {
+    if (reducedMotion) {
+      shimmer.setValue(0.25);
+      return;
+    }
     const twinkle = Animated.loop(Animated.sequence([
       Animated.timing(shimmer, { toValue: 0.95, duration: 1600, useNativeDriver: false }),
       Animated.timing(shimmer, { toValue: 0.25, duration: 1600, useNativeDriver: false }),
     ]));
     twinkle.start();
     return () => { twinkle.stop(); };
-  }, [shimmer]);
+  }, [reducedMotion, shimmer]);
   return (
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, s.visitorLayer]}>
       <Animated.View style={[s.sparkle, { left: '24%', top: '8%', opacity: shimmer }]}><Feather name="star" size={11} color={c.card} /></Animated.View>
@@ -306,18 +311,18 @@ export function MallAmbience({ floor = 1, totalCheckIns = 0, celebrationKey = 0 
 const s = StyleSheet.create({
   illustrationCanvas: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   illustrationMotion: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center' },
-  mallStorefrontCanvas: { width: 84, height: 63 },
-  mallStorefrontMotion: { width: 84, height: 63 },
+  mallStorefrontCanvas: { width: '100%', aspectRatio: 4 / 3 },
+  mallStorefrontMotion: { width: '100%', aspectRatio: 4 / 3 },
   sceneSprite: { width: '100%', height: '100%' },
-  storefrontArt: { width: 82, height: 62, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
+  storefrontArt: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   storefrontThemeGlow: { position: 'absolute', top: 5, width: 72, height: 50, borderRadius: 28, opacity: 0.28 },
   storefrontArtworkImage: { position: 'absolute', width: '100%', height: '100%' },
   storefrontDetails: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   storefrontRoofAccent: { position: 'absolute', borderWidth: 0.6, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', overflow: 'hidden', zIndex: 2 },
   storefrontCanopyStripe: { height: '55%', borderRadius: 3, opacity: 0.9 },
   storefrontFloorEmblem: { position: 'absolute', top: '5%', alignSelf: 'center', width: 10, height: 10, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  storefrontSign: { position: 'absolute', top: '31%', left: '31%', width: '38%', height: 8, borderWidth: 0.8, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1, overflow: 'hidden', zIndex: 3 },
-  storefrontSignText: { maxWidth: 22, fontSize: 3.8, lineHeight: 5, fontWeight: '900' },
+  storefrontSign: { position: 'absolute', top: '31%', left: '20%', width: '60%', height: 10, borderWidth: 0.8, paddingHorizontal: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1, overflow: 'hidden', zIndex: 3 },
+  storefrontSignText: { maxWidth: '100%', flexShrink: 1, fontSize: 5, lineHeight: 6, fontWeight: '900' },
   storefrontDisplayTag: { position: 'absolute', top: '56%', width: 9, height: 9, borderWidth: 0.7, borderRadius: 4, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   storefrontDisplayTagLeft: { transform: [{ rotate: '-8deg' }] },
   storefrontDisplayTagRight: { transform: [{ rotate: '8deg' }] },

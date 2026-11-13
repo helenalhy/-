@@ -48,6 +48,30 @@ test('all twenty floors have their own theme name and emblem', () => {
   assert.equal(getMallFloorArtProfile(21, 'fallback').title, MALL_FLOOR_ART_TITLES[19]);
 });
 
+test('every floor has real shop samples whose storefront and interior identity use that floor', () => {
+  const mallScreen = fs.readFileSync(path.join(appRoot, 'app/(tabs)/mall.tsx'), 'utf8');
+  const shopsByFloor = Array.from({ length: 20 }, (_, index) => (
+    mallCatalog.MALL_ITEMS.filter((item) => item.category === 'shop' && item.floor === index + 1)
+  ));
+  const storefronts = shopsByFloor.flat();
+
+  assert.ok(shopsByFloor.every((shops) => shops.length > 0), 'all twenty floors have shop test data');
+  assert.ok(storefronts.length > 100, 'exercise the real shop catalog, not hand-picked examples');
+  for (let floor = 1; floor <= 20; floor += 1) {
+    const shop = shopsByFloor[floor - 1][0];
+    const art = getMallFloorArtProfile(floor, shop.id);
+    assert.equal(art.title, MALL_FLOOR_ART_TITLES[floor - 1], `${shop.name} uses its floor title`);
+    assert.ok(art.emblem, `${shop.name} has a floor emblem`);
+    assert.deepEqual(
+      art,
+      getMallFloorArtProfile(floor, shop.id),
+      `${shop.name} keeps its storefront and interior look after navigation`,
+    );
+  }
+
+  assert.match(mallScreen, /itemName=\{item\.name\}[\s\S]*?floor=\{item\.floor\}/);
+});
+
 test('shop illustrations use stable but item-specific storefront and interior variations', () => {
   const items = Array.from({ length: 60 }, (_, index) => getMallFloorArtProfile(5, `shop-item-${index}`));
   const signatures = items.map(({ shopAccent, shopSoft, variant, pattern, displayMark, ornament, secondaryOrnament }) => (

@@ -120,6 +120,27 @@ export function clampHotspotPoint(
 
 /** Nudges crowded controls while keeping them close to their scene-specific furniture anchors. */
 export function separateHotspotPoints(points: AnchorPoint[], width: number, height: number): AnchorPoint[] {
+  if (width <= 320 && width >= 252 && height >= 252) {
+    const compactColumns = [42, width / 2, width - 42];
+    const compactRows = [50, height / 2, height - 18];
+    const available = compactRows.flatMap((y) => compactColumns.map((x) => ({ x, y })));
+    const placed: AnchorPoint[] = [];
+    for (const point of points) {
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      for (let index = 0; index < available.length; index += 1) {
+        const candidate = available[index];
+        const distance = (candidate.x - point.x) ** 2 + (candidate.y - point.y) ** 2;
+        if (distance < nearestDistance) {
+          nearestIndex = index;
+          nearestDistance = distance;
+        }
+      }
+      placed.push(available.splice(nearestIndex, 1)[0]);
+    }
+    return placed;
+  }
+
   const laidOut: AnchorPoint[] = [];
   const collides = (candidate: AnchorPoint) => laidOut.some((point) => (
     Math.abs(candidate.x - point.x) < 84 && Math.abs(candidate.y - point.y) < 58

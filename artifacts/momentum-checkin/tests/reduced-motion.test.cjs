@@ -95,3 +95,18 @@ test('main routes and native modals use the shared reduced-motion preference', (
     assert.match(source, /animationType=\{(?:systemReduceMotion|reduceMotion) === false \? '(?:slide|fade)' : 'none'\}/, name);
   }
 });
+
+test('mall storefronts and shop interiors skip entrance and ambience motion when requested', () => {
+  const mall = fs.readFileSync(path.join(__dirname, '../app/(tabs)/mall.tsx'), 'utf8');
+  const shopPage = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
+  const visuals = fs.readFileSync(path.join(__dirname, '../components/MallVisuals.tsx'), 'utf8');
+  const interior = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+
+  assert.match(mall, /if \(reducedMotion\) \{\s*popIn\.setValue\(1\);\s*fadeIn\.setValue\(item \? 1 : 0\)/);
+  assert.match(mall, /if \(reducedMotion\) \{\s*sceneOpacity\.setValue\(1\);\s*sceneOffset\.setValue\(0\)/);
+  assert.match(shopPage, /if \(reducedMotion\) \{\s*entranceScale\.setValue\(1\);\s*entranceOpacity\.setValue\(1\)/);
+  assert.match(visuals, /if \(!isActive \|\| reducedMotion\)/);
+  assert.match(visuals, /if \(reducedMotion\) \{\s*shimmer\.setValue\(0\.25\)/);
+  assert.match(interior, /if \(!hasMerchandise \|\| reducedMotion\)/);
+  assert.match(interior, /if \(reducedMotion\) \{\s*themeMotion\.setValue\(0\)/);
+});

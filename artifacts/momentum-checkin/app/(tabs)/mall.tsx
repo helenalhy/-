@@ -38,6 +38,7 @@ import { CatalogPager } from '@/components/CatalogPager';
 import { getMallSlotFloor, getMallSlotPosition, MALL_POSITIONS_PER_FLOOR, type MallWing } from '@/constants/mall-layout';
 import { MallWingPager } from '@/components/MallWingPager';
 import { MallElevatorPanel } from '@/components/MallElevatorPanel';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 
 const CATALOG_PAGE_SIZE = 10;
 const IS_DEVELOPMENT_PREVIEW = typeof __DEV__ !== 'undefined' && __DEV__;
@@ -140,12 +141,18 @@ function MallSceneSlot({
   onLongPress?: () => void;
 }) {
   const colors = useColors();
+  const reducedMotion = useReducedMotion() !== false;
   const popIn = useRef(new Animated.Value(0.78)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
   const accessibilityRef = useRef<React.ElementRef<typeof Pressable>>(null);
   const position = getSlotPosition(slotId);
 
   useEffect(() => {
+    if (reducedMotion) {
+      popIn.setValue(1);
+      fadeIn.setValue(item ? 1 : 0);
+      return;
+    }
     popIn.setValue(item && isSceneActive ? 0.78 : 1);
     fadeIn.setValue(item && isSceneActive ? 0 : item ? 1 : 0);
     if (!item) return;
@@ -156,7 +163,7 @@ function MallSceneSlot({
     ]);
     animation.start();
     return () => animation.stop();
-  }, [item?.id, isSceneActive, popIn, fadeIn]);
+  }, [item?.id, isSceneActive, popIn, fadeIn, reducedMotion]);
 
   useEffect(() => {
     if (!focusAfterResult) return;
@@ -189,6 +196,7 @@ function MallSceneSlot({
       >
         <Animated.View style={[
           styles.sceneShopBadge,
+          isStorefront && styles.sceneStorefrontBadge,
           { opacity: fadeIn, height: position.plaza ? 30 : isStorefront ? 63 : 47, transform: [{ scale: Animated.multiply(popIn, position.scale) }] },
         ]}>
           {isStorefront && (
@@ -212,7 +220,7 @@ function MallSceneSlot({
             presentation={isStorefront && !position.plaza ? 'mall-storefront' : 'standard'}
           />
         </Animated.View>
-        <Text numberOfLines={1} style={[
+        <Text numberOfLines={isStorefront && !position.plaza ? 2 : 1} ellipsizeMode="tail" style={[
           styles.sceneShopName,
           isStorefront && styles.sceneStoreName,
           { color: palette.light.foreground, fontSize: position.plaza ? 7 : 8 },
@@ -255,6 +263,7 @@ function MallSceneSlot({
 
 export default function MallScreen() {
   const colors = useColors();
+  const reducedMotion = useReducedMotion() !== false;
   const insets = useSafeAreaInsets();
   const { floor: floorParam } = useLocalSearchParams<{ floor?: string | string[] }>();
   const scrollRef = useRef<ScrollView>(null);
@@ -513,13 +522,18 @@ export default function MallScreen() {
   }
 
   useEffect(() => {
+    if (reducedMotion) {
+      sceneOpacity.setValue(1);
+      sceneOffset.setValue(0);
+      return;
+    }
     const entrance = Animated.parallel([
       Animated.timing(sceneOpacity, { toValue: 1, duration: 420, useNativeDriver: false }),
       Animated.spring(sceneOffset, { toValue: 0, friction: 8, tension: 70, useNativeDriver: false }),
     ]);
     entrance.start();
     return () => entrance.stop();
-  }, [sceneOpacity, sceneOffset]);
+  }, [reducedMotion, sceneOpacity, sceneOffset]);
 
   useEffect(() => {
     if (!focusRestoreActionItemId) return;
@@ -559,8 +573,10 @@ export default function MallScreen() {
     else if (elevatorArrival) announcePlacement(`電梯已抵達 ${nextFloor}F · ${MALL_FLOORS[nextFloor - 1].title}。`);
     setCurrentFloor(nextFloor);
     setCatalogPage(1);
-    sceneOpacity.setValue(0.45);
-    Animated.timing(sceneOpacity, { toValue: 1, duration: 260, useNativeDriver: false }).start();
+    sceneOpacity.setValue(reducedMotion ? 1 : 0.45);
+    if (!reducedMotion) {
+      Animated.timing(sceneOpacity, { toValue: 1, duration: 260, useNativeDriver: false }).start();
+    }
   }
 
   function changeCatalogPage(page: number) {
@@ -1658,6 +1674,7 @@ const styles = StyleSheet.create({
   sceneSlotTarget: { borderWidth: 1, borderColor: palette.light.primary, borderStyle: 'dashed', borderRadius: 10, backgroundColor: palette.light.candyCream },
   locationMarker: { fontSize: 8, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, overflow: 'hidden' },
   sceneShopBadge: { alignItems: 'center', justifyContent: 'center' },
+  sceneStorefrontBadge: { width: '100%' },
   sceneStoreContactShadow: {
     position: 'absolute',
     width: '72%',
@@ -1668,11 +1685,15 @@ const styles = StyleSheet.create({
   },
   sceneShopName: { fontSize: 8, fontWeight: '700', backgroundColor: palette.light.candyCream, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, maxWidth: '100%' },
   sceneStoreName: {
+    width: '100%',
+    lineHeight: 10,
     backgroundColor: 'rgba(255,248,239,0.72)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.72)',
     borderRadius: 7,
     overflow: 'hidden',
+    textAlign: 'center',
+    paddingHorizontal: 2,
   },
   sceneEmptyBadge: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', opacity: 0.75 },
   sceneEmptyBadgeActive: { width: 30, height: 30, borderRadius: 15, opacity: 1 },

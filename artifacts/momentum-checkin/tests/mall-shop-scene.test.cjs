@@ -48,7 +48,6 @@ const {
   parseShopInteriorPlacementId,
   getShopInteriorAreaPlacements,
 } = constantsModule.exports;
-
 test('shop type and all inferred general specialties resolve to stable scene variants', () => {
   const specialtyCases = [
     ['sunny-cafe', '暖陽咖啡館', 'cafe'],
@@ -113,6 +112,41 @@ test('every shop interior keeps its specialty illustration and adds a unique flo
   assert.match(scene, /floorArt\.displayStyle/);
   assert.match(scene, /floorArt\.trimStyle/);
   assert.match(scene, /pointerEvents="none"[\s\S]*?styles\.interiorWallDisplay/);
+});
+
+test('all interior controls and labels stay separate within a narrow phone scene', () => {
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+
+  for (const width of [288, 320]) {
+    const height = width;
+    for (const [sceneKey, anchors] of Object.entries(SCENE_ANCHORS)) {
+      const slots = Object.keys(anchors);
+      const rawPoints = slots.map((slot) => mapCoverPoint(
+        resolveObjectAnchor(sceneKey, slot, 'tabletop'),
+        width,
+        height,
+      ));
+      const points = separateHotspotPoints(rawPoints, width, height);
+      assert.equal(points.length, 8, `${sceneKey} keeps all eight controls at ${width}px`);
+      for (const point of points) {
+        assert.ok(point.x >= 42 && point.x <= width - 42, `${sceneKey} label fits horizontally at ${width}px`);
+        assert.ok(point.y >= 50 && point.y <= height - 18, `${sceneKey} label fits vertically at ${width}px`);
+      }
+      for (let first = 0; first < points.length; first += 1) {
+        for (let second = first + 1; second < points.length; second += 1) {
+          const xDistance = Math.abs(points[first].x - points[second].x);
+          const yDistance = Math.abs(points[first].y - points[second].y);
+          assert.ok(
+            xDistance >= 84 || yDistance >= 68,
+            `${sceneKey} labels and touch areas do not overlap at ${width}px`,
+          );
+        }
+      }
+    }
+  }
+
+  assert.match(scene, /imageStage: \{ width: '100%', maxWidth: 510, aspectRatio: 1/);
+  assert.match(scene, /slotLabelPill: \{[\s\S]*?maxWidth: 84/);
 });
 
 test('six areas each expose eight slots (48 total) and legacy/main placements remain backward compatible', () => {

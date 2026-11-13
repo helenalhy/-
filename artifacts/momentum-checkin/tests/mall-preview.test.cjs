@@ -144,6 +144,7 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
       canMakeUpYesterday: () => true,
     };
     if (name === '@/hooks/useColors') return { useColors: () => ({}) };
+    if (name === '@/context/ReducedMotionContext') return { useReducedMotion: () => false };
     if (name === '@/context/HabitsContext') return {
       useHabits: () => ({ ...habits, grantTestCoins: habits.grantTestCoins ?? (async () => {}) }), MALL_FLOOR_COUNT: 20,
       MALL_SLOT_IDS: slotIds ?? Array.from({ length: 20 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),

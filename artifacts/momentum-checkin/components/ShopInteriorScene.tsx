@@ -275,7 +275,7 @@ export function ShopInteriorScene({
           style={[
             styles.themeBadge,
             themeBadgeShape,
-            { backgroundColor: floorArt.shopSoft, borderColor: floorArt.shopAccent },
+            { left: 9, backgroundColor: floorArt.shopSoft, borderColor: floorArt.shopAccent },
             {
               opacity: themeMotion.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] }),
               transform: [{ translateY: themeMotion.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }],
@@ -283,7 +283,7 @@ export function ShopInteriorScene({
           ]}
         >
           <Feather name={floorArt.emblem as keyof typeof Feather.glyphMap} size={11} color={floorArt.accent} />
-          <Text style={[styles.themeBadgeText, { color: floorArt.accent }]}>{floor}F · {floorArt.title} · {String(floorArt.displayMark).padStart(3, '0')}</Text>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.themeBadgeText, { color: floorArt.accent }]}>{floor}F · {floorArt.title} · {String(floorArt.displayMark).padStart(3, '0')}</Text>
           <Feather name={floorArt.ornament as keyof typeof Feather.glyphMap} size={9} color={floorArt.shopAccent} />
         </Animated.View>
         <View
@@ -296,7 +296,7 @@ export function ShopInteriorScene({
           pointerEvents="none"
         >
           <Feather name={floorArt.ornament as keyof typeof Feather.glyphMap} size={11} color={floorArt.shopAccent} />
-          <Text numberOfLines={1} style={[styles.nameText, { color: colors.foreground }]}>{shopName}</Text>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.nameText, { color: colors.foreground }]}>{shopName}</Text>
           <Feather name={floorArt.secondaryOrnament as keyof typeof Feather.glyphMap} size={10} color={floorArt.accent} />
         </View>
         <Animated.View
@@ -1314,7 +1314,7 @@ const styles = StyleSheet.create({
   interiorCornice: { position: 'absolute', left: 0, right: 0, top: 7, zIndex: 1, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', overflow: 'hidden' },
   interiorCorniceMark: { height: '55%', borderRadius: 3, opacity: 0.9 },
   themeBadge: { position: 'absolute', top: 48, right: 9, minHeight: 23, zIndex: 1, borderWidth: 1, borderRadius: 12, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#74575D', shadowOpacity: 0.1, shadowRadius: 3, elevation: 1 },
-  themeBadgeText: { fontSize: 8, lineHeight: 11, fontWeight: '900' },
+  themeBadgeText: { flexShrink: 1, minWidth: 0, fontSize: 8, lineHeight: 11, fontWeight: '900' },
   topScrim: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255,248,239,0.08)',
@@ -1337,7 +1337,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   plaqueDot: { width: 7, height: 7, borderRadius: 4 },
-  nameText: { fontSize: 11, fontWeight: '800' },
+  nameText: { flexShrink: 1, minWidth: 0, fontSize: 11, fontWeight: '800' },
   interiorWallDisplay: { position: 'absolute', left: '8%', zIndex: 1, minWidth: 94, minHeight: 29, borderWidth: 1, borderRadius: 5, paddingHorizontal: 4, paddingTop: 3, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 3, shadowColor: '#74575D', shadowOpacity: 0.12, shadowRadius: 3, elevation: 1 },
   interiorDisplayItem: { width: 16, borderWidth: 0.8, borderTopLeftRadius: 5, borderTopRightRadius: 5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   interiorDisplayShelf: { position: 'absolute', left: -1, right: -1, bottom: -2, height: 3, borderRadius: 2 },

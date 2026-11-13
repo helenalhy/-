@@ -48,8 +48,28 @@ test('placed storefronts fill their mall bays and rest on a floor contact shadow
   assert.match(mallSource, /const isStorefront = item\.category === 'shop'/);
   assert.match(mallSource, /styles\.sceneStoreContactShadow/);
   assert.match(mallSource, /presentation=\{isStorefront && !position\.plaza \? 'mall-storefront' : 'standard'\}/);
+  assert.match(mallSource, /sceneStorefrontBadge: \{ width: '100%' \}/);
   assert.match(mallSource, /sceneStoreName: \{[\s\S]*?backgroundColor: 'rgba\(255,248,239,0\.72\)'/);
-  assert.match(visualsSource, /mallStorefrontCanvas: \{ width: 84, height: 63 \}/);
+  assert.match(visualsSource, /mallStorefrontCanvas: \{ width: '100%', aspectRatio: 4 \/ 3 \}/);
+  assert.match(visualsSource, /mallStorefrontMotion: \{ width: '100%', aspectRatio: 4 \/ 3 \}/);
+  assert.match(visualsSource, /storefrontArt: \{ width: '100%', height: '100%'/);
+
+  const narrowMallArtworkWidth = 300;
+  const narrowStorefrontBayWidth = narrowMallArtworkWidth * 0.24;
+  assert.ok(narrowStorefrontBayWidth < 84, 'a 300px phone scene has store bays narrower than the old fixed artwork');
+  assert.ok(narrowStorefrontBayWidth > 0, 'the art now scales to each narrow store bay');
+  assert.match(mallSource, /<Text numberOfLines=\{isStorefront && !position\.plaza \? 2 : 1\} ellipsizeMode="tail"/);
+  assert.match(visualsSource, /storefrontSignText: \{ maxWidth: '100%', flexShrink: 1, fontSize: 5/);
+});
+
+test('mall motion effects stop cleanly when reduced motion is enabled', () => {
+  const mallSource = fs.readFileSync(path.join(appRoot, 'app/(tabs)/mall.tsx'), 'utf8');
+  const visualsSource = fs.readFileSync(visualsPath, 'utf8');
+
+  assert.match(visualsSource, /if \(!isActive \|\| reducedMotion\)/);
+  assert.match(visualsSource, /const reducedMotion = useReducedMotion\(\) !== false;[\s\S]*?if \(reducedMotion\) \{\s*shimmer\.setValue\(0\.25\)/);
+  assert.match(mallSource, /const reducedMotion = useReducedMotion\(\) !== false;/);
+  assert.match(mallSource, /if \(reducedMotion\) \{\s*popIn\.setValue\(1\);\s*fadeIn\.setValue\(item \? 1 : 0\)/);
 });
 
 test('mall customers render above placed objects without blocking touch input', () => {

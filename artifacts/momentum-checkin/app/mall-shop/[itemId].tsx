@@ -51,6 +51,7 @@ import {
   SHOP_DISPLAY_SLOT_COUNT,
 } from '@/constants/mall-shop-display';
 import { useColors } from '@/hooks/useColors';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { DOG_COMPANION_SHOP_ID } from '@/lib/dog-companion';
 
 function ShopInteriorAnimatedObject({
@@ -74,10 +75,16 @@ function ShopInteriorAnimatedObject({
   visual?: string;
   testID?: string;
 }) {
+  const reducedMotion = useReducedMotion() !== false;
   const entranceScale = useRef(new Animated.Value(0.76)).current;
   const entranceOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (reducedMotion) {
+      entranceScale.setValue(1);
+      entranceOpacity.setValue(1);
+      return;
+    }
     entranceScale.setValue(0.76);
     entranceOpacity.setValue(0);
     const animation = Animated.parallel([
@@ -95,7 +102,7 @@ function ShopInteriorAnimatedObject({
     ]);
     animation.start();
     return () => animation.stop();
-  }, [id, itemId, entranceScale, entranceOpacity]);
+  }, [id, itemId, entranceScale, entranceOpacity, reducedMotion]);
 
   return (
     <Animated.View

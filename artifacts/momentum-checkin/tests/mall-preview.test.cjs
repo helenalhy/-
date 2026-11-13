@@ -2213,6 +2213,17 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
       default: { light: { candyMint: '#0f0', candyLavender: '#f0f', candyPink: '#f00' } },
       light: { candyMint: '#0f0', candyLavender: '#f0f', candyPink: '#f00' },
     };
+    if (name === '@/constants/user-profile') return {
+      DEFAULT_USER_PROFILE: { nickname: '', avatarId: 'sun' },
+      normalizeUserProfile: (profile) => ({
+        nickname: typeof profile?.nickname === 'string' ? profile.nickname.trim().slice(0, 24) : '',
+        avatarId: typeof profile?.avatarId === 'string' ? profile.avatarId : 'sun',
+      }),
+    };
+    if (name === '@/lib/user-profile-storage') return {
+      readUserProfile: async () => ({ nickname: '', avatarId: 'sun' }),
+      writeUserProfile: async (profile) => profile,
+    };
     if (name === '@/constants/mall-layout') return {
       MALL_SLOT_IDS: [
         'floor-1-left', 'floor-1-center', 'floor-1-right',

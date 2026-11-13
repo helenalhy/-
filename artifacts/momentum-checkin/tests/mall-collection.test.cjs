@@ -63,6 +63,17 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
   const mockedRequire = (name) => {
     if (name === 'react') return react;
     if (name === '@/constants/colors') return { light: {} };
+    if (name === '@/constants/user-profile') return {
+      DEFAULT_USER_PROFILE: { nickname: '', avatarId: 'sun' },
+      normalizeUserProfile: (profile) => ({
+        nickname: typeof profile?.nickname === 'string' ? profile.nickname.trim().slice(0, 24) : '',
+        avatarId: typeof profile?.avatarId === 'string' ? profile.avatarId : 'sun',
+      }),
+    };
+    if (name === '@/lib/user-profile-storage') return {
+      readUserProfile: async () => ({ nickname: '', avatarId: 'sun' }),
+      writeUserProfile: async (profile) => profile,
+    };
     if (name === '@/constants/mall-layout') return {
       MALL_SLOT_IDS: [
          ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
@@ -78,6 +89,9 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
         ...[3, 2, 1, 4, 5, 6, 7, 8, 9, 10].flatMap((floor) =>
           [1, 2, 3, 4].flatMap((row) => ['left', 'center', 'right'].map((column) => `floor-${floor}-extension4-${row}-${column}`))),
         'floor-20-left',
+        'floor-20-center',
+        'floor-20-right',
+        'floor-20-plaza-1-left',
       ],
     };
     if (name === '@/constants/mall-shop-interior') return {
@@ -111,6 +125,10 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
         b: { id: 'b', name: '一般商店', category: 'shop', shopType: 'general' },
         c: { id: 'c', name: '測試裝飾', category: 'decor' },
         'skyline-tea': { id: 'skyline-tea', floor: 20, category: 'shop' },
+        'cloud-swing': { id: 'cloud-swing', floor: 20, category: 'facility' },
+        'rainbow-arch': { id: 'rainbow-arch', floor: 20, category: 'decor' },
+        'sunset-wind-mobile': { id: 'sunset-wind-mobile', floor: 20, category: 'decor' },
+        'carnival-merry-go-round': { id: 'carnival-merry-go-round', floor: 10, category: 'facility' },
       },
       MALL_ITEMS: [{ id: 'c', name: '測試裝飾', category: 'decor' }],
     };
@@ -319,15 +337,55 @@ test('legacy migration preserves positions and assigns only missing legacy purch
 test('legacy Sky Garden placements move to the rooftop while other floor-ten objects stay put', async () => {
   const storage = seed({
     schemaVersion: 4,
-    purchasedItems: ['a', 'skyline-tea'],
-    placements: { 'floor-10-left': 'skyline-tea', 'floor-10-center': 'a' },
+    coins: 137,
+    purchasedItems: [
+      'skyline-tea',
+      'cloud-swing',
+      'rainbow-arch',
+      'sunset-wind-mobile',
+      'carnival-merry-go-round',
+    ],
+    rewardedCheckIns: ['starter-walk:2026-11-12', 'stretch:2026-11-12'],
+    rewardTokens: { facility: 2, shop: 4, decor: 1 },
+    placements: {
+      'floor-10-left': 'skyline-tea',
+      'floor-10-center': 'carnival-merry-go-round',
+      'floor-10-right': 'cloud-swing',
+      'floor-10-plaza-1-left': 'rainbow-arch',
+    },
   });
-  const app = await mount(storage);
+  let app = await mount(storage);
   assert.deepEqual(app.value.mallPlacements, {
     'floor-20-left': 'skyline-tea',
-    'floor-10-center': 'a',
+    'floor-10-center': 'carnival-merry-go-round',
+    'floor-20-right': 'cloud-swing',
+    'floor-20-plaza-1-left': 'rainbow-arch',
   });
-  assert.equal(JSON.parse(storage[key]).schemaVersion, 6);
+  assert.deepEqual(app.value.purchasedItems, [
+    'skyline-tea',
+    'cloud-swing',
+    'rainbow-arch',
+    'sunset-wind-mobile',
+    'carnival-merry-go-round',
+  ], 'redeemed rooftop items and an unplaced warehouse item keep their ownership');
+  assert.equal(app.value.coins, 137, 'migration does not charge coins again');
+  assert.deepEqual(app.value.rewardTokens, { facility: 2, shop: 4, decor: 1 });
+  assert.deepEqual(app.value.rewardedCheckIns, ['starter-walk:2026-11-12', 'stretch:2026-11-12']);
+
+  const migrated = JSON.parse(storage[key]);
+  assert.equal(migrated.schemaVersion, 6);
+  assert.equal(migrated.coins, 137);
+  assert.deepEqual(migrated.purchasedItems, app.value.purchasedItems);
+  assert.deepEqual(migrated.rewardedCheckIns, app.value.rewardedCheckIns);
+  assert.deepEqual(migrated.rewardTokens, app.value.rewardTokens);
+  assert.deepEqual(migrated.placements, app.value.mallPlacements);
+
+  app = await mount(storage);
+  assert.deepEqual(app.value.mallPlacements, migrated.placements, 'reopening does not move or duplicate migrated objects');
+  assert.deepEqual(app.value.purchasedItems, migrated.purchasedItems);
+  assert.equal(app.value.coins, 137);
+  assert.deepEqual(app.value.rewardedCheckIns, migrated.rewardedCheckIns);
+  assert.deepEqual(app.value.rewardTokens, migrated.rewardTokens);
 });
 
 test('store, reload, reward, restore on another floor, swap and reload preserve ownership and balances', async () => {
@@ -383,11 +441,11 @@ test('legacy overflow retains every purchase and does not refill a deliberately 
   const items = Array.from({ length: 570 }, (_, index) => `item-${index}`);
   const storage = seed({ purchasedItems: items, placements: undefined });
   let app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 561);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 564);
   assert.equal(app.value.purchasedItems.length, 570);
   await app.value.storeMallItem('item-0');
   app = await mount(storage);
-  assert.equal(Object.keys(app.value.mallPlacements).length, 560);
+  assert.equal(Object.keys(app.value.mallPlacements).length, 563);
   assert.equal(app.value.purchasedItems.length, 570);
   assert.equal(Object.values(app.value.mallPlacements).includes('item-0'), false);
 });

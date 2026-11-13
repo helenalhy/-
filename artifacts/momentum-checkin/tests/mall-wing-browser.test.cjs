@@ -153,6 +153,36 @@ async function sendKey(devTools, key, code, virtualKeyCode) {
   });
 }
 
+async function swipePager(devTools, direction) {
+  const gesture = await devTools.evaluate(`(() => {
+    const pager = document.querySelector('[data-testid="mall-wing-pager"]');
+    const rect = pager.getBoundingClientRect();
+    return {
+      fromX: rect.left + rect.width * ${direction === 'right' ? 0.15 : 0.85},
+      toX: rect.left + rect.width * ${direction === 'right' ? 0.85 : 0.15},
+      y: rect.top + rect.height / 2,
+      before: pager.scrollLeft,
+    };
+  })()`);
+  await devTools.send('Emulation.setTouchEmulationEnabled', {
+    enabled: true,
+    maxTouchPoints: 1,
+    configuration: 'mobile',
+  });
+  const touchPoints = (x) => [{ x, y: gesture.y, id: 1, radiusX: 4, radiusY: 4, force: 1 }];
+  await devTools.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touchPoints(gesture.fromX) });
+  for (let step = 1; step <= 8; step += 1) {
+    const x = gesture.fromX + ((gesture.toX - gesture.fromX) * step) / 8;
+    await devTools.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touchPoints(x) });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
+  await devTools.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  return {
+    before: gesture.before,
+    after: await devTools.evaluate(`document.querySelector('[data-testid="mall-wing-pager"]')?.scrollLeft ?? null`),
+  };
+}
+
 test('mall wing tabs keep browser focus and selection in sync', {
   skip: !fs.existsSync(chromiumPath) && !spawnSync('which', ['chromium'], { encoding: 'utf8' }).stdout.trim(),
   timeout: 300_000,
@@ -481,6 +511,51 @@ test('mall wing tabs keep browser focus and selection in sync', {
     })()`,
     'the selected mall page to stay aligned after restoring the viewport',
   );
+
+  const focusedControl = await devTools.evaluate(`(() => {
+    const panel = document.querySelector('[data-testid="mall-wing-content-extension4"]');
+    const control = panel?.querySelector('button, [tabindex="0"]');
+    control?.focus();
+    return Boolean(control && document.activeElement === control);
+  })()`);
+  assert.equal(focusedControl, true, 'the current wing should have a focusable control before the swipe');
+  const swipeState = await swipePager(devTools, 'right');
+  assert.notEqual(swipeState.after, swipeState.before, `the browser swipe should move the pager: ${JSON.stringify(swipeState)}`);
+  await waitForBrowser(
+    devTools,
+    `document.querySelector('${tabsSelector}[data-testid="mall-wing-extension3"]')?.getAttribute('aria-selected') === 'true'`,
+    'touch swipe selection of the adjacent mall wing',
+  );
+  await waitForBrowser(
+    devTools,
+    `(() => {
+      const pager = document.querySelector('[data-testid="mall-wing-pager"]');
+      return pager && Math.abs(pager.scrollLeft - pager.clientWidth * 3) < 2;
+    })()`,
+    'the selected mall page to finish swiping to extension3',
+  );
+  state = await getState();
+  assert.equal(state.tabs.find((tab) => tab.id === 'mall-wing-extension3')?.selected, 'true');
+  assert.equal(state.tabs.find((tab) => tab.id === 'mall-wing-extension3')?.tabIndex, '0');
+  assert.equal(state.tabs.filter((tab) => tab.selected === 'true').length, 1);
+  assert.equal(state.tabs.filter((tab) => tab.tabIndex === '0').length, 1);
+  for (const panel of state.panels) {
+    const isActive = panel.id === 'mall-wing-content-extension3';
+    assert.equal(panel.hidden, !isActive, `${panel.id} should match the swiped-to wing's visibility`);
+    assert.equal(panel.inert, !isActive, `${panel.id} should only allow focus in the swiped-to wing`);
+  }
+  const focusAfterSwipe = await devTools.evaluate(`(() => {
+    const focused = document.activeElement;
+    return {
+      focusedId: focused?.dataset?.testid ?? null,
+      isInsideHiddenPanel: Boolean(focused?.closest('[data-testid^="mall-wing-content-"][aria-hidden="true"]')),
+    };
+  })()`);
+  assert.equal(focusAfterSwipe.isInsideHiddenPanel, false, 'swiping must not leave focus inside the hidden wing');
+
+  await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-extension3"]').focus()`);
+  await sendKey(devTools, 'ArrowRight', 'ArrowRight', 39);
+  await assertSelectedAndFocused('extension4');
 
   for (const engine of [
     { name: 'Firefox', browserType: firefox },

@@ -33,6 +33,7 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   const colors = useColors();
   const pager = useRef<ScrollView>(null);
   const tabs = useRef<ScrollView>(null);
+  const scrollSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tabRefs = useRef<Partial<Record<MallWing, React.ElementRef<typeof Pressable>>>>({});
   const [width, setWidth] = useState(360);
   const [activeWing, setActiveWing] = useState<MallWing>('main');
@@ -101,6 +102,7 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
   function changeWing(wing: MallWing, animated = true) {
     if (wing !== activeWing) {
       onWingChange();
+      activeWingRef.current = wing;
       setActiveWing(wing);
       announceWing(wing);
     }
@@ -134,6 +136,22 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
     changeWing(nextWing, !reduceMotion);
     tabRefs.current[nextWing]?.focus();
   }
+
+  function handlePagerScrollEnd(offset: number) {
+    const page = Math.max(0, Math.min(WINGS.length - 1, Math.round(offset / width)));
+    const wing = WINGS[page].id;
+    if (wing !== activeWingRef.current) {
+      activeWingRef.current = wing;
+      setActiveWing(wing);
+      onWingChange();
+      scrollTabsToWing(wing);
+      announceWing(wing);
+    }
+  }
+
+  useEffect(() => () => {
+    if (scrollSettleTimer.current) clearTimeout(scrollSettleTimer.current);
+  }, []);
 
   return (
     <View onLayout={(event) => {
@@ -176,16 +194,15 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
           {wingAnnouncement}
         </Text>
       )}
-      <ScrollView ref={pager} horizontal pagingEnabled nestedScrollEnabled showsHorizontalScrollIndicator={false} style={{ width, height: width }} testID="mall-wing-pager"
+      <ScrollView ref={pager} horizontal pagingEnabled nestedScrollEnabled showsHorizontalScrollIndicator={false} scrollEventThrottle={16} style={{ width, height: width }} testID="mall-wing-pager"
+        onScroll={(event) => {
+          if (Platform.OS !== 'web') return;
+          if (scrollSettleTimer.current) clearTimeout(scrollSettleTimer.current);
+          const offset = event.nativeEvent.contentOffset.x;
+          scrollSettleTimer.current = setTimeout(() => handlePagerScrollEnd(offset), 120);
+        }}
         onMomentumScrollEnd={(event) => {
-          const page = Math.max(0, Math.min(WINGS.length - 1, Math.round(event.nativeEvent.contentOffset.x / width)));
-          const wing = WINGS[page].id;
-          if (wing !== activeWing) {
-            setActiveWing(wing);
-            onWingChange();
-            scrollTabsToWing(wing);
-            announceWing(wing);
-          }
+          handlePagerScrollEnd(event.nativeEvent.contentOffset.x);
         }}>
         {WINGS.map((wing) => {
           const active = activeWing === wing.id;

@@ -17,6 +17,12 @@ React Native Web 的 `accessibilityState.selected` 不會自動輸出分頁控�
 
 **How to apply:** 新增或調整商場分頁語意時，同時驗證原生 accessibility state 與瀏覽器中的 `role`、`aria-selected`、`tabindex` 和實際焦點。
 
+React Native Web 的水平 `ScrollView` 在觸控滑動時，不能只依賴 `onMomentumScrollEnd` 更新目前分區；網頁需在 `onScroll` 安靜一小段時間後，以同一個分區同步處理器更新標籤、隱藏面板與公告，並用目前分區 ref 防止重複更新。
+
+**Why:** 真實 Chromium 觸控測試中，頁面已滑到相鄰區域，但 `onMomentumScrollEnd` 沒有更新目前分區，造成標籤與可見內容不一致。
+
+**How to apply:** 修改網頁分頁滑動時，加入捲動停止回退同步，並用真實觸控手勢驗證焦點不留在剛隱藏的面板。
+
 網頁上的操作結果需透過 React Native Web 的 DOM `ref.focus()` 移動焦點；不可在 web 呼叫 `findNodeHandle` 或原生 `AccessibilityInfo.setAccessibilityFocus`。原生平台仍使用原生輔助使用焦點。
 
 **Why:** React Native Web 的 `findNodeHandle` 會直接丟出執行期錯誤；這類錯誤只在商場移動或存倉等成功結果後觸發，單純載入頁面不一定會重現。

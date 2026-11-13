@@ -272,13 +272,13 @@ test('Sakura Hot Spring display cabinet offers a unique 60-item bath-goods catal
   assert.ok(products.some(({ name }) => name === '溫泉旅館毛巾組'));
   assert.ok(products.some(({ name }) => name === '櫻花紋浴衣'));
   const productArt = {
-    '櫻花入浴鹽小罐': 'bottle',
+    '櫻花入浴鹽小罐': 'bathSalt',
     '柚子暖湯香包': 'sachet',
     '檜木香氛沐浴露': 'bottle',
     '溫泉旅館毛巾組': 'towel',
-    '櫻花紋浴衣': 'garment',
-    '泡湯竹木按摩梳': 'brush',
-    '雪見泡腳木桶組': 'bucket',
+    '櫻花紋浴衣': 'yukata',
+    '泡湯竹木按摩梳': 'woodenComb',
+    '雪見泡腳木桶組': 'woodenBath',
     '草本蒸氣眼罩': 'mask',
   };
   for (const [name, illustration] of Object.entries(productArt)) {
@@ -287,6 +287,32 @@ test('Sakura Hot Spring display cabinet offers a unique 60-item bath-goods catal
   const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
   assert.match(visual, /sachet: \{ shape: 'sachet', icon: 'sun' \}/);
   assert.match(visual, /productArtwork\.shape === 'sachet'/);
+  assert.deepEqual(
+    products.slice(0, 8).map(({ illustration }) => illustration),
+    ['bathSalt', 'sachet', 'bottle', 'towel', 'yukata', 'woodenComb', 'woodenBath', 'mask'],
+  );
+  assert.deepEqual(
+    products.slice(56).map(({ id, illustration }) => [id, illustration]),
+    [
+      ['display-onsen-57', 'bathSoap'],
+      ['display-onsen-58', 'bathPouch'],
+      ['display-onsen-59', 'woodenBath'],
+      ['display-onsen-60', 'yukata'],
+    ],
+  );
+  assert.deepEqual(
+    products.map(({ id }) => id),
+    Array.from({ length: 60 }, (_, index) => `display-onsen-${index + 1}`),
+  );
+  assert.ok(products.some(({ name }) => name === '櫻花手工沐浴皂'));
+  assert.ok(products.some(({ name }) => name === '檜木洗浴木盆'));
+
+  for (const illustration of ['bathSalt', 'bathPouch', 'bathSoap', 'yukata', 'woodenComb', 'woodenBath']) {
+    assert.match(visual, new RegExp(`${illustration}: \\{ shape:`));
+    assert.match(visual, new RegExp(`${illustration}: \\{ lift:`));
+  }
+  assert.match(visual, /useReducedMotion\(\) !== false/);
+  assert.match(visual, /reducedMotion \? 0 : motion\.interpolate/);
 });
 
 test('bakery croissants have a matching animated pastry illustration', () => {

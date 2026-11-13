@@ -13,7 +13,7 @@ type MerchandiseMotionProfile = {
 };
 
 type ProductArtShape =
-  | 'cloud' | 'box' | 'mug' | 'card' | 'charm' | 'stone' | 'cake' | 'stack'
+  | 'cloud' | 'box' | 'mug' | 'card' | 'charm' | 'stone' | 'bathSalt' | 'bathPouch' | 'bathSoap' | 'yukata' | 'woodenComb' | 'woodenBath' | 'cake' | 'stack'
   | 'cookie' | 'pudding' | 'cone' | 'popsicle' | 'lollipop' | 'bread' | 'triangle'
   | 'bento' | 'pot' | 'plush' | 'blocks' | 'capsule' | 'puzzle' | 'train'
   | 'ball' | 'vase' | 'basket' | 'wand' | 'hat' | 'carton' | 'bag'
@@ -26,6 +26,12 @@ type ProductArtConfig = {
 };
 
 const PRODUCT_SPECIFIC_ART: Partial<Record<ShopProductIllustration, ProductArtConfig>> = {
+  bathSalt: { shape: 'bathSalt', icon: 'sun' },
+  bathPouch: { shape: 'bathPouch', icon: 'wind' },
+  bathSoap: { shape: 'bathSoap', icon: 'heart' },
+  yukata: { shape: 'yukata', icon: 'feather' },
+  woodenComb: { shape: 'woodenComb', icon: 'grid' },
+  woodenBath: { shape: 'woodenBath', icon: 'droplet' },
   cloud: { shape: 'cloud', icon: 'cloud' },
   box: { shape: 'box', icon: 'package' },
   mug: { shape: 'mug', icon: 'coffee' },
@@ -80,6 +86,12 @@ const PRODUCT_SPECIFIC_ART: Partial<Record<ShopProductIllustration, ProductArtCo
 };
 
 const SPECIAL_PRODUCT_SHAPES: Record<ProductArtShape, ViewStyle> = {
+  bathSalt: { width: 23, height: 26, borderRadius: 5, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  bathPouch: { width: 22, height: 24, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+  bathSoap: { width: 25, height: 16, borderRadius: 6 },
+  yukata: { width: 21, height: 28, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+  woodenComb: { width: 29, height: 9, borderRadius: 3 },
+  woodenBath: { width: 27, height: 18, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
   cloud: { width: 30, height: 23, borderRadius: 16 },
   box: { width: 27, height: 23, borderRadius: 5 },
   mug: { width: 23, height: 22, borderRadius: 5, borderTopLeftRadius: 3 },
@@ -130,6 +142,12 @@ const SPECIAL_PRODUCT_SHAPES: Record<ProductArtShape, ViewStyle> = {
 };
 
 const MERCHANDISE_MOTION_PROFILES: Partial<Record<ShopProductIllustration, MerchandiseMotionProfile>> = {
+  bathSalt: { lift: 0.7, tilt: 2, scale: 1.035, sparkle: 0.68 },
+  bathPouch: { lift: 1.2, tilt: 4, scale: 1.045, sparkle: 0.72 },
+  bathSoap: { lift: 0.5, tilt: 3, scale: 1.04, sparkle: 0.68 },
+  yukata: { lift: 0.8, tilt: 3, scale: 1.025, sparkle: 0.58 },
+  woodenComb: { lift: 0.4, tilt: 2, scale: 1.025, sparkle: 0.52 },
+  woodenBath: { lift: 0.3, tilt: 1, scale: 1.02, sparkle: 0.48 },
   bottle: { lift: 1.2, tilt: 3, scale: 1.04, sparkle: 0.78 },
   garment: { lift: 0.8, tilt: 4, scale: 1.025, sparkle: 0.58 },
   cloak: { lift: 1.1, tilt: 6, scale: 1.04, sparkle: 0.72 },
@@ -557,6 +575,14 @@ export function ShopMerchandiseVisual({
             {productArtwork.shape === 'lipstick' && <View style={[styles.specialCosmeticCap, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />}
             {productArtwork.shape === 'mascara' && <View style={[styles.specialMascaraWand, { backgroundColor: colors.candyRoseDark }]} />}
             {productArtwork.shape === 'nailPolish' && <View style={[styles.specialNailPolishCap, { backgroundColor: accent, borderColor: colors.candyCaramelDark }]} />}
+            {productArtwork.shape === 'bathPouch' && <View style={[styles.bathPouchTie, { backgroundColor: accent }]} />}
+            {productArtwork.shape === 'yukata' && (
+              <>
+                <View style={[styles.yukataSleeve, styles.yukataSleeveLeft, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+                <View style={[styles.yukataSleeve, styles.yukataSleeveRight, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />
+              </>
+            )}
+            {productArtwork.shape === 'woodenBath' && <View style={[styles.woodenBathRim, { backgroundColor: product.color, borderColor: colors.candyCaramelDark }]} />}
             <View
               style={[
                 styles.specialObject,
@@ -587,6 +613,59 @@ export function ShopMerchandiseVisual({
               <>
                 <View style={[styles.specialSachetNeck, { borderColor: colors.candyCaramelDark }]} />
                 <View style={[styles.specialSachetTie, { backgroundColor: accent }]} />
+              </>
+            )}
+            {productArtwork.shape === 'bathSalt' && (
+              <>
+                <View style={[styles.bathSaltSeal, { backgroundColor: accent }]} />
+                <View style={[styles.bathSaltLabel, { backgroundColor: colors.candyCream }]}>
+                  <Feather name="star" size={7} color={colors.candyRoseDark} />
+                </View>
+                <View style={[styles.bathSaltGrain, styles.bathSaltGrainLeft, { backgroundColor: colors.candyCream }]} />
+                <View style={[styles.bathSaltGrain, styles.bathSaltGrainRight, { backgroundColor: colors.candyCream }]} />
+              </>
+            )}
+            {productArtwork.shape === 'bathPouch' && (
+              <>
+                <View style={[styles.bathPouchCord, styles.bathPouchCordLeft, { borderColor: colors.candyCaramelDark }]} />
+                <View style={[styles.bathPouchCord, styles.bathPouchCordRight, { borderColor: colors.candyCaramelDark }]} />
+                <View style={[styles.bathPouchEmblem, { backgroundColor: colors.candyCream }]} />
+              </>
+            )}
+            {productArtwork.shape === 'bathSoap' && (
+              <>
+                <View style={[styles.bathSoapShine, { backgroundColor: colors.candyCream }]} />
+                <View style={[styles.bathSoapBubble, styles.bathSoapBubbleLeft, { borderColor: colors.candySky }]} />
+                <View style={[styles.bathSoapBubble, styles.bathSoapBubbleRight, { borderColor: colors.candySky }]} />
+              </>
+            )}
+            {productArtwork.shape === 'yukata' && (
+              <>
+                <View style={[styles.yukataObi, { backgroundColor: accent }]} />
+                <View style={[styles.yukataCollarLeft, { backgroundColor: colors.candyCream }]} />
+                <View style={[styles.yukataCollarRight, { backgroundColor: colors.candyCream }]} />
+                <Feather name="sun" size={5} color={colors.candyRoseDark} style={styles.yukataFlower} />
+              </>
+            )}
+            {productArtwork.shape === 'woodenComb' && (
+              <>
+                {[0, 1, 2, 3, 4, 5, 6].map((tooth) => (
+                  <View
+                    key={tooth}
+                    style={[
+                      styles.woodenCombTooth,
+                      { left: 8 + tooth * 3, backgroundColor: product.color, borderColor: colors.candyCaramelDark },
+                    ]}
+                  />
+                ))}
+                <View style={[styles.woodenCombGrain, { backgroundColor: colors.candyCream }]} />
+              </>
+            )}
+            {productArtwork.shape === 'woodenBath' && (
+              <>
+                <View style={[styles.woodenBathBand, styles.woodenBathBandTop, { backgroundColor: colors.candyCaramelDark }]} />
+                <View style={[styles.woodenBathBand, styles.woodenBathBandBottom, { backgroundColor: colors.candyCaramelDark }]} />
+                <View style={[styles.woodenBathWater, { backgroundColor: colors.candySky }]} />
               </>
             )}
           </>
@@ -774,6 +853,34 @@ const styles = StyleSheet.create({
   specialCosmeticCap: { position: 'absolute', top: 2, width: 11, height: 8, borderWidth: 1, borderRadius: 3 },
   specialMascaraWand: { position: 'absolute', top: 3, width: 3, height: 9, borderRadius: 2 },
   specialNailPolishCap: { position: 'absolute', top: 3, width: 9, height: 7, borderWidth: 1, borderRadius: 2 },
+  bathSaltSeal: { position: 'absolute', top: 5, width: 15, height: 4, borderRadius: 2, zIndex: 1 },
+  bathSaltLabel: { position: 'absolute', top: 16, width: 14, height: 11, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },
+  bathSaltGrain: { position: 'absolute', top: 29, width: 3, height: 3, borderRadius: 2 },
+  bathSaltGrainLeft: { left: 14 },
+  bathSaltGrainRight: { right: 14, top: 27 },
+  bathPouchTie: { position: 'absolute', top: 6, width: 11, height: 3, borderRadius: 3, zIndex: 1 },
+  bathPouchCord: { position: 'absolute', top: 3, width: 5, height: 9, borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 5, borderTopRightRadius: 5, zIndex: 1 },
+  bathPouchCordLeft: { left: 15, transform: [{ rotate: '-22deg' }] },
+  bathPouchCordRight: { right: 15, transform: [{ rotate: '22deg' }] },
+  bathPouchEmblem: { position: 'absolute', top: 19, width: 6, height: 6, borderRadius: 4 },
+  bathSoapShine: { position: 'absolute', top: 21, width: 11, height: 2, borderRadius: 2 },
+  bathSoapBubble: { position: 'absolute', top: 8, width: 5, height: 5, borderWidth: 1, borderRadius: 4 },
+  bathSoapBubbleLeft: { left: 12 },
+  bathSoapBubbleRight: { right: 12, top: 5, width: 4, height: 4 },
+  yukataSleeve: { position: 'absolute', top: 15, width: 9, height: 17, borderWidth: 1, borderRadius: 3 },
+  yukataSleeveLeft: { left: 4, transform: [{ rotate: '12deg' }] },
+  yukataSleeveRight: { right: 4, transform: [{ rotate: '-12deg' }] },
+  yukataObi: { position: 'absolute', top: 23, width: 19, height: 4, borderRadius: 2, zIndex: 1 },
+  yukataCollarLeft: { position: 'absolute', top: 9, left: 18, width: 4, height: 14, borderRadius: 2, transform: [{ rotate: '-24deg' }], zIndex: 1 },
+  yukataCollarRight: { position: 'absolute', top: 9, right: 18, width: 4, height: 14, borderRadius: 2, transform: [{ rotate: '24deg' }], zIndex: 1 },
+  yukataFlower: { position: 'absolute', top: 13, right: 18, zIndex: 2 },
+  woodenCombTooth: { position: 'absolute', top: 26, width: 2, height: 7, borderWidth: 0.6, borderTopWidth: 0, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
+  woodenCombGrain: { position: 'absolute', top: 22, width: 18, height: 1, borderRadius: 1 },
+  woodenBathRim: { position: 'absolute', top: 15, width: 30, height: 6, borderWidth: 1, borderRadius: 5, zIndex: 1 },
+  woodenBathBand: { position: 'absolute', left: 9, right: 9, height: 2, borderRadius: 2 },
+  woodenBathBandTop: { top: 26 },
+  woodenBathBandBottom: { top: 32 },
+  woodenBathWater: { position: 'absolute', top: 21, width: 18, height: 2, borderRadius: 2 },
   specialGridLine: { position: 'absolute', width: 1, height: 15, backgroundColor: 'white', opacity: 0.8 },
   specialPaletteDivider: { position: 'absolute', width: 1, height: 14, backgroundColor: 'white', opacity: 0.8 },
   specialPalettePan: { position: 'absolute', top: 4, left: 5, width: 5, height: 5, borderRadius: 3 },

@@ -6,6 +6,12 @@ export const SHOP_DISPLAY_SLOT_COUNT = 18;
 
 export type ShopProductIllustration =
   | 'bottle'
+  | 'bathSalt'
+  | 'bathPouch'
+  | 'bathSoap'
+  | 'yukata'
+  | 'woodenComb'
+  | 'woodenBath'
   | 'garment'
   | 'cloak'
   | 'wig'
@@ -144,13 +150,13 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '迷你花束', description: '以柔和彩紙包好的花束', icon: 'feather', color: c.candyRose },
   ],
   onsen: [
-    { name: '櫻花入浴鹽小罐', description: '帶有淡淡櫻花香氣的泡湯入浴鹽', icon: 'droplet', color: c.candyPink, illustration: 'bottle' },
+    { name: '櫻花入浴鹽小罐', description: '帶有淡淡櫻花香氣的泡湯入浴鹽', icon: 'droplet', color: c.candyPink, illustration: 'bathSalt' },
     { name: '柚子暖湯香包', description: '泡澡時散發柚子香氣的溫泉香包', icon: 'sun', color: c.candyLemon, illustration: 'sachet' },
     { name: '檜木香氛沐浴露', description: '以柔和檜木香調製成的沐浴露', icon: 'wind', color: c.candyCaramel, illustration: 'bottle' },
     { name: '溫泉旅館毛巾組', description: '柔軟吸水的浴巾與小毛巾組合', icon: 'heart', color: c.candySky, illustration: 'towel' },
-    { name: '櫻花紋浴衣', description: '印有柔粉櫻花圖案的輕柔浴衣', icon: 'feather', color: c.candyRose, illustration: 'garment' },
-    { name: '泡湯竹木按摩梳', description: '適合沐浴後梳理頭髮的竹木梳', icon: 'star', color: c.candyMint, illustration: 'brush' },
-    { name: '雪見泡腳木桶組', description: '可愛迷你的木桶與足浴用品組', icon: 'package', color: c.candyPeach, illustration: 'bucket' },
+    { name: '櫻花紋浴衣', description: '印有柔粉櫻花圖案的輕柔浴衣', icon: 'feather', color: c.candyRose, illustration: 'yukata' },
+    { name: '泡湯竹木按摩梳', description: '適合沐浴後梳理頭髮的竹木梳', icon: 'star', color: c.candyCaramel, illustration: 'woodenComb' },
+    { name: '雪見泡腳木桶組', description: '可愛迷你的木桶與足浴用品組', icon: 'package', color: c.candyPeach, illustration: 'woodenBath' },
     { name: '草本蒸氣眼罩', description: '以溫熱草本香氣陪伴泡湯後休息', icon: 'moon', color: c.candyLavender, illustration: 'mask' },
   ],
   cafe: [
@@ -590,6 +596,13 @@ function inferProductIllustration(
   return fallback ?? productIllustrationByTheme[theme];
 }
 
+const additionalOnsenProductSeeds: ProductSeed[] = [
+  { name: '櫻花手工沐浴皂', description: '以櫻花花瓣作為靈感的柔和香皂', icon: 'heart', color: c.candyRose, illustration: 'bathSoap' },
+  { name: '柚香泡湯香氛袋', description: '可掛在浴室中的柚子香草布香包', icon: 'sun', color: c.candyLemon, illustration: 'bathPouch' },
+  { name: '檜木洗浴木盆', description: '檜木色的小型洗浴盆與木紋細節', icon: 'droplet', color: c.candyCaramel, illustration: 'woodenBath' },
+  { name: '梅花浴衣小禮服', description: '以梅花紋樣點綴的輕柔泡湯浴衣', icon: 'feather', color: c.candyLavender, illustration: 'yukata' },
+];
+
 const packageVariants = [
   { label: '春日櫻花限定', color: c.candyRose },
   { label: '星河月光限定', color: c.candyLavender },
@@ -843,6 +856,21 @@ export function getShopFixtureProductCatalog(
         variant: catalog.length,
       });
     }
+  }
+  if (theme === 'onsen') {
+    const existingProducts = catalog.slice(0, 56);
+    catalog.splice(
+      0,
+      catalog.length,
+      ...existingProducts,
+      ...additionalOnsenProductSeeds.map((seed, index) => ({
+        id: `display-onsen-${index + 57}`,
+        ...seed,
+        theme: 'onsen' as const,
+        illustration: seed.illustration ?? 'gift',
+        variant: index + 56,
+      })),
+    );
   }
   if (theme === 'cosplay' && decoration.id === 'cosplay-akatsuki-collection-wardrobe') {
     return createAkatsukiWardrobeCatalog();

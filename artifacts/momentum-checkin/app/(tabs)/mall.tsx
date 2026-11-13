@@ -294,7 +294,7 @@ export default function MallScreen() {
   const [searchFloor, setSearchFloor] = useState<number | null>(null);
   const [searchPlacementFloor, setSearchPlacementFloor] = useState<number | null>(null);
   const [searchWing, setSearchWing] = useState<MallWing | 'unplaced' | null>(null);
-  const [searchFilterResultMessage, setSearchFilterResultMessage] = useState('');
+  const [hasAppliedSearchLocationFilters, setHasAppliedSearchLocationFilters] = useState(false);
   const [affordableOnly, setAffordableOnly] = useState(false);
   const [priceAscending, setPriceAscending] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -387,6 +387,9 @@ export default function MallScreen() {
       if (wingFilter === 'unplaced') return !slotId;
       return slotId !== undefined && getSlotPosition(slotId).wing === wingFilter;
     }).length;
+  const searchFilterResultMessage = hasAppliedSearchLocationFilters
+    ? `篩選結果已更新，共 ${getSearchResultCount(searchFloor, searchPlacementFloor, searchWing)} 款。`
+    : '';
   const activeSearchLocationFilters = [
     searchFloor !== null ? `原屬樓層：${searchFloor}F` : null,
     searchPlacementFloor !== null ? `目前擺放樓層：${searchPlacementFloor}F` : null,
@@ -481,7 +484,7 @@ export default function MallScreen() {
     setSearchFloor(null);
     setSearchPlacementFloor(null);
     setSearchWing(null);
-    setSearchFilterResultMessage('');
+    setHasAppliedSearchLocationFilters(false);
     setCategory('all');
     setAffordableOnly(false);
     setPriceAscending(false);
@@ -498,7 +501,7 @@ export default function MallScreen() {
     setSearchWing(wingFilter);
     setCatalogPage(1);
     const resultMessage = `篩選結果已更新，共 ${getSearchResultCount(floorFilter, placementFloorFilter, wingFilter)} 款。`;
-    setSearchFilterResultMessage(resultMessage);
+    setHasAppliedSearchLocationFilters(true);
     if (Platform.OS === 'ios') {
       AccessibilityInfo.announceForAccessibilityWithOptions(resultMessage, { queue: true });
     }
@@ -735,7 +738,7 @@ export default function MallScreen() {
     setPreviewSlotId(null);
     setWarehouseNotice(null);
     setShowCollection(true);
-    setSearchFilterResultMessage('');
+    setHasAppliedSearchLocationFilters(false);
     setCatalogPage(1);
     requestAnimationFrame(scrollToCatalog);
   }
@@ -754,7 +757,7 @@ export default function MallScreen() {
       setPlacementIntent(null);
       setPreviewSlotId(null);
       setShowCollection(true);
-      setSearchFilterResultMessage('');
+      setHasAppliedSearchLocationFilters(false);
       setCatalogPage(1);
       requestAnimationFrame(scrollToCatalog);
     } catch (error) {
@@ -1086,7 +1089,7 @@ export default function MallScreen() {
 
         <View style={styles.collectionTabs}>
           {([{ id: false, label: '本層兌換', icon: 'shopping-bag' }, { id: true, label: `倉庫 · ${collectionItems.length}`, icon: 'archive' }] as const).map((tab) => (
-            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setSearchFilterResultMessage(''); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
+            <Pressable key={tab.label} onPress={() => { setShowCollection(tab.id); setHasAppliedSearchLocationFilters(false); setCatalogPage(1); }} accessibilityRole="button" accessibilityState={{ selected: showCollection === tab.id }} testID={tab.id ? 'collection-tab' : 'catalog-tab'} style={[styles.filterPill, styles.collectionTab, { backgroundColor: showCollection === tab.id ? colors.secondary : colors.card, borderColor: colors.border }]}>
               <Feather name={tab.icon} size={16} color={colors.primary} />
               <Text style={[styles.filterText, { color: colors.primary }]}>{tab.label}</Text>
             </Pressable>
@@ -1114,7 +1117,7 @@ export default function MallScreen() {
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
-              setSearchFilterResultMessage('');
+              setHasAppliedSearchLocationFilters(false);
               if (!text.trim()) {
                 setSearchFloor(null);
                 setSearchPlacementFloor(null);
@@ -1297,7 +1300,7 @@ export default function MallScreen() {
                 testID="mall-affordable-toggle"
                 accessibilityRole="button"
                 accessibilityState={{ selected: affordableOnly }}
-                onPress={() => { setAffordableOnly(!affordableOnly); if (isSearching) setSearchFilterResultMessage(''); setCatalogPage(1); }}
+                onPress={() => { setAffordableOnly(!affordableOnly); if (isSearching) setHasAppliedSearchLocationFilters(false); setCatalogPage(1); }}
                 style={[styles.filterPill, styles.redemptionOption, { backgroundColor: affordableOnly ? colors.primary : colors.card, borderColor: affordableOnly ? colors.primary : colors.border }]}
               >
                 <Text style={[styles.filterText, { color: affordableOnly ? colors.primaryForeground : colors.mutedForeground }]}>目前換得到</Text>
@@ -1334,7 +1337,7 @@ export default function MallScreen() {
             return (
               <Pressable
                 key={filter.id}
-                onPress={() => { if (isSearching) setSearchFilterResultMessage(''); setCategory(filter.id); setCatalogPage(1); }}
+                onPress={() => { if (isSearching) setHasAppliedSearchLocationFilters(false); setCategory(filter.id); setCatalogPage(1); }}
                 style={[
                   styles.filterPill,
                   { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border },

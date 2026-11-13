@@ -1246,6 +1246,14 @@ test('both search cards show their new locations after an exchange without chang
 
   await press(mallTree, `search-select-${movingItem.id}`);
   mallTree = app.renderMall();
+  await press(mallTree, 'mall-category-decor');
+  mallTree = app.renderMall();
+  await press(mallTree, 'mall-search-placement-floor-1');
+  mallTree = app.renderMall();
+  await press(mallTree, 'mall-search-wing-main');
+  mallTree = app.renderMall();
+  assert.match(textContent(findByTestId(mallTree, 'mall-search-filter-result')), /共 0 款/);
+
   const wingPager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
   assert.ok(wingPager, 'the mall renders the destination floor sections');
   const annex = wingPager.props.renderWing('annex', true);
@@ -1259,8 +1267,33 @@ test('both search cards show their new locations after an exchange without chang
   app.renderProvider();
   mallTree = app.renderMall();
 
-  assert.match(textContent(searchLocation(mallTree, movingItem.id)), /2F · 延伸區 · 延伸區店面區右側/);
+  assert.match(textContent(findByTestId(mallTree, 'mall-search-filter-result')), /共 1 款/,
+    'the active location filter count updates when the exchanged placement enters its match');
+  assert.match(textContent(searchLocation(mallTree, displacedItem.id)), /1F · 主商場 · 店面區左側/,
+    'the active 1F main-wing filter now shows the item exchanged into that location');
+  assert.equal(searchLocation(mallTree, movingItem.id), undefined,
+    'the item exchanged out of the active location no longer appears as a stale match');
+
+  await press(mallTree, 'mall-category-all');
+  mallTree = app.renderMall();
+  await press(mallTree, 'mall-search-placement-floor-2');
+  mallTree = app.renderMall();
+  await press(mallTree, 'mall-search-wing-annex');
+  mallTree = app.renderMall();
+  assert.match(textContent(findByTestId(mallTree, 'mall-search-filter-result')), /共 1 款/);
+  assert.match(textContent(searchLocation(mallTree, movingItem.id)), /2F · 延伸區 · 延伸區店面區右側/,
+    'the 2F annex filter shows the item exchanged into that location');
+  assert.equal(searchLocation(mallTree, displacedItem.id), undefined,
+    'the other item is excluded from the 2F annex filter');
+
+  await press(mallTree, 'mall-search-placement-floor-1');
+  mallTree = app.renderMall();
+  await press(mallTree, 'mall-search-wing-main');
+  mallTree = app.renderMall();
+  assert.match(textContent(findByTestId(mallTree, 'mall-search-filter-result')), /共 1 款/);
   assert.match(textContent(searchLocation(mallTree, displacedItem.id)), /1F · 主商場 · 店面區左側/);
+  assert.equal(searchLocation(mallTree, movingItem.id), undefined);
+
   const state = app.contextExports.useHabits();
   assert.deepEqual(state.mallPlacements, {
     'floor-2-annex-1-right': movingItem.id,

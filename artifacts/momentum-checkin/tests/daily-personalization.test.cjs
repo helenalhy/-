@@ -166,6 +166,18 @@ test('encouragement style and daily moods persist locally without replacing a da
   ]);
 });
 
+test('energy suggestions can be chosen before check-in while mood reflection stays gated', () => {
+  const card = fs.readFileSync(path.join(appRoot, 'components/DailyPersonalization.tsx'), 'utf8');
+  const today = fs.readFileSync(path.join(appRoot, 'app/(tabs)/index.tsx'), 'utf8');
+  assert.match(today, /<DailyMoodCard[\s\S]*?hasCheckedIn=\{habits\.some/);
+  assert.match(card, /function chooseEnergy\(energy: DailyEnergy\)[\s\S]*?if \(savingMood \|\| savingEnergy\) return/);
+  assert.match(card, /testID=\{`daily-energy-\$\{option\.id\}`\}/);
+  assert.match(card, /disabled=\{savingMood !== null \|\| savingEnergy !== null\}/);
+  assert.match(card, /function chooseMood\(mood: DailyMood\)[\s\S]*?if \(!hasCheckedIn \|\| savingMood \|\| savingEnergy\) return/);
+  assert.match(card, /精力可在開始前選擇並查看建議/);
+  assert.match(card, /今天先做 2 分鐘或最小的一步/);
+});
+
 test('today and settings expose all four motivation features', () => {
   const today = fs.readFileSync(path.join(appRoot, 'app/(tabs)/index.tsx'), 'utf8');
   const progress = fs.readFileSync(path.join(appRoot, 'app/(tabs)/progress.tsx'), 'utf8');

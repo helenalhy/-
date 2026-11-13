@@ -12,7 +12,8 @@ description: Product rules for weekly challenges, dog companions, two-minute sta
 - Daily dog greetings with a small celebratory animation are a positively received way to encourage users to return; keep them gentle and optional.
 - Shareable progress cards should contain only daily goal count, streak, and companion artwork, never account identifiers; sharing and downloading must reuse the same PNG.
 - Habit progression routes are optional and user-defined (2–5 steps), separate from the original goal, saved minimum action, and reminders. Five unique check-ins prompt a manual advance or stay choice; never auto-upgrade or add coins.
+- Daily energy levels can be recorded before the first goal check-in to show a start suggestion; mood reflection remains gated until check-in. Mood and energy records stay local-only and do not affect goals or coins.
 
-**Why:** Small actions should still count while earning less than a full goal; the same-day check-in key and atomic reward transaction prevent repeat payouts or mismatched balances. Progression should add gentle structure without silently changing what users committed to.
+**Why:** Small actions should still count while earning less than a full goal; the same-day check-in key and atomic reward transaction prevent repeat payouts or mismatched balances. Progression should add gentle structure without silently changing commitments, and energy guidance should be available before the first action.
 
-**How to apply:** Preserve proportional rewards for minimum actions and count unique local check-in dates toward an active stage. Keep progress edits, pause/resume, restart, and stage advancement explicit; the existing goal, minimum action, reminders, and regular reward rules remain authoritative.
+**How to apply:** Preserve proportional rewards for minimum actions and count unique local check-in dates toward an active stage. Keep progress edits, pause/resume, restart, and stage advancement explicit. Let users choose energy before check-in, but keep mood reflection after a check-in; neither may alter goals, reminders, or rewards.

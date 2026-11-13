@@ -142,7 +142,7 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
   }
 
   async function chooseEnergy(energy: DailyEnergy) {
-    if (!hasCheckedIn || savingMood || savingEnergy) return;
+    if (savingMood || savingEnergy) return;
     const previous = history;
     const current = history.find((entry) => entry.date === today);
     const nextEntry = { ...current, date: today, energy };
@@ -218,9 +218,9 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
             <Pressable
               key={option.id}
               onPress={() => void chooseEnergy(option.id)}
-              disabled={!hasCheckedIn || savingMood !== null || savingEnergy !== null}
+              disabled={savingMood !== null || savingEnergy !== null}
               accessibilityRole="button"
-              accessibilityState={{ selected, disabled: !hasCheckedIn || savingMood !== null || savingEnergy !== null }}
+              accessibilityState={{ selected, disabled: savingMood !== null || savingEnergy !== null }}
               accessibilityLabel={`記錄今天的精力：${option.label}`}
               testID={`daily-energy-${option.id}`}
               style={({ pressed }) => [
@@ -228,7 +228,7 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
                 {
                   backgroundColor: selected ? colors.candyMint : colors.secondary,
                   borderColor: selected ? colors.candyMintDark : colors.border,
-                  opacity: !hasCheckedIn || savingMood !== null ? 0.52 : pressed ? 0.72 : 1,
+                  opacity: savingMood !== null || savingEnergy !== null ? 0.52 : pressed ? 0.72 : 1,
                 },
               ]}
             >
@@ -245,7 +245,9 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
         </View>
       ) : null}
       <Text style={[styles.note, { color: colors.mutedForeground }]}>
-        {hasCheckedIn ? '只記錄感受，不評分，也不影響目標或金幣；紀錄只保存在這台裝置。' : '完成今天第一個目標後，就可以記下心情和精力。'}
+        {hasCheckedIn
+          ? '只記錄感受，不評分，也不影響目標或金幣；紀錄只保存在這台裝置。'
+          : '精力可在開始前選擇並查看建議；完成第一個目標後再記心情。只保存在這台裝置，不影響目標或金幣。'}
       </Text>
       {error ? <Text style={[styles.error, { color: colors.destructive }]} accessibilityRole="alert">{error}</Text> : null}
       <View style={[styles.history, { borderTopColor: colors.border }]}>

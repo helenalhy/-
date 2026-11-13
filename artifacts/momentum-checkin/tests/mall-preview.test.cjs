@@ -857,6 +857,39 @@ test('filtered empty search shows each active location condition and clears them
   assert.deepEqual(app.calls, [], 'clearing filters never changes mall items or rewards');
 });
 
+test('empty search explains when the selected category hides matches and can show all categories', async () => {
+  const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'decor');
+  const items = [
+    { ...base, id: 'matching-decor', name: '彩虹花圃' },
+    { ...base, id: 'unrelated-shop', name: '月光咖啡店', category: 'shop' },
+  ];
+  const app = mount({ purchasedItems: [], mallPlacements: {} }, items);
+  app.find('mall-search-input').props.onChangeText('花圃');
+  app.render();
+  await app.press('mall-affordable-toggle');
+  await app.press('mall-category-shop');
+
+  assert.equal(pager(app).props.total, 0);
+  assert.match(textContent(app.find('mall-search-category-empty')), /「花圃」符合 1 款.*「店鋪」分類/);
+  assert.equal(app.find('mall-search-empty'), undefined, 'category-filtered matches are not described as a keyword miss');
+  assert.equal(
+    app.find('mall-search-empty-show-all-categories').props.accessibilityLabel,
+    '切換至全部分類，查看符合搜尋的選物',
+  );
+  await app.press('mall-search-empty-show-all-categories');
+  assert.equal(app.find('mall-category-all').props.accessibilityState.selected, true);
+  assert.equal(pager(app).props.total, 1, 'returning to all categories reveals the matching item');
+  assert.ok(app.find('search-select-matching-decor'));
+  assert.equal(app.find('mall-search-input').props.value, '花圃');
+
+  await app.press('mall-affordable-toggle');
+  await app.press('mall-category-shop');
+  app.find('mall-search-input').props.onChangeText('完全不存在的款式');
+  app.render();
+  assert.ok(app.find('mall-search-empty'), 'a genuine keyword miss keeps the existing guidance');
+  assert.equal(app.find('mall-search-category-empty'), undefined);
+});
+
 test('each active location condition can be removed without changing the query or other conditions', async () => {
   const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'shop');
   const items = [

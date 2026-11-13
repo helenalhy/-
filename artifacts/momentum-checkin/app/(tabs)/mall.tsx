@@ -405,6 +405,11 @@ export default function MallScreen() {
     && visibleItems.length === 0
     && hasSearchLocationFilters
     && searchResultsWithoutLocationFilters > 0;
+  const isSearchEmptyBecauseOfCategory = isSearching
+    && visibleItems.length === 0
+    && category !== 'all'
+    && eligibleItems.length > 0
+    && !isSearchEmptyBecauseOfLocationFilters;
   const currentPlacementItem = placementIntent ? MALL_ITEM_BY_ID[placementIntent.itemId] : null;
   const floorSlots = MALL_SLOT_IDS.filter((slotId) => slotId.startsWith(`floor-${currentFloor}-`));
   const floorItemCount = floorSlots.filter((slotId) => mallPlacements[slotId]).length;
@@ -1394,7 +1399,9 @@ export default function MallScreen() {
 
         <CatalogPager id="catalog-top" page={currentCatalogPage} pages={catalogPages} total={visibleItems.length} onChange={changeCatalogPage} />
         <View style={styles.catalogList}>
-          {filteringAffordable && visibleItems.length === 0 && !isSearchEmptyBecauseOfLocationFilters && (
+          {filteringAffordable && visibleItems.length === 0
+            && !isSearchEmptyBecauseOfLocationFilters
+            && !isSearchEmptyBecauseOfCategory && (
             <View style={styles.affordableEmpty}>
               <Text testID="mall-affordable-empty" style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>目前沒有符合條件、金幣足夠且未擁有的款式。完成目標賺取更多金幣，再來挑選吧！也可切換分類、清除搜尋或查看本層完整清單；已兌換的物件可到倉庫免費重擺。</Text>
               <Pressable
@@ -1410,7 +1417,8 @@ export default function MallScreen() {
               </Pressable>
             </View>
           )}
-          {isSearching && visibleItems.length === 0 && (isSearchEmptyBecauseOfLocationFilters || !filteringAffordable) && (
+          {isSearching && visibleItems.length === 0
+            && (isSearchEmptyBecauseOfLocationFilters || isSearchEmptyBecauseOfCategory || !filteringAffordable) && (
             isSearchEmptyBecauseOfLocationFilters ? (
               <View testID="mall-search-filter-empty" style={styles.searchEmpty}>
                 <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>
@@ -1427,6 +1435,25 @@ export default function MallScreen() {
                   style={styles.searchFilterClear}
                 >
                   <Text style={[styles.filterText, { color: colors.primary }]}>清除樓層與分區篩選</Text>
+                </Pressable>
+              </View>
+            ) : isSearchEmptyBecauseOfCategory ? (
+              <View testID="mall-search-category-empty" style={styles.searchEmpty}>
+                <Text style={[styles.collectionEmpty, { color: colors.mutedForeground }]}>
+                  「{searchQuery.trim()}」符合 {eligibleItems.length} 款，但目前「{CATEGORY_NAMES[category]}」分類沒有符合的結果。
+                </Text>
+                <Pressable
+                  testID="mall-search-empty-show-all-categories"
+                  accessibilityRole="button"
+                  accessibilityLabel="切換至全部分類，查看符合搜尋的選物"
+                  onPress={() => {
+                    setHasAppliedSearchLocationFilters(false);
+                    setCategory('all');
+                    setCatalogPage(1);
+                  }}
+                  style={styles.searchFilterClear}
+                >
+                  <Text style={[styles.filterText, { color: colors.primary }]}>切換至全部分類</Text>
                 </Pressable>
               </View>
             ) : (

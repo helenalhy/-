@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
 
 const appRoot = path.resolve(__dirname, '..');
 const readApp = (relativePath) => fs.readFileSync(path.join(appRoot, relativePath), 'utf8');
@@ -55,6 +56,33 @@ const fullGuestSnapshot = {
   },
   profile: { nickname: '小星星', avatarId: 'star' },
 };
+
+test('web API calls keep the current origin while native uses the configured host', () => {
+  const configureBaseUrl = layout
+    .split('const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;')[1]
+    .split('const clerkPublishableKey:')[0];
+  function configuredUrls(platform, domain) {
+    const calls = [];
+    vm.runInNewContext(
+      `const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;\n${configureBaseUrl}`,
+      {
+        Platform: { OS: platform },
+        process: { env: { EXPO_PUBLIC_DOMAIN: domain } },
+        setBaseUrl: (url) => calls.push(url),
+      },
+    );
+    return calls;
+  }
+  assert.deepEqual(configuredUrls('web', 'build-host.example.com'), [null]);
+  assert.deepEqual(configuredUrls('web', undefined), [null]);
+  for (const platform of ['ios', 'android']) {
+    assert.deepEqual(configuredUrls(platform, 'build-host.example.com'), [
+      'https://build-host.example.com',
+    ]);
+    assert.deepEqual(configuredUrls(platform, undefined), []);
+  }
+  assert.match(layout, /setAuthTokenGetter\(Platform\.OS === 'web' \? null : \(\) => getToken\(\)\)/);
+});
 
 test('a restored connection wakes progress synchronization on native and web', () => {
   assert.match(layout, /onlineManager\.setEventListener/);

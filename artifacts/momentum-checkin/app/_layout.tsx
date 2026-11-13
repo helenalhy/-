@@ -25,7 +25,13 @@ onlineManager.setEventListener((setOnline) => {
   return () => subscription.remove();
 });
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
-if (publicDomain) setBaseUrl(`https://${publicDomain}`);
+// Browser sessions belong to the current origin, not the hostname used at build
+// time. Native clients still need an absolute URL because they have no origin.
+if (Platform.OS === 'web') {
+  setBaseUrl(null);
+} else if (publicDomain) {
+  setBaseUrl(`https://${publicDomain}`);
+}
 const clerkPublishableKey: string = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
 if (!clerkPublishableKey) {
   throw new Error('Google 登入設定尚未載入，請檢查 App 的 Clerk 環境設定。');

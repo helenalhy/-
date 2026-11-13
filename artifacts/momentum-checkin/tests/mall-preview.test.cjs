@@ -857,6 +857,61 @@ test('filtered empty search shows each active location condition and clears them
   assert.deepEqual(app.calls, [], 'clearing filters never changes mall items or rewards');
 });
 
+test('each active location condition can be removed without changing the query or other conditions', async () => {
+  const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'shop');
+  const items = [
+    { ...base, id: 'origin-floor-one', floor: 1, name: '花園甲' },
+    { ...base, id: 'origin-floor-two', floor: 2, name: '花園乙' },
+  ];
+  const app = mount(
+    { coins: 10000, purchasedItems: [], mallPlacements: {
+      'floor-2-extension3-1-left': 'origin-floor-one',
+      'floor-1-annex-1-left': 'origin-floor-two',
+    } },
+    items,
+    'ios',
+    layoutModule.exports.MALL_SLOT_IDS,
+  );
+  app.find('mall-search-input').props.onChangeText('花園');
+  app.render();
+  await app.press('mall-search-floor-1');
+  await app.press('mall-search-placement-floor-2');
+  await app.press('mall-search-wing-extension3');
+
+  assert.equal(pager(app).props.total, 1);
+  assert.deepEqual(
+    ['mall-search-remove-floor', 'mall-search-remove-placement-floor', 'mall-search-remove-wing']
+      .map((id) => app.find(id).props.accessibilityRole),
+    ['button', 'button', 'button'],
+  );
+  assert.equal(app.find('mall-search-remove-floor').props.accessibilityLabel, '移除原屬樓層 1F 篩選');
+  assert.equal(app.find('mall-search-remove-placement-floor').props.accessibilityLabel, '移除目前擺放樓層 2F 篩選');
+  assert.equal(app.find('mall-search-remove-wing').props.accessibilityLabel, '移除目前擺放分區 延伸區三 篩選');
+
+  await app.press('mall-search-remove-floor');
+  assert.equal(app.find('mall-search-input').props.value, '花園');
+  assert.equal(pager(app).props.total, 1, 'removing original floor keeps the placement floor and wing');
+  assert.equal(app.find('mall-search-floor-all').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-placement-floor-2').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-wing-extension3').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-remove-floor'), undefined);
+
+  await app.press('mall-search-remove-placement-floor');
+  assert.equal(app.find('mall-search-input').props.value, '花園');
+  assert.equal(pager(app).props.total, 1, 'removing placement floor keeps the wing filter');
+  assert.equal(app.find('mall-search-placement-floor-all').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-wing-extension3').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-remove-placement-floor'), undefined);
+
+  await app.press('mall-search-remove-wing');
+  assert.equal(app.find('mall-search-input').props.value, '花園');
+  assert.equal(pager(app).props.total, 2, 'removing the final condition restores all query matches');
+  assert.equal(app.find('mall-search-wing-all').props.accessibilityState.selected, true);
+  assert.equal(app.find('mall-search-active-location-filters'), undefined);
+  assert.equal(app.find('mall-search-clear-filters'), undefined);
+  assert.deepEqual(app.calls, [], 'removing filters does not change mall items or rewards');
+});
+
 test('search floor filters expose headings, selected options, horizontal controls, and one platform result update', async () => {
   const base = mallCatalog.MALL_ITEMS.find((item) => item.category === 'shop');
   const items = [

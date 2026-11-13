@@ -1266,6 +1266,46 @@ export default function MallScreen() {
                 })}
               </ScrollView>
             </View>
+            {hasSearchLocationFilters && (
+              <View testID="mall-search-active-location-filters" style={styles.searchActiveFilterRow}>
+                {searchFloor !== null && (
+                  <Pressable
+                    testID="mall-search-remove-floor"
+                    accessibilityRole="button"
+                    accessibilityLabel={`移除原屬樓層 ${searchFloor}F 篩選`}
+                    onPress={() => applySearchLocationFilters(null, searchPlacementFloor, searchWing)}
+                    style={[styles.searchActiveFilter, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <Text allowFontScaling style={[styles.searchFilterOptionText, { color: colors.foreground }]}>原屬樓層 {searchFloor}F</Text>
+                    <Feather name="x" size={14} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
+                {searchPlacementFloor !== null && (
+                  <Pressable
+                    testID="mall-search-remove-placement-floor"
+                    accessibilityRole="button"
+                    accessibilityLabel={`移除目前擺放樓層 ${searchPlacementFloor}F 篩選`}
+                    onPress={() => applySearchLocationFilters(searchFloor, null, searchWing)}
+                    style={[styles.searchActiveFilter, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <Text allowFontScaling style={[styles.searchFilterOptionText, { color: colors.foreground }]}>目前擺放樓層 {searchPlacementFloor}F</Text>
+                    <Feather name="x" size={14} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
+                {searchWing !== null && (
+                  <Pressable
+                    testID="mall-search-remove-wing"
+                    accessibilityRole="button"
+                    accessibilityLabel={`移除目前擺放分區 ${searchWing === 'unplaced' ? '尚未擺放' : WING_NAMES[searchWing]} 篩選`}
+                    onPress={() => applySearchLocationFilters(searchFloor, searchPlacementFloor, null)}
+                    style={[styles.searchActiveFilter, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <Text allowFontScaling style={[styles.searchFilterOptionText, { color: colors.foreground }]}>目前擺放分區 {searchWing === 'unplaced' ? '尚未擺放' : WING_NAMES[searchWing]}</Text>
+                    <Feather name="x" size={14} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
+              </View>
+            )}
             {(searchFloor !== null || searchPlacementFloor !== null || searchWing !== null) && (
               <Pressable
                 testID="mall-search-clear-filters"
@@ -1645,6 +1685,8 @@ const styles = StyleSheet.create({
   searchFilterOptions: { flexDirection: 'row', gap: 7, paddingRight: 4 },
   searchFilterPill: { minHeight: 44, justifyContent: 'center' },
   searchFilterOptionText: { fontSize: 13 },
+  searchActiveFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  searchActiveFilter: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderRadius: 99, paddingHorizontal: 11, paddingVertical: 7 },
   searchFilterClear: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 8 },
   searchFilterResultText: { fontSize: 13, lineHeight: 20 },
   redemptionControls: { gap: 9, marginBottom: 12 },

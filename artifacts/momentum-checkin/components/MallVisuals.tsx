@@ -101,6 +101,10 @@ export function MallObjectVisual({ id, itemId, itemName, floor = 1, color, icon,
   const shimmer = useRef(new Animated.Value(0)).current;
   const animationSeed = itemId ?? id;
   const reducedMotion = useReducedMotion() !== false;
+  const floorArt = getMallFloorArtProfile(floor, animationSeed);
+  const objectAnimationDelay = category === 'shop'
+    ? getShopFacadeVariant(animationSeed) * 360
+    : (floorArt.objectAnimation * 190 + floorArt.objectPattern * 53 + floor * 17) % 1200;
 
   useEffect(() => {
     if (!isActive || reducedMotion) {
@@ -109,18 +113,21 @@ export function MallObjectVisual({ id, itemId, itemName, floor = 1, color, icon,
       return;
     }
 
-    const phaseDelay = getShopFacadeVariant(animationSeed) * 360;
+    const phaseDelay = objectAnimationDelay;
+    const motionDuration = 1200 + floorArt.objectAnimation * 110;
+    const sparkleInDuration = 440 + floorArt.objectVariant * 35;
+    const sparkleOutDuration = 700 + floorArt.objectPattern * 45;
     const floatLoop = Animated.loop(Animated.sequence([
       Animated.delay(phaseDelay),
-      Animated.timing(motion, { toValue: -1.5, duration: 1400, useNativeDriver }),
-      Animated.timing(motion, { toValue: 0, duration: 1400, useNativeDriver }),
+      Animated.timing(motion, { toValue: -1.5, duration: motionDuration, useNativeDriver }),
+      Animated.timing(motion, { toValue: 0, duration: motionDuration, useNativeDriver }),
       Animated.delay(260),
     ]));
     const sparkleLoop = Animated.loop(Animated.sequence([
       Animated.delay(phaseDelay + 180),
-      Animated.timing(shimmer, { toValue: 1, duration: 520, useNativeDriver }),
-      Animated.timing(shimmer, { toValue: 0.15, duration: 850, useNativeDriver }),
-      Animated.delay(1700),
+      Animated.timing(shimmer, { toValue: 1, duration: sparkleInDuration, useNativeDriver }),
+      Animated.timing(shimmer, { toValue: 0.15, duration: sparkleOutDuration, useNativeDriver }),
+      Animated.delay(1450 + floorArt.objectPattern * 55),
     ]));
     floatLoop.start();
     sparkleLoop.start();
@@ -128,11 +135,10 @@ export function MallObjectVisual({ id, itemId, itemName, floor = 1, color, icon,
       floatLoop.stop();
       sparkleLoop.stop();
     };
-  }, [animationSeed, isActive, motion, reducedMotion, shimmer]);
+  }, [animationSeed, floorArt.objectAnimation, floorArt.objectPattern, floorArt.objectVariant, isActive, motion, objectAnimationDelay, reducedMotion, shimmer]);
 
   const archetype = resolveMallObjectArchetype(id, icon, category);
   const artwork = category === 'shop' ? undefined : OBJECT_ARTWORK[archetype];
-  const floorArt = getMallFloorArtProfile(floor, animationSeed);
   const drawing = artwork
     ? <Image source={artwork} resizeMode="contain" fadeDuration={0} style={s.sceneSprite} />
     : category === 'shop'
@@ -148,7 +154,15 @@ export function MallObjectVisual({ id, itemId, itemName, floor = 1, color, icon,
   const sparkleScale = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.15] });
   return (
     <View pointerEvents="none" style={[s.illustrationCanvas, canvasPresentation]}>
-      <Animated.View style={[s.illustrationMotion, motionPresentation, { transform: [{ translateY: motion }] }]}>
+      {category !== 'shop' && (
+        <MallObjectFloorTheme
+          floor={floor}
+          itemId={animationSeed}
+          profile={floorArt}
+          shimmer={shimmer}
+        />
+      )}
+      <Animated.View style={[s.illustrationMotion, motionPresentation, { zIndex: 1, transform: [{ translateY: motion }] }]}>
         {drawing}
       </Animated.View>
       {isActive && (
@@ -156,6 +170,79 @@ export function MallObjectVisual({ id, itemId, itemName, floor = 1, color, icon,
           <Feather name="star" size={8} color={c.candyLemon} />
         </Animated.View>
       )}
+    </View>
+  );
+}
+
+function MallObjectFloorTheme({
+  floor,
+  itemId,
+  profile,
+  shimmer,
+}: {
+  floor: number;
+  itemId: string;
+  profile: ReturnType<typeof getMallFloorArtProfile>;
+  shimmer: Animated.Value;
+}) {
+  const auraOpacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.3] });
+  const auraScale = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.04] });
+  const cornerShape = [
+    { borderRadius: 9 },
+    { borderRadius: 18 },
+    { borderRadius: 4 },
+    { borderTopLeftRadius: 18, borderBottomRightRadius: 18 },
+    { borderTopRightRadius: 18, borderBottomLeftRadius: 18 },
+    { borderRadius: 2 },
+    { borderTopLeftRadius: 4, borderTopRightRadius: 15, borderBottomLeftRadius: 15, borderBottomRightRadius: 4 },
+  ][profile.objectPattern];
+  const stripeWidth = 12 + profile.objectVariant * 2;
+
+  return (
+    <View pointerEvents="none" testID={`mall-object-floor-theme-${floor}-${itemId}`} style={s.objectThemeLayer}>
+      <Animated.View
+        style={[
+          s.objectThemeAura,
+          cornerShape,
+          {
+            backgroundColor: profile.soft,
+            borderColor: profile.secondary,
+            opacity: auraOpacity,
+            transform: [{ scale: auraScale }],
+          },
+        ]}
+      />
+      <View
+        style={[
+          s.objectThemeRibbon,
+          cornerShape,
+          {
+            backgroundColor: profile.accent,
+            borderColor: profile.secondary,
+            width: stripeWidth,
+            left: 5 + (profile.objectPattern % 3) * 2,
+            transform: [{ rotate: `${profile.objectVariant % 2 ? -12 : 12}deg` }],
+          },
+        ]}
+      >
+        <View style={[s.objectThemeRibbonGem, { backgroundColor: profile.soft }]} />
+      </View>
+      <View
+        style={[
+          s.objectThemeEmblem,
+          {
+            backgroundColor: profile.accent,
+            borderColor: profile.secondary,
+            right: 4 + (profile.objectPattern % 2) * 3,
+            top: 2 + (profile.objectVariant % 3),
+          },
+        ]}
+      >
+        <Feather name={profile.emblem as keyof typeof Feather.glyphMap} size={6} color={palette.light.card} />
+      </View>
+      <View style={[s.objectThemeMark, { backgroundColor: profile.secondary, right: 10 + (profile.objectPattern % 4) * 3 }]}>
+        <View style={[s.objectThemeMarkDot, { backgroundColor: profile.soft }]} />
+      </View>
     </View>
   );
 }
@@ -333,6 +420,13 @@ const s = StyleSheet.create({
   storefrontMark: { color: palette.light.card, fontSize: 4, fontWeight: '900' },
   storefrontRailGem: { width: 3, height: 3, borderRadius: 2, transform: [{ rotate: '45deg' }] },
   objectSparkle: { position: 'absolute', right: 6, top: 4 },
+  objectThemeLayer: { ...StyleSheet.absoluteFill, zIndex: 0 },
+  objectThemeAura: { position: 'absolute', alignSelf: 'center', top: 7, width: 48, height: 33, borderWidth: 1 },
+  objectThemeRibbon: { position: 'absolute', bottom: 2, height: 5, borderWidth: 0.7, alignItems: 'center', justifyContent: 'center', opacity: 0.9 },
+  objectThemeRibbonGem: { width: 3, height: 3, borderRadius: 2, transform: [{ rotate: '45deg' }] },
+  objectThemeEmblem: { position: 'absolute', width: 10, height: 10, borderWidth: 0.8, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  objectThemeMark: { position: 'absolute', bottom: 4, width: 4, height: 4, borderRadius: 2 },
+  objectThemeMarkDot: { width: 2, height: 2, borderRadius: 1, alignSelf: 'center', marginTop: 1 },
   visitorLayer: { zIndex: 10, elevation: 10 },
   sparkle: { position: 'absolute' },
   waterGlint: { position: 'absolute', left: '48%', top: '82%' },

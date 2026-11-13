@@ -13,6 +13,9 @@ export interface MallFloorArtProfile {
   variant: number;
   pattern: number;
   displayMark: number;
+  objectPattern: number;
+  objectVariant: number;
+  objectAnimation: number;
   roofStyle: number;
   canopyStyle: number;
   signStyle: number;
@@ -23,7 +26,7 @@ export interface MallFloorArtProfile {
   secondaryOrnament: string;
 }
 
-const FLOOR_ART: readonly Omit<MallFloorArtProfile, 'variant' | 'pattern' | 'displayMark' | 'roofStyle' | 'canopyStyle' | 'signStyle' | 'windowStyle' | 'displayStyle' | 'trimStyle' | 'ornament' | 'secondaryOrnament' | 'shopAccent' | 'shopSoft'>[] = [
+const FLOOR_ART: readonly Omit<MallFloorArtProfile, 'variant' | 'pattern' | 'displayMark' | 'objectPattern' | 'objectVariant' | 'objectAnimation' | 'roofStyle' | 'canopyStyle' | 'signStyle' | 'windowStyle' | 'displayStyle' | 'trimStyle' | 'ornament' | 'secondaryOrnament' | 'shopAccent' | 'shopSoft'>[] = [
   { title: '糖果迎賓街', emblem: 'sun', accent: c.candyRose, secondary: c.candyPeach, soft: c.candyPink },
   { title: '森林花園', emblem: 'feather', accent: c.candyMintDark, secondary: c.candyLemon, soft: c.candyMint },
   { title: '慢讀書廊', emblem: 'book-open', accent: c.candyLavenderDark, secondary: c.candyCaramel, soft: c.candyLavender },
@@ -81,6 +84,9 @@ export function getMallFloorArtProfile(floor: number, itemId: string): MallFloor
     trimStyle: stableHash(`${key}:art-6`) % 12,
     pattern: stableHash(`${key}:pattern`) % 8,
     displayMark: stableHash(`${key}:mark`) % 997,
+    objectPattern: stableHash(`${key}:object-pattern`) % 7,
+    objectVariant: stableHash(`${key}:object-variant`) % 9,
+    objectAnimation: stableHash(`${key}:object-animation`) % 6,
     ornament: ORNAMENTS[stableHash(`${key}:ornament`) % ORNAMENTS.length],
     secondaryOrnament: ORNAMENTS[stableHash(`${key}:secondary`) % ORNAMENTS.length],
   };

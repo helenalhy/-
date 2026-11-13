@@ -90,6 +90,42 @@ test('shop illustrations use stable but item-specific storefront and interior va
   );
 });
 
+test('facility and decor themes stay stable while varying by floor and item', () => {
+  const facilitiesAndDecor = mallCatalog.MALL_ITEMS.filter(({ category }) => category !== 'shop');
+  const signature = ({ accent, secondary, soft, emblem, objectPattern, objectVariant, objectAnimation, displayMark }) => (
+    [accent, secondary, soft, emblem, objectPattern, objectVariant, objectAnimation, displayMark].join('|')
+  );
+  const sample = facilitiesAndDecor.slice(0, 48);
+
+  assert.ok(facilitiesAndDecor.length > 30, 'exercise the real facility and decor catalog');
+  assert.ok(sample.every(({ id, floor }) => {
+    const art = getMallFloorArtProfile(floor, id);
+    return signature(art) === signature(getMallFloorArtProfile(floor, id));
+  }), 'each item retains its theme after leaving and revisiting the floor');
+  assert.ok(sample.some(({ id, floor }) => (
+    signature(getMallFloorArtProfile(floor, id)) !== signature(getMallFloorArtProfile(floor === 20 ? 19 : floor + 1, id))
+  )), 'the same fixture gets a distinct theme on another floor');
+  assert.ok(
+    new Set(sample.map(({ id, floor }) => signature(getMallFloorArtProfile(floor, id)))).size > sample.length * 0.9,
+    'different fixtures receive varied floor-aware accents',
+  );
+});
+
+test('mall fixture themes preserve the original drawing, touch behavior, and reduced-motion handling', () => {
+  const mall = fs.readFileSync(path.join(appRoot, 'app/(tabs)/mall.tsx'), 'utf8');
+  const visuals = fs.readFileSync(path.join(appRoot, 'components/MallVisuals.tsx'), 'utf8');
+
+  assert.match(mall, /floor=\{item\.floor\}/);
+  assert.match(visuals, /category !== 'shop' && \(\s*<MallObjectFloorTheme/);
+  assert.match(visuals, /testID=\{`mall-object-floor-theme-\$\{floor\}-\$\{itemId\}`\}/);
+  assert.match(visuals, /pointerEvents="none" testID=\{`mall-object-floor-theme/);
+  assert.match(visuals, /const drawing = artwork[\s\S]*?Image source=\{artwork\} resizeMode="contain"/);
+  assert.match(visuals, /<MallObjectFloorTheme[\s\S]*?<Animated\.View style=\{\[s\.illustrationMotion[\s\S]*?zIndex: 1/);
+  assert.match(visuals, /objectThemeLayer: \{ \.\.\.StyleSheet\.absoluteFill, zIndex: 0 \}/);
+  assert.match(visuals, /if \(!isActive \|\| reducedMotion\)/);
+  assert.match(visuals, /objectAnimationDelay/);
+});
+
 test('every redeemable shop has a unique, stable facade design for its floor', () => {
   const shops = mallCatalog.MALL_ITEMS.filter(({ category }) => category === 'shop');
   const signatures = shops.map(({ id, floor }) => {

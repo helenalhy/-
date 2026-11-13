@@ -28,6 +28,11 @@ import { DOG_STAFF_PROFILES } from '@/constants/dog-staff-customization';
 import { recommendMinimumAction } from '@/lib/minimum-action-suggestions';
 import { FULL_CHECK_IN_REWARD, getMinimumActionReward } from '@/lib/proportional-checkin-reward';
 import {
+  getActiveHabitProgressPathStep,
+  HABIT_PROGRESS_PATH_ADVANCE_AFTER,
+  type HabitProgressPathAction,
+} from '@/lib/habit-progression';
+import {
   DailyDogGreetingCard,
   DailyDogTaskCard,
   DailyLoginRewardCard,
@@ -436,6 +441,185 @@ function TwoMinuteStarterModal({
   );
 }
 
+function HabitProgressPathCard({
+  habit,
+  done,
+  isRestDay,
+  onAction,
+  onStart,
+  onEdit,
+}: {
+  habit: Habit;
+  done: boolean;
+  isRestDay: boolean;
+  onAction: (action: HabitProgressPathAction) => void;
+  onStart: () => void;
+  onEdit: () => void;
+}) {
+  const colors = useColors();
+  const path = habit.progressPath;
+  if (!path) return null;
+
+  const currentStep = path.steps[path.currentStepIndex];
+  const currentCount = path.completedDates.length;
+  const isReady = currentCount >= HABIT_PROGRESS_PATH_ADVANCE_AFTER;
+  const isLastStep = path.currentStepIndex === path.steps.length - 1;
+  const progress = Math.min(100, Math.round((currentCount / HABIT_PROGRESS_PATH_ADVANCE_AFTER) * 100));
+
+  return (
+    <View
+      style={[styles.progressPathTodayCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      testID={`habit-progress-path-${habit.id}`}
+    >
+      <View style={styles.progressPathTodayHeader}>
+        <View style={[styles.progressPathTodayIcon, { backgroundColor: colors.candyLavender }]}>
+          <Feather name="trending-up" size={15} color={colors.primary} />
+        </View>
+        <View style={styles.progressPathTodayCopy}>
+          <Text style={[styles.progressPathTodayTitle, { color: colors.foreground }]}>
+            {path.status === 'completed'
+              ? '習慣升級路線已完成'
+              : path.status === 'paused'
+                ? '習慣升級路線已暫停'
+                : `習慣升級路線 · 第 ${path.currentStepIndex + 1}/${path.steps.length} 階`}
+          </Text>
+          <Text style={[styles.progressPathTodaySubtitle, { color: colors.mutedForeground }]}>
+            {path.status === 'completed'
+              ? `你已完成「${habit.title}」的所有階段。`
+              : path.status === 'paused'
+                ? '目前階段和進度都保留著。'
+                : `目前行動：${currentStep}`}
+          </Text>
+        </View>
+        {path.status === 'active' ? (
+          <Text style={[styles.progressPathCount, { color: colors.primary }]}>
+            {isReady ? '達標' : `${currentCount}/${HABIT_PROGRESS_PATH_ADVANCE_AFTER}`}
+          </Text>
+        ) : null}
+      </View>
+
+      {path.status === 'active' && !isReady ? (
+        <>
+          <View
+            style={[styles.progressPathTrack, { backgroundColor: colors.secondary }]}
+            accessibilityRole="progressbar"
+            accessibilityValue={{ min: 0, max: HABIT_PROGRESS_PATH_ADVANCE_AFTER, now: currentCount }}
+            accessibilityLabel={`目前階段已完成 ${currentCount} 次，共需 ${HABIT_PROGRESS_PATH_ADVANCE_AFTER} 次`}
+          >
+            <View style={[styles.progressPathFill, { backgroundColor: colors.primary, width: `${progress}%` }]} />
+          </View>
+          <Text style={[styles.progressPathHint, { color: colors.mutedForeground }]}>
+            完成原目標或這一階的小步，都會累積階段進度。
+          </Text>
+          {!done && !isRestDay ? (
+            <Pressable
+              onPress={onStart}
+              accessibilityRole="button"
+              accessibilityLabel={`開始升級路線第 ${path.currentStepIndex + 1} 階：${currentStep}，兩分鐘`}
+              testID={`start-progress-path-${habit.id}`}
+              style={({ pressed }) => [
+                styles.progressPathActionButton,
+                { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 },
+              ]}
+            >
+              <Feather name="play-circle" size={15} color={colors.primary} />
+              <Text style={[styles.progressPathActionText, { color: colors.primary }]}>用這一階開始 · 2 分鐘</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={() => onAction('pause')}
+            accessibilityRole="button"
+            testID={`pause-progress-path-${habit.id}`}
+            style={styles.progressPathTextButton}
+          >
+            <Text style={[styles.progressPathTextButtonLabel, { color: colors.mutedForeground }]}>暫停路線</Text>
+          </Pressable>
+        </>
+      ) : null}
+
+      {path.status === 'active' && isReady ? (
+        <>
+          <Text style={[styles.progressPathHint, { color: colors.mutedForeground }]}>
+            {isLastStep
+              ? '最後一階已完成 5 次；你可以結束路線，或再留在這一階。'
+              : `目前階段已完成 ${currentCount} 次。要試第 ${path.currentStepIndex + 2} 階嗎？`}
+          </Text>
+          <View style={styles.progressPathChoices}>
+            <Pressable
+              onPress={() => onAction(isLastStep ? 'finish' : 'advance')}
+              accessibilityRole="button"
+              testID={`advance-progress-path-${habit.id}`}
+              style={({ pressed }) => [
+                styles.progressPathActionButton,
+                styles.progressPathChoiceButton,
+                { backgroundColor: colors.primary, opacity: pressed ? 0.78 : 1 },
+              ]}
+            >
+              <Feather name={isLastStep ? 'check-circle' : 'arrow-up-right'} size={15} color={colors.primaryForeground} />
+              <Text style={[styles.progressPathActionText, { color: colors.primaryForeground }]}>
+                {isLastStep ? '完成路線' : `前進到第 ${path.currentStepIndex + 2} 階`}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onAction('stay')}
+              accessibilityRole="button"
+              testID={`stay-progress-path-${habit.id}`}
+              style={({ pressed }) => [
+                styles.progressPathActionButton,
+                styles.progressPathChoiceButton,
+                { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 },
+              ]}
+            >
+              <Text style={[styles.progressPathActionText, { color: colors.primary }]}>留在這一階</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
+
+      {path.status === 'paused' ? (
+        <Pressable
+          onPress={() => onAction('resume')}
+          accessibilityRole="button"
+          testID={`resume-progress-path-${habit.id}`}
+          style={({ pressed }) => [
+            styles.progressPathActionButton,
+            { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 },
+          ]}
+        >
+          <Feather name="play" size={15} color={colors.primary} />
+          <Text style={[styles.progressPathActionText, { color: colors.primary }]}>繼續這條路線</Text>
+        </Pressable>
+      ) : null}
+
+      {path.status === 'completed' ? (
+        <View style={styles.progressPathChoices}>
+          <Pressable
+            onPress={() => onAction('restart')}
+            accessibilityRole="button"
+            testID={`restart-progress-path-${habit.id}`}
+            style={({ pressed }) => [
+              styles.progressPathActionButton,
+              styles.progressPathChoiceButton,
+              { backgroundColor: colors.secondary, opacity: pressed ? 0.72 : 1 },
+            ]}
+          >
+            <Feather name="rotate-ccw" size={14} color={colors.primary} />
+            <Text style={[styles.progressPathActionText, { color: colors.primary }]}>從第一階重新開始</Text>
+          </Pressable>
+          <Pressable
+            onPress={onEdit}
+            accessibilityRole="button"
+            testID={`edit-progress-path-${habit.id}`}
+            style={styles.progressPathTextButton}
+          >
+            <Text style={[styles.progressPathTextButtonLabel, { color: colors.mutedForeground }]}>修改階段</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function HabitRow({ habit, done, reward, isRestDay, canMakeUp, showMakeUp, makeUpRewardAlreadyEarned, completedStep, lowEnergyMode, onToggle, onMakeUp, onStartTwoMinute, onEdit, onManage }: {
   habit: Habit;
   done: boolean;
@@ -616,6 +800,7 @@ export function TodayScreen() {
     claimDailyDogTask,
     claimDailyLoginReward,
     toggleCheckIn,
+    updateHabitProgressPath,
     makeUpYesterday,
     deleteHabit,
   } = useHabits();
@@ -850,6 +1035,25 @@ export function TodayScreen() {
     } catch (error) {
       Alert.alert('暫時無法補打卡', error instanceof Error ? error.message : '請稍後再試。');
     }
+  }
+
+  async function handleProgressPathAction(habit: Habit, action: HabitProgressPathAction) {
+    try {
+      await updateHabitProgressPath(habit.id, action);
+      if (action === 'advance' || action === 'finish' || action === 'restart') {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
+    } catch {
+      Alert.alert('路線沒有儲存成功', '你的目標和打卡紀錄仍然保留，請再試一次。');
+    }
+  }
+
+  function startProgressPath(habit: Habit) {
+    const action = getActiveHabitProgressPathStep(habit.progressPath);
+    if (!action) return;
+    setFocusHabit({ ...habit, minimumAction: action });
+    setFocusActionIsRecommendation(true);
+    setFocusStartPrompt(null);
   }
 
   return (
@@ -1141,13 +1345,14 @@ export function TodayScreen() {
                   {lowEnergyMode ? LOW_ENERGY_PROMPT : START_SCENARIO_PROMPTS[startScenario!]} 選一個目標開始：
                 </Text>
                 {startableHabits.length > 0 ? startableHabits.map((habit) => {
-                  const action = habit.minimumAction ?? recommendMinimumAction(habit);
+                  const progressPathAction = getActiveHabitProgressPathStep(habit.progressPath);
+                  const action = progressPathAction ?? habit.minimumAction ?? recommendMinimumAction(habit);
                   return (
                     <Pressable
                       key={habit.id}
                       onPress={() => {
                         setFocusHabit({ ...habit, minimumAction: action });
-                        setFocusActionIsRecommendation(!habit.minimumAction);
+                        setFocusActionIsRecommendation(Boolean(progressPathAction) || !habit.minimumAction);
                         setFocusStartPrompt(lowEnergyMode ? LOW_ENERGY_PROMPT : START_SCENARIO_PROMPTS[startScenario!]);
                       }}
                       accessibilityRole="button"
@@ -1251,31 +1456,42 @@ export function TodayScreen() {
         ) : (
           <View style={styles.habitList}>
             {visibleHabits.map((habit) => (
-              <HabitRow
-                key={habit.id}
-                habit={habit}
-                done={habit.checkIns.includes(today)}
-                reward={getCheckInReward(habit.id)}
-                isRestDay={habit.restDays.includes(getWeekday(today))}
-                lowEnergyMode={lowEnergyMode}
-                canMakeUp={canMakeUpYesterday(habit, today, makeupDatesThisAccount)}
-                showMakeUp={
-                  habit.createdAt <= getPreviousLocalDate(today)
-                  && !habit.checkIns.includes(getPreviousLocalDate(today))
-                  && !habit.restDays.includes(getWeekday(getPreviousLocalDate(today)))
-                }
-                makeUpRewardAlreadyEarned={rewardedCheckIns.includes(`${habit.id}:${getPreviousLocalDate(today)}`)}
-                completedStep={habit.stepCheckIns[today]}
-                onToggle={(step) => handleToggle(habit, step)}
-                onMakeUp={() => handleMakeUp(habit)}
-                onStartTwoMinute={(minimumAction, isRecommendation) => {
-                  setFocusHabit({ ...habit, minimumAction });
-                  setFocusActionIsRecommendation(isRecommendation);
-                  setFocusStartPrompt(null);
-                }}
-                onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
-                onManage={() => openHabitActions(habit)}
-              />
+              <React.Fragment key={habit.id}>
+                <HabitRow
+                  habit={habit}
+                  done={habit.checkIns.includes(today)}
+                  reward={getCheckInReward(habit.id)}
+                  isRestDay={habit.restDays.includes(getWeekday(today))}
+                  lowEnergyMode={lowEnergyMode}
+                  canMakeUp={canMakeUpYesterday(habit, today, makeupDatesThisAccount)}
+                  showMakeUp={
+                    habit.createdAt <= getPreviousLocalDate(today)
+                    && !habit.checkIns.includes(getPreviousLocalDate(today))
+                    && !habit.restDays.includes(getWeekday(getPreviousLocalDate(today)))
+                  }
+                  makeUpRewardAlreadyEarned={rewardedCheckIns.includes(`${habit.id}:${getPreviousLocalDate(today)}`)}
+                  completedStep={habit.stepCheckIns[today]}
+                  onToggle={(step) => handleToggle(habit, step)}
+                  onMakeUp={() => handleMakeUp(habit)}
+                  onStartTwoMinute={(minimumAction, isRecommendation) => {
+                    setFocusHabit({ ...habit, minimumAction });
+                    setFocusActionIsRecommendation(isRecommendation);
+                    setFocusStartPrompt(null);
+                  }}
+                  onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
+                  onManage={() => openHabitActions(habit)}
+                />
+                {habit.progressPath ? (
+                  <HabitProgressPathCard
+                    habit={habit}
+                    done={habit.checkIns.includes(today)}
+                    isRestDay={habit.restDays.includes(getWeekday(today))}
+                    onAction={(action) => void handleProgressPathAction(habit, action)}
+                    onStart={() => startProgressPath(habit)}
+                    onEdit={() => router.push({ pathname: '/habit-editor', params: { id: habit.id } })}
+                  />
+                ) : null}
+              </React.Fragment>
             ))}
           </View>
         )}
@@ -1491,6 +1707,22 @@ const styles = StyleSheet.create({
   showAllButton: { paddingVertical: 7, paddingLeft: 5 },
   showAllText: { fontSize: 10, fontWeight: '700' },
   habitList: { gap: 10 },
+  progressPathTodayCard: { borderWidth: 1, borderRadius: 16, padding: 12, marginTop: -2, gap: 8 },
+  progressPathTodayHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  progressPathTodayIcon: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  progressPathTodayCopy: { flex: 1, minWidth: 0, gap: 3 },
+  progressPathTodayTitle: { fontSize: 11, fontWeight: '700' },
+  progressPathTodaySubtitle: { fontSize: 10, lineHeight: 15 },
+  progressPathCount: { fontSize: 10, fontWeight: '700' },
+  progressPathTrack: { height: 6, borderRadius: 99, overflow: 'hidden' },
+  progressPathFill: { height: '100%', borderRadius: 99 },
+  progressPathHint: { fontSize: 10, lineHeight: 15 },
+  progressPathActionButton: { minHeight: 40, borderRadius: 12, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  progressPathActionText: { fontSize: 10, lineHeight: 14, fontWeight: '700', textAlign: 'center' },
+  progressPathChoices: { flexDirection: 'row', gap: 8 },
+  progressPathChoiceButton: { flex: 1, paddingHorizontal: 7 },
+  progressPathTextButton: { alignSelf: 'center', paddingHorizontal: 10, paddingVertical: 5 },
+  progressPathTextButtonLabel: { fontSize: 10, fontWeight: '600' },
   habitCard: { minHeight: 75, borderRadius: 19, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
   habitIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   habitInfo: { flex: 1, justifyContent: 'center', minWidth: 0 },

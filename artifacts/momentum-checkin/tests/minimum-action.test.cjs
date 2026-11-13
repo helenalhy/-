@@ -29,7 +29,7 @@ test('today offers a minimum-action timer and a separate normal completion choic
   assert.match(today, /建議最小行動/);
   assert.match(today, /habit\.minimumAction \?\? recommendMinimumAction\(habit\)/);
   assert.match(today, /完成最小行動並打卡/);
-  assert.match(today, /正常完成\$\{habit\.title\}/);
+  assert.match(today, /habit\.minimumAction \? '正常完成' : '完成'\}\$\{habit\.title\}/);
   assert.match(today, /onCompleteMinimumAction=\{focusHabit\.minimumAction[\s\S]*?getMinimumActionReward\(focusHabit\.title, focusHabit\.minimumAction/);
   assert.match(today, /完整 \+\{reward\} · 小步 \+\{minimumActionReward\} 金幣/);
   assert.match(today, /完成小步 \+\{minimumActionReward\} 金幣 · 完整目標 \+\{FULL_CHECK_IN_REWARD\} 金幣/);
@@ -43,7 +43,7 @@ test('today offers situation-based quick starts with each unfinished goal and it
   assert.match(today, /testID="quick-start-card"/);
   assert.match(today, /testID=\{`start-scenario-\$\{scenario\.id\}`\}/);
   assert.match(today, /testID=\{`quick-start-habit-\$\{habit\.id\}`\}/);
-  assert.match(today, /const action = habit\.minimumAction \?\? recommendMinimumAction\(habit\)/);
+  assert.match(today, /const action = progressPathAction \?\? habit\.minimumAction \?\? recommendMinimumAction\(habit\)/);
   assert.match(today, /setFocusStartPrompt\(lowEnergyMode \? LOW_ENERGY_PROMPT/);
   assert.match(today, /testID="quick-start-prompt"/);
 });

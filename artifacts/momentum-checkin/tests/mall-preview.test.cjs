@@ -2376,6 +2376,9 @@ function mountHabitsContext(initialStorage = new Map(), options = {}) {
     if (name === '@/lib/dog-companion') {
       return loadTsModule(path.join(__dirname, '../lib/dog-companion.ts'));
     }
+    if (name === '@/lib/habit-progression') {
+      return loadTsModule(path.join(__dirname, '../lib/habit-progression.ts'));
+    }
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: () => false,

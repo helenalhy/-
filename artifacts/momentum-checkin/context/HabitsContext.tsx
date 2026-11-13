@@ -36,6 +36,13 @@ import {
 import { getMissedScheduledStreakDates, getStreakRescueDate } from '@/lib/streak-protection';
 import { getWeeklyChallengeRewardItemId } from '@/lib/weekly-challenge-rewards';
 import {
+  applyHabitProgressPathAction,
+  normalizeHabitProgressPath,
+  updateHabitProgressPathCheckIn,
+  type HabitProgressPath,
+  type HabitProgressPathAction,
+} from '@/lib/habit-progression';
+import {
   DAILY_DOG_TASK_REWARD,
   getDailyDogTaskRewardKey,
 } from '@/lib/daily-dog-task';
@@ -98,6 +105,7 @@ export interface Habit {
   makeupCheckIns: string[];
   weeklyChallengeTarget?: number;
   minimumAction?: string;
+  progressPath?: HabitProgressPath;
 }
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
@@ -199,7 +207,8 @@ interface HabitsContextValue {
   claimDailyDogTask: () => Promise<number>;
   claimDailyLoginReward: () => Promise<void>;
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns' | 'weeklyChallengeTarget'>) => Promise<void>;
-  updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays' | 'minimumAction'>) => Promise<void>;
+  updateHabit: (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays' | 'minimumAction' | 'progressPath'>) => Promise<void>;
+  updateHabitProgressPath: (id: string, action: HabitProgressPathAction) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   toggleCheckIn: (id: string, completedStep?: string, rewardAmount?: number) => Promise<number>;
   makeUpYesterday: (id: string) => Promise<number>;
@@ -486,7 +495,8 @@ function normalizeHabits(habits: Habit[]): Habit[] {
     const minimumAction = typeof habit.minimumAction === 'string'
       ? habit.minimumAction.trim().slice(0, 120) || undefined
       : undefined;
-    return { ...habit, rewardCategory, color: categoryColor, steps, restDays, stepCheckIns, makeupCheckIns, weeklyChallengeTarget, minimumAction };
+    const progressPath = normalizeHabitProgressPath(habit.progressPath);
+    return { ...habit, rewardCategory, color: categoryColor, steps, restDays, stepCheckIns, makeupCheckIns, weeklyChallengeTarget, minimumAction, progressPath };
   });
 }
 
@@ -1197,19 +1207,36 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const addHabit = useCallback(async (habit: Omit<Habit, 'id' | 'createdAt' | 'checkIns' | 'stepCheckIns' | 'makeupCheckIns'>) => {
     const minimumAction = habit.minimumAction?.trim().slice(0, 120) || undefined;
-    const next = [...habits, { ...habit, minimumAction, id: createId(), createdAt: today, checkIns: [], stepCheckIns: {}, makeupCheckIns: [] }];
+    const progressPath = normalizeHabitProgressPath(habit.progressPath);
+    const next = [...habits, { ...habit, minimumAction, progressPath, id: createId(), createdAt: today, checkIns: [], stepCheckIns: {}, makeupCheckIns: [] }];
     await save(next);
   }, [habits, save, today]);
 
-  const updateHabit = useCallback(async (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays' | 'minimumAction'>) => {
+  const updateHabit = useCallback(async (id: string, updates: Pick<Habit, 'title' | 'reason' | 'icon' | 'color' | 'rewardCategory' | 'steps' | 'restDays' | 'minimumAction' | 'progressPath'>) => {
     await save(habits.map((habit) => habit.id === id ? {
       ...habit,
       ...updates,
       minimumAction: updates.minimumAction?.trim().slice(0, 120) || undefined,
+      progressPath: Object.prototype.hasOwnProperty.call(updates, 'progressPath')
+        ? normalizeHabitProgressPath(updates.progressPath)
+        : habit.progressPath,
       stepCheckIns: Object.fromEntries(
         Object.entries(habit.stepCheckIns).filter(([, step]) => updates.steps.includes(step)),
       ),
     } : habit));
+  }, [habits, save]);
+
+  const updateHabitProgressPath = useCallback(async (id: string, action: HabitProgressPathAction) => {
+    let found = false;
+    const nextHabits = habits.map((habit) => {
+      if (habit.id !== id) return habit;
+      found = true;
+      const progressPath = applyHabitProgressPathAction(habit.progressPath, action);
+      if (!progressPath) throw new Error('找不到這個習慣的升級路線');
+      return { ...habit, progressPath };
+    });
+    if (!found) throw new Error('找不到這個目標');
+    await save(nextHabits);
   }, [habits, save]);
 
   const deleteHabit = useCallback(async (id: string) => {
@@ -1248,6 +1275,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
               ? item.checkIns.filter((date) => date !== checkInDate)
               : [...item.checkIns, checkInDate],
             stepCheckIns,
+            progressPath: updateHabitProgressPathCheckIn(item.progressPath, checkInDate, !alreadyDone),
           };
         });
         let reward = 0;
@@ -2239,8 +2267,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
       habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
-      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
+      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, updateHabitProgressPath, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, updateHabitProgressPath, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

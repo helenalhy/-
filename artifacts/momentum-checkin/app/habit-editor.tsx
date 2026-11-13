@@ -15,6 +15,14 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 import palette from '@/constants/colors';
 import { HABIT_ICON_OPTIONS } from '@/constants/habit-icons';
 import { WEEKDAY_OPTIONS } from '@/lib/habit-schedule';
+import {
+  buildHabitProgressPath,
+  HABIT_PROGRESS_PATH_ADVANCE_AFTER,
+  HABIT_PROGRESS_PATH_MAX_STEP_LENGTH,
+  HABIT_PROGRESS_PATH_MAX_STEPS,
+  HABIT_PROGRESS_PATH_MIN_STEPS,
+  sanitizeHabitProgressSteps,
+} from '@/lib/habit-progression';
 import { useHabits, type RewardCategory } from '@/context/HabitsContext';
 import { useColors } from '@/hooks/useColors';
 
@@ -30,6 +38,11 @@ export default function HabitEditorScreen() {
   const [reason, setReason] = useState(existing?.reason ?? '');
   const [stepsDraft, setStepsDraft] = useState(existing?.steps.join('\n') ?? '');
   const [minimumAction, setMinimumAction] = useState(existing?.minimumAction ?? '');
+  const [progressPathDraft, setProgressPathDraft] = useState(existing?.progressPath?.steps.join('\n') ?? '');
+  const [progressPathEnabled, setProgressPathEnabled] = useState(Boolean(
+    existing?.progressPath && existing.progressPath.status !== 'paused',
+  ));
+  const [restartProgressPath, setRestartProgressPath] = useState(false);
   const [restDays, setRestDays] = useState<number[]>(existing?.restDays ?? []);
   const [selected, setSelected] = useState(() => {
     const found = options.find((option) => option.icon === existing?.icon);
@@ -48,6 +61,28 @@ export default function HabitEditorScreen() {
       Alert.alert('還差一個小目標', '寫下你想為自己做到的事。');
       return;
     }
+    const rawProgressSteps = progressPathDraft.split('\n').map((step) => step.trim()).filter(Boolean);
+    if (rawProgressSteps.length > HABIT_PROGRESS_PATH_MAX_STEPS) {
+      Alert.alert('升級路線最多五階', '請保留最多五個階段，再儲存。');
+      return;
+    }
+    if (rawProgressSteps.some((step) => step.length > HABIT_PROGRESS_PATH_MAX_STEP_LENGTH)) {
+      Alert.alert('階段文字太長', `每階最多 ${HABIT_PROGRESS_PATH_MAX_STEP_LENGTH} 個字，請縮短後再儲存。`);
+      return;
+    }
+    const progressSteps = sanitizeHabitProgressSteps(rawProgressSteps);
+    if ((progressPathEnabled || progressSteps.length > 0) && progressSteps.length < HABIT_PROGRESS_PATH_MIN_STEPS) {
+      Alert.alert('升級路線至少需要兩階', '每行寫一個逐步增加的行動；不想使用時可以關閉路線或清空內容。');
+      return;
+    }
+    const progressPath = progressSteps.length > 0
+      ? buildHabitProgressPath(
+        existing?.progressPath,
+        progressSteps,
+        progressPathEnabled || restartProgressPath,
+        restartProgressPath,
+      )
+      : undefined;
     setSaving(true);
     try {
       if (existing) {
@@ -60,6 +95,7 @@ export default function HabitEditorScreen() {
           steps: [...new Set(stepsDraft.split('\n').map((step) => step.trim()).filter(Boolean))].slice(0, 5),
           restDays,
           minimumAction: minimumAction.trim(),
+          progressPath,
         });
       } else {
         await addHabit({
@@ -71,6 +107,7 @@ export default function HabitEditorScreen() {
           steps: [...new Set(stepsDraft.split('\n').map((step) => step.trim()).filter(Boolean))].slice(0, 5),
           restDays,
           minimumAction: minimumAction.trim(),
+          progressPath,
         });
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -173,6 +210,71 @@ export default function HabitEditorScreen() {
           確認完成最小行動後會記錄為今日完成；同一目標每天仍只領一次金幣。
         </Text>
 
+        <View style={[styles.progressPathCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.progressPathHeader}>
+            <View style={[styles.progressPathIcon, { backgroundColor: colors.candyLavender }]}>
+              <Feather name="trending-up" size={17} color={colors.primary} />
+            </View>
+            <View style={styles.progressPathCopy}>
+              <Text style={[styles.progressPathTitle, { color: colors.foreground }]}>習慣升級路線（選填）</Text>
+              <Text style={[styles.progressPathSubtitle, { color: colors.mutedForeground }]}>
+                把大目標拆成 2–5 階，按自己的步調前進。
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => setProgressPathEnabled((enabled) => !enabled)}
+            accessibilityRole="button"
+            accessibilityLabel={progressPathEnabled ? '暫停習慣升級路線' : '啟用習慣升級路線'}
+            accessibilityState={{ selected: progressPathEnabled }}
+            testID="toggle-habit-progress-path"
+            style={[styles.progressPathToggle, { backgroundColor: progressPathEnabled ? colors.secondary : colors.background, borderColor: colors.border }]}
+          >
+            <Feather name={progressPathEnabled ? 'check-circle' : 'circle'} size={17} color={colors.primary} />
+            <Text style={[styles.progressPathToggleText, { color: colors.primary }]}>
+              {progressPathEnabled ? '路線已開啟' : '開啟升級路線'}
+            </Text>
+          </Pressable>
+          <TextInput
+            value={progressPathDraft}
+            onChangeText={setProgressPathDraft}
+            placeholder={'每行一階，例如：\n閱讀 1 頁\n閱讀 5 頁\n閱讀 10 頁'}
+            placeholderTextColor={colors.mutedForeground}
+            maxLength={620}
+            multiline
+            textAlignVertical="top"
+            style={[styles.input, styles.progressPathInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+            accessibilityLabel="習慣升級路線階段，每行一階，最少兩階最多五階"
+            testID="habit-progress-path-input"
+          />
+          <Text style={[styles.sectionHint, { color: colors.mutedForeground }]}>
+            每階完成 5 次後才會詢問是否升級。完成原目標或目前階段的小步都會累積；金幣按現有規則計算。
+          </Text>
+          <Text style={[styles.progressPathNote, { color: colors.mutedForeground }]}>
+            {existing?.progressPath?.status === 'completed'
+              ? '這條路線已完成。重新開始會從第一階計算。'
+              : existing?.progressPath?.status === 'paused' && !progressPathEnabled
+                ? '路線已暫停，現有階段進度會保留。'
+                : '原本目標、最小行動和提醒時段都不會被改寫。'}
+          </Text>
+          {existing?.progressPath?.status === 'completed' ? (
+            <Pressable
+              onPress={() => {
+                setRestartProgressPath(true);
+                setProgressPathEnabled(true);
+              }}
+              accessibilityRole="button"
+              testID="restart-habit-progress-path"
+              style={[styles.progressPathToggle, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+            >
+              <Feather name="rotate-ccw" size={15} color={colors.primary} />
+              <Text style={[styles.progressPathToggleText, { color: colors.primary }]}>
+                {restartProgressPath ? '已選擇重新開始' : '重新開始路線'}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
         <Text style={[styles.label, { color: colors.foreground, marginTop: 19 }]}>安排每週休息日</Text>
         <Text style={[styles.sectionHint, { color: colors.mutedForeground }]}>
           休息日不會中斷連續紀錄，也不會出現在今日待辦。
@@ -268,6 +370,16 @@ const styles = StyleSheet.create({
   reasonInput: { minHeight: 84 },
   sectionHint: { fontSize: 11, lineHeight: 17, marginTop: -3, marginBottom: 8 },
   stepsInput: { minHeight: 112 },
+  progressPathCard: { borderWidth: 1, borderRadius: 17, padding: 14, marginTop: 23, gap: 10 },
+  progressPathHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  progressPathIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  progressPathCopy: { flex: 1, gap: 3 },
+  progressPathTitle: { fontSize: 13, fontWeight: '700' },
+  progressPathSubtitle: { fontSize: 10, lineHeight: 15 },
+  progressPathToggle: { minHeight: 42, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  progressPathToggleText: { fontSize: 12, fontWeight: '700' },
+  progressPathInput: { minHeight: 100 },
+  progressPathNote: { fontSize: 10, lineHeight: 15 },
   weekdayOptions: { flexDirection: 'row', justifyContent: 'space-between', gap: 7 },
   weekdayOption: { flex: 1, minHeight: 42, borderWidth: 1.5, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   weekdayText: { fontSize: 13, fontWeight: '700' },

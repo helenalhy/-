@@ -20,6 +20,16 @@ new Function('require', 'module', 'exports', dogCompanionSource)(
   dogCompanionModule,
   dogCompanionModule.exports,
 );
+const habitProgressionSource = ts.transpileModule(
+  fs.readFileSync(path.join(__dirname, '../lib/habit-progression.ts'), 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } },
+).outputText;
+const habitProgressionModule = { exports: {} };
+new Function('require', 'module', 'exports', habitProgressionSource)(
+  (name) => { throw new Error(`Unexpected habit progression dependency: ${name}`); },
+  habitProgressionModule,
+  habitProgressionModule.exports,
+);
 const key = 'momentum.mall.v1';
 const habitsKey = 'momentum.habits.v1';
 const checkInTransactionKey = 'momentum.checkin-transaction.v1';
@@ -212,6 +222,7 @@ async function mount(storage, { failWritesOnLoad = false, expectedStorageError =
       },
     };
     if (name === '@/lib/dog-companion') return dogCompanionModule.exports;
+    if (name === '@/lib/habit-progression') return habitProgressionModule.exports;
     if (name === '@/constants/mall-shop-display') return {
       SHOP_DISPLAY_SLOT_COUNT: 18,
       canDisplayShopProducts: (decoration) => /shelf|rack|display|展示|貨架/i.test(`${decoration.id} ${decoration.name}`),

@@ -176,6 +176,10 @@ test('energy suggestions can be chosen before check-in while mood reflection sta
   assert.match(card, /function chooseMood\(mood: DailyMood\)[\s\S]*?if \(!hasCheckedIn \|\| savingMood \|\| savingEnergy\) return/);
   assert.match(card, /精力可在開始前選擇並查看建議/);
   assert.match(card, /今天先做 2 分鐘或最小的一步/);
+  assert.match(card, /testID="start-energy-recommendation"/);
+  assert.match(today, /recommendedAction=\{energyStartHabit && energySuggestedAction/);
+  assert.match(today, /onStartRecommendedAction=\{startEnergyRecommendedAction\}/);
+  assert.match(today, /setFocusHabit\(\{ \.\.\.energyStartHabit, minimumAction: energySuggestedAction \}\)/);
 });
 
 test('today and settings expose all four motivation features', () => {

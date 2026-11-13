@@ -101,7 +101,17 @@ function shortDate(date: string): string {
   return `${Number(month)}/${Number(day)}`;
 }
 
-export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheckedIn: boolean }) {
+export function DailyMoodCard({
+  today,
+  hasCheckedIn,
+  recommendedAction,
+  onStartRecommendedAction,
+}: {
+  today: string;
+  hasCheckedIn: boolean;
+  recommendedAction?: { habitTitle: string; action: string } | null;
+  onStartRecommendedAction?: () => void;
+}) {
   const colors = useColors();
   const [history, setHistory] = useState<MoodEntry[]>([]);
   const [savingMood, setSavingMood] = useState<DailyMood | null>(null);
@@ -243,6 +253,32 @@ export function DailyMoodCard({ today, hasCheckedIn }: { today: string; hasCheck
           <Feather name="zap" size={13} color={colors.primary} />
           <Text style={[styles.note, { color: colors.foreground, flex: 1 }]}>{energyAdvice}</Text>
         </View>
+      ) : null}
+      {currentEnergy && recommendedAction && onStartRecommendedAction ? (
+        <View style={styles.energyStart} testID="energy-recommended-action">
+          <View style={styles.energyStartCopy}>
+            <Text style={[styles.energyStartLabel, { color: colors.mutedForeground }]}>今天可以先試</Text>
+            <Text style={[styles.energyStartAction, { color: colors.foreground }]} numberOfLines={2}>
+              {recommendedAction.habitTitle} · {recommendedAction.action}
+            </Text>
+          </View>
+          <Pressable
+            onPress={onStartRecommendedAction}
+            accessibilityRole="button"
+            accessibilityLabel={`開始${recommendedAction.habitTitle}：${recommendedAction.action}，兩分鐘`}
+            testID="start-energy-recommendation"
+            style={({ pressed }) => [
+              styles.energyStartButton,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.76 : 1 },
+            ]}
+          >
+            <Feather name="play" size={14} color={colors.primaryForeground} />
+            <Text style={[styles.energyStartButtonText, { color: colors.primaryForeground }]}>開始 2 分鐘</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {currentEnergy && !recommendedAction ? (
+        <Text style={[styles.note, { color: colors.mutedForeground }]}>今天沒有待開始的目標，可以安心休息。</Text>
       ) : null}
       <Text style={[styles.note, { color: colors.mutedForeground }]}>
         {hasCheckedIn
@@ -596,6 +632,12 @@ const styles = StyleSheet.create({
   energyRow: { flexDirection: 'row', gap: 7, marginTop: 14 },
   energyOption: { flex: 1, minHeight: 49, borderWidth: 1, borderRadius: 13, alignItems: 'center', justifyContent: 'center', gap: 4 },
   energyAdvice: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 10, marginTop: 9 },
+  energyStart: { flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 13, padding: 9, marginTop: 8 },
+  energyStartCopy: { flex: 1, minWidth: 0, gap: 3 },
+  energyStartLabel: { fontSize: 10, fontWeight: '600' },
+  energyStartAction: { fontSize: 11, lineHeight: 15, fontWeight: '600' },
+  energyStartButton: { minHeight: 40, borderRadius: 12, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  energyStartButtonText: { fontSize: 10, fontWeight: '700' },
   moodOption: { flex: 1, minHeight: 57, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5 },
   moodLabel: { fontSize: 11, fontWeight: '600' },
   history: { marginTop: 13, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },

@@ -825,6 +825,13 @@ export function TodayScreen() {
   const startableHabits = habits.filter((habit) => (
     !habit.checkIns.includes(today) && !habit.restDays.includes(getWeekday(today))
   ));
+  const energyStartHabit = startableHabits[0] ?? null;
+  const energyStartProgressPathAction = energyStartHabit
+    ? getActiveHabitProgressPathStep(energyStartHabit.progressPath)
+    : null;
+  const energySuggestedAction = energyStartHabit
+    ? energyStartProgressPathAction ?? energyStartHabit.minimumAction ?? recommendMinimumAction(energyStartHabit)
+    : null;
   const focusedHabit = habits.find((habit) => habit.id === focusedHabitId) ?? null;
   const visibleHabits = focusedHabit ? [focusedHabit] : habits;
   const scheduledTodayDone = scheduledToday.filter((habit) => habit.checkIns.includes(today)).length;
@@ -1056,6 +1063,13 @@ export function TodayScreen() {
     setFocusStartPrompt(null);
   }
 
+  function startEnergyRecommendedAction() {
+    if (!energyStartHabit || !energySuggestedAction) return;
+    setFocusHabit({ ...energyStartHabit, minimumAction: energySuggestedAction });
+    setFocusActionIsRecommendation(Boolean(energyStartProgressPathAction) || !energyStartHabit.minimumAction);
+    setFocusStartPrompt('配合今天的精力，先做這一小步；完成後由你確認才會記錄打卡。');
+  }
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
@@ -1203,6 +1217,10 @@ export function TodayScreen() {
             <DailyMoodCard
               today={today}
               hasCheckedIn={habits.some((habit) => habit.checkIns.includes(today))}
+              recommendedAction={energyStartHabit && energySuggestedAction
+                ? { habitTitle: energyStartHabit.title, action: energySuggestedAction }
+                : null}
+              onStartRecommendedAction={startEnergyRecommendedAction}
             />
             <DailyPersonalRewardCard
               today={today}

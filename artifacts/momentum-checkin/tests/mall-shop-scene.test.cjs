@@ -383,6 +383,24 @@ test('equipment classification: espresso is tabletop, oven/cabinets/staff are fl
   assert.equal(classifyDecoration({ id: 'tops-wardrobe', visual: 'clothing-wardrobe' }).cls, 'floor');
 });
 
+test('onsen bath keeps its floor footprint while animating water, petals and steam accessibly', () => {
+  const object = fs.readFileSync(path.join(__dirname, '../components/ThemedMallObject.tsx'), 'utf8');
+  const onsenStyles = object.slice(object.indexOf('onsenSteam:'), object.indexOf('onsenSupplyCabinet:'));
+
+  assert.match(object, /case 'onsen-bath':\s*drawing = <OnsenBath color=\{color\} \/>;/);
+  assert.match(object, /function OnsenBath\(/);
+  assert.match(object, /const reduceMotion = useReducedMotion\(\)/);
+  assert.match(object, /if \(reduceMotion !== false\)/, 'keep the scene still until motion is known to be allowed');
+  assert.match(object, /Animated\.loop\(Animated\.sequence/);
+  assert.match(object, /onsenWaterRipple,[\s\S]*?scaleX: rippleScale/);
+  assert.match(object, /onsenSteamWisp,[\s\S]*?translateY:[\s\S]*?outputRange: \[1, -7\]/);
+  assert.match(object, /onsenPetal,[\s\S]*?translateY:[\s\S]*?translateX:/);
+  assert.match(onsenStyles, /onsenSteam: \{ position: 'absolute'/, 'steam must not add to the object footprint');
+  assert.match(onsenStyles, /onsenBathRim: \{ width: 54, height: 27/);
+  assert.match(onsenStyles, /onsenBathWater: \{ width: 44, height: 17/);
+  assert.match(onsenStyles, /onsenBathBase: \{ width: 56, height: 5/);
+});
+
 test('cafe coffee machine lands on the right counter top; new side-table slots use real tables', () => {
   const counter = resolveObjectAnchor('cafe', 'counter', 'tabletop');
   assert.ok(counter.x > 0.65 && counter.y > 0.5 && counter.y < 0.62, 'counter top on right side');

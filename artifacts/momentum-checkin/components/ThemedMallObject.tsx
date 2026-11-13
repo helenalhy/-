@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
 import palette from '@/constants/colors';
+import { useReducedMotion } from '@/context/ReducedMotionContext';
 import { DogAttendant } from './DogAttendant';
 
 const c = palette.light;
@@ -128,27 +129,7 @@ export function ThemedMallObject({
       drawing = <JewelryCase color={color} />;
       break;
     case 'onsen-bath':
-      drawing = (
-        <>
-          <Feather name="wind" size={11} color={c.candySky} style={s.onsenSteamIcon} />
-          <View style={[s.onsenBathRim, { backgroundColor: c.candyCaramel, borderColor: c.candyCaramelDark }]}>
-            <View style={[s.onsenBathWater, { backgroundColor: color }]}>
-              {[0, 1, 2].map((petal) => (
-                <View
-                  key={petal}
-                  style={[
-                    s.onsenPetal,
-                    petal === 0 ? s.onsenPetalLeft : petal === 1 ? s.onsenPetalCenter : s.onsenPetalRight,
-                    { backgroundColor: c.candyPink },
-                  ]}
-                />
-              ))}
-              <View style={[s.onsenWaterRipple, { backgroundColor: c.candyCream }]} />
-            </View>
-          </View>
-          <View style={[s.onsenBathBase, { backgroundColor: c.candyCaramelDark }]} />
-        </>
-      );
+      drawing = <OnsenBath color={color} />;
       break;
     case 'onsen-supplies':
       drawing = (
@@ -230,6 +211,109 @@ export function ThemedMallObject({
       drawing = <><View style={[s.fallbackShowcase, { backgroundColor: color, borderColor: c.candyCaramelDark }]}><Feather name={icon as keyof typeof Feather.glyphMap} size={20} color={c.candyCaramelDark} /></View><View style={[s.base, { backgroundColor: c.candyCaramel }]} /></>;
   }
   return <View style={s.object}>{drawing}</View>;
+}
+
+function OnsenBath({ color }: { color: string }) {
+  const reduceMotion = useReducedMotion();
+  const rippleMotion = useRef(new Animated.Value(0)).current;
+  const leftPetalMotion = useRef(new Animated.Value(0)).current;
+  const centerPetalMotion = useRef(new Animated.Value(0)).current;
+  const rightPetalMotion = useRef(new Animated.Value(0)).current;
+  const leftSteamMotion = useRef(new Animated.Value(0)).current;
+  const rightSteamMotion = useRef(new Animated.Value(0)).current;
+  const petalMotions = [leftPetalMotion, centerPetalMotion, rightPetalMotion];
+  const steamMotions = [leftSteamMotion, rightSteamMotion];
+
+  useEffect(() => {
+    if (reduceMotion !== false) {
+      rippleMotion.setValue(0);
+      petalMotions.forEach((motion) => motion.setValue(0));
+      steamMotions.forEach((motion) => motion.setValue(0));
+      return;
+    }
+
+    const animations = [
+      Animated.loop(Animated.sequence([
+        Animated.timing(rippleMotion, { toValue: 1, duration: 1800, useNativeDriver }),
+        Animated.timing(rippleMotion, { toValue: 0, duration: 1800, useNativeDriver }),
+      ])),
+      ...petalMotions.map((motion, index) => Animated.loop(Animated.sequence([
+        Animated.delay(index * 420),
+        Animated.timing(motion, { toValue: 1, duration: 1900 + index * 180, useNativeDriver }),
+        Animated.timing(motion, { toValue: 0, duration: 1900 + index * 180, useNativeDriver }),
+      ]))),
+      ...steamMotions.map((motion, index) => Animated.loop(Animated.sequence([
+        Animated.delay(index * 700),
+        Animated.timing(motion, { toValue: 1, duration: 1700 + index * 260, useNativeDriver }),
+        Animated.timing(motion, { toValue: 0, duration: 1700 + index * 260, useNativeDriver }),
+      ]))),
+    ];
+    animations.forEach((animation) => animation.start());
+    return () => animations.forEach((animation) => animation.stop());
+  }, [
+    centerPetalMotion,
+    leftPetalMotion,
+    leftSteamMotion,
+    reduceMotion,
+    rightPetalMotion,
+    rightSteamMotion,
+    rippleMotion,
+  ]);
+
+  const rippleScale = rippleMotion.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.35] });
+  const rippleOpacity = rippleMotion.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.2, 0.75, 0.2] });
+
+  return (
+    <>
+      <View pointerEvents="none" style={s.onsenSteam}>
+        {steamMotions.map((motion, index) => (
+          <Animated.View
+            key={index}
+            style={[
+              s.onsenSteamWisp,
+              index === 1 && s.onsenSteamWispSecond,
+              {
+                opacity: motion.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.15, 0.65, 0] }),
+                transform: [{ translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [1, -7] }) }],
+              },
+            ]}
+          />
+        ))}
+      </View>
+      <View style={[s.onsenBathRim, { backgroundColor: c.candyCaramel, borderColor: c.candyCaramelDark }]}>
+        <View style={[s.onsenBathWater, { backgroundColor: color }]}>
+          {petalMotions.map((motion, petal) => (
+            <Animated.View
+              key={petal}
+              style={[
+                s.onsenPetal,
+                petal === 0 ? s.onsenPetalLeft : petal === 1 ? s.onsenPetalCenter : s.onsenPetalRight,
+                {
+                  backgroundColor: c.candyPink,
+                  transform: [
+                    { rotate: petal === 0 ? '-22deg' : petal === 2 ? '22deg' : '0deg' },
+                    { translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) },
+                    { translateX: motion.interpolate({ inputRange: [0, 1], outputRange: [0, petal === 0 ? 2 : petal === 2 ? -2 : 1] }) },
+                  ],
+                },
+              ]}
+            />
+          ))}
+          <Animated.View
+            style={[
+              s.onsenWaterRipple,
+              {
+                backgroundColor: c.candyCream,
+                opacity: rippleOpacity,
+                transform: [{ scaleX: rippleScale }],
+              },
+            ]}
+          />
+        </View>
+      </View>
+      <View style={[s.onsenBathBase, { backgroundColor: c.candyCaramelDark }]} />
+    </>
+  );
 }
 
 function CoffeeMachine({ color }: { color: string }) {
@@ -664,6 +748,9 @@ const s = StyleSheet.create({
   jewelryCase: { width: 52, height: 34, borderWidth: 2, borderRadius: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' },
   jewelryGem: { width: 8, height: 9, borderRadius: 4, borderWidth: 1, borderColor: c.card },
   jewelryShelf: { position: 'absolute', bottom: 5, left: 3, right: 3, height: 3 },
+  onsenSteam: { position: 'absolute', top: -1, left: 10, width: 28, height: 13, alignItems: 'center' },
+  onsenSteamWisp: { position: 'absolute', top: 4, left: 8, width: 4, height: 8, borderRadius: 5, backgroundColor: c.candySky },
+  onsenSteamWispSecond: { left: 16, top: 2, height: 9 },
   onsenSteamIcon: { position: 'absolute', top: 0, left: 10 },
   onsenBathRim: { width: 54, height: 27, borderWidth: 3, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   onsenBathWater: { width: 44, height: 17, borderRadius: 12, overflow: 'hidden', position: 'relative' },

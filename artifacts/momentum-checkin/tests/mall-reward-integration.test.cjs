@@ -14,6 +14,7 @@ const storageKeys = {
 
 function createHarness() {
   const storage = new Map();
+  let nextSetItemFailure = null;
   const frames = new Map();
   const effects = new Map();
   let activeFrame;
@@ -107,7 +108,14 @@ function createHarness() {
   };
   const asyncStorage = {
     async getItem(key) { return storage.get(key) ?? null; },
-    async setItem(key, value) { storage.set(key, value); },
+    async setItem(key, value) {
+      if (nextSetItemFailure?.key === key) {
+        const { error } = nextSetItemFailure;
+        nextSetItemFailure = null;
+        throw error;
+      }
+      storage.set(key, value);
+    },
     async removeItem(key) { storage.delete(key); },
   };
   const haptics = {
@@ -346,6 +354,9 @@ function createHarness() {
     renderToday,
     runEffects,
     runNextTimer,
+    failNextStorageWrite: (key, error = new Error('simulated storage failure')) => {
+      nextSetItemFailure = { key, error };
+    },
     shopInteriorCatalog: loadTsModule(path.join(appRoot, 'constants/mall-shop-interior.ts')),
     storage,
     setPlatform: (platform) => { native.Platform.OS = platform; },
@@ -1305,6 +1316,89 @@ test('both search cards show their new locations after an exchange without chang
   assert.deepEqual(savedMall.placements, state.mallPlacements, 'both exchanged locations are persisted together');
   assert.deepEqual(savedMall.purchasedItems, purchasedItems, 'persisted ownership is unchanged');
   assert.equal(savedMall.coins, startingCoins, 'persisted coins are unchanged');
+});
+
+test('failed exchange save keeps both search cards and mall state unchanged, then allows retry', async () => {
+  const app = createHarness();
+  const movingItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'flower-shop');
+  const displacedItem = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'colorful-planter');
+  assert.ok(movingItem && displacedItem, 'both searchable owned items exist in the catalog');
+  const purchasedItems = [movingItem.id, displacedItem.id];
+  const startingCoins = 19;
+  const originalMall = {
+    schemaVersion: 3,
+    coins: startingCoins,
+    purchasedItems,
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {
+      'floor-1-left': movingItem.id,
+      'floor-2-annex-1-right': displacedItem.id,
+    },
+    shopInteriors: {},
+  };
+  app.storage.set(storageKeys.mall, JSON.stringify(originalMall));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+
+  let mallTree = app.renderMall();
+  findByTestId(mallTree, 'mall-search-input').props.onChangeText('花');
+  mallTree = app.renderMall();
+  const searchLocation = (tree, itemId) => findByTestId(tree, `search-item-location-${itemId}`);
+  const originalSavedMall = app.storage.get(storageKeys.mall);
+  assert.match(textContent(searchLocation(mallTree, movingItem.id)), /1F · 主商場 · 店面區左側/);
+  assert.match(textContent(searchLocation(mallTree, displacedItem.id)), /2F · 延伸區 · 延伸區店面區右側/);
+
+  await press(mallTree, `search-select-${movingItem.id}`);
+  mallTree = app.renderMall();
+  const wingPager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
+  const annex = wingPager.props.renderWing('annex', true);
+  const occupiedSlot = findNodes(annex, (node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-2-annex-1-right',
+  )[0];
+  assert.ok(occupiedSlot, 'the selected item can target the other item in the annex');
+
+  app.failNextStorageWrite(storageKeys.mall);
+  occupiedSlot.props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  app.renderProvider();
+  mallTree = app.renderMall();
+
+  assert.match(textContent(searchLocation(mallTree, movingItem.id)), /1F · 主商場 · 店面區左側/,
+    'the moving item search card keeps its original location after the failed save');
+  assert.match(textContent(searchLocation(mallTree, displacedItem.id)), /2F · 延伸區 · 延伸區店面區右側/,
+    'the displaced item search card keeps its original location after the failed save');
+  let state = app.contextExports.useHabits();
+  assert.deepEqual(state.mallPlacements, originalMall.placements, 'failed save leaves both placements unchanged');
+  assert.deepEqual(state.purchasedItems, purchasedItems, 'failed save leaves ownership unchanged');
+  assert.equal(state.coins, startingCoins, 'failed save leaves coins unchanged');
+  assert.equal(app.storage.get(storageKeys.mall), originalSavedMall, 'failed save preserves persisted mall data');
+  assert.match(textContent(findByTestId(mallTree, 'mall-placement-status')), /搬動或交換未成功.*可重試/,
+    'the user is told the exchange failed and can retry');
+
+  const retryWingPager = findNodes(mallTree, (node) => node.type?.name === 'MallWingPager')[0];
+  const retryAnnex = retryWingPager.props.renderWing('annex', true);
+  const retrySlot = findNodes(retryAnnex, (node) =>
+    node.type?.name === 'MallSceneSlot' && node.props.slotId === 'floor-2-annex-1-right',
+  )[0];
+  assert.ok(retrySlot, 'the occupied destination remains actionable for retry');
+  retrySlot.props.onPress();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  app.renderProvider();
+  mallTree = app.renderMall();
+
+  assert.match(textContent(searchLocation(mallTree, movingItem.id)), /2F · 延伸區 · 延伸區店面區右側/);
+  assert.match(textContent(searchLocation(mallTree, displacedItem.id)), /1F · 主商場 · 店面區左側/);
+  state = app.contextExports.useHabits();
+  assert.deepEqual(state.mallPlacements, {
+    'floor-2-annex-1-right': movingItem.id,
+    'floor-1-left': displacedItem.id,
+  }, 'retry applies both sides of the exchange together');
+  assert.deepEqual(state.purchasedItems, purchasedItems, 'retry still preserves ownership');
+  assert.equal(state.coins, startingCoins, 'retry still does not spend coins');
 });
 
 test('shop interior page shows its matching decor catalog and charges only goal-earned coins', async () => {

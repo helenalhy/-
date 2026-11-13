@@ -68,6 +68,7 @@ export type ShopProductIllustration =
   | 'cable'
   | 'projector'
   | 'brush'
+  | 'sachet'
   | 'mask'
   | 'postcard'
   | 'pencil'
@@ -144,7 +145,7 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
   ],
   onsen: [
     { name: '櫻花入浴鹽小罐', description: '帶有淡淡櫻花香氣的泡湯入浴鹽', icon: 'droplet', color: c.candyPink, illustration: 'bottle' },
-    { name: '柚子暖湯香包', description: '泡澡時散發柚子香氣的溫泉香包', icon: 'sun', color: c.candyLemon, illustration: 'gift' },
+    { name: '柚子暖湯香包', description: '泡澡時散發柚子香氣的溫泉香包', icon: 'sun', color: c.candyLemon, illustration: 'sachet' },
     { name: '檜木香氛沐浴露', description: '以柔和檜木香調製成的沐浴露', icon: 'wind', color: c.candyCaramel, illustration: 'bottle' },
     { name: '溫泉旅館毛巾組', description: '柔軟吸水的浴巾與小毛巾組合', icon: 'heart', color: c.candySky, illustration: 'towel' },
     { name: '櫻花紋浴衣', description: '印有柔粉櫻花圖案的輕柔浴衣', icon: 'feather', color: c.candyRose, illustration: 'garment' },
@@ -532,6 +533,7 @@ function inferProductIllustration(
   if (/胸針|別針|徽章/.test(name)) return 'jewel';
   if (/香氛石|擴香石/.test(name)) return 'diffuserStone';
   if (/按摩梳|木梳/.test(name)) return 'brush';
+  if (/香包/.test(name)) return 'sachet';
   if (/眼罩/.test(name)) return 'mask';
   if (/木桶|泡腳桶/.test(name)) return 'bucket';
   if (/禮盒|收納盒/.test(name)) return 'box';

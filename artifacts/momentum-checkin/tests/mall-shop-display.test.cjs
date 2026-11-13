@@ -271,6 +271,22 @@ test('Sakura Hot Spring display cabinet offers a unique 60-item bath-goods catal
   assert.ok(products.some(({ name }) => name === '櫻花入浴鹽小罐'));
   assert.ok(products.some(({ name }) => name === '溫泉旅館毛巾組'));
   assert.ok(products.some(({ name }) => name === '櫻花紋浴衣'));
+  const productArt = {
+    '櫻花入浴鹽小罐': 'bottle',
+    '柚子暖湯香包': 'sachet',
+    '檜木香氛沐浴露': 'bottle',
+    '溫泉旅館毛巾組': 'towel',
+    '櫻花紋浴衣': 'garment',
+    '泡湯竹木按摩梳': 'brush',
+    '雪見泡腳木桶組': 'bucket',
+    '草本蒸氣眼罩': 'mask',
+  };
+  for (const [name, illustration] of Object.entries(productArt)) {
+    assert.equal(products.find((product) => product.name === name)?.illustration, illustration, `${name} should use its matching illustration`);
+  }
+  const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
+  assert.match(visual, /sachet: \{ shape: 'sachet', icon: 'sun' \}/);
+  assert.match(visual, /productArtwork\.shape === 'sachet'/);
 });
 
 test('bakery croissants have a matching animated pastry illustration', () => {

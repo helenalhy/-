@@ -18,7 +18,7 @@ type ProductArtShape =
   | 'bento' | 'pot' | 'plush' | 'blocks' | 'capsule' | 'puzzle' | 'train'
   | 'ball' | 'vase' | 'basket' | 'wand' | 'hat' | 'carton' | 'bag'
   | 'headphones' | 'camera' | 'speaker' | 'console' | 'cable' | 'projector'
-  | 'brush' | 'mask' | 'pencil' | 'bucket' | 'swimwear' | 'teaCup'
+  | 'brush' | 'sachet' | 'mask' | 'pencil' | 'bucket' | 'swimwear' | 'teaCup'
   | 'compact' | 'lipstick' | 'palette' | 'mascara' | 'nailPolish';
 type ProductArtConfig = {
   shape: ProductArtShape;
@@ -65,6 +65,7 @@ const PRODUCT_SPECIFIC_ART: Partial<Record<ShopProductIllustration, ProductArtCo
   cable: { shape: 'cable', icon: 'zap' },
   projector: { shape: 'projector', icon: 'monitor' },
   brush: { shape: 'brush', icon: 'edit-2' },
+  sachet: { shape: 'sachet', icon: 'sun' },
   mask: { shape: 'mask', icon: 'moon' },
   postcard: { shape: 'card', icon: 'image' },
   pencil: { shape: 'pencil', icon: 'edit-3' },
@@ -115,6 +116,7 @@ const SPECIAL_PRODUCT_SHAPES: Record<ProductArtShape, ViewStyle> = {
   cable: { width: 25, height: 25, borderRadius: 13 },
   projector: { width: 29, height: 18, borderRadius: 5 },
   brush: { width: 8, height: 28, borderRadius: 3, transform: [{ rotate: '-18deg' }] },
+  sachet: { width: 25, height: 22, borderRadius: 8, borderTopLeftRadius: 11, borderTopRightRadius: 11 },
   mask: { width: 29, height: 19, borderRadius: 8 },
   pencil: { width: 7, height: 29, borderRadius: 3, transform: [{ rotate: '24deg' }] },
   bucket: { width: 23, height: 20, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
@@ -581,6 +583,12 @@ export function ShopMerchandiseVisual({
               {productArtwork.shape === 'plush' && <View style={[styles.specialPlushEar, styles.specialPlushEarLeft, { backgroundColor: accent }]} />}
               {productArtwork.shape === 'plush' && <View style={[styles.specialPlushEar, styles.specialPlushEarRight, { backgroundColor: accent }]} />}
             </View>
+            {productArtwork.shape === 'sachet' && (
+              <>
+                <View style={[styles.specialSachetNeck, { borderColor: colors.candyCaramelDark }]} />
+                <View style={[styles.specialSachetTie, { backgroundColor: accent }]} />
+              </>
+            )}
           </>
         )}
         <View style={[styles.groundShadow, { backgroundColor: colors.candyCaramel }]} />
@@ -761,6 +769,8 @@ const styles = StyleSheet.create({
   specialTrainWheelRight: { right: 8 },
   specialHatBrim: { position: 'absolute', top: 17, width: 34, height: 4, borderWidth: 1, borderRadius: 4 },
   specialBucketHandle: { position: 'absolute', top: 8, width: 18, height: 12, borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 10, borderTopRightRadius: 10 },
+  specialSachetNeck: { position: 'absolute', top: 3, width: 10, height: 8, borderWidth: 1, borderBottomWidth: 0, borderTopLeftRadius: 7, borderTopRightRadius: 7, zIndex: 2 },
+  specialSachetTie: { position: 'absolute', top: 9, width: 13, height: 3, borderRadius: 2, zIndex: 2 },
   specialCosmeticCap: { position: 'absolute', top: 2, width: 11, height: 8, borderWidth: 1, borderRadius: 3 },
   specialMascaraWand: { position: 'absolute', top: 3, width: 3, height: 9, borderRadius: 2 },
   specialNailPolishCap: { position: 'absolute', top: 3, width: 9, height: 7, borderWidth: 1, borderRadius: 2 },

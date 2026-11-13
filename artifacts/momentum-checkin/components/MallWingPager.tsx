@@ -54,6 +54,27 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const styleId = 'mall-wing-forced-colors-focus';
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      @media (forced-colors: active) {
+        [data-testid="mall-wing-tabs"] [role="tab"]:focus-visible,
+        [data-testid^="mall-wing-content-"] :focus-visible {
+          outline: 3px solid Highlight !important;
+          outline-offset: 2px !important;
+          forced-color-adjust: auto;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
   function announceWing(wing: MallWing) {
     const message = `目前所在區域：${WINGS.find((page) => page.id === wing)?.name ?? ''}`;
     setWingAnnouncement(message);
@@ -70,8 +91,13 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
         const scrollerRect = scroller.getBoundingClientRect();
         const tabRect = tab.getBoundingClientRect();
         let targetOffset = scroller.scrollLeft;
-        if (tabRect.left < scrollerRect.left) targetOffset -= scrollerRect.left - tabRect.left;
-        if (tabRect.right > scrollerRect.right) targetOffset += tabRect.right - scrollerRect.right;
+        const focusRingClearance = 6;
+        if (tabRect.left < scrollerRect.left + focusRingClearance) {
+          targetOffset -= scrollerRect.left + focusRingClearance - tabRect.left;
+        }
+        if (tabRect.right > scrollerRect.right - focusRingClearance) {
+          targetOffset += tabRect.right - scrollerRect.right + focusRingClearance;
+        }
         scroller.scrollLeft = targetOffset;
         return;
       }

@@ -291,6 +291,14 @@ test('mall wing tabs keep browser focus and selection in sync', {
     'the mall pager to finish measuring the narrow browser viewport',
   );
   await devTools.evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  await devTools.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'forced-colors', value: 'active' }],
+  });
+  await waitForBrowser(
+    devTools,
+    `matchMedia('(forced-colors: active)').matches`,
+    'Chromium forced-colors mode to become active',
+  );
 
   const tabsSelector = '[data-testid="mall-wing-tabs"] [role="tab"]';
   const getState = () => devTools.evaluate(`(() => {
@@ -316,6 +324,53 @@ test('mall wing tabs keep browser focus and selection in sync', {
       },
     };
   })()`);
+  const getFocusIndicator = (selector) => devTools.evaluate(`(() => {
+    const target = document.querySelector(${JSON.stringify(selector)});
+    if (!target) return null;
+    const style = getComputedStyle(target);
+    const rect = target.getBoundingClientRect();
+    const clearance = Number.parseFloat(style.outlineWidth) + Number.parseFloat(style.outlineOffset);
+    const clippingAncestors = [];
+    for (let parent = target.parentElement; parent; parent = parent.parentElement) {
+      const parentStyle = getComputedStyle(parent);
+      const clipsX = ['hidden', 'clip', 'auto', 'scroll'].includes(parentStyle.overflowX);
+      const clipsY = ['hidden', 'clip', 'auto', 'scroll'].includes(parentStyle.overflowY);
+      if (!clipsX && !clipsY) continue;
+      const bounds = parent.getBoundingClientRect();
+      const left = bounds.left + parent.clientLeft;
+      const top = bounds.top + parent.clientTop;
+      const right = left + parent.clientWidth;
+      const bottom = top + parent.clientHeight;
+      clippingAncestors.push({
+        id: parent.dataset.testid ?? parent.tagName.toLowerCase(),
+        containsRing: (!clipsX || (rect.left - clearance >= left - 1 && rect.right + clearance <= right + 1))
+          && (!clipsY || (rect.top - clearance >= top - 1 && rect.bottom + clearance <= bottom + 1)),
+      });
+    }
+    return {
+      focused: document.activeElement === target,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+      outlineOffset: Number.parseFloat(style.outlineOffset),
+      outlineColor: style.outlineColor,
+      forcedColorAdjust: style.forcedColorAdjust,
+      clippingAncestors,
+    };
+  })()`);
+  const assertForcedColorsFocusIndicator = async (selector, description) => {
+    const indicator = await getFocusIndicator(selector);
+    assert.ok(indicator, `${description} should exist`);
+    assert.equal(indicator.focused, true, `${description} should own keyboard focus`);
+    assert.equal(indicator.outlineStyle, 'solid', `${description} should have a visible solid focus ring`);
+    assert.ok(indicator.outlineWidth >= 2, `${description} focus ring should be at least 2px wide`);
+    assert.ok(indicator.outlineOffset >= 1, `${description} focus ring should sit outside its border`);
+    assert.notEqual(indicator.outlineColor, 'rgba(0, 0, 0, 0)', `${description} focus ring should not be transparent`);
+    assert.equal(indicator.forcedColorAdjust, 'auto', `${description} should use the browser's high-contrast colors`);
+    assert.ok(
+      indicator.clippingAncestors.every((ancestor) => ancestor.containsRing),
+      `${description} focus ring should not be clipped: ${JSON.stringify(indicator.clippingAncestors)}`,
+    );
+  };
   const assertSelectedAndFocused = async (wingId) => {
     await waitForBrowser(devTools, `(() => {
       const list = document.querySelector('[data-testid="mall-wing-tabs"]');
@@ -346,6 +401,47 @@ test('mall wing tabs keep browser focus and selection in sync', {
   assert.ok(state.tabs.every((tab) => tab.selected === 'false' || tab.selected === 'true'));
   await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-main"]').focus()`);
   await assertSelectedAndFocused('main');
+  await assertForcedColorsFocusIndicator(
+    '[data-testid="mall-wing-main"]',
+    'the focused mall wing tab in forced-colors mode',
+  );
+  await sendKey(devTools, 'ArrowRight', 'ArrowRight', 39);
+  await assertSelectedAndFocused('annex');
+  await assertForcedColorsFocusIndicator(
+    '[data-testid="mall-wing-annex"]',
+    'the keyboard-selected mall wing tab in forced-colors mode',
+  );
+
+  let reachedActiveWingControlInForcedColors = false;
+  for (let index = 0; index < 40; index += 1) {
+    await sendKey(devTools, 'Tab', 'Tab', 9);
+    const focusedControl = await devTools.evaluate(`(() => {
+      const focused = document.activeElement;
+      return Boolean(
+        focused?.matches('[data-testid^="mall-slot-"]')
+        && focused.closest('[data-testid="mall-wing-content-annex"]')
+        && !focused.closest('[data-testid="mall-wing-content-annex"][aria-hidden="true"]')
+      );
+    })()`);
+    if (focusedControl) {
+      reachedActiveWingControlInForcedColors = true;
+      break;
+    }
+  }
+  assert.equal(
+    reachedActiveWingControlInForcedColors,
+    true,
+    'keyboard Tab should reach a control in the selected wing while forced colors are active',
+  );
+  await assertForcedColorsFocusIndicator(
+    '[data-testid="mall-wing-content-annex"] [data-testid^="mall-slot-"]:focus',
+    'the focused control in the selected mall wing in forced-colors mode',
+  );
+
+  await devTools.evaluate(`document.querySelector('${tabsSelector}[data-testid="mall-wing-main"]').focus()`);
+  await sendKey(devTools, 'Home', 'Home', 36);
+  await assertSelectedAndFocused('main');
+
   let reachedActiveWingControl = false;
   for (let index = 0; index < 40; index += 1) {
     await sendKey(devTools, 'Tab', 'Tab', 9);

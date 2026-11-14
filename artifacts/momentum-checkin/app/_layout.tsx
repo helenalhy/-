@@ -25,9 +25,12 @@ onlineManager.setEventListener((setOnline) => {
   return () => subscription.remove();
 });
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
+const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
 // Browser sessions belong to the current origin, not the hostname used at build
 // time. Native clients still need an absolute URL because they have no origin.
-if (Platform.OS === 'web') {
+if (configuredApiBaseUrl) {
+  setBaseUrl(configuredApiBaseUrl);
+} else if (Platform.OS === 'web') {
   setBaseUrl(null);
 } else if (publicDomain) {
   setBaseUrl(`https://${publicDomain}`);
@@ -40,7 +43,7 @@ const clerkProxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function AuthTokenBridge() {
   const { getToken } = useAuth();
-  setAuthTokenGetter(Platform.OS === 'web' ? null : () => getToken());
+  setAuthTokenGetter(() => getToken());
   return null;
 }
 

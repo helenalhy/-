@@ -61,13 +61,13 @@ test('web API calls keep the current origin while native uses the configured hos
   const configureBaseUrl = layout
     .split('const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;')[1]
     .split('const clerkPublishableKey:')[0];
-  function configuredUrls(platform, domain) {
+  function configuredUrls(platform, domain, apiBaseUrl) {
     const calls = [];
     vm.runInNewContext(
       `const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;\n${configureBaseUrl}`,
       {
         Platform: { OS: platform },
-        process: { env: { EXPO_PUBLIC_DOMAIN: domain } },
+        process: { env: { EXPO_PUBLIC_DOMAIN: domain, EXPO_PUBLIC_API_BASE_URL: apiBaseUrl } },
         setBaseUrl: (url) => calls.push(url),
       },
     );
@@ -75,13 +75,58 @@ test('web API calls keep the current origin while native uses the configured hos
   }
   assert.deepEqual(configuredUrls('web', 'build-host.example.com'), [null]);
   assert.deepEqual(configuredUrls('web', undefined), [null]);
+  assert.deepEqual(
+    configuredUrls('web', 'build-host.example.com', 'https://momentum-api-ue0x.onrender.com'),
+    ['https://momentum-api-ue0x.onrender.com'],
+  );
   for (const platform of ['ios', 'android']) {
     assert.deepEqual(configuredUrls(platform, 'build-host.example.com'), [
       'https://build-host.example.com',
     ]);
     assert.deepEqual(configuredUrls(platform, undefined), []);
+    assert.deepEqual(
+      configuredUrls(platform, 'build-host.example.com', 'https://momentum-api-ue0x.onrender.com'),
+      ['https://momentum-api-ue0x.onrender.com'],
+    );
   }
-  assert.match(layout, /setAuthTokenGetter\(Platform\.OS === 'web' \? null : \(\) => getToken\(\)\)/);
+  assert.match(layout, /setAuthTokenGetter\(\(\) => getToken\(\)\)/);
+});
+
+test('the configured Clerk token is sent as a bearer Authorization header', async () => {
+  const customFetchSource = fs.readFileSync(
+    path.resolve(appRoot, '../../lib/api-client-react/src/custom-fetch.ts'),
+    'utf8',
+  );
+  const typescript = require('typescript');
+  const compiled = typescript.transpileModule(customFetchSource, {
+    compilerOptions: {
+      module: typescript.ModuleKind.CommonJS,
+      target: typescript.ScriptTarget.ES2022,
+    },
+  }).outputText;
+  const module = { exports: {} };
+  let capturedAuthorization;
+  const context = {
+    exports: module.exports,
+    module,
+    Headers,
+    Request,
+    URL,
+    Response,
+    fetch: async (_input, init) => {
+      capturedAuthorization = new Headers(init.headers).get('authorization');
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    },
+  };
+  vm.runInNewContext(compiled, context);
+  module.exports.setAuthTokenGetter(() => 'test-clerk-token');
+  const result = await module.exports.customFetch('/api/progress', { responseType: 'json' });
+
+  assert.equal(capturedAuthorization, 'Bearer test-clerk-token');
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { ok: true });
 });
 
 test('a restored connection wakes progress synchronization on native and web', () => {

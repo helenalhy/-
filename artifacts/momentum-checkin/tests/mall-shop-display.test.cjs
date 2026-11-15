@@ -73,18 +73,39 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
   );
   assert.ok(chiikawaProfiles.every((profile) => profile?.theme === 'chiikawa'));
   assert.deepEqual(
-    chiikawaProfiles.slice(0, 8).map(({ id }) => id),
-    ['chiikawa', 'hachiware', 'usagi', 'momonga', 'shisa', 'kurimanju', 'rakko', 'chiikawa-carousel'],
+    chiikawaProfiles.slice(0, 7).map(({ id }) => id),
+    ['chiikawa', 'hachiware', 'usagi', 'momonga', 'shisa', 'kurimanju', 'rakko'],
   );
   assert.ok(
     new Set(chiikawaProfiles.flatMap(({ id, companionIds }) => [id, ...(companionIds ?? [])])).size >= 8,
-    'the Chiikawa catalog covers the pictured characters and carousel-costume group',
+    'the Chiikawa catalog covers the pictured characters and group merchandise',
   );
   assert.ok(
     chiikawa.filter(({ name }) => name.includes('魔法少女')).length >= 8,
-    'the first Chiikawa catalog page includes a dedicated magical-girl series',
+    'the Chiikawa catalog includes a dedicated magical-girl series',
   );
-  assert.ok(chiikawa.slice(8, 16).every(({ name }) => name.includes('魔法少女')));
+  const findChiikawaArtwork = (term) => {
+    const product = chiikawa.find(({ name }) => name.includes(term));
+    assert.ok(product, `Chiikawa shelf contains ${term}`);
+    return getShopCharacterMerchandiseProfile(product.theme, product.name, product.variant)?.referenceArtwork;
+  };
+  assert.equal(findChiikawaArtwork('角色造型原子筆'), 'pens');
+  assert.equal(findChiikawaArtwork('旋翼帽討伐隊'), 'propeller-plush');
+  assert.equal(findChiikawaArtwork('人魚島'), 'mermaid-poster');
+  assert.equal(findChiikawaArtwork('中秋燈會'), 'mid-autumn-plush');
+  assert.equal(findChiikawaArtwork('旋轉木馬'), 'carousel');
+  assert.equal(findChiikawaArtwork('Baby'), 'baby-plush');
+  assert.equal(findChiikawaArtwork('角色圖鑑'), 'character-dictionary');
+  assert.equal(findChiikawaArtwork('太鼓之達人'), 'taiko-collab');
+  assert.equal(findChiikawaArtwork('聖誕派對'), 'christmas-plush');
+  assert.ok(
+    chiikawa
+      .filter(({ name }) => name.includes('魔法少女') && !name.includes('星月魔法少女變身'))
+      .every(({ theme, name, variant }) =>
+        getShopCharacterMerchandiseProfile(theme, name, variant)?.referenceArtwork === 'magical',
+      ),
+  );
+  assert.equal(findChiikawaArtwork('星月魔法少女變身'), 'magical-group');
 
   const winnieProfiles = winnie.map(({ theme, name, variant }) =>
     getShopCharacterMerchandiseProfile(theme, name, variant),
@@ -106,9 +127,25 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
   assert.ok(characterVisual.includes('testID={`shop-character-merchandise-${product.id}`}'));
   assert.match(characterVisual, /product\.illustration === 'plush'/);
   assert.match(characterVisual, /characterIds\.slice\(0, 4\)/);
-  assert.match(characterVisual, /product\.name\.includes\('魔法少女'\)/);
-  assert.match(characterVisual, /magicalGirlColor/);
-  assert.match(characterVisual, /jewelColor/);
+  assert.match(characterVisual, /<ChiikawaReferenceArtwork/);
+  assert.match(characterVisual, /shop-character-reference-image/);
+  for (const asset of [
+    'standard-chiikawa.jpg',
+    'standard-hachiware.jpg',
+    'magical-chiikawa.jpg',
+    'magical-hachiware.jpg',
+    'item-pens.jpg',
+    'item-propeller-plush.jpg',
+    'item-mermaid-poster.jpg',
+    'item-mid-autumn-plush.jpg',
+    'item-carousel.jpg',
+    'item-taiko-collab.jpg',
+  ]) {
+    assert.ok(
+      fs.existsSync(path.join(__dirname, '../assets/chiikawa-merch', asset)),
+      `bundled reference artwork exists: ${asset}`,
+    );
+  }
 });
 
 function getPngAlphaCoverage(png, startY, endY) {

@@ -1,10 +1,25 @@
 export type CharacterMerchandiseTheme = 'chiikawa' | 'winnie';
+export type CharacterMerchandiseReferenceArtwork =
+  | 'standard'
+  | 'magical'
+  | 'magical-group'
+  | 'carousel'
+  | 'pens'
+  | 'propeller-plush'
+  | 'mermaid-poster'
+  | 'mid-autumn-plush'
+  | 'baby-plush'
+  | 'character-dictionary'
+  | 'character-cover'
+  | 'taiko-collab'
+  | 'christmas-plush';
 
 export type CharacterMerchandiseProfile = {
   id: string;
   name: string;
   theme: CharacterMerchandiseTheme;
   companionIds?: string[];
+  referenceArtwork?: CharacterMerchandiseReferenceArtwork;
 };
 
 const CHIIKAWA_CHARACTERS: CharacterMerchandiseProfile[] = [
@@ -40,12 +55,92 @@ export function getShopCharacterMerchandiseProfile(
 ): CharacterMerchandiseProfile | undefined {
   if (theme !== 'chiikawa' && theme !== 'winnie') return undefined;
   const characters = theme === 'chiikawa' ? CHIIKAWA_CHARACTERS : WINNIE_CHARACTERS;
+  if (theme === 'chiikawa' && productName.includes('原子筆')) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '吉伊卡哇角色造型原子筆',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'pens',
+    };
+  }
+  if (theme === 'chiikawa' && (productName.includes('旋翼帽') || productName.includes('討伐隊'))) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '旋翼帽討伐隊毛絨玩偶',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'propeller-plush',
+    };
+  }
+  if (theme === 'chiikawa' && productName.includes('人魚島')) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '人魚島海上冒險',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'mermaid-poster',
+    };
+  }
+  if (theme === 'chiikawa' && productName.includes('中秋')) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '中秋燈會毛絨玩偶',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'mid-autumn-plush',
+    };
+  }
+  if (theme === 'chiikawa' && (productName.includes('Baby') || productName.includes('寶寶'))) {
+    return {
+      id: 'chiikawa-carousel',
+      name: 'Chiikawa Baby 玩偶',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'baby-plush',
+    };
+  }
+  if (theme === 'chiikawa' && productName.includes('圖鑑')) {
+    return {
+      id: 'chiikawa',
+      name: '吉伊卡哇角色圖鑑',
+      theme,
+      referenceArtwork: 'character-dictionary',
+    };
+  }
+  if (theme === 'chiikawa' && productName.includes('聖誕')) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '吉伊卡哇聖誕派對',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'christmas-plush',
+    };
+  }
+  if (theme === 'chiikawa' && productName.includes('太鼓')) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '太鼓之達人合作造型',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'taiko-collab',
+    };
+  }
+  if (theme === 'chiikawa' && productName.includes('封面')) {
+    return {
+      id: 'chiikawa',
+      name: '吉伊卡哇角色封面收藏',
+      theme,
+      referenceArtwork: 'character-cover',
+    };
+  }
   if (theme === 'chiikawa' && productName.includes('星月魔法少女變身')) {
     return {
       id: 'chiikawa-carousel',
       name: '吉伊卡哇魔法少女夥伴',
       theme,
       companionIds: ['hachiware', 'usagi', 'momonga'],
+      referenceArtwork: 'magical-group',
     };
   }
   if (theme === 'chiikawa' && productName.includes('旋轉木馬')) {
@@ -54,6 +149,7 @@ export function getShopCharacterMerchandiseProfile(
       name: '吉伊卡哇旋轉木馬造型',
       theme,
       companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'carousel',
     };
   }
   if (theme === 'winnie' && productName.includes('袋鼠媽媽')) {
@@ -73,5 +169,12 @@ export function getShopCharacterMerchandiseProfile(
     };
   }
   const specific = characters.find(({ name }) => productName.includes(name));
-  return specific ?? characters[normalizeIndex(variant, characters.length)];
+  const profile = specific ?? characters[normalizeIndex(variant, characters.length)];
+  if (theme === 'chiikawa') {
+    return {
+      ...profile,
+      referenceArtwork: productName.includes('魔法少女') ? 'magical' : 'standard',
+    };
+  }
+  return profile;
 }

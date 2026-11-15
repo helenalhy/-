@@ -1,7 +1,9 @@
 import React from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, Image, StyleSheet, View } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
+import type { CharacterMerchandiseReferenceArtwork } from '@/constants/shop-character-merchandise';
 import { getShopCharacterMerchandiseProfile } from '@/constants/shop-character-merchandise';
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
@@ -9,6 +11,99 @@ import { useReducedMotion } from '@/context/ReducedMotionContext';
 type CharacterId =
   | 'chiikawa' | 'hachiware' | 'usagi' | 'momonga' | 'shisa' | 'kurimanju' | 'rakko' | 'chiikawa-carousel'
   | 'pooh' | 'piglet' | 'tigger' | 'eeyore' | 'rabbit' | 'kanga' | 'roo' | 'owl';
+
+const CHIIKAWA_STANDARD_ART: Partial<Record<CharacterId, ImageSourcePropType>> = {
+  chiikawa: require('../assets/chiikawa-merch/standard-chiikawa.jpg'),
+  hachiware: require('../assets/chiikawa-merch/standard-hachiware.jpg'),
+  usagi: require('../assets/chiikawa-merch/standard-usagi.jpg'),
+  momonga: require('../assets/chiikawa-merch/standard-momonga.jpg'),
+  shisa: require('../assets/chiikawa-merch/standard-shisa.jpg'),
+  kurimanju: require('../assets/chiikawa-merch/standard-kurimanju.jpg'),
+  rakko: require('../assets/chiikawa-merch/standard-rakko.jpg'),
+};
+
+const CHIIKAWA_MAGICAL_ART: Partial<Record<CharacterId, ImageSourcePropType>> = {
+  chiikawa: require('../assets/chiikawa-merch/magical-chiikawa.jpg'),
+  hachiware: require('../assets/chiikawa-merch/magical-hachiware.jpg'),
+  usagi: require('../assets/chiikawa-merch/magical-usagi.jpg'),
+  momonga: require('../assets/chiikawa-merch/magical-momonga.jpg'),
+  shisa: require('../assets/chiikawa-merch/magical-shisa.jpg'),
+  kurimanju: require('../assets/chiikawa-merch/magical-kurimanju.jpg'),
+  rakko: require('../assets/chiikawa-merch/magical-rakko.jpg'),
+};
+
+const CHIIKAWA_SPECIAL_ART: Record<
+  Exclude<CharacterMerchandiseReferenceArtwork, 'standard' | 'magical'>,
+  ImageSourcePropType
+> = {
+  'magical-group': require('../assets/chiikawa-merch/item-magical-girl-poster.jpg'),
+  carousel: require('../assets/chiikawa-merch/item-carousel.jpg'),
+  pens: require('../assets/chiikawa-merch/item-pens.jpg'),
+  'propeller-plush': require('../assets/chiikawa-merch/item-propeller-plush.jpg'),
+  'mermaid-poster': require('../assets/chiikawa-merch/item-mermaid-poster.jpg'),
+  'mid-autumn-plush': require('../assets/chiikawa-merch/item-mid-autumn-plush.jpg'),
+  'baby-plush': require('../assets/chiikawa-merch/item-baby-plush.jpg'),
+  'character-dictionary': require('../assets/chiikawa-merch/item-character-dictionary.jpg'),
+  'character-cover': require('../assets/chiikawa-merch/item-character-cover.jpg'),
+  'taiko-collab': require('../assets/chiikawa-merch/item-taiko-collab.jpg'),
+  'christmas-plush': require('../assets/chiikawa-merch/item-christmas-plush.jpg'),
+};
+
+function getChiikawaArtworkSource(
+  characterId: CharacterId,
+  referenceArtwork: CharacterMerchandiseReferenceArtwork | undefined,
+): ImageSourcePropType {
+  if (referenceArtwork && referenceArtwork !== 'standard' && referenceArtwork !== 'magical') {
+    return CHIIKAWA_SPECIAL_ART[referenceArtwork];
+  }
+  if (referenceArtwork === 'magical') {
+    return CHIIKAWA_MAGICAL_ART[characterId] ?? CHIIKAWA_SPECIAL_ART['magical-group'];
+  }
+  return CHIIKAWA_STANDARD_ART[characterId] ?? CHIIKAWA_STANDARD_ART.chiikawa!;
+}
+
+function ChiikawaReferenceArtwork({
+  product,
+  characterId,
+  referenceArtwork,
+  size,
+}: {
+  product: ShopDisplayProduct;
+  characterId: CharacterId;
+  referenceArtwork?: CharacterMerchandiseReferenceArtwork;
+  size: number;
+}) {
+  const containArtwork = referenceArtwork !== 'standard' && referenceArtwork !== 'magical';
+  const source = getChiikawaArtworkSource(characterId, referenceArtwork);
+  return (
+    <View
+      style={[
+        styles.referenceArtFrame,
+        {
+          width: size,
+          height: size,
+          backgroundColor: product.color,
+          borderColor: product.color,
+        },
+      ]}
+    >
+      <Image
+        testID={`shop-character-reference-image-${product.id}`}
+        accessible={false}
+        source={source}
+        resizeMode={containArtwork ? 'contain' : 'cover'}
+        style={[
+          styles.referenceArtImage,
+          {
+            width: containArtwork ? size * 0.96 : size * 0.94,
+            height: containArtwork ? size * 0.96 : size * 0.94,
+            borderRadius: containArtwork ? 5 : 8,
+          },
+        ]}
+      />
+    </View>
+  );
+}
 
 function CharacterFigure({
   characterId,
@@ -295,11 +390,16 @@ export function CharacterMerchandiseVisual({
       style={[styles.canvas, { width: size, height: size, transform: [{ translateY: lift }, { rotate: tilt }, { scale }] }]}
     >
       <View pointerEvents="none" style={[styles.halo, { backgroundColor: product.color }]} />
-      <ThemedProductArtwork
-        product={product}
-        characterIds={characterIds}
-        colors={colors}
-      />
+      {character.theme === 'chiikawa' ? (
+        <ChiikawaReferenceArtwork
+          product={product}
+          characterId={character.id as CharacterId}
+          referenceArtwork={character.referenceArtwork}
+          size={size * 0.92}
+        />
+      ) : (
+        <ThemedProductArtwork product={product} characterIds={characterIds} colors={colors} />
+      )}
     </Animated.View>
   );
 }
@@ -307,4 +407,6 @@ export function CharacterMerchandiseVisual({
 const styles = StyleSheet.create({
   canvas: { alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   halo: { position: 'absolute', width: '78%', height: '78%', borderRadius: 999, opacity: 0.24 },
+  referenceArtFrame: { alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1, overflow: 'hidden' },
+  referenceArtImage: { backgroundColor: 'transparent' },
 });

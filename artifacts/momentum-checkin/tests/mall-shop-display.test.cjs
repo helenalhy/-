@@ -136,12 +136,19 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
   assert.match(characterVisual, /shop-character-reference-image/);
   for (const asset of [
     'standard-chiikawa.jpg',
+    'standard-chiikawa.png',
     'standard-hachiware.jpg',
+    'standard-hachiware.png',
     'standard-usagi.jpg',
+    'standard-usagi.png',
     'standard-momonga.jpg',
+    'standard-momonga.png',
     'standard-shisa.jpg',
+    'standard-shisa.png',
     'standard-kurimanju.jpg',
+    'standard-kurimanju.png',
     'standard-rakko.jpg',
+    'standard-rakko.png',
     'magical-chiikawa.jpg',
     'magical-hachiware.jpg',
     'magical-usagi.jpg',
@@ -166,6 +173,18 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
       fs.existsSync(path.join(__dirname, '../assets/chiikawa-merch', asset)),
       `bundled reference artwork exists: ${asset}`,
     );
+  }
+  for (const asset of [
+    'standard-chiikawa.png',
+    'standard-hachiware.png',
+    'standard-usagi.png',
+    'standard-momonga.png',
+    'standard-shisa.png',
+    'standard-kurimanju.png',
+    'standard-rakko.png',
+  ]) {
+    const png = fs.readFileSync(path.join(__dirname, '../assets/chiikawa-merch', asset));
+    assert.equal(png[25], 6, `${asset} is an RGBA PNG with a transparent background`);
   }
 });
 

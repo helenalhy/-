@@ -13,13 +13,13 @@ type CharacterId =
   | 'pooh' | 'piglet' | 'tigger' | 'eeyore' | 'rabbit' | 'kanga' | 'roo' | 'owl';
 
 const CHIIKAWA_STANDARD_ART: Partial<Record<CharacterId, ImageSourcePropType>> = {
-  chiikawa: require('../assets/chiikawa-merch/standard-chiikawa.jpg'),
-  hachiware: require('../assets/chiikawa-merch/standard-hachiware.jpg'),
-  usagi: require('../assets/chiikawa-merch/standard-usagi.jpg'),
-  momonga: require('../assets/chiikawa-merch/standard-momonga.jpg'),
-  shisa: require('../assets/chiikawa-merch/standard-shisa.jpg'),
-  kurimanju: require('../assets/chiikawa-merch/standard-kurimanju.jpg'),
-  rakko: require('../assets/chiikawa-merch/standard-rakko.jpg'),
+  chiikawa: require('../assets/chiikawa-merch/standard-chiikawa.png'),
+  hachiware: require('../assets/chiikawa-merch/standard-hachiware.png'),
+  usagi: require('../assets/chiikawa-merch/standard-usagi.png'),
+  momonga: require('../assets/chiikawa-merch/standard-momonga.png'),
+  shisa: require('../assets/chiikawa-merch/standard-shisa.png'),
+  kurimanju: require('../assets/chiikawa-merch/standard-kurimanju.png'),
+  rakko: require('../assets/chiikawa-merch/standard-rakko.png'),
 };
 
 const CHIIKAWA_MAGICAL_ART: Partial<Record<CharacterId, ImageSourcePropType>> = {

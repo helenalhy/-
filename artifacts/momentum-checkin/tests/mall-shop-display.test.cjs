@@ -725,11 +725,24 @@ test('fixture merchandise uses animated illustrations and paginated 18-slot arra
   const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
   const context = fs.readFileSync(path.join(__dirname, '../context/HabitsContext.tsx'), 'utf8');
   const route = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
+  const previewModal = fs.readFileSync(path.join(__dirname, '../components/ChiikawaMerchandisePreviewModal.tsx'), 'utf8');
   assert.match(scene, /onOpenDisplayFixture\(decoration\.id\)/);
   assert.match(scene, /displayedProductsRow/);
   assert.match(scene, /ShopMerchandiseVisual/);
   assert.match(panel, /shop-display-slot-/);
   assert.match(panel, /shop-display-product-/);
+  assert.match(panel, /shop-display-art-preview-open/);
+  assert.match(panel, /onOpenPreview/);
+  assert.match(route, /chiikawa-free-art-preview-open/);
+  assert.match(route, /ChiikawaMerchandisePreviewModal/);
+  assert.match(previewModal, /免費預覽/);
+  assert.match(previewModal, /shop-display-art-preview-close/);
+  assert.match(previewModal, /shop-display-hunting-stick-preview-image/);
+  for (const characterId of ['chiikawa', 'hachiware', 'usagi', 'momonga', 'shisa', 'kurimanju', 'rakko']) {
+    assert.match(previewModal, new RegExp(`standard-${characterId}\\.png`));
+    assert.match(previewModal, new RegExp(`id: '${characterId}'`));
+  }
+  assert.match(previewModal, /shop-display-cutout-preview-\$\{character\.id\}/);
   assert.match(panel, /商品不扣金幣/);
   assert.match(panel, /catalogPageSize = 12/);
   assert.match(panel, /shop-display-page-next/);

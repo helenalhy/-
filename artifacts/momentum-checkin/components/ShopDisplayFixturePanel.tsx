@@ -19,6 +19,7 @@ export function ShopDisplayFixturePanel({
   onSelectSlot,
   onPlaceProduct,
   onClearSlot,
+  onOpenPreview,
   onClose,
 }: {
   visible: boolean;
@@ -31,6 +32,7 @@ export function ShopDisplayFixturePanel({
   onSelectSlot: (slotIndex: number) => void;
   onPlaceProduct: (productId: string) => void;
   onClearSlot: () => void;
+  onOpenPreview: () => void;
   onClose: () => void;
 }) {
   const colors = useColors();
@@ -165,6 +167,19 @@ export function ShopDisplayFixturePanel({
                 )}
               </View>
 
+              {products.some(({ theme }) => theme === 'chiikawa') && (
+                <Pressable
+                  testID="shop-display-art-preview-open"
+                  accessibilityRole="button"
+                  accessibilityLabel="免費預覽去背角色圖和討伐棒商品"
+                  onPress={onOpenPreview}
+                  style={[styles.artPreviewButton, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                >
+                  <Feather name="eye" size={15} color={colors.primary} />
+                  <Text style={[styles.artPreviewButtonText, { color: colors.primary }]}>免費預覽去背角色圖及討伐棒</Text>
+                </Pressable>
+              )}
+
               <ScrollView
                 testID="shop-display-catalog"
                 style={styles.catalogScroll}
@@ -256,6 +271,8 @@ const styles = StyleSheet.create({
   clearButton: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 10, paddingHorizontal: 9 },
   clearButtonText: { fontSize: 9, fontWeight: '700' },
   catalogScroll: { flexShrink: 1, minHeight: 100 },
+  artPreviewButton: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10 },
+  artPreviewButtonText: { fontSize: 10, fontWeight: '800' },
   catalogGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 7, paddingBottom: 4 },
   productCard: { width: '48.6%', minHeight: 60, borderWidth: 1, borderRadius: 13, paddingHorizontal: 6, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
   productCopy: { flex: 1, minWidth: 0, gap: 2 },

@@ -19,6 +19,7 @@ import { CosmeticsTryOn } from '@/components/CosmeticsTryOn';
 import { ClothingTryOn } from '@/components/ClothingTryOn';
 import { PhotoStudioTryOn } from '@/components/PhotoStudioTryOn';
 import { ShopDisplayFixturePanel } from '@/components/ShopDisplayFixturePanel';
+import { ChiikawaMerchandisePreviewModal } from '@/components/ChiikawaMerchandisePreviewModal';
 import { DogStaffCustomizer, type DogStaffListArtStyle } from '@/components/DogStaffCustomizer';
 import { DogCompanionModal } from '@/components/DogCompanionModal';
 import { DogCollectionBook } from '@/components/DogCollectionBook';
@@ -149,6 +150,7 @@ export default function MallShopInteriorScreen() {
   } | null>(null);
   const [workingDecoration, setWorkingDecoration] = useState<string | null>(null);
   const [activeFixtureId, setActiveFixtureId] = useState<string | null>(null);
+  const [chiikawaPreviewVisible, setChiikawaPreviewVisible] = useState(false);
   const [selectedDisplaySlot, setSelectedDisplaySlot] = useState(0);
   const [workingDisplayProduct, setWorkingDisplayProduct] = useState(false);
   const [notice, setNotice] = useState('');
@@ -410,6 +412,18 @@ export default function MallShopInteriorScreen() {
             <Feather name="lock" size={22} color={colors.primary} />
             <Text style={[styles.messageTitle, { color: colors.foreground }]}>先用金幣兌換這間商店</Text>
             <Text style={[styles.messageCopy, { color: colors.mutedForeground }]}>店內佈置只對已兌換的商店開放。金幣只由完成目標取得。</Text>
+            {shop.id === 'chiikawa-land' && (
+              <Pressable
+                testID="chiikawa-free-art-preview-open"
+                accessibilityRole="button"
+                accessibilityLabel="免費預覽角色去背圖和討伐棒商品，不扣金幣"
+                onPress={() => setChiikawaPreviewVisible(true)}
+                style={[styles.previewButton, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              >
+                <Feather name="eye" size={16} color={colors.primary} />
+                <Text style={[styles.previewButtonText, { color: colors.primary }]}>免費預覽角色圖與討伐棒</Text>
+              </Pressable>
+            )}
             <Pressable
               testID="shop-interior-open-mall"
               accessibilityRole="button"
@@ -744,7 +758,12 @@ export default function MallShopInteriorScreen() {
         onSelectSlot={setSelectedDisplaySlot}
         onPlaceProduct={(productId) => void updateFixtureProduct(productId)}
         onClearSlot={() => void updateFixtureProduct(null)}
+        onOpenPreview={() => setChiikawaPreviewVisible(true)}
         onClose={() => setActiveFixtureId(null)}
+      />
+      <ChiikawaMerchandisePreviewModal
+        visible={chiikawaPreviewVisible && shop?.id === 'chiikawa-land'}
+        onClose={() => setChiikawaPreviewVisible(false)}
       />
     </SafeAreaView>
   );
@@ -817,6 +836,8 @@ const styles = StyleSheet.create({
   messageCard: { borderRadius: 22, borderWidth: 1, alignItems: 'center', padding: 22, gap: 10 },
   messageTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
   messageCopy: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  previewButton: { minHeight: 44, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12 },
+  previewButtonText: { fontSize: 12, fontWeight: '800' },
   primaryButton: { minHeight: 46, borderRadius: 15, marginTop: 4, alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryButtonText: { fontSize: 13, fontWeight: '800' },
 });

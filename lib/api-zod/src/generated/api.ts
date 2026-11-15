@@ -110,6 +110,11 @@ export const saveReminderSubscriptionBodyHabitRemindersItemHabitTitleMax = 120;
 export const saveReminderSubscriptionBodyHabitRemindersItemReminderTimesItemRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
 export const saveReminderSubscriptionBodyHabitRemindersItemReminderTimesMax = 5;
 
+export const saveReminderSubscriptionBodyHabitRemindersItemRestDaysItemMin = 0;
+export const saveReminderSubscriptionBodyHabitRemindersItemRestDaysItemMax = 6;
+
+export const saveReminderSubscriptionBodyHabitRemindersItemRestDaysMax = 7;
+
 export const saveReminderSubscriptionBodyHabitRemindersMax = 100;
 
 export const saveReminderSubscriptionBodyTimeZoneMax = 80;
@@ -124,7 +129,8 @@ export const SaveReminderSubscriptionBody = zod.object({
   "habitReminders": zod.array(zod.object({
   "habitId": zod.string().min(1).max(saveReminderSubscriptionBodyHabitRemindersItemHabitIdMax),
   "habitTitle": zod.string().min(1).max(saveReminderSubscriptionBodyHabitRemindersItemHabitTitleMax),
-  "reminderTimes": zod.array(zod.string().regex(saveReminderSubscriptionBodyHabitRemindersItemReminderTimesItemRegExp)).min(1).max(saveReminderSubscriptionBodyHabitRemindersItemReminderTimesMax)
+  "reminderTimes": zod.array(zod.string().regex(saveReminderSubscriptionBodyHabitRemindersItemReminderTimesItemRegExp)).min(1).max(saveReminderSubscriptionBodyHabitRemindersItemReminderTimesMax),
+  "restDays": zod.array(zod.number().int().min(saveReminderSubscriptionBodyHabitRemindersItemRestDaysItemMin).max(saveReminderSubscriptionBodyHabitRemindersItemRestDaysItemMax)).max(saveReminderSubscriptionBodyHabitRemindersItemRestDaysMax).optional()
 })).max(saveReminderSubscriptionBodyHabitRemindersMax).optional(),
   "timeZone": zod.string().min(1).max(saveReminderSubscriptionBodyTimeZoneMax)
 })
@@ -139,6 +145,11 @@ export const saveReminderSubscriptionResponseHabitRemindersItemHabitTitleMax = 1
 export const saveReminderSubscriptionResponseHabitRemindersItemReminderTimesItemRegExp = new RegExp('^(?:[01]\\d|2[0-3]):[0-5]\\d$');
 export const saveReminderSubscriptionResponseHabitRemindersItemReminderTimesMax = 5;
 
+export const saveReminderSubscriptionResponseHabitRemindersItemRestDaysItemMin = 0;
+export const saveReminderSubscriptionResponseHabitRemindersItemRestDaysItemMax = 6;
+
+export const saveReminderSubscriptionResponseHabitRemindersItemRestDaysMax = 7;
+
 export const saveReminderSubscriptionResponseHabitRemindersMax = 100;
 
 
@@ -149,7 +160,8 @@ export const SaveReminderSubscriptionResponse = zod.object({
   "habitReminders": zod.array(zod.object({
   "habitId": zod.string().min(1).max(saveReminderSubscriptionResponseHabitRemindersItemHabitIdMax),
   "habitTitle": zod.string().min(1).max(saveReminderSubscriptionResponseHabitRemindersItemHabitTitleMax),
-  "reminderTimes": zod.array(zod.string().regex(saveReminderSubscriptionResponseHabitRemindersItemReminderTimesItemRegExp)).min(1).max(saveReminderSubscriptionResponseHabitRemindersItemReminderTimesMax)
+  "reminderTimes": zod.array(zod.string().regex(saveReminderSubscriptionResponseHabitRemindersItemReminderTimesItemRegExp)).min(1).max(saveReminderSubscriptionResponseHabitRemindersItemReminderTimesMax),
+  "restDays": zod.array(zod.number().int().min(saveReminderSubscriptionResponseHabitRemindersItemRestDaysItemMin).max(saveReminderSubscriptionResponseHabitRemindersItemRestDaysItemMax)).max(saveReminderSubscriptionResponseHabitRemindersItemRestDaysMax).optional()
 })).max(saveReminderSubscriptionResponseHabitRemindersMax),
   "timeZone": zod.string()
 })

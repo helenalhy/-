@@ -81,7 +81,13 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
   }
   const normalizedTimes = [...reminderTimes].sort();
   const normalizedHabitReminders = [...(inputHabitReminders ?? [])]
-    .map((reminder) => ({ ...reminder, reminderTimes: [...reminder.reminderTimes].sort() }))
+    .map((reminder) => ({
+      ...reminder,
+      reminderTimes: [...reminder.reminderTimes].sort(),
+      ...(reminder.restDays
+        ? { restDays: [...reminder.restDays].sort((left, right) => left - right) }
+        : {}),
+    }))
     .sort((left, right) => left.habitId.localeCompare(right.habitId));
 
   const endpointHash = hashPushEndpoint(endpoint);

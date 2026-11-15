@@ -97,6 +97,7 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
           scheduleId: `habit:${reminder.habitId}`,
           reminderTimes: reminder.reminderTimes,
           habitTitle: reminder.habitTitle,
+          restDays: reminder.restDays,
           })),
       ];
       const dueBatch = alreadyCheckedInToday ? null : getDueReminderBatch({

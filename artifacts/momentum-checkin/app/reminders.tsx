@@ -5,7 +5,7 @@ import {
   saveReminderSubscription,
   updateReminderCheckInStatus,
 } from '@workspace/api-client-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -92,8 +92,18 @@ function buildHabitReminderPayload(
       habitId: habit.id,
       habitTitle,
       reminderTimes: [...new Set(reminderTimes)].sort(),
+      restDays: [...new Set(habit.restDays)].sort((left, right) => left - right),
     }];
   });
+}
+
+function getReminderScheduleSignature(
+  endpoint: string,
+  reminderTimes: string[],
+  habitReminders: ReturnType<typeof buildHabitReminderPayload>,
+  timeZone: string,
+): string {
+  return JSON.stringify({ endpoint, reminderTimes, habitReminders, timeZone });
 }
 
 function hasCheckedInOnCurrentLocalDate(habits: Habit[], timeZone: string): boolean {
@@ -113,6 +123,9 @@ export default function ReminderSettingsScreen() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [timeZone, setTimeZone] = useState(getBrowserTimeZone);
+  const savedReminderTimes = useRef([...DEFAULT_REMINDER_SETTINGS.reminderTimes]);
+  const savedHabitReminders = useRef({ ...DEFAULT_REMINDER_SETTINGS.habitReminders });
+  const lastSyncedSchedule = useRef('');
 
   useEffect(() => {
     let active = true;
@@ -125,6 +138,8 @@ export default function ReminderSettingsScreen() {
       }
       if (!active) return;
 
+      savedReminderTimes.current = [...saved.reminderTimes];
+      savedHabitReminders.current = { ...saved.habitReminders };
       const enabled = Boolean(subscription);
       const next = {
         ...saved,
@@ -157,13 +172,40 @@ export default function ReminderSettingsScreen() {
 
   useEffect(() => {
     if (Platform.OS !== 'web' || isLoading || !settings.enabled || !settings.endpoint) return;
-    void updateReminderCheckInStatus({
-      endpoint: settings.endpoint,
-      hasCheckedInToday: hasCheckedInOnCurrentLocalDate(habits, timeZone),
-      timeZone,
-    }).catch(() => {
-      // The next timezone refresh or check-in will retry the server sync.
+    let active = true;
+    const sync = async () => {
+      await updateReminderCheckInStatus({
+        endpoint: settings.endpoint!,
+        hasCheckedInToday: hasCheckedInOnCurrentLocalDate(habits, timeZone),
+        timeZone,
+      });
+
+      const registration = await navigator.serviceWorker.getRegistration('/');
+      const subscription = await registration?.pushManager.getSubscription();
+      if (!active || !subscription || subscription.endpoint !== settings.endpoint) return;
+
+      const reminderTimes = savedReminderTimes.current;
+      const habitReminders = buildHabitReminderPayload(habits, savedHabitReminders.current);
+      const signature = getReminderScheduleSignature(
+        subscription.endpoint,
+        reminderTimes,
+        habitReminders,
+        timeZone,
+      );
+      if (signature === lastSyncedSchedule.current) return;
+
+      await saveReminderSubscription({
+        ...getSubscriptionPayload(subscription),
+        reminderTimes,
+        habitReminders,
+        timeZone,
+      });
+      if (active) lastSyncedSchedule.current = signature;
+    };
+    void sync().catch(() => {
+      // A later habit, timezone, or page-focus update retries the sync.
     });
+    return () => { active = false; };
   }, [habits, isLoading, settings.enabled, settings.endpoint, timeZone]);
 
   useEffect(() => {
@@ -306,10 +348,11 @@ export default function ReminderSettingsScreen() {
       }
 
       const payload = getSubscriptionPayload(subscription);
+      const habitReminders = buildHabitReminderPayload(habits, settings.habitReminders);
       await saveReminderSubscription({
         ...payload,
         reminderTimes: settings.reminderTimes,
-        habitReminders: buildHabitReminderPayload(habits, settings.habitReminders),
+        habitReminders,
         timeZone,
       });
       const next = {
@@ -319,6 +362,14 @@ export default function ReminderSettingsScreen() {
         endpoint: payload.endpoint,
       };
       await saveReminderSettings(next);
+      savedReminderTimes.current = [...settings.reminderTimes];
+      savedHabitReminders.current = { ...settings.habitReminders };
+      lastSyncedSchedule.current = getReminderScheduleSignature(
+        payload.endpoint,
+        settings.reminderTimes,
+        habitReminders,
+        timeZone,
+      );
       setSettings(next);
       await updateReminderCheckInStatus({
         endpoint: payload.endpoint,
@@ -365,14 +416,23 @@ export default function ReminderSettingsScreen() {
       }
 
       const payload = getSubscriptionPayload(subscription);
+      const habitReminders = buildHabitReminderPayload(habits, settings.habitReminders);
       await saveReminderSubscription({
         ...payload,
         reminderTimes: settings.reminderTimes,
-        habitReminders: buildHabitReminderPayload(habits, settings.habitReminders),
+        habitReminders,
         timeZone,
       });
       const next = { ...settings, enabled: true, endpoint: payload.endpoint };
       await saveReminderSettings(next);
+      savedReminderTimes.current = [...settings.reminderTimes];
+      savedHabitReminders.current = { ...settings.habitReminders };
+      lastSyncedSchedule.current = getReminderScheduleSignature(
+        payload.endpoint,
+        settings.reminderTimes,
+        habitReminders,
+        timeZone,
+      );
       setSettings(next);
       await updateReminderCheckInStatus({
         endpoint: payload.endpoint,

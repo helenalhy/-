@@ -12,6 +12,7 @@ export interface ReminderScheduleDefinition {
   scheduleId: string;
   reminderTimes: string[];
   habitTitle?: string;
+  restDays?: number[];
 }
 
 export interface DueReminderBatchInput {
@@ -77,6 +78,22 @@ export function serializeSnoozedReminder(record: SnoozedReminderRecord): string 
   return JSON.stringify(record);
 }
 
+export function getWeekdayFromLocalDate(localDate: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(localDate);
+  if (!match) return null;
+  const [, yearValue, monthValue, dayValue] = match;
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) return null;
+  return date.getUTCDay();
+}
+
 export function getActiveSnoozedReminders(
   values: Record<string, string> | null,
   localDate: string,
@@ -111,10 +128,16 @@ export function getDueReminderBatch(input: DueReminderBatchInput): DueReminderBa
   ));
   const legacyAlreadySentToday = !hasGlobalScheduleHistory
     && input.legacyLastSentLocalDate === input.localDate;
+  const localWeekday = getWeekdayFromLocalDate(input.localDate);
   const dueSlots = input.schedules.flatMap((schedule) => (
     [...new Set(schedule.reminderTimes)].flatMap((time) => {
       const isGlobal = schedule.scheduleId === "global";
       const sentKey = `${schedule.scheduleId}:${time}`;
+      if (
+        !isGlobal
+        && localWeekday !== null
+        && schedule.restDays?.includes(localWeekday)
+      ) return [];
       if (time > input.localTime) return [];
       if (isGlobal && legacyAlreadySentToday) return [];
       if (sentDates[sentKey] === input.localDate) return [];

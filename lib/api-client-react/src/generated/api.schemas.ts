@@ -88,6 +88,12 @@ export interface HabitReminderSchedule {
      * @items.pattern ^(?:[01]\d|2[0-3]):[0-5]\d$
      */
   reminderTimes: string[];
+  /**
+     * @maxItems 7
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  restDays?: number[];
 }
 
 export interface ReminderSubscriptionInput {

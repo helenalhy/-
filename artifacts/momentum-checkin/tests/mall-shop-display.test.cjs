@@ -80,6 +80,11 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
     new Set(chiikawaProfiles.flatMap(({ id, companionIds }) => [id, ...(companionIds ?? [])])).size >= 8,
     'the Chiikawa catalog covers the pictured characters and carousel-costume group',
   );
+  assert.ok(
+    chiikawa.filter(({ name }) => name.includes('魔法少女')).length >= 8,
+    'the first Chiikawa catalog page includes a dedicated magical-girl series',
+  );
+  assert.ok(chiikawa.slice(8, 16).every(({ name }) => name.includes('魔法少女')));
 
   const winnieProfiles = winnie.map(({ theme, name, variant }) =>
     getShopCharacterMerchandiseProfile(theme, name, variant),
@@ -101,6 +106,9 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
   assert.ok(characterVisual.includes('testID={`shop-character-merchandise-${product.id}`}'));
   assert.match(characterVisual, /product\.illustration === 'plush'/);
   assert.match(characterVisual, /characterIds\.slice\(0, 4\)/);
+  assert.match(characterVisual, /product\.name\.includes\('魔法少女'\)/);
+  assert.match(characterVisual, /magicalGirlColor/);
+  assert.match(characterVisual, /jewelColor/);
 });
 
 function getPngAlphaCoverage(png, startY, endY) {

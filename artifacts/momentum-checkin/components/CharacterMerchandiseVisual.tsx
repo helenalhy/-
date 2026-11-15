@@ -16,12 +16,18 @@ function CharacterFigure({
   x = 32,
   y = 32,
   scale = 1,
+  magicalGirl = false,
+  magicalGirlColor,
+  jewelColor,
 }: {
   characterId: CharacterId;
   colors: ReturnType<typeof useColors>;
   x?: number;
   y?: number;
   scale?: number;
+  magicalGirl?: boolean;
+  magicalGirlColor?: string;
+  jewelColor?: string;
 }) {
   const fur = characterId === 'pooh' ? colors.candyLemon
     : characterId === 'piglet' ? colors.candyPink
@@ -54,6 +60,19 @@ function CharacterFigure({
         <>
           <Path d="M24 45 L28 50 M38 45 L34 50 M25 55 L30 57 M39 55 L34 57" stroke={outline} strokeWidth="2" strokeLinecap="round" />
           <Path d="M42 54 C53 52 53 60 46 60" fill="none" stroke={outline} strokeWidth="2" strokeLinecap="round" />
+        </>
+      )}
+      {magicalGirl && (
+        <>
+          <Path
+            d="M20 44 Q32 40 44 44 L50 58 Q32 64 14 58 Z"
+            fill={magicalGirlColor ?? colors.candyPink}
+            stroke={outline}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <Path d="M17 57 Q21 54 25 58 Q29 54 33 58 Q37 54 41 58 Q45 54 48 57" fill="none" stroke={colors.candyCream} strokeWidth="1.5" />
+          <Path d="M24 44 Q32 49 40 44" fill="none" stroke={colors.candyCream} strokeWidth="1.6" />
         </>
       )}
       {characterId === 'eeyore' && (
@@ -140,6 +159,14 @@ function CharacterFigure({
           <Circle cx="32" cy="49" r="2" fill={colors.candyLemon} />
         </>
       )}
+      {magicalGirl && (
+        <>
+          <Path d="M44 17 C39 11 36 17 43 20 C36 23 40 28 45 22 C50 28 54 23 47 20 C54 16 49 11 44 17 Z" fill={magicalGirlColor ?? colors.candyPink} stroke={outline} strokeWidth="1" />
+          <Circle cx="45" cy="20" r="1.5" fill={jewelColor ?? colors.candyLemon} />
+          <Path d="M32 44 L34 47 L37 47.5 L34.5 50 L35 53 L32 51.5 L29 53 L29.5 50 L27 47.5 L30 47 Z" fill={jewelColor ?? colors.candyLemon} stroke={outline} strokeWidth="0.7" />
+          <Path d="M32 6 L33.5 9 L37 9.5 L34.5 12 L35 15 L32 13.5 L29 15 L29.5 12 L27 9.5 L30.5 9 Z" fill={colors.candyLemon} stroke={outline} strokeWidth="0.8" />
+        </>
+      )}
     </G>
   );
 }
@@ -156,6 +183,28 @@ function ThemedProductArtwork({
   const stroke = colors.candyCaramelDark;
   const isGroup = characterIds.length > 1;
   const isFigure = product.illustration === 'plush' || product.illustration === 'charm';
+  const magicalGirl = product.name.includes('魔法少女');
+  const getCostumeColor = (characterId: CharacterId) => {
+    if (characterId === 'hachiware') return colors.candySky;
+    if (characterId === 'usagi') return colors.candyLemon;
+    if (characterId === 'momonga') return colors.candyLavender;
+    if (characterId === 'shisa') return colors.candyCoral;
+    if (characterId === 'kurimanju') return colors.candyRose;
+    if (characterId === 'rakko') return colors.candyMint;
+    return colors.candyPink;
+  };
+  const drawCharacter = (characterId: CharacterId, x: number, y: number, scale: number) => (
+    <CharacterFigure
+      characterId={characterId}
+      colors={colors}
+      x={x}
+      y={y}
+      scale={scale}
+      magicalGirl={magicalGirl}
+      magicalGirlColor={getCostumeColor(characterId)}
+      jewelColor={product.color}
+    />
+  );
   return (
     <Svg width="42" height="42" viewBox="0 0 64 64">
       <Ellipse cx="32" cy="59" rx="19" ry="3" fill={colors.candyCaramel} opacity="0.32" />
@@ -164,14 +213,14 @@ function ThemedProductArtwork({
           <Rect x="7" y="9" width="50" height="46" rx="8" fill={colors.card} stroke={stroke} strokeWidth="1.7" />
           <Rect x="11" y="13" width="42" height="38" rx="6" fill={product.color} opacity="0.72" />
           {characterIds.slice(0, 4).map((characterId, characterIndex) => (
-            <CharacterFigure
-              key={characterId}
-              characterId={characterId}
-              colors={colors}
-              x={characterIds.length === 2 ? (characterIndex === 0 ? 23 : 41) : 16 + characterIndex * 10.5}
-              y={38}
-              scale={characterIds.length === 2 ? 0.48 : 0.34}
-            />
+            <G key={characterId}>
+              {drawCharacter(
+                characterId,
+                characterIds.length === 2 ? (characterIndex === 0 ? 23 : 41) : 16 + characterIndex * 10.5,
+                38,
+                characterIds.length === 2 ? 0.48 : 0.34,
+              )}
+            </G>
           ))}
           <Path d="M16 47 Q32 43 48 47" stroke={colors.candyCream} strokeWidth="1.4" opacity="0.8" />
         </>
@@ -183,7 +232,7 @@ function ThemedProductArtwork({
               <Path d="M32 10 L32 14" stroke={stroke} strokeWidth="1.5" />
             </>
           )}
-          <CharacterFigure characterId={characterIds[0]} colors={colors} x={32} y={product.illustration === 'charm' ? 37 : 34} scale={product.illustration === 'charm' ? 0.78 : 0.91} />
+          {drawCharacter(characterIds[0], 32, product.illustration === 'charm' ? 37 : 34, product.illustration === 'charm' ? 0.78 : 0.91)}
           {product.illustration === 'charm' && <Circle cx="32" cy="57" r="1.7" fill={product.color} />}
         </>
       ) : product.illustration === 'mug' ? (
@@ -191,14 +240,14 @@ function ThemedProductArtwork({
           <Path d="M13 20 H46 V44 Q46 51 39 51 H21 Q13 51 13 44 Z" fill={product.color} stroke={stroke} strokeWidth="1.8" />
           <Path d="M46 25 H51 Q58 25 56 33 Q55 40 46 39" fill="none" stroke={stroke} strokeWidth="2.2" />
           <Path d="M17 24 H42" stroke={colors.card} strokeWidth="2" opacity="0.8" />
-          <CharacterFigure characterId={characterIds[0]} colors={colors} x={30} y={36} scale={0.48} />
+          {drawCharacter(characterIds[0], 30, 36, 0.48)}
         </>
       ) : product.illustration === 'box' ? (
         <>
           <Rect x="10" y="15" width="44" height="38" rx="5" fill={product.color} stroke={stroke} strokeWidth="1.8" />
           <Path d="M32 15 V53 M10 27 H54" stroke={colors.candyCream} strokeWidth="2" />
           <Path d="M32 17 C23 8 18 15 27 21 M32 17 C41 8 46 15 37 21" fill="none" stroke={colors.candyRoseDark} strokeWidth="2" />
-          <CharacterFigure characterId={characterIds[0]} colors={colors} x={32} y={39} scale={0.48} />
+          {drawCharacter(characterIds[0], 32, 39, 0.48)}
         </>
       ) : (
         <>
@@ -206,7 +255,7 @@ function ThemedProductArtwork({
           <Rect x="15" y="11" width="34" height="42" rx={product.illustration === 'sticker' ? 8 : 2} fill={product.color} opacity="0.76" />
           {product.illustration === 'book' && <Path d="M32 11 V53 M28 13 H32" stroke={colors.candyCream} strokeWidth="1.5" />}
           {product.illustration === 'sticker' && <Circle cx="47" cy="13" r="4" fill={colors.candyLemon} stroke={colors.card} strokeWidth="1.5" />}
-          <CharacterFigure characterId={characterIds[0]} colors={colors} x={32} y={34} scale={0.6} />
+          {drawCharacter(characterIds[0], 32, 34, 0.6)}
           <Path d="M19 49 Q32 45 45 49" stroke={colors.candyCream} strokeWidth="1.5" opacity="0.8" />
         </>
       )}

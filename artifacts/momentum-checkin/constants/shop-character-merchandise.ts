@@ -40,6 +40,14 @@ export function getShopCharacterMerchandiseProfile(
 ): CharacterMerchandiseProfile | undefined {
   if (theme !== 'chiikawa' && theme !== 'winnie') return undefined;
   const characters = theme === 'chiikawa' ? CHIIKAWA_CHARACTERS : WINNIE_CHARACTERS;
+  if (theme === 'chiikawa' && productName.includes('星月魔法少女變身')) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '吉伊卡哇魔法少女夥伴',
+      theme,
+      companionIds: ['hachiware', 'usagi', 'momonga'],
+    };
+  }
   if (theme === 'chiikawa' && productName.includes('旋轉木馬')) {
     return {
       id: 'chiikawa-carousel',

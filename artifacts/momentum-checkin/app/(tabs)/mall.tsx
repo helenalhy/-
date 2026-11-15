@@ -197,15 +197,22 @@ function MallSceneSlot({
         <Animated.View style={[
           styles.sceneShopBadge,
           isStorefront && styles.sceneStorefrontBadge,
-          { opacity: fadeIn, height: position.plaza ? 30 : isStorefront ? 63 : 47, transform: [{ scale: Animated.multiply(popIn, position.scale) }] },
+          { opacity: fadeIn, height: position.plaza ? 30 : isStorefront ? 74 : 47, transform: [{ scale: Animated.multiply(popIn, position.scale) }] },
         ]}>
-          {isStorefront && (
+          {isStorefront ? (
             <View
               pointerEvents="none"
+              testID={`mall-store-contact-shadow-${slotId}`}
               style={[
                 styles.sceneStoreContactShadow,
                 { bottom: position.plaza ? -8 : 2 },
               ]}
+            />
+          ) : (
+            <View
+              pointerEvents="none"
+              testID={`mall-object-contact-shadow-${slotId}`}
+              style={styles.sceneObjectContactShadow}
             />
           )}
           <MallObjectVisual
@@ -886,7 +893,7 @@ export default function MallScreen() {
 
         <View style={styles.sceneHeading}>
           <View>
-            <Text style={[styles.sceneTitle, { color: colors.foreground }]}>二十層慢慢商場</Text>
+            <Text style={[styles.sceneTitle, { color: colors.foreground }]}>三十層慢慢商場</Text>
             <Text style={[styles.sceneSub, { color: colors.mutedForeground }]}>已放置 {constructed.length} / {MALL_SLOT_IDS.length} 個店鋪與設施</Text>
           </View>
           <Pressable onPress={openWarehouse} disabled={purchasing !== null} accessibilityRole="button" accessibilityLabel={`開啟倉庫，${collectionItems.length} 件已保存物件`} testID="warehouse-shortcut" style={[styles.buildCount, { backgroundColor: colors.secondary, minHeight: 44 }]}>
@@ -973,7 +980,7 @@ export default function MallScreen() {
           >
             <Feather name="layers" size={17} color={colors.primary} />
             <Text style={[styles.elevatorShortcutText, { color: colors.primary }]}>電梯直達樓層</Text>
-            <Text style={[styles.elevatorShortcutRange, { color: colors.mutedForeground }]}>1F–20F</Text>
+            <Text style={[styles.elevatorShortcutRange, { color: colors.mutedForeground }]}>1F–30F</Text>
             <Feather name="chevron-right" size={16} color={colors.primary} />
           </Pressable>
           <Text testID="floor-description" style={[styles.floorDescription, { color: colors.mutedForeground }]}>{floorTheme.description}</Text>
@@ -987,7 +994,7 @@ export default function MallScreen() {
                   ? '仍可點選其他物件交換位置，或按「存入倉庫」騰出位置，不扣金幣。'
                   : availableFloors.length > 0
                     ? '請前往下方有空位的樓層繼續擺放，已選物件會保留。'
-                    : '二十層都已放滿。請先取消擺放，點選已放置物件，再按「存入倉庫」騰出空位；之後可重新選擇物件擺放。'}
+                    : '三十層都已放滿。請先取消擺放，點選已放置物件，再按「存入倉庫」騰出空位；之後可重新選擇物件擺放。'}
               </Text>
               {availableFloors.length > 0 ? (
                 <>
@@ -1010,7 +1017,7 @@ export default function MallScreen() {
                   </View>
                 </>
               ) : placementIntent.mode === 'move' ? (
-                <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>二十層都已放滿；可用樓層箭頭換層交換，或先將物件存入倉庫騰出空位。</Text>
+                <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>三十層都已放滿；可用樓層箭頭換層交換，或先將物件存入倉庫騰出空位。</Text>
               ) : null}
               {placementIntent.mode === 'purchase' && (
                 <Text style={[styles.fullFloorCopy, { color: colors.mutedForeground }]}>尚未扣除金幣；選好空位並確認兌換後才扣金幣。</Text>
@@ -1164,7 +1171,7 @@ export default function MallScreen() {
             style={styles.searchClear}
           ><Feather name="x" size={18} color={colors.primary} /></Pressable>}
         </View>
-        <Text testID="mall-search-hint" allowFontScaling style={[styles.searchHint, { color: colors.mutedForeground }]}>跨二十層搜尋名稱或描述；以空格分隔多個關鍵字，每個詞都需符合 · 可配合分類 · 搜尋及換層不扣金幣</Text>
+        <Text testID="mall-search-hint" allowFontScaling style={[styles.searchHint, { color: colors.mutedForeground }]}>跨三十層搜尋名稱或描述；以空格分隔多個關鍵字，每個詞都需符合 · 可配合分類 · 搜尋及換層不扣金幣</Text>
 
         {!showCollection && !isSearching && recentSearches.length > 0 && (
           <View testID="mall-recent-searches" style={styles.recentSearches}>
@@ -1682,6 +1689,17 @@ const styles = StyleSheet.create({
     borderRadius: 99,
     backgroundColor: 'rgba(92,60,60,0.18)',
     transform: [{ scaleX: 1.08 }],
+  },
+  sceneObjectContactShadow: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 2,
+    width: '54%',
+    height: 5,
+    borderRadius: 99,
+    backgroundColor: 'rgba(76,55,76,0.2)',
+    transform: [{ scaleX: 1.12 }],
+    zIndex: 0,
   },
   sceneShopName: { fontSize: 8, fontWeight: '700', backgroundColor: palette.light.candyCream, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, maxWidth: '100%' },
   sceneStoreName: {

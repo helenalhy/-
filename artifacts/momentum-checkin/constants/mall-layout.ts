@@ -8,6 +8,7 @@ export type MallSlotId = `floor-${number}-${Column | `plaza-${PlazaRow}-${Column
 const COLUMNS: Column[] = ['left', 'center', 'right'];
 const LEGACY_FLOORS = [3, 2, 1, 4, 5, 6, 7, 8, 9, 10];
 const EXPANSION_FLOORS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const NEW_FLOORS = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
 export const MALL_POSITIONS_PER_FLOOR = 56;
 // Preserve all original slot IDs and ordering before adding either annex.
 function createFloorSlotIds(floors: number[]): MallSlotId[] {
@@ -34,6 +35,7 @@ function createFloorSlotIds(floors: number[]): MallSlotId[] {
 export const MALL_SLOT_IDS: MallSlotId[] = [
   ...createFloorSlotIds(LEGACY_FLOORS),
   ...createFloorSlotIds(EXPANSION_FLOORS),
+  ...createFloorSlotIds(NEW_FLOORS),
 ];
 
 export function getMallSlotFloor(slotId: MallSlotId): number {
@@ -55,16 +57,21 @@ export function getMallSlotPosition(slotId: MallSlotId) {
   const plazaRow = annex ? row - 1 : row;
   const left: `${number}%` = plaza
     ? column === 'left' ? '6%' : column === 'center' ? '39%' : '72%'
-    : column === 'left' ? '12%' : column === 'center' ? '38%' : '64%';
+    : column === 'left' ? '12%' : column === 'center' ? '37%' : '62%';
+  const scale = extension
+    ? 0.52 + (row - 1) * 0.04
+    : plaza
+      ? 0.56 + (plazaRow - 1) * 0.04
+      : 1;
   return {
     floor,
     wing,
     label: `${parts[2] === 'extension3' ? '延伸區三' : parts[2] === 'extension4' ? '延伸區四' : extension ? '延伸區二' : annex ? '延伸區' : ''}${plaza ? `中庭第 ${plazaRow} 排` : '店面區'}${columnLabel}`,
     left,
-    top: (extension ? `${53 + (row - 1) * 11}%` : plaza ? `${61 + (plazaRow - 1) * 12}%` : '39%') as `${number}%`,
-    width: (plaza ? '22%' : '24%') as `${number}%`,
-    height: (extension ? '10%' : plaza ? '12%' : '18%') as `${number}%`,
-    scale: extension ? 0.52 : plaza ? 0.62 : 1,
+    top: (extension ? `${53 + (row - 1) * 11}%` : plaza ? `${60 + (plazaRow - 1) * 12}%` : '38%') as `${number}%`,
+    width: (plaza ? '22%' : '26%') as `${number}%`,
+    height: (extension ? '10%' : plaza ? '12%' : '22%') as `${number}%`,
+    scale,
     plaza,
   };
 }

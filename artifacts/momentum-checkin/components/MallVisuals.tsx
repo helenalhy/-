@@ -398,8 +398,8 @@ export function MallAmbience({ floor = 1, totalCheckIns = 0, celebrationKey = 0 
 const s = StyleSheet.create({
   illustrationCanvas: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   illustrationMotion: { width: 62, height: 47, alignItems: 'center', justifyContent: 'center' },
-  mallStorefrontCanvas: { width: '100%', aspectRatio: 4 / 3 },
-  mallStorefrontMotion: { width: '100%', aspectRatio: 4 / 3 },
+  mallStorefrontCanvas: { width: '100%', aspectRatio: 1 },
+  mallStorefrontMotion: { width: '100%', aspectRatio: 1 },
   sceneSprite: { width: '100%', height: '100%' },
   storefrontArt: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   storefrontThemeGlow: { position: 'absolute', top: 5, width: 72, height: 50, borderRadius: 28, opacity: 0.28 },

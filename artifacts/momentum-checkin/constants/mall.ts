@@ -65,6 +65,16 @@ export const MALL_FLOORS: MallFloorTheme[] = [
   { title: '積木創想樂園', description: '在繽紛積木城市裡動手拼出自己的小世界。', image: require('../assets/images/mall-floor-18-brick-park.jpg'), accent: c.candyCaramelDark, surface: c.candyLemon },
   { title: '毛茸茸寵物樂園', description: '在寵物照護小站和遊樂區認識新朋友。', image: require('../assets/images/mall-floor-19-pet-park.jpg'), accent: c.candyMintDark, surface: c.candyMint },
   { title: '天空花園', description: '來到雲端，在彩虹和城市風景中休息。', image: require('../assets/images/mall-floor-10.jpg'), accent: c.candySkyDark, surface: c.candySky },
+  { title: '童話天空城堡', description: '穿過雲橋與水晶塔，走進柔和夢幻的空中城堡。', image: require('../assets/images/mall-floor-21-fairy-castle.jpg'), accent: c.candyRoseDark, surface: c.candyPink },
+  { title: '蒸汽齒輪工坊城', description: '齒輪、銅管與暖燈交織成一座活力工坊城。', image: require('../assets/images/mall-floor-22-steam-city.jpg'), accent: c.candyCaramelDark, surface: c.candyPeach },
+  { title: '時光郵局鐘塔街', description: '在鐘塔郵局寄出信件，收藏每段珍貴時光。', image: require('../assets/images/mall-floor-23-time-post.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },
+  { title: '夢境劇場迷宮', description: '沿著天鵝絨舞台與幻境拱門，尋找自己的故事。', image: require('../assets/images/mall-floor-24-dream-theater.jpg'), accent: c.candyRoseDark, surface: c.candyCoral },
+  { title: '機器人發明研究院', description: '在明亮的創作實驗室，讓新點子動起來。', image: require('../assets/images/mall-floor-25-robot-lab.jpg'), accent: c.candyMintDark, surface: c.candyMint },
+  { title: '沙漠綠洲香料市集', description: '在棕櫚、噴泉與香料拱廊間慢慢尋寶。', image: require('../assets/images/mall-floor-26-desert-oasis.jpg'), accent: c.candyCaramelDark, surface: c.candyLemon },
+  { title: '玻璃海岸燈塔港', description: '透過明亮玻璃眺望燈塔、海灣與帆船。', image: require('../assets/images/mall-floor-27-lighthouse-port.jpg'), accent: c.candySkyDark, surface: c.candySky },
+  { title: '熱氣球環遊港站', description: '搭乘色彩繽紛的熱氣球，從高空欣賞旅途風景。', image: require('../assets/images/mall-floor-28-balloon-harbor.jpg'), accent: c.candyRoseDark, surface: c.candyPeach },
+  { title: '幻彩寶石洞窟', description: '沿著水晶洞廊，發現紫晶、粉晶與海藍寶光。', image: require('../assets/images/mall-floor-29-gem-cavern.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },
+  { title: '月下燈籠古街', description: '在柔亮燈籠與夜色街巷中，享受安靜的晚風。', image: require('../assets/images/mall-floor-30-lantern-night.jpg'), accent: c.candyRoseDark, surface: c.candyPink },
 ];
 
 function item(floor: number, id: string, name: string, description: string, icon: string, category: RewardCategory, price: number, _legacyTicketCost: number, color: string, visual?: MallItem['visual'], shopType?: MallShopType, unlockCheckIns?: number): MallItem {

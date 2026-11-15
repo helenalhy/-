@@ -39,25 +39,35 @@ function loadCatalogTsModule(filename) {
 }
 const mallCatalog = loadCatalogTsModule(path.join(appRoot, 'constants/mall.ts'));
 
-test('all twenty floors have their own theme name and emblem', () => {
-  const profiles = Array.from({ length: 20 }, (_, index) => getMallFloorArtProfile(index + 1, 'theme-check'));
-  assert.equal(new Set(MALL_FLOOR_ART_TITLES).size, 20);
-  assert.equal(new Set(profiles.map(({ emblem }) => emblem)).size, 20);
+test('all thirty floors have their own theme name and emblem', () => {
+  const profiles = Array.from({ length: 30 }, (_, index) => getMallFloorArtProfile(index + 1, 'theme-check'));
+  assert.equal(new Set(MALL_FLOOR_ART_TITLES).size, 30);
+  assert.equal(new Set(profiles.map(({ emblem }) => emblem)).size, 30);
   assert.deepEqual(profiles.map(({ title }) => title), MALL_FLOOR_ART_TITLES);
   assert.equal(getMallFloorArtProfile(0, 'fallback').title, MALL_FLOOR_ART_TITLES[0]);
-  assert.equal(getMallFloorArtProfile(21, 'fallback').title, MALL_FLOOR_ART_TITLES[19]);
+  assert.equal(getMallFloorArtProfile(31, 'fallback').title, MALL_FLOOR_ART_TITLES[29]);
 });
 
-test('every floor has real shop samples whose storefront and interior identity use that floor', () => {
+test('all thirty floors have real shop samples, unique themes and bundled scene artwork', () => {
   const mallScreen = fs.readFileSync(path.join(appRoot, 'app/(tabs)/mall.tsx'), 'utf8');
-  const shopsByFloor = Array.from({ length: 20 }, (_, index) => (
+  const mallSource = fs.readFileSync(path.join(appRoot, 'constants/mall.ts'), 'utf8');
+  const shopsByFloor = Array.from({ length: 30 }, (_, index) => (
     mallCatalog.MALL_ITEMS.filter((item) => item.category === 'shop' && item.floor === index + 1)
   ));
   const storefronts = shopsByFloor.flat();
 
-  assert.ok(shopsByFloor.every((shops) => shops.length > 0), 'all twenty floors have shop test data');
+  assert.ok(shopsByFloor.every((shops) => shops.length > 0), 'all thirty floors have shop test data');
   assert.ok(storefronts.length > 100, 'exercise the real shop catalog, not hand-picked examples');
-  for (let floor = 1; floor <= 20; floor += 1) {
+  assert.equal(mallCatalog.MALL_FLOORS.length, 30);
+  assert.equal(new Set(mallCatalog.MALL_FLOORS.map(({ title }) => title)).size, 30);
+  const floorImageNames = [...mallSource.matchAll(/image: require\('\.\.\/assets\/images\/(mall-floor-[^']+\.jpg)'\)/g)]
+    .map(([, name]) => name);
+  assert.equal(floorImageNames.length, 30);
+  assert.equal(new Set(floorImageNames).size, 30);
+  for (const filename of floorImageNames) {
+    assert.ok(fs.statSync(path.join(appRoot, 'assets/images', filename)).size > 0, `${filename} is bundled`);
+  }
+  for (let floor = 1; floor <= 30; floor += 1) {
     const shop = shopsByFloor[floor - 1][0];
     const art = getMallFloorArtProfile(floor, shop.id);
     assert.equal(art.title, MALL_FLOOR_ART_TITLES[floor - 1], `${shop.name} uses its floor title`);
@@ -68,6 +78,8 @@ test('every floor has real shop samples whose storefront and interior identity u
       `${shop.name} keeps its storefront and interior look after navigation`,
     );
   }
+  assert.equal(mallCatalog.MALL_FLOORS[20].title, '童話天空城堡');
+  assert.match(mallCatalog.MALL_FLOORS[20].description, /城堡/);
 
   assert.match(mallScreen, /itemName=\{item\.name\}[\s\S]*?floor=\{item\.floor\}/);
 });

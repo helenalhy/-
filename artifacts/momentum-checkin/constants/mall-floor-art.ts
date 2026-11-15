@@ -47,6 +47,16 @@ const FLOOR_ART: readonly Omit<MallFloorArtProfile, 'variant' | 'pattern' | 'dis
   { title: '積木創想樂園', emblem: 'box', accent: c.candyCaramelDark, secondary: c.candySky, soft: c.candyLemon },
   { title: '毛茸茸寵物樂園', emblem: 'heart', accent: c.candyMintDark, secondary: c.candyRose, soft: c.candyMint },
   { title: '天空花園', emblem: 'sunrise', accent: c.candySkyDark, secondary: c.candyPink, soft: c.candySky },
+  { title: '童話天空城堡', emblem: 'star', accent: c.candyRoseDark, secondary: c.candySky, soft: c.candyPink },
+  { title: '蒸汽齒輪工坊城', emblem: 'tool', accent: c.candyCaramelDark, secondary: c.candyMint, soft: c.candyPeach },
+  { title: '時光郵局鐘塔街', emblem: 'clock', accent: c.candyLavenderDark, secondary: c.candyRose, soft: c.candyLavender },
+  { title: '夢境劇場迷宮', emblem: 'film', accent: c.candyRoseDark, secondary: c.candyLavender, soft: c.candyCoral },
+  { title: '機器人發明研究院', emblem: 'aperture', accent: c.candyMintDark, secondary: c.candySky, soft: c.candyMint },
+  { title: '沙漠綠洲香料市集', emblem: 'map', accent: c.candyCaramelDark, secondary: c.candyCoral, soft: c.candyLemon },
+  { title: '玻璃海岸燈塔港', emblem: 'navigation', accent: c.candySkyDark, secondary: c.candyPeach, soft: c.candySky },
+  { title: '熱氣球環遊港站', emblem: 'send', accent: c.candyRoseDark, secondary: c.candyLemon, soft: c.candyPeach },
+  { title: '幻彩寶石洞窟', emblem: 'hexagon', accent: c.candyLavenderDark, secondary: c.candySky, soft: c.candyLavender },
+  { title: '月下燈籠古街', emblem: 'radio', accent: c.candyRoseDark, secondary: c.candyCaramel, soft: c.candyPeach },
 ];
 
 const ORNAMENTS = ['star', 'circle', 'heart', 'triangle', 'moon', 'sun', 'plus', 'hexagon'] as const;

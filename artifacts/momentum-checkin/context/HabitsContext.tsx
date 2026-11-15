@@ -110,7 +110,7 @@ export interface Habit {
 
 export type RewardCategory = 'facility' | 'shop' | 'decor';
 export type RewardTokens = Record<RewardCategory, number>;
-export const MALL_FLOOR_COUNT = 20;
+export const MALL_FLOOR_COUNT = 30;
 
 interface CheckInTransaction {
   version: 1;

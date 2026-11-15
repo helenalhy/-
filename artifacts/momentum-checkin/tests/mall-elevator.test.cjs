@@ -87,8 +87,8 @@ function collectNodes(node) {
   return [node, ...collectNodes(node.props?.children)];
 }
 
-test('elevator shows all twenty accessible floors and highlights the current one', () => {
-  const floors = Array.from({ length: 20 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
+test('elevator shows all thirty accessible floors and highlights the current one', () => {
+  const floors = Array.from({ length: 30 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
   const { tree } = renderElevatorPanel({
     visible: true,
     currentFloor: 5,
@@ -100,18 +100,18 @@ test('elevator shows all twenty accessible floors and highlights the current one
   const panel = nodes.find((node) => node.props.testID === 'mall-elevator-panel');
   assert.ok(panel);
   assert.equal(panel.props.accessibilityViewIsModal, true);
-  assert.equal(nodes.filter((node) => /^mall-elevator-select-floor-/.test(node.props.testID ?? '')).length, 20);
+  assert.equal(nodes.filter((node) => /^mall-elevator-select-floor-/.test(node.props.testID ?? '')).length, 30);
 
   const current = nodes.find((node) => node.props.testID === 'mall-elevator-select-floor-5');
-  const destination = nodes.find((node) => node.props.testID === 'mall-elevator-select-floor-20');
+  const destination = nodes.find((node) => node.props.testID === 'mall-elevator-select-floor-30');
   assert.equal(current.props.disabled, true);
   assert.equal(current.props.accessibilityState.selected, true);
-  assert.match(destination.props.accessibilityLabel, /20F，主題20/);
+  assert.match(destination.props.accessibilityLabel, /30F，主題30/);
   assert.equal(destination.props.disabled, false);
 });
 
 test('choosing a destination completes the elevator animation before navigating and closing', () => {
-  const floors = Array.from({ length: 20 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
+  const floors = Array.from({ length: 30 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
   const selectedFloors = [];
   let closeCalls = 0;
   const { tree } = renderElevatorPanel({
@@ -132,7 +132,7 @@ test('choosing a destination completes the elevator animation before navigating 
 });
 
 test('disabled and current-floor choices cannot start a ride', () => {
-  const floors = Array.from({ length: 20 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
+  const floors = Array.from({ length: 30 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
   const selectedFloors = [];
   const { tree: disabledTree } = renderElevatorPanel({
     visible: true,
@@ -171,7 +171,7 @@ test('hidden elevator panel does not mount an overlay', () => {
 });
 
 test('web elevator travel uses the JavaScript animation driver', () => {
-  const floors = Array.from({ length: 20 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
+  const floors = Array.from({ length: 30 }, (_, index) => ({ floor: index + 1, title: `主題${index + 1}` }));
   const { tree, animationConfigs } = renderElevatorPanel({
     visible: true,
     currentFloor: 1,

@@ -21,6 +21,7 @@ type GuestMakeupAnchors = {
   rightEye: EyeshadowCurve;
   lipsX: number;
   lipsY: number;
+  lipHalfWidth: number;
 };
 
 const GUEST_PORTRAITS: ReadonlyArray<{
@@ -32,80 +33,88 @@ const GUEST_PORTRAITS: ReadonlyArray<{
     id: 'guest-1',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-01.png'),
     makeup: {
-      leftEye: { centerX: 46, centerY: 60, halfWidth: 7.4, bend: -2.6, tilt: 0.3, thickness: 1.8 },
-      rightEye: { centerX: 73, centerY: 60, halfWidth: 7.2, bend: -2.3, tilt: -0.2, thickness: 1.8 },
+      leftEye: { centerX: 46, centerY: 60, halfWidth: 7.4, bend: -2.6, tilt: 0.3, thickness: 2.3 },
+      rightEye: { centerX: 73, centerY: 60, halfWidth: 7.2, bend: -2.3, tilt: -0.2, thickness: 2.3 },
       lipsX: 60,
       lipsY: 81,
+      lipHalfWidth: 4.5,
     },
   },
   {
     id: 'guest-2',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-02.png'),
     makeup: {
-      leftEye: { centerX: 45, centerY: 54, halfWidth: 7.8, bend: -2.5, tilt: 0.2, thickness: 1.8 },
-      rightEye: { centerX: 73, centerY: 54, halfWidth: 7.8, bend: -2.8, tilt: -0.2, thickness: 1.8 },
+      leftEye: { centerX: 45, centerY: 54, halfWidth: 7.8, bend: -2.5, tilt: 0.2, thickness: 2.3 },
+      rightEye: { centerX: 73, centerY: 54, halfWidth: 7.8, bend: -2.8, tilt: -0.2, thickness: 2.3 },
       lipsX: 60,
       lipsY: 78,
+      lipHalfWidth: 5.5,
     },
   },
   {
     id: 'guest-3',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-03.png'),
     makeup: {
-      leftEye: { centerX: 45, centerY: 48, halfWidth: 7.2, bend: -1.9, tilt: 0.5, thickness: 1.7 },
-      rightEye: { centerX: 74, centerY: 48, halfWidth: 7.1, bend: -2.2, tilt: -0.3, thickness: 1.7 },
+      leftEye: { centerX: 45, centerY: 51, halfWidth: 7.2, bend: -1.9, tilt: 0.5, thickness: 2.3 },
+      rightEye: { centerX: 74, centerY: 51, halfWidth: 7.1, bend: -2.2, tilt: -0.3, thickness: 2.3 },
       lipsX: 60,
-      lipsY: 68,
+      lipsY: 71,
+      lipHalfWidth: 5,
     },
   },
   {
     id: 'guest-4',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-04.png'),
     makeup: {
-      leftEye: { centerX: 45, centerY: 50, halfWidth: 7.2, bend: -1.7, tilt: 0.6, thickness: 1.7 },
-      rightEye: { centerX: 73, centerY: 50, halfWidth: 7.1, bend: -2.0, tilt: -0.5, thickness: 1.7 },
+      leftEye: { centerX: 45, centerY: 53, halfWidth: 7.2, bend: -1.7, tilt: 0.6, thickness: 2.3 },
+      rightEye: { centerX: 73, centerY: 53, halfWidth: 7.1, bend: -2.0, tilt: -0.5, thickness: 2.3 },
       lipsX: 60,
-      lipsY: 70,
+      lipsY: 72,
+      lipHalfWidth: 5,
     },
   },
   {
     id: 'guest-5',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-05.png'),
     makeup: {
-      leftEye: { centerX: 45, centerY: 49, halfWidth: 7.3, bend: -2.3, tilt: 0.3, thickness: 1.8 },
-      rightEye: { centerX: 74, centerY: 49, halfWidth: 7.2, bend: -2.0, tilt: -0.2, thickness: 1.8 },
+      leftEye: { centerX: 45, centerY: 53, halfWidth: 7.3, bend: -2.3, tilt: 0.3, thickness: 2.3 },
+      rightEye: { centerX: 74, centerY: 53, halfWidth: 7.2, bend: -2.0, tilt: -0.2, thickness: 2.3 },
       lipsX: 60,
-      lipsY: 68,
+      lipsY: 72,
+      lipHalfWidth: 4.1,
     },
   },
   {
     id: 'guest-6',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-06.png'),
     makeup: {
-      leftEye: { centerX: 45, centerY: 48, halfWidth: 7.2, bend: -2.4, tilt: 0.2, thickness: 1.8 },
-      rightEye: { centerX: 73, centerY: 48, halfWidth: 7.2, bend: -2.5, tilt: -0.2, thickness: 1.8 },
+      leftEye: { centerX: 45, centerY: 52, halfWidth: 7.2, bend: -2.4, tilt: 0.2, thickness: 2.3 },
+      rightEye: { centerX: 73, centerY: 52, halfWidth: 7.2, bend: -2.5, tilt: -0.2, thickness: 2.3 },
       lipsX: 60,
-      lipsY: 68,
+      lipsY: 72,
+      lipHalfWidth: 5.2,
     },
   },
   {
     id: 'guest-7',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-07.png'),
     makeup: {
-      leftEye: { centerX: 45, centerY: 51, halfWidth: 7.4, bend: -1.8, tilt: 0.5, thickness: 1.8 },
-      rightEye: { centerX: 73, centerY: 51, halfWidth: 7.4, bend: -2.1, tilt: -0.4, thickness: 1.8 },
+      leftEye: { centerX: 45, centerY: 55, halfWidth: 7.4, bend: -1.8, tilt: 0.5, thickness: 2.3 },
+      rightEye: { centerX: 73, centerY: 55, halfWidth: 7.4, bend: -2.1, tilt: -0.4, thickness: 2.3 },
       lipsX: 60,
       lipsY: 72,
+      lipHalfWidth: 5,
     },
   },
   {
     id: 'guest-8',
     source: require('../assets/images/cosmetics-tryon-guest-portrait-08.png'),
     makeup: {
-      leftEye: { centerX: 46, centerY: 49, halfWidth: 7.2, bend: -2.2, tilt: 0.3, thickness: 1.8 },
-      rightEye: { centerX: 74, centerY: 49, halfWidth: 7.2, bend: -2.0, tilt: -0.4, thickness: 1.8 },
+      leftEye: { centerX: 46, centerY: 55, halfWidth: 7.2, bend: -2.2, tilt: 0.3, thickness: 2.3 },
+      rightEye: { centerX: 74, centerY: 55, halfWidth: 7.2, bend: -2.0, tilt: -0.4, thickness: 2.3 },
       lipsX: 60,
-      lipsY: 69,
+      lipsY: 81,
+      lipHalfWidth: 4.5,
     },
   },
 ];
@@ -120,8 +129,12 @@ function getEyeshadowPath(eye: EyeshadowCurve) {
   return `M ${leftX} ${leftY} Q ${eye.centerX} ${curveY} ${rightX} ${rightY} L ${rightX} ${rightY + eye.thickness} Q ${eye.centerX} ${curveY + eye.thickness} ${leftX} ${leftY + eye.thickness} Z`;
 }
 
-function getLipstickPath(centerX: number, centerY: number) {
-  return `M ${centerX - 4} ${centerY} C ${centerX - 2.5} ${centerY - 1.5}, ${centerX - 1} ${centerY - 1.5}, ${centerX} ${centerY - 0.8} C ${centerX + 1} ${centerY - 1.5}, ${centerX + 2.5} ${centerY - 1.5}, ${centerX + 4} ${centerY} C ${centerX + 3.2} ${centerY + 2}, ${centerX + 1.5} ${centerY + 2.4}, ${centerX} ${centerY + 1.3} C ${centerX - 1.5} ${centerY + 2.4}, ${centerX - 3.2} ${centerY + 2}, ${centerX - 4} ${centerY} Z`;
+function getLipstickPath(centerX: number, centerY: number, halfWidth: number) {
+  const upperHeight = 1;
+  const lowerHeight = 1.2;
+  const leftX = centerX - halfWidth;
+  const rightX = centerX + halfWidth;
+  return `M ${leftX} ${centerY} C ${centerX - halfWidth * 0.72} ${centerY - upperHeight * 0.72}, ${centerX - halfWidth * 0.24} ${centerY - upperHeight}, ${centerX} ${centerY - upperHeight * 0.3} C ${centerX + halfWidth * 0.24} ${centerY - upperHeight}, ${centerX + halfWidth * 0.72} ${centerY - upperHeight * 0.72}, ${rightX} ${centerY} C ${centerX + halfWidth * 0.74} ${centerY + lowerHeight * 0.75}, ${centerX + halfWidth * 0.24} ${centerY + lowerHeight}, ${centerX} ${centerY + lowerHeight * 0.72} C ${centerX - halfWidth * 0.24} ${centerY + lowerHeight}, ${centerX - halfWidth * 0.74} ${centerY + lowerHeight * 0.75}, ${leftX} ${centerY} Z`;
 }
 
 function getEyeSparklePoints(eye: EyeshadowCurve, finish: ShopDisplayProduct['finish']) {
@@ -266,13 +279,13 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
                 testID="cosmetics-try-on-eyeshadow-left"
                 d={getEyeshadowPath(selectedGuest.makeup.leftEye)}
                 fill={selectedEyeshadow.color}
-                fillOpacity={0.56}
+                fillOpacity={0.42}
               />
               <Path
                 testID="cosmetics-try-on-eyeshadow-right"
                 d={getEyeshadowPath(selectedGuest.makeup.rightEye)}
                 fill={selectedEyeshadow.color}
-                fillOpacity={0.56}
+                fillOpacity={0.42}
               />
               {getEyeSparklePoints(selectedGuest.makeup.leftEye, selectedEyeshadow.finish).map((point, index) => (
                 <Circle
@@ -296,9 +309,9 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
               ))}
               <Path
                 testID="cosmetics-try-on-lips"
-                d={getLipstickPath(selectedGuest.makeup.lipsX, selectedGuest.makeup.lipsY)}
+                d={getLipstickPath(selectedGuest.makeup.lipsX, selectedGuest.makeup.lipsY, selectedGuest.makeup.lipHalfWidth)}
                 fill={selectedLipstick.color}
-                fillOpacity={0.68}
+                fillOpacity={0.56}
               />
               {getLipSparklePoints(selectedGuest.makeup.lipsX, selectedGuest.makeup.lipsY, selectedLipstick.finish).map((point, index) => (
                 <Circle

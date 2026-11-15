@@ -108,7 +108,7 @@ function getPngAlphaCoverage(png, startY, endY) {
 
 function getGuestAnchorRecords(componentSource) {
   return [...componentSource.matchAll(
-    /id: 'guest-(\d+)',\s+source: require\('\.\.\/assets\/images\/(cosmetics-tryon-guest-portrait-\d+)\.png'\),\s+makeup: \{\s*leftEye: \{([^}]+)\},\s*rightEye: \{([^}]+)\},\s*lipsX: ([\d.]+),\s*lipsY: ([\d.]+),\s*\}/g,
+    /id: 'guest-(\d+)',\s+source: require\('\.\.\/assets\/images\/(cosmetics-tryon-guest-portrait-\d+)\.png'\),\s+makeup: \{\s*leftEye: \{([^}]+)\},\s*rightEye: \{([^}]+)\},\s*lipsX: ([\d.]+),\s*lipsY: ([\d.]+),\s*lipHalfWidth: ([\d.]+),\s*\}/g,
   )].map((match) => ({
     id: Number(match[1]),
     source: match[2],
@@ -116,6 +116,7 @@ function getGuestAnchorRecords(componentSource) {
     rightEye: match[4],
     lipsX: Number(match[5]),
     lipsY: Number(match[6]),
+    lipHalfWidth: Number(match[7]),
   }));
 }
 
@@ -301,8 +302,8 @@ test('try-on protects the eight portrait crops, responsive sizing, and guest-spe
   assert.match(tryOn, /<Circle/);
   assert.match(tryOn, /<Path/);
   assert.match(tryOn, /halfWidth/);
+  assert.match(tryOn, /fillOpacity=\{0\.42\}/);
   assert.match(tryOn, /fillOpacity=\{0\.56\}/);
-  assert.match(tryOn, /fillOpacity=\{0\.68\}/);
   assert.match(tryOn, /resizeMode="cover"/);
   assert.match(tryOn, /cosmetics-try-on-makeup-layer/);
   for (const [viewportWidth, expected] of [
@@ -318,6 +319,16 @@ test('try-on protects the eight portrait crops, responsive sizing, and guest-spe
 
   const guestAnchors = getGuestAnchorRecords(tryOn);
   assert.equal(guestAnchors.length, 8, 'all eight portraits should define their own makeup anchors');
+  assert.deepEqual(
+    guestAnchors.map((guest) => Number(guest.leftEye.match(/centerY: ([\d.]+)/)?.[1])),
+    [60, 54, 51, 53, 53, 52, 55, 55],
+    'each guest eye shadow follows the vertical placement of the drawn eyes',
+  );
+  assert.deepEqual(
+    guestAnchors.map(({ lipsY }) => lipsY),
+    [81, 78, 71, 72, 72, 72, 72, 81],
+    'each lipstick overlay follows the vertical placement of the drawn mouth',
+  );
   for (const [index, guest] of guestAnchors.entries()) {
     const portrait = String(index + 1).padStart(2, '0');
     assert.equal(guest.id, index + 1, 'guest and anchor order should stay aligned');
@@ -331,13 +342,17 @@ test('try-on protects the eight portrait crops, responsive sizing, and guest-spe
     }
     assert.ok(guest.lipsX >= 0 && guest.lipsX <= 120, `guest ${index + 1} lip anchor should stay inside the portrait`);
     assert.ok(guest.lipsY >= 0 && guest.lipsY <= 120, `guest ${index + 1} lip anchor should stay inside the portrait`);
+    assert.ok(
+      guest.lipsX - guest.lipHalfWidth >= 0 && guest.lipsX + guest.lipHalfWidth <= 120,
+      `guest ${index + 1} lipstick shape should stay inside the mouth area`,
+    );
   }
   assert.equal(new Set(guestAnchors.map(({ leftEye, rightEye, lipsY }) => `${leftEye}${rightEye}${lipsY}`)).size, 8, 'each guest should keep distinct face-position anchors');
   assert.match(tryOn, /const selectedGuest = GUEST_PORTRAITS\[selectedGuestIndex\]/);
   assert.match(tryOn, /source=\{selectedGuest\.source\}/);
   assert.match(tryOn, /getEyeshadowPath\(selectedGuest\.makeup\.leftEye\)/);
   assert.match(tryOn, /getEyeshadowPath\(selectedGuest\.makeup\.rightEye\)/);
-  assert.match(tryOn, /getLipstickPath\(selectedGuest\.makeup\.lipsX, selectedGuest\.makeup\.lipsY\)/);
+  assert.match(tryOn, /getLipstickPath\(selectedGuest\.makeup\.lipsX, selectedGuest\.makeup\.lipsY, selectedGuest\.makeup\.lipHalfWidth\)/);
   assert.match(tryOn, /fill=\{selectedEyeshadow\.color\}/);
   assert.match(tryOn, /fill=\{selectedLipstick\.color\}/);
   assert.match(tryOn, /onPress=\{\(\) => onSelect\(product\.id\)\}/);

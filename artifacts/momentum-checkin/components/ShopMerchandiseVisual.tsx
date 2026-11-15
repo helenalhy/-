@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import React from 'react';
 import { Animated, StyleSheet, View, type ViewStyle } from 'react-native';
 import type { ShopDisplayProduct, ShopProductIllustration } from '@/constants/mall-shop-display';
+import { CharacterMerchandiseVisual } from '@/components/CharacterMerchandiseVisual';
 import { useColors } from '@/hooks/useColors';
 import { useReducedMotion } from '@/context/ReducedMotionContext';
 
@@ -225,6 +226,10 @@ export function ShopMerchandiseVisual({
   const pulse = reducedMotion ? 1 : motion.interpolate({ inputRange: [0, 1], outputRange: [1, animation.scale] });
   const shimmer = reducedMotion ? 0.2 : motion.interpolate({ inputRange: [0, 1], outputRange: [0.18, animation.sparkle] });
   const steamLift = reducedMotion ? 0 : motion.interpolate({ inputRange: [0, 1], outputRange: [2, -3] });
+
+  if (product.theme === 'chiikawa' || product.theme === 'winnie') {
+    return <CharacterMerchandiseVisual product={product} motion={motion} size={size} index={index} />;
+  }
 
   return (
     <Animated.View

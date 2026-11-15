@@ -29,6 +29,17 @@ const {
   getShopFixtureProductCatalog,
   SHOP_DISPLAY_SLOT_COUNT,
 } = constantsModule.exports;
+const characterMerchandisePath = path.join(__dirname, '../constants/shop-character-merchandise.ts');
+const characterMerchandiseOutput = ts.transpileModule(fs.readFileSync(characterMerchandisePath, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText;
+const characterMerchandiseModule = { exports: {} };
+new Function('require', 'module', 'exports', characterMerchandiseOutput)(
+  require,
+  characterMerchandiseModule,
+  characterMerchandiseModule.exports,
+);
+const { getShopCharacterMerchandiseProfile } = characterMerchandiseModule.exports;
 const tryOnLayoutPath = path.join(__dirname, '../constants/cosmetics-try-on-layout.ts');
 const tryOnLayoutOutput = ts.transpileModule(fs.readFileSync(tryOnLayoutPath, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
@@ -45,6 +56,52 @@ const displayFixture = {
   name: '糖果色展示架',
   description: '擺放相關商品',
 };
+
+test('Chiikawa and Winnie shelves render their own character merchandise', () => {
+  const chiikawa = getShopFixtureProductCatalog('chiikawa-land', 'Chiikawa Land', undefined, displayFixture);
+  const winnie = getShopFixtureProductCatalog(
+    'winnie-hundred-acre-wood',
+    '小熊維尼的百畝森林',
+    undefined,
+    displayFixture,
+  );
+  assert.equal(chiikawa.length, 60);
+  assert.equal(winnie.length, 60);
+
+  const chiikawaProfiles = chiikawa.map(({ theme, name, variant }) =>
+    getShopCharacterMerchandiseProfile(theme, name, variant),
+  );
+  assert.ok(chiikawaProfiles.every((profile) => profile?.theme === 'chiikawa'));
+  assert.deepEqual(
+    chiikawaProfiles.slice(0, 8).map(({ id }) => id),
+    ['chiikawa', 'hachiware', 'usagi', 'momonga', 'shisa', 'kurimanju', 'rakko', 'chiikawa-carousel'],
+  );
+  assert.ok(
+    new Set(chiikawaProfiles.flatMap(({ id, companionIds }) => [id, ...(companionIds ?? [])])).size >= 8,
+    'the Chiikawa catalog covers the pictured characters and carousel-costume group',
+  );
+
+  const winnieProfiles = winnie.map(({ theme, name, variant }) =>
+    getShopCharacterMerchandiseProfile(theme, name, variant),
+  );
+  assert.ok(winnieProfiles.every((profile) => profile?.theme === 'winnie'));
+  assert.deepEqual(
+    winnieProfiles.slice(0, 7).map(({ id }) => id),
+    ['pooh', 'piglet', 'tigger', 'eeyore', 'rabbit', 'kanga', 'owl'],
+  );
+  assert.ok(
+    new Set(winnieProfiles.flatMap(({ id, companionIds }) => [id, ...(companionIds ?? [])])).size >= 8,
+    'the Winnie catalog includes Roo alongside the Hundred Acre Wood friends',
+  );
+
+  const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
+  const characterVisual = fs.readFileSync(path.join(__dirname, '../components/CharacterMerchandiseVisual.tsx'), 'utf8');
+  assert.match(visual, /product\.theme === 'chiikawa' \|\| product\.theme === 'winnie'/);
+  assert.match(visual, /<CharacterMerchandiseVisual product=\{product\}/);
+  assert.ok(characterVisual.includes('testID={`shop-character-merchandise-${product.id}`}'));
+  assert.match(characterVisual, /product\.illustration === 'plush'/);
+  assert.match(characterVisual, /characterIds\.slice\(0, 4\)/);
+});
 
 function getPngAlphaCoverage(png, startY, endY) {
   assert.equal(png.toString('hex', 0, 8), '89504e470d0a1a0a', 'portrait should be a PNG image');

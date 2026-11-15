@@ -38,5 +38,5 @@ test('milestone rewards are free decor items for existing floors, not new themes
   }
   assert.match(mallSource, /'decor', 0, 0, c\.candyLemon/);
   assert.match(contextSource, /catalogItem\.unlockCheckIns/);
-  assert.match(progressSource, /不會改變 20 層的主題/);
+  assert.match(progressSource, /不會改變現有樓層主題/);
 });

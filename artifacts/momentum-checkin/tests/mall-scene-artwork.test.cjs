@@ -44,20 +44,34 @@ test('storefront animations preserve the original illustrated facades with floor
 test('placed storefronts fill their mall bays and rest on a floor contact shadow', () => {
   const mallSource = fs.readFileSync(path.join(appRoot, 'app/(tabs)/mall.tsx'), 'utf8');
   const visualsSource = fs.readFileSync(visualsPath, 'utf8');
+  const interiorSource = fs.readFileSync(path.join(appRoot, 'components/ShopInteriorScene.tsx'), 'utf8');
+  const facadeAssets = ['mall-shop-classic.png', 'mall-shop-arched.png', 'mall-shop-wide.png', 'mall-shop-corner.png'];
 
   assert.match(mallSource, /const isStorefront = item\.category === 'shop'/);
   assert.match(mallSource, /styles\.sceneStoreContactShadow/);
+  assert.match(mallSource, /sceneObjectContactShadow/);
+  assert.match(mallSource, /isStorefront \? \([\s\S]*?sceneStoreContactShadow[\s\S]*?\) : \([\s\S]*?sceneObjectContactShadow/);
+  assert.match(mallSource, /height: position\.plaza \? 30 : isStorefront \? 74 : 47/);
   assert.match(mallSource, /presentation=\{isStorefront && !position\.plaza \? 'mall-storefront' : 'standard'\}/);
   assert.match(mallSource, /sceneStorefrontBadge: \{ width: '100%' \}/);
   assert.match(mallSource, /sceneStoreName: \{[\s\S]*?backgroundColor: 'rgba\(255,248,239,0\.72\)'/);
-  assert.match(visualsSource, /mallStorefrontCanvas: \{ width: '100%', aspectRatio: 4 \/ 3 \}/);
-  assert.match(visualsSource, /mallStorefrontMotion: \{ width: '100%', aspectRatio: 4 \/ 3 \}/);
+  assert.match(visualsSource, /mallStorefrontCanvas: \{ width: '100%', aspectRatio: 1 \}/);
+  assert.match(visualsSource, /mallStorefrontMotion: \{ width: '100%', aspectRatio: 1 \}/);
   assert.match(visualsSource, /storefrontArt: \{ width: '100%', height: '100%'/);
+  assert.doesNotMatch(visualsSource, /sceneObjectContactShadow|sceneStoreContactShadow/);
+  assert.doesNotMatch(interiorSource, /sceneObjectContactShadow|sceneStoreContactShadow/);
 
   const narrowMallArtworkWidth = 300;
-  const narrowStorefrontBayWidth = narrowMallArtworkWidth * 0.24;
+  const narrowStorefrontBayWidth = narrowMallArtworkWidth * 0.26;
   assert.ok(narrowStorefrontBayWidth < 84, 'a 300px phone scene has store bays narrower than the old fixed artwork');
   assert.ok(narrowStorefrontBayWidth > 0, 'the art now scales to each narrow store bay');
+  for (const filename of facadeAssets) {
+    const png = fs.readFileSync(path.join(appRoot, 'assets/images', filename));
+    assert.equal(png.toString('ascii', 1, 4), 'PNG');
+    const width = png.readUInt32BE(16);
+    const height = png.readUInt32BE(20);
+    assert.ok(width < 256 && height < 192, `${filename} has had its transparent margins trimmed`);
+  }
   assert.match(mallSource, /<Text numberOfLines=\{isStorefront && !position\.plaza \? 2 : 1\} ellipsizeMode="tail"/);
   assert.match(visualsSource, /storefrontSignText: \{ maxWidth: '100%', flexShrink: 1, fontSize: 5/);
 });

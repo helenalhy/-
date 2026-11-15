@@ -262,7 +262,7 @@ export default function ProgressScreen() {
             <View style={styles.milestoneCopy}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>商場裝飾里程碑</Text>
               <Text style={[styles.cardSubtitle, { color: colors.mutedForeground }]}>
-                只解鎖符合樓層主題的新裝飾，不會改變 20 層的主題。
+                只解鎖符合樓層主題的新裝飾，不會改變現有樓層主題。
               </Text>
             </View>
             <View style={[styles.chartBadge, { backgroundColor: colors.card }]}>

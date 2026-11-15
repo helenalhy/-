@@ -18,7 +18,7 @@ const { MALL_POSITIONS_PER_FLOOR, MALL_SLOT_IDS, getMallSlotPosition } = layoutM
 const LEGACY_FLOOR_ORDER = [3, 2, 1, 4, 5, 6, 7, 8, 9, 10];
 const COLUMNS = ['left', 'center', 'right'];
 
-test('each of twenty floors has 56 positions split across the main mall and four annex areas', () => {
+test('each of thirty floors has 56 positions split across the main mall and four annex areas', () => {
   assert.equal(MALL_POSITIONS_PER_FLOOR, 56);
   assert.equal(MALL_SLOT_IDS.length, 1680);
   assert.equal(new Set(MALL_SLOT_IDS).size, 1680);

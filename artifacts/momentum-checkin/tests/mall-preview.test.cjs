@@ -146,8 +146,8 @@ function mount(overrides = {}, catalog, platformOS = 'ios', slotIds, floorThemes
     if (name === '@/hooks/useColors') return { useColors: () => ({}) };
     if (name === '@/context/ReducedMotionContext') return { useReducedMotion: () => false };
     if (name === '@/context/HabitsContext') return {
-      useHabits: () => ({ ...habits, grantTestCoins: habits.grantTestCoins ?? (async () => {}) }), MALL_FLOOR_COUNT: 20,
-      MALL_SLOT_IDS: slotIds ?? Array.from({ length: 20 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
+      useHabits: () => ({ ...habits, grantTestCoins: habits.grantTestCoins ?? (async () => {}) }), MALL_FLOOR_COUNT: 30,
+      MALL_SLOT_IDS: slotIds ?? Array.from({ length: 30 }, (_, i) => ['left', 'center', 'right'].map((col) => `floor-${i + 1}-${col}`)).flat(),
     };
     if (name === '@/constants/mall-layout') return layoutModule.exports;
     if (name === '@/constants/mall-shop-interior') return shopInteriorCatalog;
@@ -1033,19 +1033,19 @@ test('search floor filters expose headings, selected options, horizontal control
   assert.deepEqual(android.announcements, [], 'Android uses the polite live region instead of a second announcement');
 });
 
-test('floor arrows reach the new rooftop and stop at both ends', async () => {
+test('floor arrows reach the new top floor and stop at both ends', async () => {
   const app = mount();
   assert.match(textContent(app.find('floor-current')), /1F · 糖果迎賓街/);
-  for (let floor = 1; floor < 20; floor += 1) await app.press('floor-next');
-  assert.match(textContent(app.find('floor-current')), /20F · 天空花園/);
+  for (let floor = 1; floor < 30; floor += 1) await app.press('floor-next');
+  assert.match(textContent(app.find('floor-current')), /30F · 月下燈籠古街/);
   assert.equal(app.find('floor-next').props.disabled, true);
   assert.equal(app.find('floor-previous').props.disabled, false);
-  for (let floor = 20; floor > 1; floor -= 1) await app.press('floor-previous');
+  for (let floor = 30; floor > 1; floor -= 1) await app.press('floor-previous');
   assert.match(textContent(app.find('floor-current')), /1F · 糖果迎賓街/);
   assert.equal(app.find('floor-previous').props.disabled, true);
 });
 
-test('elevator opens a direct 20-floor selector and changes floors without touching mall data', async () => {
+test('elevator opens a direct 30-floor selector and changes floors without touching mall data', async () => {
   const app = mount();
   const coinsBefore = app.habits.coins;
   const ownershipBefore = [...app.habits.purchasedItems];
@@ -1054,9 +1054,9 @@ test('elevator opens a direct 20-floor selector and changes floors without touch
 
   assert.ok(panel, 'the mall renders the elevator panel component');
   assert.equal(panel.props.visible, false);
-  assert.equal(panel.props.floors.length, 20);
+  assert.equal(panel.props.floors.length, 30);
   assert.equal(panel.props.floors[0].title, '糖果迎賓街');
-  assert.equal(panel.props.floors[19].title, '天空花園');
+  assert.equal(panel.props.floors[29].title, '月下燈籠古街');
 
   await app.press('mall-open-elevator');
   panel = app.nodes().find((node) => node.type === 'MallElevatorPanel');
@@ -1079,19 +1079,19 @@ test('elevator opens a direct 20-floor selector and changes floors without touch
   assert.equal(panel.props.visible, false);
 });
 
-test('real catalog covers twenty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
+test('real catalog covers thirty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 3016);
-  assert.equal(MALL_FLOORS.length, 20);
+  assert.equal(MALL_ITEMS.length, 4516);
+  assert.equal(MALL_FLOORS.length, 30);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
-    ['糖果迎賓街', '森林花園', '慢讀書廊', '海洋奇遇', '像素遊樂城', '雲朵療癒館', '彩虹藝術廊', '星際觀測站', '世界美食集', '巡遊嘉年華大街', '影視製片夢工場', '冰晶雪國', '古文明探險館', '魔法學院', '櫻花溫泉小町', '復古中世紀石板城', '音樂舞台街', '積木創想樂園', '毛茸茸寵物樂園', '天空花園'],
+    ['糖果迎賓街', '森林花園', '慢讀書廊', '海洋奇遇', '像素遊樂城', '雲朵療癒館', '彩虹藝術廊', '星際觀測站', '世界美食集', '巡遊嘉年華大街', '影視製片夢工場', '冰晶雪國', '古文明探險館', '魔法學院', '櫻花溫泉小町', '復古中世紀石板城', '音樂舞台街', '積木創想樂園', '毛茸茸寵物樂園', '天空花園', '童話天空城堡', '月球探索基地', '時光郵局鐘塔街', '夢境劇場迷宮', '機器人發明研究院', '雨林瀑布生態谷', '玻璃海岸燈塔港', '熱氣球環遊港站', '幻彩寶石洞窟', '月下燈籠古街'],
   );
   assert.deepEqual(
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 1013, facility: 1000, decor: 1003 },
+    { shop: 1513, facility: 1500, decor: 1503 },
   );
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(
@@ -3032,12 +3032,12 @@ test('a full floor lists actual vacancies and can jump floors without spending o
 
 test('when all floors are full purchase and restore explain how to free space without charging', async () => {
   const placements = Object.fromEntries(
-    Array.from({ length: 20 }, (_, i) => ['left', 'center', 'right'].map((column) => [`floor-${i + 1}-${column}`, 'occupied'])).flat(),
+    Array.from({ length: 30 }, (_, i) => ['left', 'center', 'right'].map((column) => [`floor-${i + 1}-${column}`, 'occupied'])).flat(),
   );
   const app = mount({ mallPlacements: placements });
   await app.press('build-test-planter');
   const notice = textContent(app.find('mall-floor-full'));
-  assert.match(notice, /二十層都已放滿/);
+  assert.match(notice, /三十層都已放滿/);
   assert.match(notice, /先取消擺放.*存入倉庫/);
   assert.match(notice, /尚未扣除金幣/);
   assert.equal(app.find('mall-available-floor-2'), undefined);
@@ -3048,7 +3048,7 @@ test('when all floors are full purchase and restore explain how to free space wi
   app.render();
   await app.press('collection-tab');
   await app.press('restore-owned');
-  assert.match(textContent(app.find('mall-floor-full')), /二十層都已放滿/);
+  assert.match(textContent(app.find('mall-floor-full')), /三十層都已放滿/);
   assert.equal(app.calls.length, 0);
 });
 

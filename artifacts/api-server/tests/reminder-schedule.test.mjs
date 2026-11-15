@@ -85,6 +85,33 @@ test("returns due habit names and merged slots at the latest due time", () => {
   );
 });
 
+test("does not send any due reminder after a check-in that day", () => {
+  assert.deepEqual(
+    getDueReminderTimes({
+      reminderTimes: ["09:00", "13:30"],
+      fallbackReminderTime: "13:30",
+      localDate: "2026-11-03",
+      localTime: "13:30",
+      lastSentLocalDates: {},
+      legacyLastSentLocalDate: null,
+      hasCheckedInToday: true,
+    }),
+    [],
+  );
+  assert.equal(
+    getDueReminderBatch({
+      schedules: [{ scheduleId: "global", reminderTimes: ["09:00", "13:30"] }],
+      fallbackReminderTime: "13:30",
+      localDate: "2026-11-03",
+      localTime: "13:30",
+      lastSentLocalDates: {},
+      legacyLastSentLocalDate: null,
+      hasCheckedInToday: true,
+    }),
+    null,
+  );
+});
+
 test("legacy global sent marker does not suppress a newly configured habit reminder", () => {
   assert.deepEqual(
     getDueReminderBatch({
@@ -152,6 +179,27 @@ test("snoozes from another local day are neither active nor due", () => {
   assert.deepEqual(getActiveSnoozedReminders(stored, "2026-11-04"), []);
   assert.deepEqual(
     getDueSnoozedReminders(stored, "2026-11-04", new Date("2026-11-04T00:20:00.000Z")),
+    [],
+  );
+});
+
+test("does not send a pending snooze after a check-in that day", () => {
+  const stored = {
+    "snooze:walk": JSON.stringify({
+      status: "pending",
+      habitId: "walk",
+      habitTitle: "晚飯後散步",
+      fireAt: "2026-11-03T10:30:00.000Z",
+      localDate: "2026-11-03",
+    }),
+  };
+  assert.deepEqual(
+    getDueSnoozedReminders(
+      stored,
+      "2026-11-03",
+      new Date("2026-11-03T10:30:00.000Z"),
+      true,
+    ),
     [],
   );
 });

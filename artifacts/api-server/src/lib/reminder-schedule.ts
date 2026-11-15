@@ -5,6 +5,7 @@ export interface DueReminderTimesInput {
   localTime: string;
   lastSentLocalDates: Record<string, string> | null;
   legacyLastSentLocalDate: string | null;
+  hasCheckedInToday?: boolean;
 }
 
 export interface ReminderScheduleDefinition {
@@ -20,6 +21,7 @@ export interface DueReminderBatchInput {
   localTime: string;
   lastSentLocalDates: Record<string, string> | null;
   legacyLastSentLocalDate: string | null;
+  hasCheckedInToday?: boolean;
 }
 
 export interface DueReminderBatch {
@@ -87,7 +89,9 @@ export function getDueSnoozedReminders(
   values: Record<string, string> | null,
   localDate: string,
   now: Date,
+  hasCheckedInToday = false,
 ): StoredSnoozedReminder[] {
+  if (hasCheckedInToday) return [];
   return getActiveSnoozedReminders(values, localDate)
     .filter((entry) => (
       entry.record.status === "pending"
@@ -96,6 +100,7 @@ export function getDueSnoozedReminders(
 }
 
 export function getDueReminderBatch(input: DueReminderBatchInput): DueReminderBatch | null {
+  if (input.hasCheckedInToday) return null;
   const sentDates = input.lastSentLocalDates ?? {};
   const globalTimes = input.schedules
     .filter((schedule) => schedule.scheduleId === "global")
@@ -132,6 +137,7 @@ export function getDueReminderBatch(input: DueReminderBatchInput): DueReminderBa
 }
 
 export function getDueReminderTimes(input: DueReminderTimesInput): string[] {
+  if (input.hasCheckedInToday) return [];
   const sentDates = input.lastSentLocalDates ?? {};
   const hasNewScheduleHistory = Object.keys(sentDates).length > 0;
   if (!hasNewScheduleHistory && input.legacyLastSentLocalDate === input.localDate) {

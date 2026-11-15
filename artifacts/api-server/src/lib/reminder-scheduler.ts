@@ -111,6 +111,7 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
         subscription.lastSentLocalDates,
         local.date,
         now,
+        alreadyCheckedInToday,
       );
       return dueBatch || dueSnoozes.length > 0
         ? [{ subscription, local, dueBatch, dueSnoozes }]

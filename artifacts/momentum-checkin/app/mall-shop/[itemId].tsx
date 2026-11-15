@@ -139,6 +139,7 @@ export default function MallShopInteriorScreen() {
     today,
     updateShopInteriorDogLook,
     saveShopInteriorDogLook,
+    renameShopInteriorDogLook,
     deleteShopInteriorDogLook,
   } = useHabits();
   const [selectedSlot, setSelectedSlot] = useState<ShopInteriorSlotId>(SHOP_INTERIOR_SLOTS[0].id);
@@ -304,6 +305,11 @@ export default function MallShopInteriorScreen() {
   async function deleteNamedDogStaffLook(dogDecorationId: string, savedLookId: string) {
     if (!shop) return;
     await deleteShopInteriorDogLook(shop.id, dogDecorationId, savedLookId);
+  }
+
+  async function renameNamedDogStaffLook(dogDecorationId: string, savedLookId: string, name: string) {
+    if (!shop) return;
+    await renameShopInteriorDogLook(shop.id, dogDecorationId, savedLookId, name);
   }
 
   async function arrangeDogStaff(dogDecorationId: string, areaId: DogStaffAreaId) {
@@ -534,6 +540,7 @@ export default function MallShopInteriorScreen() {
                 onStoreDog={storeDogStaff}
                 onSelectLook={saveDogStaffLook}
                 onSaveLook={saveNamedDogStaffLook}
+                onRenameLook={renameNamedDogStaffLook}
                 onDeleteLook={deleteNamedDogStaffLook}
                 onOpenDogCompanion={openDogCompanion}
                 onDogListArtStyleChange={handleDogListArtStyleChange}

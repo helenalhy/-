@@ -236,6 +236,7 @@ interface HabitsContextValue {
   ensureDogCollectionRewards: (shopId: string) => Promise<number>;
   updateShopInteriorDogLook: (shopId: string, dogDecorationId: string, look: DogStaffLook) => Promise<void>;
   saveShopInteriorDogLook: (shopId: string, dogDecorationId: string, name: string, look: DogStaffLook) => Promise<void>;
+  renameShopInteriorDogLook: (shopId: string, dogDecorationId: string, savedLookId: string, name: string) => Promise<void>;
   deleteShopInteriorDogLook: (shopId: string, dogDecorationId: string, savedLookId: string) => Promise<void>;
 }
 
@@ -2208,6 +2209,52 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     }
   }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
 
+  const renameShopInteriorDogLook = useCallback(async (
+    shopId: string,
+    dogDecorationId: string,
+    savedLookId: string,
+    name: string,
+  ) => {
+    if (actionLock.current) throw new Error('正在處理上一個操作');
+    if (shopId !== 'fluffy-marshmallow-cafe') throw new Error('狗狗造型只適用於毛茸茸棉花糖CAFE');
+    if (!purchasedItems.includes(shopId)) throw new Error('請先兌換這間商店');
+    const current = shopInteriors[shopId];
+    if (!current?.ownedDecorations.includes(dogDecorationId)) throw new Error('請先兌換這位狗狗店員');
+    const trimmedName = name.trim();
+    if (!trimmedName || trimmedName.length > 24) throw new Error('穿搭名稱請填寫 1 至 24 個字');
+    const savedOutfits = current.dogStaffOutfits?.[dogDecorationId] ?? [];
+    const lookIndex = savedOutfits.findIndex(({ id }) => id === savedLookId);
+    if (lookIndex < 0) throw new Error('找不到要修改名稱的穿搭');
+    if (savedOutfits.some(({ id, name: existingName }) => (
+      id !== savedLookId && existingName.toLocaleLowerCase() === trimmedName.toLocaleLowerCase()
+    ))) {
+      throw new Error('這隻狗已經有相同的穿搭名稱');
+    }
+    const nextSavedOutfits = savedOutfits.map((savedLook) => (
+      savedLook.id === savedLookId ? { ...savedLook, name: trimmedName } : savedLook
+    ));
+    actionLock.current = true;
+    try {
+      await saveMall({
+        coins,
+        purchasedItems,
+        rewardedCheckIns,
+        rewardTokens,
+        placements: mallPlacements,
+        shopInteriors: {
+          ...shopInteriors,
+          [shopId]: {
+            ...current,
+            dogStaffOutfits: { ...current.dogStaffOutfits, [dogDecorationId]: nextSavedOutfits },
+          },
+        },
+      });
+      await Haptics.selectionAsync();
+    } finally {
+      actionLock.current = false;
+    }
+  }, [coins, purchasedItems, rewardedCheckIns, rewardTokens, mallPlacements, shopInteriors, saveMall]);
+
   const grantTestCoins = useCallback(async (minimumBalance: number) => {
     if (!IS_DEVELOPMENT_BUILD) throw new Error('測試金幣只供開發預覽使用');
     if (!Number.isSafeInteger(minimumBalance) || minimumBalance < 0) throw new Error('測試金幣數量無效');
@@ -2267,8 +2314,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
       habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud,
-      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, updateHabitProgressPath, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook,
-  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, updateHabitProgressPath, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, deleteShopInteriorDogLook]);
+      today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, updateHabitProgressPath, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, renameShopInteriorDogLook, deleteShopInteriorDogLook,
+  }), [habits, isLoading, storageError, mallLoadError, progressSnapshot, userProfile, updateUserProfile, cloudSyncStatus, cloudSyncMessage, setCloudSyncState, replaceProgressFromCloud, today, coins, purchasedItems, mallPlacements, shopInteriors, rewardTokens, rewardedCheckIns, leaveCards, protectedStreakDates, weeklyChallengeRewardPlans, weeklyChallengeRewardedWeeks, dailyLoginLastDate, dailyLoginStreak, dailyLoginLastPrizeItemId, getCheckInReward, claimDailyDogTask, claimDailyLoginReward, addHabit, updateHabit, updateHabitProgressPath, deleteHabit, toggleCheckIn, makeUpYesterday, purchaseStreakLeaveCard, rescueStreakBreak, setWeeklyChallenge, ensureWeeklyChallengeRewardPlan, claimWeeklyChallengeReward, purchaseMallItem, moveMallItem, storeMallItem, grantTestCoins, placeShopInteriorDecoration, storeShopInteriorDecoration, setShopInteriorFixtureProduct, placeShopInteriorDogStaff, storeShopInteriorDogStaff, recordDogCompanionInteraction, ensureDogCollectionRewards, updateShopInteriorDogLook, saveShopInteriorDogLook, renameShopInteriorDogLook, deleteShopInteriorDogLook]);
 
   return <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>;
 }

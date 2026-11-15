@@ -2337,6 +2337,7 @@ test('each dog can save, apply, delete and restore named outfits without spendin
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
   const dogId = 'general-fluffy-staff-huahua';
+  const secondDogId = 'general-fluffy-staff-tangtang';
   assert.ok(shop);
   app.storage.set(storageKeys.mall, JSON.stringify({
     schemaVersion: 5,
@@ -2347,7 +2348,7 @@ test('each dog can save, apply, delete and restore named outfits without spendin
     placements: {},
     shopInteriors: {
       [shop.id]: {
-        ownedDecorations: [dogId],
+        ownedDecorations: [dogId, secondDogId],
         placements: {},
         dogStaffPlacements: { [dogId]: 'main' },
       },
@@ -2387,7 +2388,7 @@ test('each dog can save, apply, delete and restore named outfits without spendin
   interiorTree = app.renderShopInterior();
   await changeName('魔法少女');
 
-  const firstSaved = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0];
+  let firstSaved = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0];
   assert.equal(firstSaved.name, '魔法少女');
 
   await press(customizerTree, 'dog-staff-tab-outfit');
@@ -2409,6 +2410,53 @@ test('each dog can save, apply, delete and restore named outfits without spendin
   assert.notEqual(firstSaved.look.outfitId, secondSaved.look.outfitId);
   assert.notEqual(firstSaved.look.accessoryId, secondSaved.look.accessoryId);
 
+  await press(customizerTree, `dog-staff-saved-look-rename-fluffy-staff-huahua-${firstSaved.id}`);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  let renameInput = findByTestId(customizerTree, `dog-staff-saved-look-rename-input-fluffy-staff-huahua-${firstSaved.id}`);
+  assert.ok(renameInput, 'each saved outfit has a rename input');
+  renameInput.props.onChangeText('   ');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.match(textContent(customizerTree), /名稱不能留白，原穿搭會保留/);
+  await press(customizerTree, `dog-staff-saved-look-rename-save-fluffy-staff-huahua-${firstSaved.id}`);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.match(textContent(findByTestId(customizerTree, 'dog-staff-customizer-notice')), /名稱不能留白.*原穿搭仍已保留/);
+  assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0].name, '魔法少女');
+
+  renameInput = findByTestId(customizerTree, `dog-staff-saved-look-rename-input-fluffy-staff-huahua-${firstSaved.id}`);
+  renameInput.props.onChangeText('節日派對');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.match(textContent(customizerTree), /這隻狗已有相同名稱，原穿搭會保留/);
+  await press(customizerTree, `dog-staff-saved-look-rename-save-fluffy-staff-huahua-${firstSaved.id}`);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.match(textContent(findByTestId(customizerTree, 'dog-staff-customizer-notice')), /已有相同的穿搭名稱.*原穿搭仍已保留/);
+  assert.equal(app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0].name, '魔法少女');
+
+  renameInput = findByTestId(customizerTree, `dog-staff-saved-look-rename-input-fluffy-staff-huahua-${firstSaved.id}`);
+  renameInput.props.onChangeText('暫存失敗');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  app.failNextStorageWrite(storageKeys.mall);
+  await press(customizerTree, `dog-staff-saved-look-rename-save-fluffy-staff-huahua-${firstSaved.id}`);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.equal(
+    app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0].name,
+    '魔法少女',
+    'a failed rename write keeps the previous saved name',
+  );
+  assert.match(textContent(findByTestId(customizerTree, 'dog-staff-customizer-notice')), /穿搭未能改名.*原穿搭仍已保留/);
+
+  renameInput = findByTestId(customizerTree, `dog-staff-saved-look-rename-input-fluffy-staff-huahua-${firstSaved.id}`);
+  renameInput.props.onChangeText('週末野餐');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, `dog-staff-saved-look-rename-save-fluffy-staff-huahua-${firstSaved.id}`);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  firstSaved = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0];
+  assert.equal(firstSaved.name, '週末野餐', 'a valid rename updates the existing saved look');
+  assert.deepEqual(firstSaved.look, savedLooks[0].look, 'renaming keeps the original outfit and accessory combination');
+
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
   await press(customizerTree, `dog-staff-saved-look-apply-fluffy-staff-huahua-${firstSaved.id}`);
   app.renderProvider();
@@ -2429,6 +2477,38 @@ test('each dog can save, apply, delete and restore named outfits without spendin
   );
   assert.equal(app.contextExports.useHabits().coins, coinsBefore, 'saving, applying and deleting presets are free');
 
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-select-fluffy-staff-tangtang');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  const secondDogNameInput = findByTestId(customizerTree, 'dog-staff-saved-look-name-fluffy-staff-tangtang');
+  secondDogNameInput.props.onChangeText('糖糖日常');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-saved-look-save-fluffy-staff-tangtang');
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  const secondDogSaved = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[secondDogId][0];
+  await press(customizerTree, `dog-staff-saved-look-rename-fluffy-staff-tangtang-${secondDogSaved.id}`);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  const secondDogRenameInput = findByTestId(
+    customizerTree,
+    `dog-staff-saved-look-rename-input-fluffy-staff-tangtang-${secondDogSaved.id}`,
+  );
+  secondDogRenameInput.props.onChangeText('糖糖外出');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, `dog-staff-saved-look-rename-save-fluffy-staff-tangtang-${secondDogSaved.id}`);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  const secondDogRenamed = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[secondDogId][0];
+  assert.equal(secondDogRenamed.name, '糖糖外出', 'another dog can independently rename its saved outfit');
+  assert.deepEqual(secondDogRenamed.look, secondDogSaved.look, 'the second dog keeps its own outfit combination');
+  assert.equal(
+    app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId][0].name,
+    firstSaved.name,
+    'renaming the second dog does not change the first dog’s saved outfit',
+  );
+
   const storedMall = app.storage.get(storageKeys.mall);
   const reopenedApp = createHarness();
   reopenedApp.storage.set(storageKeys.mall, storedMall);
@@ -2439,6 +2519,11 @@ test('each dog can save, apply, delete and restore named outfits without spendin
     reopenedApp.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dogId],
     [firstSaved],
     'the dog’s named preset remains available after reopening',
+  );
+  assert.deepEqual(
+    reopenedApp.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[secondDogId],
+    [secondDogRenamed],
+    'the second dog’s renamed preset also remains available after reopening',
   );
   assert.deepEqual(
     reopenedApp.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId],

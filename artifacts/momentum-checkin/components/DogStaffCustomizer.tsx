@@ -38,6 +38,7 @@ export function DogStaffCustomizer({
   onStoreDog,
   onSelectLook,
   onSaveLook,
+  onRenameLook,
   onDeleteLook,
   onOpenDogCompanion,
   onDogListArtStyleChange,
@@ -55,6 +56,7 @@ export function DogStaffCustomizer({
   onStoreDog: (dogDecorationId: string) => Promise<void>;
   onSelectLook: (dogDecorationId: string, look: DogStaffLook) => Promise<void>;
   onSaveLook: (dogDecorationId: string, name: string, look: DogStaffLook) => Promise<void>;
+  onRenameLook: (dogDecorationId: string, savedLookId: string, name: string) => Promise<void>;
   onDeleteLook: (dogDecorationId: string, savedLookId: string) => Promise<void>;
   onOpenDogCompanion?: (dogDecorationId: string) => void;
   onDogListArtStyleChange?: (style: DogStaffListArtStyle, loaded?: boolean) => void;
@@ -76,6 +78,8 @@ export function DogStaffCustomizer({
   const [savedLookName, setSavedLookName] = useState('');
   const [savingPreset, setSavingPreset] = useState(false);
   const [workingPresetId, setWorkingPresetId] = useState<string | null>(null);
+  const [editingSavedLookId, setEditingSavedLookId] = useState<string | null>(null);
+  const [editingSavedLookName, setEditingSavedLookName] = useState('');
   const [dogListArtStyle, setDogListArtStyle] = useState<DogStaffListArtStyle>('fluffy');
   const [dogListArtStyleLoaded, setDogListArtStyleLoaded] = useState(false);
   useEffect(() => {
@@ -129,6 +133,11 @@ export function DogStaffCustomizer({
   const trimmedSavedLookName = savedLookName.trim();
   const duplicateSavedLookName = savedDogLooks.some(
     ({ name }) => name.toLocaleLowerCase() === trimmedSavedLookName.toLocaleLowerCase(),
+  );
+  const trimmedEditingSavedLookName = editingSavedLookName.trim();
+  const duplicateEditingSavedLookName = savedDogLooks.some(
+    ({ id, name }) => id !== editingSavedLookId
+      && name.toLocaleLowerCase() === trimmedEditingSavedLookName.toLocaleLowerCase(),
   );
   const currentAreaId = areaPlacements?.[activeDog.decorationId];
   const currentAreaLabel = currentAreaId ? getDogStaffAreaLabel(currentAreaId) : '';
@@ -255,6 +264,30 @@ export function DogStaffCustomizer({
     }
   }
 
+  async function renameNamedLook(savedLook: DogStaffSavedLook) {
+    if (workingPresetId || savingPreset || editingSavedLookId !== savedLook.id) return;
+    if (!trimmedEditingSavedLookName) {
+      reportNotice('穿搭名稱不能留白，原穿搭仍已保留。');
+      return;
+    }
+    if (duplicateEditingSavedLookName) {
+      reportNotice('這隻狗已有相同的穿搭名稱，原穿搭仍已保留。');
+      return;
+    }
+    setWorkingPresetId(savedLook.id);
+    setNotice('');
+    try {
+      await onRenameLook(activeDog.decorationId, savedLook.id, trimmedEditingSavedLookName);
+      setEditingSavedLookId(null);
+      setEditingSavedLookName('');
+      reportNotice(`已將${activeDog.name}的穿搭改名為「${trimmedEditingSavedLookName}」，服裝與配飾組合已保留。`);
+    } catch (error) {
+      reportNotice(error instanceof Error ? `穿搭未能改名：${error.message}，原穿搭仍已保留。` : '穿搭未能改名，原穿搭仍已保留，請稍後再試。');
+    } finally {
+      setWorkingPresetId(null);
+    }
+  }
+
   return (
     <View testID="dog-staff-customizer" style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.heading}>
@@ -374,6 +407,8 @@ export function DogStaffCustomizer({
               onPress={() => {
                 setSelectedDogId(dog.decorationId);
                 setSelectedAreaId(areaPlacements?.[dog.decorationId] ?? 'main');
+                setEditingSavedLookId(null);
+                setEditingSavedLookName('');
                 setPage(1);
                 setNotice('');
                 onOpenDogCompanion?.(dog.decorationId);
@@ -510,33 +545,95 @@ export function DogStaffCustomizer({
           {savedDogLooks.length > 0 ? (
             <View style={styles.savedLookList}>
               {savedDogLooks.map((savedLook) => (
-                <View key={savedLook.id} style={[styles.savedLookRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <View style={styles.savedLookCopy}>
-                    <Text numberOfLines={1} style={[styles.savedLookName, { color: colors.foreground }]}>{savedLook.name}</Text>
-                    <Text style={[styles.copy, { color: colors.mutedForeground }]}>服裝與配飾</Text>
+                <View key={savedLook.id} style={styles.savedLookEntry}>
+                  <View style={[styles.savedLookRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <View style={styles.savedLookCopy}>
+                      <Text numberOfLines={1} style={[styles.savedLookName, { color: colors.foreground }]}>{savedLook.name}</Text>
+                      <Text style={[styles.copy, { color: colors.mutedForeground }]}>服裝與配飾</Text>
+                    </View>
+                    <Pressable
+                      testID={`dog-staff-saved-look-apply-${activeDog.key}-${savedLook.id}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`為${activeDog.name}套用穿搭「${savedLook.name}」`}
+                      accessibilityState={{ disabled: savingLook || workingPresetId !== null }}
+                      disabled={savingLook || workingPresetId !== null}
+                      onPress={() => void applyNamedLook(savedLook)}
+                      style={[styles.savedLookAction, { backgroundColor: colors.secondary }]}
+                    >
+                      <Text style={[styles.savedLookActionText, { color: colors.primary }]}>套用</Text>
+                    </Pressable>
+                    <Pressable
+                      testID={`dog-staff-saved-look-rename-${activeDog.key}-${savedLook.id}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`修改${activeDog.name}的穿搭「${savedLook.name}」名稱`}
+                      accessibilityState={{ disabled: workingPresetId !== null || savingPreset }}
+                      disabled={workingPresetId !== null || savingPreset}
+                      onPress={() => {
+                        setEditingSavedLookId(savedLook.id);
+                        setEditingSavedLookName(savedLook.name);
+                        setNotice('');
+                      }}
+                      style={[styles.savedLookAction, { backgroundColor: colors.secondary }]}
+                    >
+                      <Text style={[styles.savedLookActionText, { color: colors.primary }]}>改名</Text>
+                    </Pressable>
+                    <Pressable
+                      testID={`dog-staff-saved-look-delete-${activeDog.key}-${savedLook.id}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`刪除${activeDog.name}的穿搭「${savedLook.name}」`}
+                      accessibilityState={{ disabled: workingPresetId !== null || savingPreset }}
+                      disabled={workingPresetId !== null || savingPreset}
+                      onPress={() => void deleteNamedLook(savedLook)}
+                      style={[styles.savedLookAction, { backgroundColor: colors.secondary }]}
+                    >
+                      <Text style={[styles.savedLookActionText, { color: colors.primary }]}>刪除</Text>
+                    </Pressable>
                   </View>
-                  <Pressable
-                    testID={`dog-staff-saved-look-apply-${activeDog.key}-${savedLook.id}`}
-                    accessibilityRole="button"
-                    accessibilityLabel={`為${activeDog.name}套用穿搭「${savedLook.name}」`}
-                    accessibilityState={{ disabled: savingLook || workingPresetId !== null }}
-                    disabled={savingLook || workingPresetId !== null}
-                    onPress={() => void applyNamedLook(savedLook)}
-                    style={[styles.savedLookAction, { backgroundColor: colors.secondary }]}
-                  >
-                    <Text style={[styles.savedLookActionText, { color: colors.primary }]}>套用</Text>
-                  </Pressable>
-                  <Pressable
-                    testID={`dog-staff-saved-look-delete-${activeDog.key}-${savedLook.id}`}
-                    accessibilityRole="button"
-                    accessibilityLabel={`刪除${activeDog.name}的穿搭「${savedLook.name}」`}
-                    accessibilityState={{ disabled: workingPresetId !== null || savingPreset }}
-                    disabled={workingPresetId !== null || savingPreset}
-                    onPress={() => void deleteNamedLook(savedLook)}
-                    style={[styles.savedLookAction, { backgroundColor: colors.secondary }]}
-                  >
-                    <Text style={[styles.savedLookActionText, { color: colors.primary }]}>刪除</Text>
-                  </Pressable>
+                  {editingSavedLookId === savedLook.id ? (
+                    <View style={styles.savedLookEdit}>
+                      <TextInput
+                        testID={`dog-staff-saved-look-rename-input-${activeDog.key}-${savedLook.id}`}
+                        accessibilityLabel={`輸入${activeDog.name}的新穿搭名稱`}
+                        value={editingSavedLookName}
+                        onChangeText={setEditingSavedLookName}
+                        maxLength={24}
+                        returnKeyType="done"
+                        onSubmitEditing={() => void renameNamedLook(savedLook)}
+                        placeholder="輸入新名稱"
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[styles.savedLookInput, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
+                      />
+                      <Pressable
+                        testID={`dog-staff-saved-look-rename-save-${activeDog.key}-${savedLook.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`保存${activeDog.name}的新穿搭名稱`}
+                        accessibilityState={{ disabled: workingPresetId !== null || savingPreset }}
+                        disabled={workingPresetId !== null || savingPreset}
+                        onPress={() => void renameNamedLook(savedLook)}
+                        style={[styles.savedLookAction, { minWidth: 50, backgroundColor: colors.primary }]}
+                      >
+                        <Text style={[styles.savedLookActionText, { color: colors.primaryForeground }]}>完成</Text>
+                      </Pressable>
+                      <Pressable
+                        testID={`dog-staff-saved-look-rename-cancel-${activeDog.key}-${savedLook.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel="取消修改穿搭名稱"
+                        onPress={() => {
+                          setEditingSavedLookId(null);
+                          setEditingSavedLookName('');
+                          setNotice('');
+                        }}
+                        style={[styles.savedLookAction, { minWidth: 50, backgroundColor: colors.secondary }]}
+                      >
+                        <Text style={[styles.savedLookActionText, { color: colors.primary }]}>取消</Text>
+                      </Pressable>
+                      {!trimmedEditingSavedLookName ? (
+                        <Text style={[styles.savedLookValidation, { color: colors.destructive }]}>名稱不能留白，原穿搭會保留。</Text>
+                      ) : duplicateEditingSavedLookName ? (
+                        <Text style={[styles.savedLookValidation, { color: colors.destructive }]}>這隻狗已有相同名稱，原穿搭會保留。</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -752,7 +849,10 @@ const styles = StyleSheet.create({
   savedLookSaveButton: { minHeight: 42, borderRadius: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 13 },
   savedLookSaveText: { fontSize: 11, fontWeight: '800' },
   savedLookList: { gap: 6 },
+  savedLookEntry: { gap: 5 },
   savedLookRow: { minHeight: 54, borderWidth: 1, borderRadius: 12, padding: 7, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  savedLookEdit: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  savedLookValidation: { width: '100%', fontSize: 11, lineHeight: 16 },
   savedLookCopy: { flex: 1, gap: 2 },
   savedLookName: { fontSize: 11, fontWeight: '800' },
   savedLookAction: { minWidth: 45, minHeight: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7 },

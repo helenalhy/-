@@ -5,6 +5,7 @@ export type CharacterMerchandiseReferenceArtwork =
   | 'magical-group'
   | 'carousel'
   | 'pens'
+  | 'hunting-stick'
   | 'propeller-plush'
   | 'mermaid-poster'
   | 'mid-autumn-plush'
@@ -55,6 +56,15 @@ export function getShopCharacterMerchandiseProfile(
 ): CharacterMerchandiseProfile | undefined {
   if (theme !== 'chiikawa' && theme !== 'winnie') return undefined;
   const characters = theme === 'chiikawa' ? CHIIKAWA_CHARACTERS : WINNIE_CHARACTERS;
+  if (theme === 'chiikawa' && productName.includes('討伐棒')) {
+    return {
+      id: 'chiikawa-carousel',
+      name: '吉伊卡哇角色造型討伐棒',
+      theme,
+      companionIds: ['hachiware', 'usagi'],
+      referenceArtwork: 'hunting-stick',
+    };
+  }
   if (theme === 'chiikawa' && productName.includes('原子筆')) {
     return {
       id: 'chiikawa-carousel',

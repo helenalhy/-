@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <g stroke="#76505A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M31 72h22v91a11 11 0 0 1-22 0z" fill="#78C8EF"/>
+    <path d="M85 72h22v91a11 11 0 0 1-22 0z" fill="#F49ABC"/>
+    <path d="M139 72h22v91a11 11 0 0 1-22 0z" fill="#F4D45F"/>
+    <path d="M31 111h22M85 111h22M139 111h22" fill="none" stroke="#FFF9F3" stroke-width="4"/>
+    <path d="M33 45 29 28q-1-5 4-2l10 8 10-8q5-3 4 2l-4 17" fill="#DDEFFC"/>
+    <path d="M87 44q-2-15 5-14l5 7 5-7q8-1 5 14" fill="#FFF4F6"/>
+    <path d="M141 44 139 14q0-6 5-3l6 8 6-8q5-3 5 3l-2 30" fill="#FFF4C9"/>
+    <ellipse cx="42" cy="53" rx="17" ry="15" fill="#FFFDFC"/>
+    <ellipse cx="96" cy="53" rx="17" ry="15" fill="#FFFDFC"/>
+    <ellipse cx="150" cy="53" rx="17" ry="15" fill="#FFF7D8"/>
+    <path d="M26 48q5-14 16-14 11 0 16 14l-4 5q-12-6-24 0z" fill="#73C3EA"/>
+    <ellipse cx="36" cy="53" rx="1.5" ry="2" fill="#573F53" stroke="none"/>
+    <ellipse cx="48" cy="53" rx="1.5" ry="2" fill="#573F53" stroke="none"/>
+    <ellipse cx="90" cy="53" rx="1.5" ry="2" fill="#573F53" stroke="none"/>
+    <ellipse cx="102" cy="53" rx="1.5" ry="2" fill="#573F53" stroke="none"/>
+    <ellipse cx="144" cy="53" rx="1.5" ry="2" fill="#573F53" stroke="none"/>
+    <ellipse cx="156" cy="53" rx="1.5" ry="2" fill="#573F53" stroke="none"/>
+    <ellipse cx="31" cy="59" rx="3.2" ry="1.8" fill="#F4A3B5" stroke="none"/>
+    <ellipse cx="53" cy="59" rx="3.2" ry="1.8" fill="#F4A3B5" stroke="none"/>
+    <ellipse cx="85" cy="59" rx="3.2" ry="1.8" fill="#F4A3B5" stroke="none"/>
+    <ellipse cx="107" cy="59" rx="3.2" ry="1.8" fill="#F4A3B5" stroke="none"/>
+    <ellipse cx="139" cy="59" rx="3.2" ry="1.8" fill="#F4A3B5" stroke="none"/>
+    <ellipse cx="161" cy="59" rx="3.2" ry="1.8" fill="#F4A3B5" stroke="none"/>
+    <path d="M40 59q2 3 4 0M94 59q2 3 4 0M148 59q2 3 4 0" fill="none"/>
+    <path d="M42 131l2 4 4 .5-3 3 1 4-4-2-4 2 1-4-3-3 4-.5z" fill="#FFF1B4" stroke="none"/>
+    <path d="M96 131l2 4 4 .5-3 3 1 4-4-2-4 2 1-4-3-3 4-.5z" fill="#FFF1B4" stroke="none"/>
+    <path d="M150 131l2 4 4 .5-3 3 1 4-4-2-4 2 1-4-3-3 4-.5z" fill="#FFF1B4" stroke="none"/>
+  </g>
+</svg>

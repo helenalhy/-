@@ -269,6 +269,7 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '栗子饅頭茶香馬克杯', description: '栗子色帽頂和招牌粗眉的角色杯。', icon: 'coffee', color: c.candyCaramel, illustration: 'mug' },
     { name: '海獺師傅藍披風收藏盒', description: '藍灰海獺師傅造型的角色珍藏盒。', icon: 'package', color: c.candySky, illustration: 'box' },
     { name: '吉伊卡哇角色造型原子筆三支組', description: '吉伊卡哇、小八貓和兔兔造型的三支原子筆。', icon: 'edit-3', color: c.candyPink, illustration: 'postcard' },
+    { name: '吉伊卡哇角色造型討伐棒玩具組', description: '以吉伊卡哇、小八貓和兔兔造型繪製的三支卡通棒狀玩具。', icon: 'wand', color: c.candySky, illustration: 'postcard' },
     { name: '旋翼帽討伐隊三人毛絨玩偶組', description: '參照討伐隊旋翼帽造型製作的三人毛絨玩偶。', icon: 'gift', color: c.candySky, illustration: 'plush' },
     { name: '人魚島電影海報小卡', description: '收藏人魚島電影海報與小船上的三位夥伴。', icon: 'image', color: c.candySky, illustration: 'postcard' },
     { name: '中秋燈會三人組毛絨玩偶', description: '穿上中秋燈會服飾的吉伊卡哇夥伴玩偶。', icon: 'gift', color: c.candyLemon, illustration: 'plush' },

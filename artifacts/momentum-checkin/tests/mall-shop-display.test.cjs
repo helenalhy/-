@@ -94,6 +94,7 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
     return getShopCharacterMerchandiseProfile(product.theme, product.name, product.variant)?.referenceArtwork;
   };
   assert.equal(findChiikawaArtwork('角色造型原子筆'), 'pens');
+  assert.equal(findChiikawaArtwork('角色造型討伐棒'), 'hunting-stick');
   assert.equal(findChiikawaArtwork('旋翼帽討伐隊'), 'propeller-plush');
   assert.equal(findChiikawaArtwork('人魚島'), 'mermaid-poster');
   assert.equal(findChiikawaArtwork('中秋燈會'), 'mid-autumn-plush');
@@ -150,6 +151,7 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
     'magical-rakko.jpg',
     'item-magical-girl-poster.jpg',
     'item-pens.jpg',
+    'item-hunting-stick-toys.png',
     'item-propeller-plush.jpg',
     'item-mermaid-poster.jpg',
     'item-mid-autumn-plush.jpg',

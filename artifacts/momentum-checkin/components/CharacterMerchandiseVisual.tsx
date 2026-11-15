@@ -39,6 +39,7 @@ const CHIIKAWA_SPECIAL_ART: Record<
   'magical-group': require('../assets/chiikawa-merch/item-magical-girl-poster.jpg'),
   carousel: require('../assets/chiikawa-merch/item-carousel.jpg'),
   pens: require('../assets/chiikawa-merch/item-pens.jpg'),
+  'hunting-stick': require('../assets/chiikawa-merch/item-hunting-stick-toys.png'),
   'propeller-plush': require('../assets/chiikawa-merch/item-propeller-plush.jpg'),
   'mermaid-poster': require('../assets/chiikawa-merch/item-mermaid-poster.jpg'),
   'mid-autumn-plush': require('../assets/chiikawa-merch/item-mid-autumn-plush.jpg'),

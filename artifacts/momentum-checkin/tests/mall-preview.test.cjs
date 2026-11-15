@@ -33,6 +33,9 @@ function loadTsModule(filename) {
 }
 const mallCatalog = loadTsModule(path.join(__dirname, '../constants/mall.ts'));
 const shopInteriorCatalog = loadTsModule(path.join(__dirname, '../constants/mall-shop-interior.ts'));
+const shopDisplayCatalog = loadTsModule(path.join(__dirname, '../constants/mall-shop-display.ts'));
+const shopRoomImageCatalog = loadTsModule(path.join(__dirname, '../constants/shop-room-images.ts'));
+const floorArtCatalog = loadTsModule(path.join(__dirname, '../constants/mall-floor-art.ts'));
 const dogStaffStyleCatalog = loadTsModule(path.join(__dirname, '../constants/dog-staff-customization.ts'));
 const layoutModule = { exports: {} };
 new Function('exports', ts.transpileModule(
@@ -397,6 +400,73 @@ test('7F adds a redeemable handcraft shop with its own craft-themed interior cat
   assert.equal(new Set(decorations.map(({ name }) => name)).size, 50);
   assert.ok(decorations.some(({ name }) => name.includes('陶藝體驗轉盤')));
   assert.ok(decorations.some(({ name }) => name.includes('水彩小畫架展示區')));
+});
+
+test('1F Chiikawa Land and 2F Winnie shop have distinct rooms, decor, and character merchandise', () => {
+  const cases = [
+    {
+      id: 'chiikawa-land',
+      name: 'Chiikawa Land',
+      floor: 1,
+      scene: 'chiikawa',
+      theme: 'chiikawa',
+      fixtureName: '吉伊卡哇角色玩偶展示牆',
+      equipmentPrefix: 'general-equipment-chiikawa-',
+      expectedFloorTitle: '糖果迎賓街',
+    },
+    {
+      id: 'winnie-hundred-acre-wood',
+      name: '小熊維尼的百畝森林',
+      floor: 2,
+      scene: 'winnie',
+      theme: 'winnie',
+      fixtureName: '維尼蜂蜜罐玻璃展示櫃',
+      equipmentPrefix: 'general-equipment-winnie-',
+      expectedFloorTitle: '森林花園',
+    },
+  ];
+  const catalogSignatures = [];
+
+  for (const entry of cases) {
+    const shop = mallCatalog.MALL_ITEMS.find(({ id }) => id === entry.id);
+    assert.ok(shop, `${entry.name} exists in the mall catalog`);
+    assert.equal(shop.floor, entry.floor);
+    assert.equal(shop.name, entry.name);
+    assert.equal(shop.category, 'shop');
+    assert.ok(shop.price > 0, 'each shop has its own earned-coin redemption price');
+    assert.equal(
+      shopInteriorCatalog.getShopInteriorSceneKey(shop.shopType, shop.id, shop.name),
+      entry.scene,
+    );
+    const roomImage = shopRoomImageCatalog.SHOP_ROOM_IMAGES[entry.scene];
+    assert.ok(typeof roomImage === 'string' && fs.existsSync(roomImage), `${entry.name} room image is bundled`);
+    assert.equal(floorArtCatalog.getMallFloorArtProfile(shop.floor, shop.id).title, entry.expectedFloorTitle);
+
+    const decorations = shopInteriorCatalog.getShopInteriorDecorations(shop.shopType, shop.id, shop.name);
+    assert.equal(decorations.length, 50, `${entry.name} has an independent 50-item decor catalog`);
+    assert.equal(new Set(decorations.map(({ id }) => id)).size, 50);
+    assert.equal(new Set(decorations.map(({ name }) => name)).size, 50);
+    assert.ok(decorations.some(({ name }) => name.includes(entry.fixtureName)));
+    assert.equal(decorations.filter(({ id }) => id.includes(entry.equipmentPrefix)).length, 4);
+    catalogSignatures.push(decorations.map(({ id }) => id).join('|'));
+
+    const displayFixture = decorations.find((decoration) =>
+      shopDisplayCatalog.canDisplayShopProducts(decoration));
+    assert.ok(displayFixture, `${entry.name} has a product display fixture`);
+    const products = shopDisplayCatalog.getShopFixtureProductCatalog(
+      shop.id,
+      shop.name,
+      shop.shopType,
+      displayFixture,
+    );
+    assert.equal(products.length, 60, `${entry.name} display has 60 products`);
+    assert.equal(new Set(products.map(({ id }) => id)).size, 60);
+    assert.equal(new Set(products.map(({ name }) => name)).size, 60);
+    assert.ok(products.every(({ theme }) => theme === entry.theme));
+    assert.ok(products.every(({ illustration }) => ['plush', 'sticker', 'charm', 'mug', 'box', 'postcard', 'book'].includes(illustration)));
+  }
+
+  assert.notEqual(catalogSignatures[0], catalogSignatures[1], 'each shop has unique decoration IDs');
 });
 
 function pager(app) {
@@ -1082,7 +1152,7 @@ test('elevator opens a direct 30-floor selector and changes floors without touch
 
 test('real catalog covers thirty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 4518);
+  assert.equal(MALL_ITEMS.length, 4520);
   assert.equal(MALL_FLOORS.length, 30);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -1092,7 +1162,7 @@ test('real catalog covers thirty distinct themes and includes eleven specialized
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 1515, facility: 1500, decor: 1503 },
+    { shop: 1517, facility: 1500, decor: 1503 },
   );
   const saintEdwardClub = MALL_ITEMS.find((item) => item.id === 'saint-edward-west-castle-restaurant');
   assert.equal(saintEdwardClub?.floor, 16);
@@ -1157,13 +1227,13 @@ test('real catalog covers thirty distinct themes and includes eleven specialized
 test('search whitespace, empty results, category counts, pagination and clear restore the current floor list', async () => {
   const app = mount({ purchasedItems: [], mallPlacements: {} }, mallCatalog.MALL_ITEMS);
   const floorOneItems = mallCatalog.MALL_ITEMS.filter((item) => item.floor === 1);
-  assert.equal(floorOneItems.length, 152);
+  assert.equal(floorOneItems.length, 153);
 
   app.find('mall-search-input').props.onChangeText('   ');
   app.render();
-  assert.equal(pager(app).props.total, 152, 'whitespace is treated as an empty search');
+  assert.equal(pager(app).props.total, 153, 'whitespace is treated as an empty search');
   assert.equal(app.find('mall-search-empty'), undefined);
-  for (const [category, expected] of [['shop', 51], ['facility', 50], ['decor', 51]]) {
+  for (const [category, expected] of [['shop', 52], ['facility', 50], ['decor', 51]]) {
     assert.match(textContent(app.find(`mall-category-${category}`)), new RegExp(`${expected}$`));
   }
 
@@ -1196,7 +1266,7 @@ test('search whitespace, empty results, category counts, pagination and clear re
 
   app.find('mall-search-input').props.onChangeText('');
   app.render();
-  assert.equal(pager(app).props.total, 152);
+  assert.equal(pager(app).props.total, 153);
   assert.equal(pager(app).props.page, 1);
   assert.ok(app.find(`build-${floorOneItems[0].id}`), 'clearing search returns to the original floor list');
 });

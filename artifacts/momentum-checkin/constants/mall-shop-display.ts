@@ -116,7 +116,9 @@ type ProductTheme =
   | 'toy'
   | 'craft'
   | 'general'
-  | 'photoStudio';
+  | 'photoStudio'
+  | 'chiikawa'
+  | 'winnie';
 
 type ProductSeed = {
   name: string;
@@ -249,6 +251,26 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '手作黏土套裝', description: '用柔軟黏土捏出小角色', icon: 'edit-2', color: c.candyCoral },
     { name: '迷你火車模型', description: '適合收藏的小火車模型', icon: 'truck', color: c.candyMint },
     { name: '貼紙收藏包', description: '收錄可愛圖案的貼紙', icon: 'image', color: c.candyRose },
+  ],
+  chiikawa: [
+    { name: '吉伊卡哇奶油白毛絨玩偶', description: '以小小的白色棉花糖造型製作。', icon: 'gift', color: c.candyCream, illustration: 'plush' },
+    { name: '小八貓藍白條紋玩偶', description: '小八貓經典藍白配色毛絨收藏。', icon: 'heart', color: c.candySky, illustration: 'plush' },
+    { name: '兔兔長耳跳跳玩偶', description: '長耳朵和活潑表情的毛絨玩偶。', icon: 'star', color: c.candyLemon, illustration: 'plush' },
+    { name: '飛鼠紫色蝴蝶結吊飾', description: '紫色蝴蝶結角色吊飾，可掛在包上。', icon: 'gift', color: c.candyLavender, illustration: 'charm' },
+    { name: '獅薩與朋友角色貼紙組', description: '收錄獅薩和朋友們的彩色貼紙。', icon: 'image', color: c.candyCoral, illustration: 'sticker' },
+    { name: '栗子饅頭茶香馬克杯', description: '以暖棕色與小栗子圖案點綴杯身。', icon: 'coffee', color: c.candyCaramel, illustration: 'mug' },
+    { name: '三人組星星收藏盒', description: '收納吉伊卡哇、小八與兔兔的小收藏。', icon: 'package', color: c.candyPink, illustration: 'box' },
+    { name: 'Chiikawa Land角色故事小卡', description: '把角色故事和插畫留作紀念。', icon: 'book-open', color: c.candyMint, illustration: 'postcard' },
+  ],
+  winnie: [
+    { name: '維尼蜂蜜罐造型毛絨玩偶', description: '抱著蜂蜜罐的柔軟小熊收藏。', icon: 'gift', color: c.candyLemon, illustration: 'plush' },
+    { name: '小豬粉紅圍巾玩偶', description: '粉紅圍巾搭配柔和玫瑰色。', icon: 'heart', color: c.candyPink, illustration: 'plush' },
+    { name: '跳跳虎橘紋彈跳玩偶', description: '橘色條紋和活潑彈跳姿態。', icon: 'star', color: c.candyCoral, illustration: 'plush' },
+    { name: '屹耳藍灰長耳玩偶', description: '灰藍色長耳朵的森林朋友。', icon: 'cloud', color: c.candySky, illustration: 'plush' },
+    { name: '百畝森林冒險繪本', description: '記錄森林夥伴一起探險的故事。', icon: 'book-open', color: c.candyMint, illustration: 'book' },
+    { name: '蜂蜜罐圖案馬克杯', description: '暖金色杯身配蜂蜜罐小圖案。', icon: 'coffee', color: c.candyCaramel, illustration: 'mug' },
+    { name: '森林橡果小熊吊飾', description: '用橡果和葉片造型裝飾的小吊飾。', icon: 'gift', color: c.candyPeach, illustration: 'charm' },
+    { name: '百畝森林蜂蜜貼紙包', description: '收錄森林夥伴和蜂蜜罐插畫。', icon: 'image', color: c.candyLemon, illustration: 'sticker' },
   ],
   craft: [
     { name: '手繪陶瓷小碟', description: '每一只都有不同手繪花紋', icon: 'circle', color: c.candySky },
@@ -523,6 +545,8 @@ const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> 
   boutique: 'jewel',
   cosmetics: 'compact',
   photoStudio: 'camera',
+  chiikawa: 'plush',
+  winnie: 'plush',
 };
 
 function inferProductIllustration(
@@ -824,6 +848,8 @@ function resolveProductTheme(
   const identity = `${shopId} ${shopName}`;
   if (/fragrance|aroma|diffuser|香氛|香薰|擴香|扩香|香氣|香气/i.test(identity)) return 'fragrance';
   if (/portrait-photo-studio|寫真館|個人寫真|photo.?studio|portrait.?studio/i.test(identity)) return 'photoStudio';
+  if (/chiikawa|吉伊卡哇|ちいかわ/i.test(identity)) return 'chiikawa';
+  if (/winnie|pooh|小熊維尼|百畝森林|跳跳虎|屹耳/i.test(identity)) return 'winnie';
   if (shopType && shopType !== 'general') return shopType;
   if (/溫泉|櫻花暖湯|湯宿|湯煙|泡湯|浴衣|onsen|hot.?spring/i.test(identity)) return 'onsen';
   if (/咖啡|coffee|cafe|烘豆/i.test(identity)) return 'cafe';

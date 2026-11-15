@@ -557,6 +557,8 @@ type GeneralShopSpecialty =
   | 'craft'
   | 'onsen'
   | 'privateClub'
+  | 'chiikawa'
+  | 'winnie'
   | 'photoStudio';
 
 const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
@@ -613,6 +615,18 @@ const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
     { key: 'prize-display', name: '玩偶與模型展示櫃', description: '把可愛玩偶和迷你模型排好展示。', icon: 'gift', price: 46, color: c.candyPink, visual: 'candy-display' },
     { key: 'toy-repair-table', name: '玩具整理工作台', description: '整理積木、模型零件和小玩具。', icon: 'tool', price: 40, color: c.candySky, visual: 'craft-station' },
     { key: 'game-card-display', name: '卡牌收藏展示架', description: '把熱門卡牌放進透明收藏格。', icon: 'grid', price: 44, color: c.candyLavender, visual: 'book-carousel' },
+  ],
+  chiikawa: [
+    { key: 'character-plush-sorter', name: 'Chiikawa角色玩偶補貨台', description: '整理吉伊卡哇、小八和兔兔的毛絨收藏。', icon: 'gift', price: 54, color: c.candyPink, visual: 'gallery-frames' },
+    { key: 'blue-white-plush-case', name: '小八貓藍白玩偶展示櫃', description: '以柔和藍白燈光展示小八貓玩偶。', icon: 'grid', price: 52, color: c.candySky, visual: 'candy-display' },
+    { key: 'sticker-sorting-board', name: '角色貼紙分款收納牆', description: '把角色貼紙和小卡依系列分類。', icon: 'image', price: 42, color: c.candyLavender, visual: 'gallery-frames' },
+    { key: 'character-card-printer', name: '角色小卡印製工作台', description: '為收藏卡和角色小卡準備包裝。', icon: 'camera', price: 50, color: c.candyPeach, visual: 'craft-station' },
+  ],
+  winnie: [
+    { key: 'honey-pot-display', name: '百畝森林蜂蜜罐展示櫃', description: '以蜂蜜金色燈光陳列森林主題收藏。', icon: 'gift', price: 56, color: c.candyLemon, visual: 'candy-display' },
+    { key: 'forest-plush-rack', name: '百畝森林玩偶木架', description: '展示維尼、小豬、跳跳虎與屹耳玩偶。', icon: 'feather', price: 54, color: c.candyMint, visual: 'gallery-frames' },
+    { key: 'storybook-sorting-table', name: '森林故事繪本整理桌', description: '整理百畝森林繪本與故事卡片。', icon: 'book-open', price: 44, color: c.candyPeach, visual: 'book-carousel' },
+    { key: 'honey-gift-box-station', name: '蜂蜜罐禮物包裝台', description: '用森林葉片與蜂蜜色緞帶包裝小禮物。', icon: 'package', price: 48, color: c.candyCaramel, visual: 'craft-station' },
   ],
   craft: [
     { key: 'craft-workbench', name: '手作材料工作台', description: '準備剪刀、布料和各種創作材料。', icon: 'tool', price: 50, color: c.candyPeach, visual: 'craft-station' },
@@ -710,6 +724,8 @@ const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> 
 };
 
 const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
+  ['chiikawa', /chiikawa|吉伊卡哇|ちいかわ/i],
+  ['winnie', /winnie|pooh|小熊維尼|百畝森林|跳跳虎|屹耳/i],
   ['privateClub', /saint-edward-west-castle|聖愛德華西堡|私人會所/i],
   ['photoStudio', /portrait-photo-studio|寫真館|個人寫真|photo.?studio|portrait.?studio/i],
   ['onsen', /溫泉|櫻花暖湯|湯宿|湯煙|泡湯|onsen|hot.?spring/i],
@@ -858,6 +874,30 @@ const GENERAL_SPECIALTY_FIXTURES: Record<GeneralShopSpecialty, DecorationFixture
     specialtyFixture('toy', 'plush-seat', '熊熊造型休息椅', '準備一張像玩偶般柔軟的小椅子。', 'heart', 37, 'wooden-bench'),
     specialtyFixture('toy', 'collectible-stand', '模型收藏旋轉展示台', '讓模型從不同角度都能被看見。', 'star', 34, 'sculpture-plaza'),
   ],
+  chiikawa: [
+    specialtyFixture('chiikawa', 'character-plush-wall', '吉伊卡哇角色玩偶展示牆', '依角色整理吉伊卡哇、小八、兔兔與朋友們的玩偶。', 'gift', 40, 'gallery-frames'),
+    specialtyFixture('chiikawa', 'hachiware-glass-case', '小八貓藍白收藏玻璃櫃', '以清爽藍白色系展示小八貓主題收藏。', 'grid', 42, 'candy-display'),
+    specialtyFixture('chiikawa', 'usagi-charm-carousel', '兔兔長耳吊飾旋轉台', '讓兔兔和朋友們的角色吊飾輪流亮相。', 'star', 38, 'sculpture-plaza'),
+    specialtyFixture('chiikawa', 'character-sticker-rack', '角色貼紙與小卡展示架', '整齊陳列不同角色的貼紙和收藏卡。', 'image', 32, 'gallery-frames'),
+    specialtyFixture('chiikawa', 'chiikawa-story-shelf', '吉伊卡哇漫畫繪本書架', '展示角色故事書與插畫小冊。', 'book-open', 36, 'book-carousel'),
+    specialtyFixture('chiikawa', 'character-capsule-machine', '角色收藏扭蛋展示機', '把角色吊飾與迷你徽章放入驚喜扭蛋。', 'circle', 42, 'capsule-machine'),
+    specialtyFixture('chiikawa', 'shisa-gift-display', '獅薩限定禮盒陳列櫃', '以溫暖橘色點綴角色禮盒與紀念品。', 'gift', 39, 'candy-display'),
+    specialtyFixture('chiikawa', 'kurimanju-photo-frame', '栗子饅頭拍照打卡框', '用角色插畫相框記錄逛店時光。', 'camera', 34, 'rainbow-arch'),
+    specialtyFixture('chiikawa', 'friendship-plush-bench', '角色好友毛絨休息椅', '讓玩偶收藏在柔軟座椅旁一起合照。', 'heart', 37, 'wooden-bench'),
+    specialtyFixture('chiikawa', 'chiikawa-star-mobile', '星星角色吊飾展示牆', '用柔粉星星和角色吊飾裝飾店內。', 'moon', 30, 'starlight-mobile'),
+  ],
+  winnie: [
+    specialtyFixture('winnie', 'honey-pot-showcase', '維尼蜂蜜罐玻璃展示櫃', '展示蜂蜜罐造型紀念品與森林小物。', 'gift', 42, 'candy-display'),
+    specialtyFixture('winnie', 'hundred-acre-plush-shelf', '百畝森林毛絨玩偶木架', '排列維尼、小豬、跳跳虎和屹耳玩偶。', 'feather', 40, 'gallery-frames'),
+    specialtyFixture('winnie', 'pooh-red-shirt-display', '維尼紅衣造型收藏展示台', '為經典紅衣熊造型安排主題展示位置。', 'star', 38, 'sculpture-plaza'),
+    specialtyFixture('winnie', 'piglet-tigger-plush-case', '小豬與跳跳虎玩偶櫥窗', '展示粉紅小豬與橘色跳跳虎的森林夥伴造型。', 'heart', 41, 'candy-display'),
+    specialtyFixture('winnie', 'forest-storybook-rack', '百畝森林故事繪本架', '陳列森林冒險繪本和角色故事小冊。', 'book-open', 36, 'book-carousel'),
+    specialtyFixture('winnie', 'honey-gift-box-display', '蜂蜜罐禮盒分格櫃', '把蜂蜜罐、貼紙和小吊飾分類展示。', 'package', 39, 'spice-display'),
+    specialtyFixture('winnie', 'acorn-capsule-machine', '森林橡果驚喜扭蛋機', '轉出橡果與森林夥伴主題的小收藏。', 'circle', 42, 'capsule-machine'),
+    specialtyFixture('winnie', 'forest-tea-mug-rack', '森林蜂蜜杯與茶具架', '展示蜂蜜罐馬克杯和葉片圖案茶具。', 'coffee', 34, 'gallery-frames'),
+    specialtyFixture('winnie', 'eeyore-blue-gift-case', '屹耳藍灰收藏禮盒櫃', '以藍灰色調陳列屹耳主題紀念品。', 'gift', 37, 'candy-display'),
+    specialtyFixture('winnie', 'hundred-acre-lantern', '百畝森林蜂蜜暖燈', '為森林故事角落添上一盞蜂蜜色小燈。', 'sun', 30, 'garden-lights'),
+  ],
   craft: [
     specialtyFixture('craft', 'pottery-wheel', '手作陶藝體驗轉盤', '留出一張桌面體驗捏陶和拉坯。', 'refresh-cw', 42, 'craft-station'),
     specialtyFixture('craft', 'yarn-wall', '彩線與毛線收納牆', '按色系排列編織用毛線和線軸。', 'grid', 34, 'spice-display'),
@@ -903,6 +943,7 @@ function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpeci
 
 export type ShopInteriorSceneKey =
   | 'general' | 'cafe' | 'candy' | 'icecream' | 'bakery' | 'tea' | 'food' | 'private-club' | 'flower' | 'book' | 'toy' | 'craft'
+  | 'chiikawa' | 'winnie'
   | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen'
   | 'swimwear' | 'cosplay' | 'electronics' | 'boutique' | 'cosmetics' | 'photo-studio';
 
@@ -914,6 +955,8 @@ const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorScene
   tea: 'tea',
   food: 'food',
   privateClub: 'private-club',
+  chiikawa: 'chiikawa',
+  winnie: 'winnie',
   flower: 'flower',
   book: 'book',
   toy: 'toy',
@@ -1181,6 +1224,8 @@ export function getShopInteriorDecorations(
 export function getShopTypeLabel(shopType?: MallShopType, shopId?: string): string {
   if (shopId === 'saint-edward-west-castle-restaurant') return '私人會所餐廳';
   if (shopId === 'portrait-photo-studio') return '寫真館';
+  if (shopId === 'chiikawa-land') return 'Chiikawa專賣店';
+  if (shopId === 'winnie-hundred-acre-wood') return '小熊維尼專賣店';
   const labels: Record<MallShopType, string> = {
     general: '特色商店',
     womenswear: '女裝店',

@@ -2533,6 +2533,161 @@ test('each dog can save, apply, delete and restore named outfits without spendin
   assert.equal(reopenedApp.contextExports.useHabits().coins, coinsBefore);
 });
 
+test('named outfits stay dog-specific while switching, applying, and rejecting foreign styles', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  const dogs = [
+    { key: 'fluffy-staff-huahua', id: 'general-fluffy-staff-huahua', name: '花花', preset: '花花日常' },
+    { key: 'fluffy-staff-tangtang', id: 'general-fluffy-staff-tangtang', name: '糖糖', preset: '糖糖日常' },
+  ];
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 5,
+    coins: 500,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {
+      [shop.id]: {
+        ownedDecorations: dogs.map(({ id }) => id),
+        placements: {},
+      },
+    },
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  const coinsBefore = app.contextExports.useHabits().coins;
+  const styleCatalogs = app.dogStaffCustomization.DOG_STAFF_STYLE_CATALOGS;
+
+  async function selectDog(dog) {
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, `dog-staff-select-${dog.key}`);
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+
+  async function chooseStyles(dog, outfitIndex, accessoryIndex) {
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, 'dog-staff-tab-outfit');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, `dog-staff-look-${dog.key}-outfit-${outfitIndex}`);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+    await press(customizerTree, 'dog-staff-tab-accessory');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, `dog-staff-look-${dog.key}-accessory-${accessoryIndex}`);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+
+  async function savePreset(dog) {
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    const nameInput = findByTestId(customizerTree, `dog-staff-saved-look-name-${dog.key}`);
+    assert.ok(nameInput, `${dog.name} has a separate saved-outfit input`);
+    nameInput.props.onChangeText(dog.preset);
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, `dog-staff-saved-look-save-${dog.key}`);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+
+  const savedByDog = new Map();
+  for (const dog of dogs) {
+    await selectDog(dog);
+    await chooseStyles(dog, 2, 2);
+    await savePreset(dog);
+    const savedLook = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[dog.id][0];
+    assert.equal(savedLook.name, dog.preset);
+    assert.equal(savedLook.look.outfitId, styleCatalogs[dog.id].outfits[1].id);
+    assert.equal(savedLook.look.accessoryId, styleCatalogs[dog.id].accessories[1].id);
+    savedByDog.set(dog.id, savedLook);
+  }
+
+  const initialPresets = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits;
+  assert.deepEqual(Object.keys(initialPresets).sort(), dogs.map(({ id }) => id).sort());
+  assert.notDeepEqual(
+    savedByDog.get(dogs[0].id).look,
+    savedByDog.get(dogs[1].id).look,
+    'each dog saves IDs from its own distinct style catalog',
+  );
+
+  for (const dog of dogs) {
+    const otherDog = dogs.find(({ id }) => id !== dog.id);
+    await selectDog(dog);
+    const ownPresetButton = `dog-staff-saved-look-apply-${dog.key}-${savedByDog.get(dog.id).id}`;
+    const otherPresetButton = `dog-staff-saved-look-apply-${otherDog.key}-${savedByDog.get(otherDog.id).id}`;
+    assert.ok(findByTestId(customizerTree, ownPresetButton), `${dog.name} sees their own saved outfit`);
+    assert.equal(findByTestId(customizerTree, otherPresetButton), undefined, `${dog.name} cannot see ${otherDog.name}’s outfit`);
+
+    await chooseStyles(dog, 3, 3);
+    assert.notDeepEqual(
+      app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dog.id],
+      savedByDog.get(dog.id).look,
+      `${dog.name} has a different look before applying the preset`,
+    );
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, ownPresetButton);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    assert.deepEqual(
+      app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dog.id],
+      savedByDog.get(dog.id).look,
+      `applying the visible preset restores only ${dog.name}’s outfit`,
+    );
+    assert.equal(
+      app.contextExports.useHabits().shopInteriors[shop.id].dogStaffOutfits[otherDog.id][0].name,
+      otherDog.preset,
+      `applying ${dog.name}’s preset leaves ${otherDog.name}’s saved preset unchanged`,
+    );
+  }
+
+  const storedMallBeforeInvalidAttempts = app.storage.get(storageKeys.mall);
+  const mallBeforeInvalidAttempts = app.contextExports.useHabits().shopInteriors[shop.id];
+  const huahuaCatalog = styleCatalogs[dogs[0].id];
+  const tangtangCatalog = styleCatalogs[dogs[1].id];
+  const rejectedLooks = [
+    {
+      outfitId: tangtangCatalog.outfits[1].id,
+      accessoryId: huahuaCatalog.accessories[1].id,
+    },
+    {
+      outfitId: huahuaCatalog.outfits[1].id,
+      accessoryId: tangtangCatalog.accessories[1].id,
+    },
+    { outfitId: 'not-a-real-outfit', accessoryId: huahuaCatalog.accessories[1].id },
+    { outfitId: huahuaCatalog.outfits[1].id, accessoryId: 'not-a-real-accessory' },
+  ];
+  for (const look of rejectedLooks) {
+    await assert.rejects(
+      app.contextExports.useHabits().updateShopInteriorDogLook(shop.id, dogs[0].id, look),
+      /不屬於這位狗狗店員/,
+    );
+    app.renderProvider();
+    const current = app.contextExports.useHabits();
+    assert.equal(current.coins, coinsBefore, 'rejecting foreign or invalid IDs does not change the coin balance');
+    assert.deepEqual(
+      current.shopInteriors[shop.id],
+      mallBeforeInvalidAttempts,
+      'rejecting foreign or invalid IDs leaves both dogs’ current and saved looks unchanged',
+    );
+    assert.equal(
+      app.storage.get(storageKeys.mall),
+      storedMallBeforeInvalidAttempts,
+      'rejected styles do not rewrite persisted mall data',
+    );
+  }
+});
+
 test('long-pressing a goal only opens management actions; the plus button only checks in', async () => {
   const app = createHarness();
   app.renderProvider();

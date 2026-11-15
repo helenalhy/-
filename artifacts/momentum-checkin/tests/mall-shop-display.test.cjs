@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 const ts = require('typescript');
 
 const constantsPath = path.join(__dirname, '../constants/mall-shop-display.ts');
@@ -28,11 +29,95 @@ const {
   getShopFixtureProductCatalog,
   SHOP_DISPLAY_SLOT_COUNT,
 } = constantsModule.exports;
+const tryOnLayoutPath = path.join(__dirname, '../constants/cosmetics-try-on-layout.ts');
+const tryOnLayoutOutput = ts.transpileModule(fs.readFileSync(tryOnLayoutPath, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText;
+const tryOnLayoutModule = { exports: {} };
+new Function('require', 'module', 'exports', tryOnLayoutOutput)(
+  require,
+  tryOnLayoutModule,
+  tryOnLayoutModule.exports,
+);
+const { getCosmeticsTryOnPreviewLayout } = tryOnLayoutModule.exports;
 const displayFixture = {
   id: 'general-display-shelf',
   name: '糖果色展示架',
   description: '擺放相關商品',
 };
+
+function getPngAlphaCoverage(png, startY, endY) {
+  assert.equal(png.toString('hex', 0, 8), '89504e470d0a1a0a', 'portrait should be a PNG image');
+  const width = png.readUInt32BE(16);
+  const height = png.readUInt32BE(20);
+  assert.equal(png[24], 8, 'portrait should use 8-bit channels');
+  assert.equal(png[25], 6, 'portrait should use RGBA pixels');
+  assert.equal(png[28], 0, 'portrait should use non-interlaced rows');
+
+  const compressedChunks = [];
+  for (let offset = 8; offset < png.length;) {
+    const length = png.readUInt32BE(offset);
+    const type = png.toString('ascii', offset + 4, offset + 8);
+    if (type === 'IDAT') compressedChunks.push(png.subarray(offset + 8, offset + 8 + length));
+    offset += length + 12;
+    if (type === 'IEND') break;
+  }
+  const decoded = zlib.inflateSync(Buffer.concat(compressedChunks));
+  const stride = width * 4;
+  const pixels = Buffer.alloc(height * stride);
+  const paeth = (left, above, upperLeft) => {
+    const estimate = left + above - upperLeft;
+    const leftDistance = Math.abs(estimate - left);
+    const aboveDistance = Math.abs(estimate - above);
+    const upperLeftDistance = Math.abs(estimate - upperLeft);
+    if (leftDistance <= aboveDistance && leftDistance <= upperLeftDistance) return left;
+    return aboveDistance <= upperLeftDistance ? above : upperLeft;
+  };
+
+  for (let y = 0; y < height; y += 1) {
+    const filter = decoded[y * (stride + 1)];
+    assert.ok(filter >= 0 && filter <= 4, `portrait row ${y} should use a supported PNG filter`);
+    const sourceStart = y * (stride + 1) + 1;
+    const rowStart = y * stride;
+    for (let index = 0; index < stride; index += 1) {
+      const raw = decoded[sourceStart + index];
+      const left = index >= 4 ? pixels[rowStart + index - 4] : 0;
+      const above = y > 0 ? pixels[rowStart - stride + index] : 0;
+      const upperLeft = y > 0 && index >= 4 ? pixels[rowStart - stride + index - 4] : 0;
+      const predictor = filter === 1
+        ? left
+        : filter === 2
+          ? above
+          : filter === 3
+            ? Math.floor((left + above) / 2)
+            : filter === 4
+              ? paeth(left, above, upperLeft)
+              : 0;
+      pixels[rowStart + index] = (raw + predictor) & 0xff;
+    }
+  }
+
+  let visiblePixels = 0;
+  for (let y = startY; y < endY; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (pixels[y * stride + x * 4 + 3] > 0) visiblePixels += 1;
+    }
+  }
+  return visiblePixels / (width * (endY - startY));
+}
+
+function getGuestAnchorRecords(componentSource) {
+  return [...componentSource.matchAll(
+    /id: 'guest-(\d+)',\s+source: require\('\.\.\/assets\/images\/(cosmetics-tryon-guest-portrait-\d+)\.png'\),\s+makeup: \{\s*leftEye: \{([^}]+)\},\s*rightEye: \{([^}]+)\},\s*lipsX: ([\d.]+),\s*lipsY: ([\d.]+),\s*\}/g,
+  )].map((match) => ({
+    id: Number(match[1]),
+    source: match[2],
+    leftEye: match[3],
+    rightEye: match[4],
+    lipsX: Number(match[5]),
+    lipsY: Number(match[6]),
+  }));
+}
 
 test('display fixtures are recognized without treating ordinary lamps as shelves', () => {
   assert.equal(canDisplayShopProducts(displayFixture), true);
@@ -161,6 +246,11 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.ok(womenswear.some(({ illustration }) => illustration === 'earring'));
   assert.ok(womenswear.some(({ illustration }) => illustration === 'scarf'));
 
+  const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
+  for (const illustration of ['handbag', 'earring', 'watch', 'scarf', 'hairclip', 'shoe', 'wallet', 'necklace', 'towel', 'fan']) {
+    assert.match(visual, new RegExp(`product\\.illustration === '${illustration}'`));
+  }
+
   const cosmetics = getShopFixtureProductCatalog(
     'rainbow-cosmetics',
     '繽紛彩妝屋',
@@ -177,7 +267,9 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.ok(eyeshadows.length >= 18, 'cosmetics inventory offers a broad eyeshadow shade selection');
   assert.ok(new Set(lipsticks.map(({ color }) => color)).size > 5, 'lipsticks offer many distinct shades');
   assert.ok(new Set(eyeshadows.map(({ color }) => color)).size > 5, 'eyeshadows offer many distinct shades');
+});
 
+test('try-on protects the eight portrait crops, responsive sizing, and guest-specific makeup anchors', () => {
   const tryOn = fs.readFileSync(path.join(__dirname, '../components/CosmeticsTryOn.tsx'), 'utf8');
   assert.match(tryOn, /setSelectedLipstickId/);
   assert.match(tryOn, /setSelectedEyeshadowId/);
@@ -185,11 +277,12 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /source=\{selectedGuest\.source\}/);
   assert.match(tryOn, /GUEST_PORTRAITS\.map/);
   assert.match(tryOn, /const \{ width \} = useWindowDimensions\(\)/);
-  assert.match(tryOn, /const compactLayout = width < 360/);
-  assert.match(tryOn, /compactLayout && styles\.compactPreview/);
-  assert.match(tryOn, /compactPortraitStage: \{ width: 148, height: 148 \}/);
+  assert.match(tryOn, /getCosmeticsTryOnPreviewLayout\(width\)/);
+  assert.match(tryOn, /const compactLayout = previewLayout\.isCompact/);
+  assert.match(tryOn, /flexDirection: previewLayout\.direction/);
+  assert.match(tryOn, /width: previewLayout\.portraitSize, height: previewLayout\.portraitSize/);
   assert.match(tryOn, /<ScrollView horizontal showsHorizontalScrollIndicator=\{false\} contentContainerStyle=\{styles\.choiceList\}>/);
-  assert.match(tryOn, /portraitStage: \{ width: 132, height: 132, flexShrink: 0/);
+  assert.match(tryOn, /portraitStage: \{ flexShrink: 0/);
   assert.match(tryOn, /guestPortrait: \{ position: 'absolute', width: '100%', height: '100%'/);
   assert.match(tryOn, /makeupLayer: \{ \.\.\.StyleSheet\.absoluteFill, zIndex: 2/);
   assert.match(tryOn, /viewBox="0 0 120 120"/);
@@ -212,6 +305,43 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /fillOpacity=\{0\.68\}/);
   assert.match(tryOn, /resizeMode="cover"/);
   assert.match(tryOn, /cosmetics-try-on-makeup-layer/);
+  for (const [viewportWidth, expected] of [
+    [320, { isCompact: true, direction: 'column', portraitSize: 148 }],
+    [359, { isCompact: true, direction: 'column', portraitSize: 148 }],
+    [360, { isCompact: false, direction: 'row', portraitSize: 132 }],
+    [390, { isCompact: false, direction: 'row', portraitSize: 132 }],
+  ]) {
+    const layout = getCosmeticsTryOnPreviewLayout(viewportWidth);
+    assert.deepEqual(layout, expected, `portrait should keep its full square size at ${viewportWidth}px`);
+  }
+  assert.match(tryOn, /width: previewLayout\.portraitSize, height: previewLayout\.portraitSize/);
+
+  const guestAnchors = getGuestAnchorRecords(tryOn);
+  assert.equal(guestAnchors.length, 8, 'all eight portraits should define their own makeup anchors');
+  for (const [index, guest] of guestAnchors.entries()) {
+    const portrait = String(index + 1).padStart(2, '0');
+    assert.equal(guest.id, index + 1, 'guest and anchor order should stay aligned');
+    assert.equal(guest.source, `cosmetics-tryon-guest-portrait-${portrait}`, `guest ${index + 1} should use its matching portrait`);
+    for (const eye of [guest.leftEye, guest.rightEye]) {
+      const centerX = Number(eye.match(/centerX: ([\d.]+)/)?.[1]);
+      const centerY = Number(eye.match(/centerY: ([\d.]+)/)?.[1]);
+      const halfWidth = Number(eye.match(/halfWidth: ([\d.]+)/)?.[1]);
+      assert.ok(centerX - halfWidth >= 0 && centerX + halfWidth <= 120, `guest ${index + 1} eye shadow should stay inside the portrait`);
+      assert.ok(centerY >= 0 && centerY <= 120, `guest ${index + 1} eye anchor should stay inside the portrait`);
+    }
+    assert.ok(guest.lipsX >= 0 && guest.lipsX <= 120, `guest ${index + 1} lip anchor should stay inside the portrait`);
+    assert.ok(guest.lipsY >= 0 && guest.lipsY <= 120, `guest ${index + 1} lip anchor should stay inside the portrait`);
+  }
+  assert.equal(new Set(guestAnchors.map(({ leftEye, rightEye, lipsY }) => `${leftEye}${rightEye}${lipsY}`)).size, 8, 'each guest should keep distinct face-position anchors');
+  assert.match(tryOn, /const selectedGuest = GUEST_PORTRAITS\[selectedGuestIndex\]/);
+  assert.match(tryOn, /source=\{selectedGuest\.source\}/);
+  assert.match(tryOn, /getEyeshadowPath\(selectedGuest\.makeup\.leftEye\)/);
+  assert.match(tryOn, /getEyeshadowPath\(selectedGuest\.makeup\.rightEye\)/);
+  assert.match(tryOn, /getLipstickPath\(selectedGuest\.makeup\.lipsX, selectedGuest\.makeup\.lipsY\)/);
+  assert.match(tryOn, /fill=\{selectedEyeshadow\.color\}/);
+  assert.match(tryOn, /fill=\{selectedLipstick\.color\}/);
+  assert.match(tryOn, /onPress=\{\(\) => onSelect\(product\.id\)\}/);
+  assert.match(tryOn, /onPress=\{\(\) => setSelectedGuestIndex\(index\)\}/);
   for (let index = 1; index <= 8; index += 1) {
     const portrait = String(index).padStart(2, '0');
     const portraitPath = path.join(__dirname, `../assets/images/cosmetics-tryon-guest-portrait-${portrait}.png`);
@@ -219,6 +349,8 @@ test('fashion and boutique products use item-shaped animated illustrations inste
     const portraitPng = fs.readFileSync(portraitPath);
     assert.equal(portraitPng.readUInt32BE(16), 360, `guest portrait ${portrait} should retain its full-size square framing`);
     assert.equal(portraitPng.readUInt32BE(20), 360, `guest portrait ${portrait} should retain its full-size square framing`);
+    assert.ok(getPngAlphaCoverage(portraitPng, 0, 30) > 0.05, `guest portrait ${portrait} should retain the top of the head`);
+    assert.ok(getPngAlphaCoverage(portraitPng, 330, 360) > 0.6, `guest portrait ${portrait} should retain the shoulders through the bottom crop`);
   }
   assert.match(tryOn, /選擇試妝客人/);
   assert.doesNotMatch(tryOn, /hairCap|hairBangs|eyeRow/);
@@ -227,11 +359,6 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   const shopPage = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
   assert.match(shopPage, /shop\.shopType === 'cosmetics'/);
   assert.match(shopPage, /<CosmeticsTryOn products=\{cosmeticsTryOnProducts\}/);
-
-  const visual = fs.readFileSync(path.join(__dirname, '../components/ShopMerchandiseVisual.tsx'), 'utf8');
-  for (const illustration of ['handbag', 'earring', 'watch', 'scarf', 'hairclip', 'shoe', 'wallet', 'necklace', 'towel', 'fan']) {
-    assert.match(visual, new RegExp(`product\\.illustration === '${illustration}'`));
-  }
 });
 
 test('other shops use product-specific animated silhouettes across food, toys and electronics', () => {

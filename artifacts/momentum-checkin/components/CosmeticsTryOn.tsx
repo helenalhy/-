@@ -4,6 +4,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensio
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { ImageSourcePropType } from 'react-native';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
+import { getCosmeticsTryOnPreviewLayout } from '@/constants/cosmetics-try-on-layout';
 import { useColors } from '@/hooks/useColors';
 
 type EyeshadowCurve = {
@@ -156,7 +157,8 @@ function getLipSparklePoints(centerX: number, centerY: number, finish: ShopDispl
 export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] }) {
   const colors = useColors();
   const { width } = useWindowDimensions();
-  const compactLayout = width < 360;
+  const previewLayout = getCosmeticsTryOnPreviewLayout(width);
+  const compactLayout = previewLayout.isCompact;
   const lipsticks = products.filter(({ illustration }) => illustration === 'lipstick');
   const eyeshadows = products.filter(({ illustration }) => illustration === 'palette');
   const [selectedGuestIndex, setSelectedGuestIndex] = useState(0);
@@ -238,7 +240,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
         accessibilityLabel={`第 ${selectedGuestIndex + 1} 位客人妝容預覽：${selectedLipstick.name}搭配${selectedEyeshadow.name}`}
         style={[
           styles.preview,
-          compactLayout && styles.compactPreview,
+          { flexDirection: previewLayout.direction },
           { backgroundColor: colors.candyCream, borderColor: colors.border },
         ]}
       >
@@ -246,7 +248,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
           testID="cosmetics-try-on-portrait"
           style={[
             styles.portraitStage,
-            compactLayout && styles.compactPortraitStage,
+            { width: previewLayout.portraitSize, height: previewLayout.portraitSize },
             { backgroundColor: colors.candyPeach, borderColor: colors.candyPink },
           ]}
         >
@@ -370,9 +372,7 @@ const styles = StyleSheet.create({
   freePill: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
   freeText: { fontSize: 11, fontWeight: '800' },
   preview: { minHeight: 174, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  compactPreview: { flexDirection: 'column', alignItems: 'center' },
-  portraitStage: { width: 132, height: 132, flexShrink: 0, position: 'relative', borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
-  compactPortraitStage: { width: 148, height: 148 },
+  portraitStage: { flexShrink: 0, position: 'relative', borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
   guestPortrait: { position: 'absolute', width: '100%', height: '100%' },
   makeupLayer: { ...StyleSheet.absoluteFill, zIndex: 2 },
   guestChoiceList: { gap: 8, paddingRight: 4 },

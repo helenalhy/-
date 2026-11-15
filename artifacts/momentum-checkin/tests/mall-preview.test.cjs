@@ -1333,8 +1333,20 @@ test('search result explains matches split across the name and description', () 
     '名稱符合「雨天」 · 描述符合「露台」',
     'the accessible label distinguishes name and description matches',
   );
+  app.find('mall-search-input').props.onChangeText('雨天 雨天 露台');
+  app.render();
+  assert.equal(
+    app.find('search-item-match-split-match').props.accessibilityLabel,
+    '名稱符合「雨天」 · 描述符合「露台」',
+    'repeating a query term does not repeat its accessible match reason',
+  );
+  assert.equal(
+    app.find('search-select-split-match').props.accessibilityLabel,
+    '選擇雨天花園，前往 1F，裝潢，20 金幣，未兌換，先試擺再確認',
+    'the selection control keeps its own action label without repeating match reasons',
+  );
   const android = mount({}, catalog, 'android');
-  android.find('mall-search-input').props.onChangeText('雨天 露台');
+  android.find('mall-search-input').props.onChangeText('雨天 雨天 露台');
   android.render();
   assert.equal(
     android.find('search-item-match-split-match').props.accessibilityLabel,

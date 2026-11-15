@@ -284,6 +284,54 @@ test('mall wing tabs keep browser focus and selection in sync', {
     `Boolean(document.querySelector('[data-testid="mall-wing-tabs"] [data-testid="mall-wing-main"]'))`,
     'the mall wing tablist',
   );
+  await devTools.send('DOM.enable');
+  await devTools.send('Accessibility.enable');
+  await devTools.evaluate(`(() => {
+    const input = document.querySelector('[data-testid="mall-search-input"]');
+    input?.focus();
+  })()`);
+  await devTools.send('Input.insertText', { text: '森林花園' });
+  await waitForBrowser(
+    devTools,
+    `document.querySelector('[data-testid="search-item-match-colorful-planter"]')?.textContent === '描述符合「森林花園」'`,
+    'the browser search result match reason',
+  );
+  const getAccessibleNode = async (selector) => {
+    const { root } = await devTools.send('DOM.getDocument', { depth: 0 });
+    const { nodeId } = await devTools.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+    assert.ok(nodeId, `the browser should render ${selector}`);
+    const { nodes } = await devTools.send('Accessibility.getPartialAXTree', {
+      nodeId,
+      fetchRelatives: false,
+    });
+    assert.equal(nodes.length, 1, `${selector} should expose one accessible node`);
+    return nodes[0];
+  };
+  const matchReason = await getAccessibleNode('[data-testid="search-item-match-colorful-planter"]');
+  assert.equal(matchReason.ignored, false, 'the match reason should not be hidden from assistive technology');
+  assert.equal(matchReason.name?.value, '描述符合「森林花園」', 'the accessible name identifies the matched field and keyword');
+  const selectAction = await getAccessibleNode('[data-testid="search-select-colorful-planter"]');
+  assert.equal(selectAction.role?.value, 'button', 'the search selection action keeps its button role');
+  assert.equal(
+    selectAction.name?.value,
+    '選擇彩色花圃，前往 2F，裝潢，35 金幣，未兌換，先試擺再確認',
+    'the action name remains distinct from the neighboring match reason',
+  );
+  assert.ok(
+    !selectAction.name?.value.includes('描述符合'),
+    'the selection action does not repeat the match reason',
+  );
+  await devTools.evaluate(`(() => {
+    const input = document.querySelector('[data-testid="mall-search-input"]');
+    input.focus();
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitForBrowser(
+    devTools,
+    `document.querySelector('[data-testid="mall-search-input"]')?.value === ''`,
+    'the browser search query to clear before continuing mall checks',
+  );
   await waitForBrowser(
     devTools,
     `document.querySelector('[data-testid="mall-wing-pager"]')?.clientWidth > 0

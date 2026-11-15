@@ -115,7 +115,8 @@ type ProductTheme =
   | 'book'
   | 'toy'
   | 'craft'
-  | 'general';
+  | 'general'
+  | 'photoStudio';
 
 type ProductSeed = {
   name: string;
@@ -380,6 +381,16 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '珊瑚夕陽眼影盤', description: '珊瑚粉、暖橘與夕陽金色', icon: 'star', color: c.candyOrange, illustration: 'palette' },
     { name: '夜空星塵深紫眼影盤', description: '深紫、莓果與月光銀的晚宴色系', icon: 'star', color: c.candyLavenderDark, illustration: 'palette' },
   ],
+  photoStudio: [
+    { name: '春日花拱背景幕', description: '柔粉花拱門前的明亮人像布景', icon: 'feather', color: c.candyPink, illustration: 'postcard' },
+    { name: '星河夜景攝影幕', description: '點亮月色與星光的深藍背景', icon: 'moon', color: c.candyLavender, illustration: 'postcard' },
+    { name: '古典宮廷窗景布', description: '奶油金拱窗與柔垂帷幕場景', icon: 'home', color: c.candyCaramel, illustration: 'postcard' },
+    { name: '海風花園背景布', description: '以清新海藍和花園拱門拍照', icon: 'wind', color: c.candySky, illustration: 'postcard' },
+    { name: '復古學院造型洋裝', description: '適合書廊與窗景拍攝的學院風服飾', icon: 'shopping-bag', color: c.candyMint, illustration: 'garment' },
+    { name: '星光芭蕾舞會禮服', description: '淡紫薄紗與星點細節的拍攝禮服', icon: 'star', color: c.candyLavender, illustration: 'garment' },
+    { name: '珍珠緞帶髮飾', description: '為人像造型加上柔和亮點', icon: 'gift', color: c.candyPeach, illustration: 'hairclip' },
+    { name: '復古拍立得相機', description: '記錄每一套服飾與布景搭配', icon: 'camera', color: c.candyCoral, illustration: 'camera' },
+  ],
 };
 
 type CosmeticsTryOnShade = {
@@ -511,6 +522,7 @@ const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> 
   electronics: 'device',
   boutique: 'jewel',
   cosmetics: 'compact',
+  photoStudio: 'camera',
 };
 
 function inferProductIllustration(
@@ -519,6 +531,7 @@ function inferProductIllustration(
   fallback?: ShopProductIllustration,
 ): ShopProductIllustration {
   if (/氣墊粉餅|蜜粉餅|腮紅盤|修容餅|打亮餅/.test(name)) return 'compact';
+  if (/背景幕|背景布|攝影幕|布景|背景牆/.test(name)) return 'postcard';
   if (/唇膏|唇釉|口紅|唇蜜/.test(name)) return 'lipstick';
   if (/眼影盤|眼影色盤|九色眼影/.test(name)) return 'palette';
   if (/睫毛膏|眼線液/.test(name)) return 'mascara';
@@ -810,6 +823,7 @@ function resolveProductTheme(
 ): ProductTheme {
   const identity = `${shopId} ${shopName}`;
   if (/fragrance|aroma|diffuser|香氛|香薰|擴香|扩香|香氣|香气/i.test(identity)) return 'fragrance';
+  if (/portrait-photo-studio|寫真館|個人寫真|photo.?studio|portrait.?studio/i.test(identity)) return 'photoStudio';
   if (shopType && shopType !== 'general') return shopType;
   if (/溫泉|櫻花暖湯|湯宿|湯煙|泡湯|浴衣|onsen|hot.?spring/i.test(identity)) return 'onsen';
   if (/咖啡|coffee|cafe|烘豆/i.test(identity)) return 'cafe';

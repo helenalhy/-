@@ -311,6 +311,7 @@ test('each individual shop receives a unique 50-item catalog while general shops
     ['toy', '玩具模型店'],
     ['craft', '手作工房'],
     ['onsen', '櫻花暖湯紀念店'],
+    ['photoStudio', '寫真館'],
   ];
   const signatures = [];
 
@@ -1081,7 +1082,7 @@ test('elevator opens a direct 30-floor selector and changes floors without touch
 
 test('real catalog covers thirty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 4517);
+  assert.equal(MALL_ITEMS.length, 4518);
   assert.equal(MALL_FLOORS.length, 30);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -1091,12 +1092,16 @@ test('real catalog covers thirty distinct themes and includes eleven specialized
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 1514, facility: 1500, decor: 1503 },
+    { shop: 1515, facility: 1500, decor: 1503 },
   );
   const saintEdwardClub = MALL_ITEMS.find((item) => item.id === 'saint-edward-west-castle-restaurant');
   assert.equal(saintEdwardClub?.floor, 16);
   assert.equal(saintEdwardClub?.name, '聖愛德華西堡');
   assert.match(saintEdwardClub?.description ?? '', /私人會所餐廳/);
+  const photoStudio = MALL_ITEMS.find((item) => item.id === 'portrait-photo-studio');
+  assert.equal(photoStudio?.floor, 11);
+  assert.equal(photoStudio?.name, '寫真館');
+  assert.match(photoStudio?.description ?? '', /服飾與拍攝場景/);
   assert.equal(new Set(MALL_ITEMS.map((item) => item.name)).size, MALL_ITEMS.length, 'every catalog name is distinct');
   assert.deepEqual(
     MALL_ITEMS.filter((item) => item.shopType && item.shopType !== 'general').map(({ id, floor, shopType }) => [id, floor, shopType]),
@@ -1115,7 +1120,7 @@ test('real catalog covers thirty distinct themes and includes eleven specialized
     ],
   );
   for (let floor = 10; floor <= 19; floor += 1) {
-    const expectedShopCount = floor === 16 ? 51 : 50;
+    const expectedShopCount = floor === 11 || floor === 16 ? 51 : 50;
     const expectedDecorCount = floor === 15 ? 51 : 50;
     assert.deepEqual(
       Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [

@@ -64,6 +64,7 @@ test('shop type and all inferred general specialties resolve to stable scene var
     ['ceramic-studio', '陶土小店', 'craft'],
     ['theme-floor-15-shop-1', '櫻花暖湯紀念店', 'kimono'],
     ['saint-edward-west-castle-restaurant', '聖愛德華西堡', 'private-club'],
+    ['portrait-photo-studio', '寫真館', 'photo-studio'],
   ];
   for (const [id, name, expected] of specialtyCases) {
     assert.equal(getShopInteriorSceneKey('general', id, name), expected, `${id} uses ${expected} room`);
@@ -83,6 +84,7 @@ test('shop type and all inferred general specialties resolve to stable scene var
   assert.ok(clubDecorations.some(({ name }) => name.includes('西堡長桌宴席區')));
   assert.ok(clubDecorations.every(({ name }) => !name.includes('婚紗量身調整台')));
   assert.equal(getShopTypeLabel('general', 'saint-edward-west-castle-restaurant'), '私人會所餐廳');
+  assert.equal(getShopTypeLabel('general', 'portrait-photo-studio'), '寫真館');
 });
 
 test('interior page retains accessible slots and routes placement operations through the selected area key', () => {
@@ -453,8 +455,8 @@ const {
   separateHotspotPoints,
 } = anchorModule.exports;
 
-test('every one of twenty-three scenes defines in-bounds anchors for all eight slots', () => {
-  assert.equal(Object.keys(SCENE_ANCHORS).length, 23);
+test('every one of twenty-four scenes defines in-bounds anchors for all eight slots', () => {
+  assert.equal(Object.keys(SCENE_ANCHORS).length, 24);
   const slots = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table'];
   for (const [scene, anchors] of Object.entries(SCENE_ANCHORS)) {
     assert.deepEqual(Object.keys(anchors).sort(), [...slots].sort(), scene);
@@ -465,13 +467,13 @@ test('every one of twenty-three scenes defines in-bounds anchors for all eight s
   }
 });
 
-test('all 23 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
+test('all 24 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const roomAssetsSource = fs.readFileSync(path.join(__dirname, '../constants/shop-room-images.ts'), 'utf8');
   const sceneAssets = [...roomAssetsSource.matchAll(/require\('\.\.\/assets\/images\/(shop-room-[^']+\.jpg)'\)/g)]
     .map(([, asset]) => asset);
-  assert.equal(sceneAssets.length, 23);
-  assert.equal(new Set(sceneAssets).size, 23);
+  assert.equal(sceneAssets.length, 24);
+  assert.equal(new Set(sceneAssets).size, 24);
   for (const asset of sceneAssets) {
     const assetPath = path.join(__dirname, '../assets/images', asset);
     assert.ok(fs.existsSync(assetPath), `missing scene illustration ${asset}`);

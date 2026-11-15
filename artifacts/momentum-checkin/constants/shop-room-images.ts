@@ -24,4 +24,5 @@ export const SHOP_ROOM_IMAGES: Record<ShopInteriorSceneKey, number> = {
   electronics: require('../assets/images/shop-room-electronics.jpg'),
   boutique: require('../assets/images/shop-room-boutique.jpg'),
   cosmetics: require('../assets/images/shop-room-cosmetics.jpg'),
+  'photo-studio': require('../assets/images/shop-room-photo-studio.jpg'),
 };

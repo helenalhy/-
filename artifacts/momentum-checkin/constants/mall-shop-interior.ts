@@ -556,7 +556,8 @@ type GeneralShopSpecialty =
   | 'toy'
   | 'craft'
   | 'onsen'
-  | 'privateClub';
+  | 'privateClub'
+  | 'photoStudio';
 
 const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
   cafe: [
@@ -631,6 +632,12 @@ const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
     { key: 'castle-menu-board', name: '西堡主廚菜單牌', description: '展示當日餐點與主廚推薦菜色。', icon: 'book-open', price: 38, color: c.candyRose, visual: 'gallery-frames' },
     { key: 'club-service-console', name: '金邊餐飲服務台', description: '整理餐具、餐巾與桌邊服務用品。', icon: 'coffee', price: 52, color: c.candyLemon, visual: 'food-prep' },
   ],
+  photoStudio: [
+    { key: 'ring-light-set', name: '柔光環形補光燈', description: '為人像拍攝提供均勻柔和的補光。', icon: 'sun', price: 58, color: c.candyPink, visual: 'garden-lights' },
+    { key: 'tripod-camera', name: '復古三腳架相機', description: '固定相機位置，方便拍攝不同造型。', icon: 'camera', price: 68, color: c.candyCaramel, visual: 'gallery-frames' },
+    { key: 'backdrop-roller', name: '多色背景布升降架', description: '快速更換花園、星空與宮廷背景。', icon: 'image', price: 54, color: c.candyLavender, visual: 'rainbow-arch' },
+    { key: 'instant-photo-printer', name: '拍立得照片印製台', description: '把喜歡的拍攝造型印成小卡留念。', icon: 'printer', price: 62, color: c.candySky, visual: 'craft-station' },
+  ],
 };
 
 const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> = {
@@ -704,6 +711,7 @@ const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> 
 
 const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
   ['privateClub', /saint-edward-west-castle|聖愛德華西堡|私人會所/i],
+  ['photoStudio', /portrait-photo-studio|寫真館|個人寫真|photo.?studio|portrait.?studio/i],
   ['onsen', /溫泉|櫻花暖湯|湯宿|湯煙|泡湯|onsen|hot.?spring/i],
   ['cafe', /咖啡|coffee|cafe|烘豆/i],
   ['candy', /糖果|軟糖|棉花糖|彩糖|糖藝|糖霜|candy|sweets/i],
@@ -874,6 +882,18 @@ const GENERAL_SPECIALTY_FIXTURES: Record<GeneralShopSpecialty, DecorationFixture
     specialtyFixture('onsen', 'onsen-menu-board', '湯屋泡湯禮儀牌', '以親切圖示介紹泡湯小提醒。', 'image', 25, 'neon-sign'),
     specialtyFixture('onsen', 'rain-chain-mobile', '湯煙竹簾風鈴', '讓竹簾和小鈴隨風輕輕搖曳。', 'wind', 27, 'starlight-mobile'),
   ],
+  photoStudio: [
+    specialtyFixture('photoStudio', 'flower-arch-set', '春日花拱人像布景', '以花拱門與柔粉帷幕拍攝春日人像。', 'feather', 42, 'rainbow-arch'),
+    specialtyFixture('photoStudio', 'starlight-curtain', '星河夜景攝影幕', '在深藍星幕前拍下閃亮造型。', 'moon', 38, 'starlight-mobile'),
+    specialtyFixture('photoStudio', 'palace-window-set', '古典宮廷窗景布景', '以金色拱窗和奶油色帷幕呈現典雅氛圍。', 'home', 45, 'gallery-frames'),
+    specialtyFixture('photoStudio', 'seasonal-backdrop-wall', '四季花景背景牆', '把春櫻、夏花、秋葉與冬雪收進場景。', 'image', 39, 'gallery-frames'),
+    specialtyFixture('photoStudio', 'portrait-dress-rack', '人像服飾造型衣架', '展示適合寫真的洋裝與套裝。', 'shopping-bag', 43, 'clothing-rack'),
+    specialtyFixture('photoStudio', 'gown-mannequin', '星光禮服展示台', '以柔和聚光展示拍攝用禮服。', 'star', 44, 'dress-display'),
+    specialtyFixture('photoStudio', 'posing-platform', '圓形人像拍攝台', '為全身造型拍攝留出明亮中心位置。', 'camera', 46, 'sculpture-plaza'),
+    specialtyFixture('photoStudio', 'portrait-preview-gallery', '拍攝造型作品畫廊', '展示不同服飾與背景搭配的作品卡。', 'image', 34, 'gallery-frames'),
+    specialtyFixture('photoStudio', 'softbox-light-stand', '雙側柔光燈架', '用兩側補光讓人物輪廓更柔和。', 'sun', 37, 'garden-lights'),
+    specialtyFixture('photoStudio', 'velvet-waiting-bench', '試裝等候長椅', '讓客人整理服飾後再開始拍攝。', 'heart', 31, 'wooden-bench'),
+  ],
 };
 
 function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpecialty | undefined {
@@ -884,7 +904,7 @@ function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpeci
 export type ShopInteriorSceneKey =
   | 'general' | 'cafe' | 'candy' | 'icecream' | 'bakery' | 'tea' | 'food' | 'private-club' | 'flower' | 'book' | 'toy' | 'craft'
   | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen'
-  | 'swimwear' | 'cosplay' | 'electronics' | 'boutique' | 'cosmetics';
+  | 'swimwear' | 'cosplay' | 'electronics' | 'boutique' | 'cosmetics' | 'photo-studio';
 
 const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorSceneKey> = {
   cafe: 'cafe',
@@ -899,6 +919,7 @@ const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorScene
   toy: 'toy',
   craft: 'craft',
   onsen: 'kimono',
+  photoStudio: 'photo-studio',
 };
 
 /** One shared illustrated room per shop type/specialty; names and placements remain store-specific. */
@@ -1159,6 +1180,7 @@ export function getShopInteriorDecorations(
 
 export function getShopTypeLabel(shopType?: MallShopType, shopId?: string): string {
   if (shopId === 'saint-edward-west-castle-restaurant') return '私人會所餐廳';
+  if (shopId === 'portrait-photo-studio') return '寫真館';
   const labels: Record<MallShopType, string> = {
     general: '特色商店',
     womenswear: '女裝店',

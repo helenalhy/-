@@ -191,6 +191,7 @@ export const MALL_ITEMS: MallItem[] = [
   ...createExpandedItems(MALL_FLOORS),
   item(6, 'fluffy-marshmallow-cafe', '毛茸茸棉花糖cafe', '在雲朵棉花糖香氣中，和可愛狗狗店員一起休息。', 'coffee', 'shop', 105, 0, c.candyPeach),
   item(16, 'saint-edward-west-castle-restaurant', '聖愛德華西堡', '古堡中的私人會所餐廳，提供雅緻的用餐與休憩空間。', 'coffee', 'shop', 160, 0, c.candyCaramel),
+  item(11, 'portrait-photo-studio', '寫真館', '挑選喜歡的服飾與拍攝場景，預覽專屬卡通寫真造型。', 'camera', 'shop', 125, 0, c.candyLavender),
 ];
 
 export const MALL_ITEM_BY_ID = Object.fromEntries(MALL_ITEMS.map((entry) => [entry.id, entry])) as Record<string, MallItem>;

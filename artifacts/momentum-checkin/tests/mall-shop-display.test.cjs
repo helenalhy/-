@@ -113,6 +113,31 @@ test('each shop type gets sixty distinct, shop-specific illustrated products', (
   }
 });
 
+test('the photo studio receives its own sixty-item clothing and backdrop catalog and live preview', () => {
+  const products = getShopFixtureProductCatalog(
+    'portrait-photo-studio',
+    '寫真館',
+    undefined,
+    displayFixture,
+  );
+  assert.equal(products.length, 60);
+  assert.ok(products.every(({ theme }) => theme === 'photoStudio'));
+  assert.equal(new Set(products.map(({ name }) => name)).size, 60);
+  assert.ok(products.some(({ illustration }) => illustration === 'garment'));
+  assert.ok(products.some(({ illustration }) => illustration === 'postcard'));
+  assert.ok(products.some(({ illustration }) => illustration === 'camera'));
+
+  const component = fs.readFileSync(path.join(__dirname, '../components/PhotoStudioTryOn.tsx'), 'utf8');
+  const shopPage = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
+  assert.match(component, /卡通寫真試拍/);
+  assert.match(component, /PHOTO_OUTFITS/);
+  assert.match(component, /PHOTO_BACKDROPS/);
+  assert.match(component, /setOutfitId/);
+  assert.match(component, /setBackdropId/);
+  assert.match(component, /testID="photo-studio-preview"/);
+  assert.match(shopPage, /shop\.id === 'portrait-photo-studio' && <PhotoStudioTryOn \/>/);
+});
+
 test('fashion and boutique products use item-shaped animated illustrations instead of repeated jars', () => {
   const boutique = getShopFixtureProductCatalog(
     'starlight-luxury-boutique',

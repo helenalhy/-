@@ -33,6 +33,13 @@ test('a previous day can be made up once per account per week, except on rest da
   assert.equal(canMakeUpYesterday({ checkIns: [], makeupCheckIns: [], restDays: [], createdAt: today }, today), false);
 });
 
+test('the weekly makeup limit remains used after deleting the goal that claimed it', () => {
+  const today = '2026-05-04';
+  const remainingHabit = { checkIns: [], makeupCheckIns: [], restDays: [] };
+  const accountMakeups = ['2026-05-03'];
+  assert.equal(canMakeUpYesterday(remainingHabit, today, accountMakeups), false);
+});
+
 test('weekly goals count unique check-in dates only in the current week through today', () => {
   assert.equal(getWeeklyCheckInCount([
     '2026-05-10',

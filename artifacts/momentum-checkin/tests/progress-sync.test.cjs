@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
+const typescript = require('typescript');
 
 const appRoot = path.resolve(__dirname, '..');
 const readApp = (relativePath) => fs.readFileSync(path.join(appRoot, relativePath), 'utf8');
@@ -21,6 +22,92 @@ const userProgressSchema = fs.readFileSync(
   path.resolve(appRoot, '../../lib/db/src/schema/user-progress.ts'),
   'utf8',
 );
+
+function findVariableArrowCallback(source, variableName) {
+  const sourceFile = typescript.createSourceFile('source.ts', source, typescript.ScriptTarget.Latest, true);
+  let callback;
+  function visit(node) {
+    if (
+      typescript.isVariableDeclaration(node)
+      && typescript.isIdentifier(node.name)
+      && node.name.text === variableName
+      && typescript.isCallExpression(node.initializer)
+      && typescript.isArrowFunction(node.initializer.arguments[0])
+    ) {
+      callback = node.initializer.arguments[0];
+    }
+    typescript.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  assert.ok(callback, `Could not find the ${variableName} callback`);
+  return typescript.transpileModule(`const callback = ${callback.getText(sourceFile)};`, {
+    compilerOptions: {
+      module: typescript.ModuleKind.None,
+      target: typescript.ScriptTarget.ES2022,
+    },
+  }).outputText;
+}
+
+function findFunctionDeclarations(source, functionNames) {
+  const sourceFile = typescript.createSourceFile('source.ts', source, typescript.ScriptTarget.Latest, true);
+  const declarations = new Map();
+  function visit(node) {
+    if (typescript.isFunctionDeclaration(node) && node.name && functionNames.includes(node.name.text)) {
+      declarations.set(node.name.text, node.getText(sourceFile));
+    }
+    typescript.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  for (const name of functionNames) assert.ok(declarations.has(name), `Could not find ${name}`);
+  return typescript.transpileModule([...declarations.values()].join('\n'), {
+    compilerOptions: {
+      module: typescript.ModuleKind.None,
+      target: typescript.ScriptTarget.ES2022,
+    },
+  }).outputText;
+}
+
+function createMemoryStorage() {
+  const values = new Map();
+  let failedSetKey = null;
+  return {
+    values,
+    failNextSet(key) {
+      failedSetKey = key;
+    },
+    async getItem(key) {
+      return values.get(key) ?? null;
+    },
+    async setItem(key, value) {
+      if (failedSetKey === key) {
+        failedSetKey = null;
+        throw new Error(`simulated storage failure: ${key}`);
+      }
+      values.set(key, value);
+    },
+    async removeItem(key) {
+      values.delete(key);
+    },
+  };
+}
+
+function loadScheduleHelpers() {
+  const scheduleSource = fs.readFileSync(path.join(appRoot, 'lib/habit-schedule.ts'), 'utf8');
+  const compiled = typescript.transpileModule(scheduleSource, {
+    compilerOptions: {
+      module: typescript.ModuleKind.CommonJS,
+      target: typescript.ScriptTarget.ES2022,
+      esModuleInterop: true,
+    },
+  }).outputText;
+  const loaded = { exports: {} };
+  new Function('require', 'module', 'exports', compiled)(
+    () => { throw new Error('Habit schedule helpers should not require runtime modules.'); },
+    loaded,
+    loaded.exports,
+  );
+  return loaded.exports;
+}
 
 const fullGuestSnapshot = {
   schemaVersion: 1,
@@ -165,6 +252,163 @@ test('offline check-ins journal completion and its coin reward before mirroring 
     checkIn.indexOf('await AsyncStorage.setItem(CHECK_IN_TRANSACTION_KEY') <
       checkIn.indexOf('await synchronizeCheckInTransaction(transaction)'),
   );
+});
+
+test('a failed local mirror is repaired after restart without repeating makeup coins or weekly use', async () => {
+  const storageKeys = {
+    habits: 'momentum.habits.v1',
+    mall: 'momentum.mall.v1',
+    transaction: 'momentum.checkin-transaction.v1',
+  };
+  const transactionFunctions = findFunctionDeclarations(habitsContext, [
+    'synchronizeCheckInTransaction',
+    'recoverPendingCheckInTransaction',
+  ]);
+  const makeTransactionModule = new Function(
+    'STORAGE_KEY',
+    'MALL_STORAGE_KEY',
+    'CHECK_IN_TRANSACTION_KEY',
+    'parseCheckInTransaction',
+    `return (AsyncStorage) => { ${transactionFunctions}; return { synchronizeCheckInTransaction, recoverPendingCheckInTransaction }; };`,
+  )(
+    storageKeys.habits,
+    storageKeys.mall,
+    storageKeys.transaction,
+    (value) => value === null ? null : JSON.parse(value),
+  );
+  const { canMakeUpYesterday, getPreviousLocalDate } = loadScheduleHelpers();
+  const initialHabits = [
+    { id: 'habit-a', checkIns: [], makeupCheckIns: [], restDays: [] },
+    { id: 'habit-b', checkIns: [], makeupCheckIns: [], restDays: [] },
+  ];
+  const initialMall = {
+    coins: 50,
+    purchasedItems: [],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+  };
+
+  for (const failedMirrorKey of [storageKeys.habits, storageKeys.mall]) {
+    const storage = createMemoryStorage();
+    const transactionModule = makeTransactionModule(storage);
+    storage.failNextSet(failedMirrorKey);
+    const actionLock = { current: false };
+    const setStorageError = () => {};
+    const context = {
+      actionLock,
+      mallLoadErrorRef: { current: false },
+      habits: initialHabits,
+      rewardedCheckIns: initialMall.rewardedCheckIns,
+      today: '2026-05-04',
+      canMakeUpYesterday,
+      getPreviousLocalDate,
+      recoverPendingCheckInTransaction: () => transactionModule.recoverPendingCheckInTransaction(),
+      setHabits: () => {},
+      setCoins: () => {},
+      setRewardedCheckIns: () => {},
+      setRewardTokens: () => {},
+      setStorageError,
+      AsyncStorage: storage,
+      CHECK_IN_TRANSACTION_KEY: storageKeys.transaction,
+      MALL_SCHEMA_VERSION: 6,
+      CHECK_IN_REWARD: 20,
+      MAKEUP_USE_PREFIX: 'makeup-used:',
+      coins: initialMall.coins,
+      purchasedItems: initialMall.purchasedItems,
+      mallPlacements: {},
+      shopInteriors: {},
+      rewardTokens: initialMall.rewardTokens,
+      leaveCards: 0,
+      protectedStreakDates: [],
+      weeklyChallengeRewardPlans: {},
+      weeklyChallengeRewardedWeeks: [],
+      dailyLoginLastDate: null,
+      dailyLoginStreak: 0,
+      dailyLoginLastPrizeItemId: null,
+      synchronizeCheckInTransaction: transactionModule.synchronizeCheckInTransaction,
+      Haptics: { notificationAsync: async () => {} },
+    };
+    const callbackSource = findVariableArrowCallback(habitsContext, 'makeUpYesterday');
+    const makeUpYesterday = new Function(
+      ...Object.keys(context),
+      `${callbackSource}; return callback;`,
+    )(...Object.values(context));
+
+    assert.equal(await makeUpYesterday('habit-a'), 20);
+    assert.ok(storage.values.has(storageKeys.transaction), 'a failed mirror must leave the recovery record');
+
+    // A fresh app session replays the committed transaction to both local mirrors.
+    await transactionModule.recoverPendingCheckInTransaction();
+    assert.equal(storage.values.has(storageKeys.transaction), false);
+    const recoveredHabits = JSON.parse(storage.values.get(storageKeys.habits));
+    const recoveredMall = JSON.parse(storage.values.get(storageKeys.mall));
+    assert.deepEqual(recoveredHabits[0].checkIns, ['2026-05-03']);
+    assert.deepEqual(recoveredHabits[0].makeupCheckIns, ['2026-05-03']);
+    assert.equal(recoveredMall.coins, 70);
+    assert.equal(recoveredMall.rewardedCheckIns.filter((key) => key === 'habit-a:2026-05-03').length, 1);
+    assert.equal(recoveredMall.rewardedCheckIns.filter((key) => key === 'makeup-used:2026-05-03').length, 1);
+
+    // The account-wide usage record still blocks a different goal after the original is deleted.
+    const remainingHabit = { checkIns: [], makeupCheckIns: [], restDays: [] };
+    const accountMakeups = [
+      ...remainingHabit.makeupCheckIns,
+      ...recoveredMall.rewardedCheckIns
+        .filter((key) => key.startsWith('makeup-used:'))
+        .map((key) => key.slice('makeup-used:'.length)),
+    ];
+    assert.equal(canMakeUpYesterday(remainingHabit, '2026-05-04', accountMakeups), false);
+  }
+});
+
+test('a cloud save retry sends the same makeup snapshot without adding its reward again', async () => {
+  const snapshot = {
+    schemaVersion: 1,
+    habits: [{
+      id: 'habit-a',
+      checkIns: ['2026-05-03'],
+      makeupCheckIns: ['2026-05-03'],
+    }],
+    mall: {
+      coins: 70,
+      rewardedCheckIns: ['habit-a:2026-05-03', 'makeup-used:2026-05-03'],
+    },
+  };
+  const currentUserRef = { current: 'user-1' };
+  const currentSnapshotRef = { current: snapshot };
+  const lastSyncedSnapshotRef = { current: null };
+  const saveQueueRef = { current: Promise.resolve() };
+  const savedPayloads = [];
+  let cloudSnapshot = null;
+  let attempts = 0;
+  const context = {
+    saveQueueRef,
+    currentUserRef,
+    currentSnapshotRef,
+    saveProgress: {
+      mutateAsync: async ({ data }) => {
+        attempts += 1;
+        savedPayloads.push(JSON.stringify(data));
+        if (attempts === 1) throw new Error('simulated offline cloud save');
+        // The API stores a snapshot, replacing the row instead of applying a coin delta.
+        cloudSnapshot = structuredClone(data);
+      },
+    },
+    lastSyncedSnapshotRef,
+  };
+  const callbackSource = findVariableArrowCallback(syncBridge, 'enqueueLatestSnapshot');
+  const enqueueLatestSnapshot = new Function(
+    ...Object.keys(context),
+    `${callbackSource}; return callback;`,
+  )(...Object.values(context));
+
+  await assert.rejects(enqueueLatestSnapshot('user-1'), /simulated offline cloud save/);
+  assert.equal(await enqueueLatestSnapshot('user-1'), JSON.stringify(snapshot));
+  assert.equal(attempts, 2);
+  assert.equal(savedPayloads[0], savedPayloads[1]);
+  assert.equal(cloudSnapshot.mall.coins, 70);
+  assert.equal(cloudSnapshot.mall.rewardedCheckIns.filter((key) => key === 'habit-a:2026-05-03').length, 1);
+  assert.equal(cloudSnapshot.mall.rewardedCheckIns.filter((key) => key === 'makeup-used:2026-05-03').length, 1);
+  assert.equal(lastSyncedSnapshotRef.current, JSON.stringify(snapshot));
 });
 
 test('repeating a sync replaces the saved snapshot instead of applying rewards again', () => {

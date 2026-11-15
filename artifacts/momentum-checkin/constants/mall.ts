@@ -70,7 +70,7 @@ export const MALL_FLOORS: MallFloorTheme[] = [
   { title: '時光郵局鐘塔街', description: '在鐘塔郵局寄出信件，收藏每段珍貴時光。', image: require('../assets/images/mall-floor-23-time-post.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },
   { title: '夢境劇場迷宮', description: '沿著天鵝絨舞台與幻境拱門，尋找自己的故事。', image: require('../assets/images/mall-floor-24-dream-theater.jpg'), accent: c.candyRoseDark, surface: c.candyCoral },
   { title: '機器人發明研究院', description: '在明亮的創作實驗室，讓新點子動起來。', image: require('../assets/images/mall-floor-25-robot-lab.jpg'), accent: c.candyMintDark, surface: c.candyMint },
-  { title: '雨林瀑布生態谷', description: '沿著瀑布、綠意和木橋，探索明亮的室內雨林。', image: require('../assets/images/mall-floor-26-rainforest-falls.jpg'), accent: c.candyMintDark, surface: c.candyMint },
+  { title: '星夢芭蕾舞會', description: '在星月穹頂下，漫步少女芭蕾鏡室與粉紗展示廊。', image: require('../assets/images/mall-floor-26-starlight-ballet.jpg'), accent: c.candyRoseDark, surface: c.candyPink },
   { title: '玻璃海岸燈塔港', description: '透過明亮玻璃眺望燈塔、海灣與帆船。', image: require('../assets/images/mall-floor-27-lighthouse-port.jpg'), accent: c.candySkyDark, surface: c.candySky },
   { title: '熱氣球環遊港站', description: '搭乘色彩繽紛的熱氣球，從高空欣賞旅途風景。', image: require('../assets/images/mall-floor-28-balloon-harbor.jpg'), accent: c.candyRoseDark, surface: c.candyPeach },
   { title: '幻彩寶石洞窟', description: '沿著水晶洞廊，發現紫晶、粉晶與海藍寶光。', image: require('../assets/images/mall-floor-29-gem-cavern.jpg'), accent: c.candyLavenderDark, surface: c.candyLavender },

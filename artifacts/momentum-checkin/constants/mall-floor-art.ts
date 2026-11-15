@@ -52,7 +52,7 @@ const FLOOR_ART: readonly Omit<MallFloorArtProfile, 'variant' | 'pattern' | 'dis
   { title: '時光郵局鐘塔街', emblem: 'clock', accent: c.candyLavenderDark, secondary: c.candyRose, soft: c.candyLavender },
   { title: '夢境劇場迷宮', emblem: 'film', accent: c.candyRoseDark, secondary: c.candyLavender, soft: c.candyCoral },
   { title: '機器人發明研究院', emblem: 'aperture', accent: c.candyMintDark, secondary: c.candySky, soft: c.candyMint },
-  { title: '雨林瀑布生態谷', emblem: 'map', accent: c.candyMintDark, secondary: c.candySky, soft: c.candyMint },
+  { title: '星夢芭蕾舞會', emblem: 'award', accent: c.candyRoseDark, secondary: c.candyLavender, soft: c.candyPink },
   { title: '玻璃海岸燈塔港', emblem: 'navigation', accent: c.candySkyDark, secondary: c.candyPeach, soft: c.candySky },
   { title: '熱氣球環遊港站', emblem: 'send', accent: c.candyRoseDark, secondary: c.candyLemon, soft: c.candyPeach },
   { title: '幻彩寶石洞窟', emblem: 'hexagon', accent: c.candyLavenderDark, secondary: c.candySky, soft: c.candyLavender },

@@ -72,6 +72,10 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
     getShopCharacterMerchandiseProfile(theme, name, variant),
   );
   assert.ok(chiikawaProfiles.every((profile) => profile?.theme === 'chiikawa'));
+  assert.ok(
+    chiikawaProfiles.every((profile) => Boolean(profile?.referenceArtwork)),
+    'every Chiikawa product and package variant uses artwork from the supplied character references',
+  );
   assert.deepEqual(
     chiikawaProfiles.slice(0, 7).map(({ id }) => id),
     ['chiikawa', 'hachiware', 'usagi', 'momonga', 'shisa', 'kurimanju', 'rakko'],
@@ -132,14 +136,29 @@ test('Chiikawa and Winnie shelves render their own character merchandise', () =>
   for (const asset of [
     'standard-chiikawa.jpg',
     'standard-hachiware.jpg',
+    'standard-usagi.jpg',
+    'standard-momonga.jpg',
+    'standard-shisa.jpg',
+    'standard-kurimanju.jpg',
+    'standard-rakko.jpg',
     'magical-chiikawa.jpg',
     'magical-hachiware.jpg',
+    'magical-usagi.jpg',
+    'magical-momonga.jpg',
+    'magical-shisa.jpg',
+    'magical-kurimanju.jpg',
+    'magical-rakko.jpg',
+    'item-magical-girl-poster.jpg',
     'item-pens.jpg',
     'item-propeller-plush.jpg',
     'item-mermaid-poster.jpg',
     'item-mid-autumn-plush.jpg',
     'item-carousel.jpg',
+    'item-baby-plush.jpg',
+    'item-character-dictionary.jpg',
+    'item-character-cover.jpg',
     'item-taiko-collab.jpg',
+    'item-christmas-plush.jpg',
   ]) {
     assert.ok(
       fs.existsSync(path.join(__dirname, '../assets/chiikawa-merch', asset)),

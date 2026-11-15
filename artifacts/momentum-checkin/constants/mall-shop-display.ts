@@ -118,7 +118,15 @@ type ProductTheme =
   | 'general'
   | 'photoStudio'
   | 'chiikawa'
-  | 'winnie';
+  | 'winnie'
+  | 'animalPajama'
+  | 'laceFabric'
+  | 'halloween'
+  | 'easter'
+  | 'christmas'
+  | 'fruitMarket'
+  | 'chineseCuisine'
+  | 'icecreamParlor';
 
 type ProductSeed = {
   name: string;
@@ -271,6 +279,86 @@ const productSeeds: Record<ProductTheme, ProductSeed[]> = {
     { name: '蜂蜜罐圖案馬克杯', description: '暖金色杯身配蜂蜜罐小圖案。', icon: 'coffee', color: c.candyCaramel, illustration: 'mug' },
     { name: '森林橡果小熊吊飾', description: '用橡果和葉片造型裝飾的小吊飾。', icon: 'gift', color: c.candyPeach, illustration: 'charm' },
     { name: '百畝森林蜂蜜貼紙包', description: '收錄森林夥伴和蜂蜜罐插畫。', icon: 'image', color: c.candyLemon, illustration: 'sticker' },
+  ],
+  animalPajama: [
+    { name: '兔兔耳朵連身睡衣', description: '柔軟長耳帽與一體式睡衣', icon: 'moon', color: c.candyPink, illustration: 'garment' },
+    { name: '熊熊口袋絨毛睡衣', description: '胸前小熊口袋的暖絨連身款', icon: 'heart', color: c.candyCaramel, illustration: 'garment' },
+    { name: '狐狸尾巴連身睡衣', description: '橘白配色和蓬鬆尾巴細節', icon: 'feather', color: c.candyCoral, illustration: 'garment' },
+    { name: '奶牛斑點睡衣套裝', description: '黑白斑點造型的一體式睡衣', icon: 'shopping-bag', color: c.candyCream, illustration: 'garment' },
+    { name: '小恐龍背棘睡衣', description: '薄荷綠背棘與連帽設計', icon: 'star', color: c.candyMint, illustration: 'garment' },
+    { name: '貓咪鬍鬚連身睡衣', description: '圓耳帽與小鬍鬚刺繡', icon: 'heart', color: c.candyLavender, illustration: 'garment' },
+    { name: '企鵝肚肚連身睡衣', description: '冰藍連帽與奶油白肚肚', icon: 'cloud', color: c.candySky, illustration: 'garment' },
+    { name: '動物腳套睡衣配件', description: '搭配連身睡衣的柔軟腳套', icon: 'gift', color: c.candyPeach, illustration: 'shoe' },
+  ],
+  laceFabric: [
+    { name: '玫瑰花邊蕾絲布料', description: '適合裙襬與領口裝飾的柔粉花邊', icon: 'feather', color: c.candyPink, illustration: 'garment' },
+    { name: '星點薄紗布卷', description: '細小星點透紗，適合袖口和披肩', icon: 'star', color: c.candyLavender, illustration: 'scarf' },
+    { name: '珍珠白緞面布料', description: '帶柔和光澤的訂製裙裝用布', icon: 'sun', color: c.candyCream, illustration: 'garment' },
+    { name: '櫻花刺繡棉布', description: '粉色櫻花刺繡的輕柔棉布', icon: 'feather', color: c.candyRose, illustration: 'garment' },
+    { name: '薄荷格紋布料', description: '清新格紋，可用於上衣和裙裝', icon: 'grid', color: c.candyMint, illustration: 'garment' },
+    { name: '緞帶袖口訂製套件', description: '配合布料加上柔色袖口和蝴蝶結', icon: 'gift', color: c.candyPeach, illustration: 'scarf' },
+    { name: '雲朵網紗拼接布', description: '輕盈網紗和奶油白棉布組合', icon: 'cloud', color: c.candySky, illustration: 'garment' },
+    { name: '花瓣鈕扣與蕾絲包', description: '為客製衣物挑選花瓣鈕扣和花邊', icon: 'circle', color: c.candyCoral, illustration: 'jewel' },
+  ],
+  halloween: [
+    { name: '微笑南瓜變裝斗篷', description: '橘色南瓜圖樣的節日小斗篷', icon: 'star', color: c.candyCoral, illustration: 'cloak' },
+    { name: '星月小魔法師帽', description: '柔紫色帽身配星星緞帶', icon: 'moon', color: c.candyLavender, illustration: 'hat' },
+    { name: '蝙蝠翅膀披肩', description: '不嚇人的小蝙蝠造型披肩', icon: 'wind', color: c.candySky, illustration: 'cloak' },
+    { name: '幽靈笑臉毛絨吊飾', description: '圓圓笑臉的小幽靈收藏', icon: 'cloud', color: c.candyCream, illustration: 'plush' },
+    { name: '南瓜糖果小禮袋', description: '裝節日小禮物的南瓜口袋袋', icon: 'gift', color: c.candyLemon, illustration: 'handbag' },
+    { name: '紫霧星點髮夾', description: '以星月和小蝙蝠作裝飾', icon: 'star', color: c.candyLavender, illustration: 'hairclip' },
+    { name: '橘糖魔法手杖', description: '南瓜星星造型的派對手杖', icon: 'wand', color: c.candyOrange, illustration: 'wand' },
+    { name: '萬聖節故事明信片', description: '南瓜、月亮與森林小屋場景', icon: 'image', color: c.candyRose, illustration: 'postcard' },
+  ],
+  easter: [
+    { name: '兔兔彩蛋禮物盒', description: '手繪花朵和兔耳彩蛋收藏盒', icon: 'gift', color: c.candyLemon, illustration: 'box' },
+    { name: '春日兔兔毛絨吊飾', description: '戴著小花冠的柔軟兔兔', icon: 'heart', color: c.candyPink, illustration: 'plush' },
+    { name: '彩蛋花籃手提包', description: '編織小籃搭配春日彩蛋圖案', icon: 'shopping-bag', color: c.candyMint, illustration: 'handbag' },
+    { name: '胡蘿蔔兔耳髮箍', description: '橘色胡蘿蔔與柔軟兔耳裝飾', icon: 'feather', color: c.candyCoral, illustration: 'hairclip' },
+    { name: '花園尋蛋小卡組', description: '森林花園裡的尋蛋任務卡', icon: 'book-open', color: c.candySky, illustration: 'postcard' },
+    { name: '粉彩彩蛋耳環', description: '以小彩蛋造型製作的耳飾', icon: 'circle', color: c.candyLavender, illustration: 'earring' },
+    { name: '春日花冠連身裙', description: '搭配小兔尾巴的柔色裙裝', icon: 'sun', color: c.candyRose, illustration: 'garment' },
+    { name: '兔兔野餐布巾', description: '彩蛋與野花圖樣的野餐布', icon: 'grid', color: c.candyPeach, illustration: 'scarf' },
+  ],
+  christmas: [
+    { name: '雪花星星樹頂飾', description: '冰藍與銀白色的聖誕樹裝飾', icon: 'star', color: c.candySky, illustration: 'jewel' },
+    { name: '聖誕毛衣連身裙', description: '紅綠雪花圖樣的冬日穿搭', icon: 'heart', color: c.candyRose, illustration: 'garment' },
+    { name: '鈴鐺緞帶禮物包', description: '綁著小鈴鐺和緞帶的節日禮物', icon: 'gift', color: c.candyCoral, illustration: 'box' },
+    { name: '雪人毛絨玩偶', description: '圍著薄荷色圍巾的小雪人', icon: 'cloud', color: c.candyMint, illustration: 'plush' },
+    { name: '聖誕襪造型手提包', description: '柔軟紅襪造型的冬日小包', icon: 'shopping-bag', color: c.candyPink, illustration: 'handbag' },
+    { name: '星光雪花髮夾', description: '冬日造型的銀白星雪髮飾', icon: 'star', color: c.candyLavender, illustration: 'hairclip' },
+    { name: '冬日暖圍巾', description: '奶油白與莓果紅的柔軟圍巾', icon: 'wind', color: c.candyPeach, illustration: 'scarf' },
+    { name: '雪國祝福明信片', description: '窗邊燈光和雪花街道的插畫卡', icon: 'image', color: c.candySky, illustration: 'postcard' },
+  ],
+  fruitMarket: [
+    { name: '晨露草莓果籃', description: '新鮮草莓與小葉片組成的果籃', icon: 'heart', color: c.candyCoral, illustration: 'produce' },
+    { name: '陽光柑橘分享盒', description: '橙子、檸檬和柚子的季節禮盒', icon: 'sun', color: c.candyLemon, illustration: 'produce' },
+    { name: '藍莓乳酪水果杯', description: '藍莓與乳酪搭配的清爽點心', icon: 'circle', color: c.candyLavender, illustration: 'carton' },
+    { name: '熱帶水果切片盒', description: '芒果、奇異果和鳳梨小切片', icon: 'grid', color: c.candyPeach, illustration: 'produce' },
+    { name: '蘋果梨子藤編籃', description: '當季蘋果與水梨組成的小果籃', icon: 'gift', color: c.candyMint, illustration: 'basket' },
+    { name: '鮮榨橙汁瓶', description: '以當季橙子現榨的果汁', icon: 'coffee', color: c.candyOrange, illustration: 'carton' },
+    { name: '葡萄小果串', description: '紫葡萄與青葡萄的分享小串', icon: 'circle', color: c.candySky, illustration: 'produce' },
+    { name: '季節水果塔', description: '以新鮮莓果和奶油裝飾的小塔', icon: 'star', color: c.candyPink, illustration: 'cake' },
+  ],
+  chineseCuisine: [
+    { name: '蝦餃皇蒸籠組', description: '晶瑩蝦餃與竹蒸籠造型小物', icon: 'grid', color: c.candyPeach, illustration: 'bento' },
+    { name: '迷你燒賣點心盒', description: '一口大小的手作燒賣組合', icon: 'gift', color: c.candyCoral, illustration: 'bento' },
+    { name: '雲吞雞湯麵碗', description: '暖湯雲吞麵與青菜配料', icon: 'coffee', color: c.candyLemon, illustration: 'bento' },
+    { name: '荷葉珍珠糯米雞', description: '糯米與香菇造型的點心包', icon: 'leaf', color: c.candyMint, illustration: 'riceball' },
+    { name: '廣式蘿蔔糕小盤', description: '煎香蘿蔔糕搭配小醬碟', icon: 'sun', color: c.candySky, illustration: 'bento' },
+    { name: '月下青花茶杯', description: '手繪月亮紋樣的中式茶杯', icon: 'coffee', color: c.candyLavender, illustration: 'teaCup' },
+    { name: '中式點心餐具組', description: '筷子、茶匙和小點心碟', icon: 'gift', color: c.candyRose, illustration: 'bento' },
+    { name: '桂花蓮子糖水碗', description: '桂花香氣的溫暖中式甜湯', icon: 'heart', color: c.candyPeach, illustration: 'pudding' },
+  ],
+  icecreamParlor: [
+    { name: '雪花草莓雙球甜筒', description: '草莓與香草雪糕搭配脆筒', icon: 'heart', color: c.candyPink, illustration: 'icecream' },
+    { name: '薄荷抹茶雪酪杯', description: '抹茶和薄荷色的清爽雪酪', icon: 'droplet', color: c.candyMint, illustration: 'icecream' },
+    { name: '藍莓雲朵聖代', description: '藍莓醬、奶油和雲朵雪糕', icon: 'cloud', color: c.candySky, illustration: 'icecream' },
+    { name: '焦糖脆片雪糕蛋糕', description: '焦糖脆片與冰淇淋層疊蛋糕', icon: 'star', color: c.candyCaramel, illustration: 'cake' },
+    { name: '芒果陽光水果冰棒', description: '芒果和百香果製成的冰棒', icon: 'sun', color: c.candyOrange, illustration: 'popsicle' },
+    { name: '彩糖迷你甜筒組', description: '多色小甜筒和脆餅分享組', icon: 'gift', color: c.candyLavender, illustration: 'icecream' },
+    { name: '櫻桃牛奶雪糕杯', description: '牛奶雪糕搭配櫻桃果醬', icon: 'circle', color: c.candyCoral, illustration: 'icecream' },
+    { name: '香草星星脆餅杯', description: '香草雪糕和星形餅乾碎', icon: 'star', color: c.candyLemon, illustration: 'cookie' },
   ],
   craft: [
     { name: '手繪陶瓷小碟', description: '每一只都有不同手繪花紋', icon: 'circle', color: c.candySky },
@@ -547,6 +635,14 @@ const productIllustrationByTheme: Record<ProductTheme, ShopProductIllustration> 
   photoStudio: 'camera',
   chiikawa: 'plush',
   winnie: 'plush',
+  animalPajama: 'garment',
+  laceFabric: 'garment',
+  halloween: 'gift',
+  easter: 'gift',
+  christmas: 'gift',
+  fruitMarket: 'produce',
+  chineseCuisine: 'bento',
+  icecreamParlor: 'icecream',
 };
 
 function inferProductIllustration(
@@ -850,6 +946,14 @@ function resolveProductTheme(
   if (/portrait-photo-studio|寫真館|個人寫真|photo.?studio|portrait.?studio/i.test(identity)) return 'photoStudio';
   if (/chiikawa|吉伊卡哇|ちいかわ/i.test(identity)) return 'chiikawa';
   if (/winnie|pooh|小熊維尼|百畝森林|跳跳虎|屹耳/i.test(identity)) return 'winnie';
+  if (/animal-pajama|animal-onesie|動物睡衣|連身睡衣/i.test(identity)) return 'animalPajama';
+  if (/lace-fabric|萊斯布料|蕾絲布料|服裝訂製/i.test(identity)) return 'laceFabric';
+  if (/halloween|萬聖節/i.test(identity)) return 'halloween';
+  if (/easter|復活節|彩蛋店/i.test(identity)) return 'easter';
+  if (/christmas|聖誕節|聖誕雪花/i.test(identity)) return 'christmas';
+  if (/fresh-fruit-market|鮮果專門店|水果專賣/i.test(identity)) return 'fruitMarket';
+  if (/chinese-cuisine|中菜館|中式餐館/i.test(identity)) return 'chineseCuisine';
+  if (/snowflake-icecream|雪花雪糕|霜雪雪糕/i.test(identity)) return 'icecreamParlor';
   if (shopType && shopType !== 'general') return shopType;
   if (/溫泉|櫻花暖湯|湯宿|湯煙|泡湯|浴衣|onsen|hot.?spring/i.test(identity)) return 'onsen';
   if (/咖啡|coffee|cafe|烘豆/i.test(identity)) return 'cafe';

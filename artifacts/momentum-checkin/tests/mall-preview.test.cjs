@@ -469,6 +469,48 @@ test('1F Chiikawa Land and 2F Winnie shop have distinct rooms, decor, and charac
   assert.notEqual(catalogSignatures[0], catalogSignatures[1], 'each shop has unique decoration IDs');
 });
 
+test('new themed shops use their assigned floors, unique room art, decor, and product catalogs', () => {
+  const cases = [
+    { id: 'animal-pajama-boutique', name: '動物睡衣店', floor: 19, scene: 'animal-pajamas', theme: 'animalPajama', fixture: '動物連身睡衣衣櫃', floorTitle: '毛茸茸寵物樂園' },
+    { id: 'lace-fabric-studio', name: '萊斯布料店', floor: 7, scene: 'lace-fabric', theme: 'laceFabric', fixture: '蕾絲花色布卡展示牆', floorTitle: '彩虹藝術廊' },
+    { id: 'halloween-magic-boutique', name: '萬聖節魔法小舖', floor: 14, scene: 'halloween', theme: 'halloween', fixture: '南瓜糖果分格展示櫃', floorTitle: '魔法學院' },
+    { id: 'easter-bunny-egg-shop', name: '復活節兔兔彩蛋店', floor: 2, scene: 'easter', theme: 'easter', fixture: '手繪彩蛋分格架', floorTitle: '森林花園' },
+    { id: 'christmas-snowflake-gifts', name: '聖誕雪花禮物店', floor: 12, scene: 'christmas', theme: 'christmas', fixture: '緞帶聖誕禮盒牆', floorTitle: '冰晶雪國' },
+    { id: 'fresh-fruit-market', name: '鮮果專門店', floor: 9, scene: 'fruit-market', theme: 'fruitMarket', fixture: '當季鮮果分層展示櫃', floorTitle: '世界美食集' },
+    { id: 'moonlit-chinese-restaurant', name: '月下中菜館', floor: 30, scene: 'chinese-restaurant', theme: 'chineseCuisine', fixture: '港式點心蒸籠展示架', floorTitle: '月下燈籠古街' },
+    { id: 'snowflake-icecream-parlor', name: '雪花雪糕屋', floor: 12, scene: 'icecream-parlor', theme: 'icecreamParlor', fixture: '雪花口味玻璃冷凍櫃', floorTitle: '冰晶雪國' },
+  ];
+  const signatures = [];
+  for (const entry of cases) {
+    const shop = mallCatalog.MALL_ITEMS.find(({ id }) => id === entry.id);
+    assert.ok(shop, `${entry.name} exists`);
+    assert.equal(shop.name, entry.name);
+    assert.equal(shop.floor, entry.floor);
+    assert.equal(shop.category, 'shop');
+    assert.ok(shop.price > 0);
+    assert.equal(floorArtCatalog.getMallFloorArtProfile(shop.floor, shop.id).title, entry.floorTitle);
+    assert.equal(shopInteriorCatalog.getShopInteriorSceneKey(shop.shopType, shop.id, shop.name), entry.scene);
+    const image = shopRoomImageCatalog.SHOP_ROOM_IMAGES[entry.scene];
+    assert.ok(typeof image === 'string' && fs.existsSync(image), `${entry.name} room art is bundled`);
+
+    const decorations = shopInteriorCatalog.getShopInteriorDecorations(shop.shopType, shop.id, shop.name);
+    assert.equal(decorations.length, 50, `${entry.name} has 50 decorations`);
+    assert.equal(new Set(decorations.map(({ id }) => id)).size, 50);
+    assert.equal(new Set(decorations.map(({ name }) => name)).size, 50);
+    assert.ok(decorations.some(({ name }) => name.includes(entry.fixture)));
+    signatures.push(decorations.map(({ id }) => id).join('|'));
+
+    const fixture = decorations.find((decoration) => shopDisplayCatalog.canDisplayShopProducts(decoration));
+    assert.ok(fixture, `${entry.name} has a product display fixture`);
+    const products = shopDisplayCatalog.getShopFixtureProductCatalog(shop.id, shop.name, shop.shopType, fixture);
+    assert.equal(products.length, 60);
+    assert.equal(new Set(products.map(({ id }) => id)).size, 60);
+    assert.equal(new Set(products.map(({ name }) => name)).size, 60);
+    assert.ok(products.every(({ theme }) => theme === entry.theme));
+  }
+  assert.equal(new Set(signatures).size, cases.length, 'each store has a distinct decoration set');
+});
+
 function pager(app) {
   return app.nodes().find((node) => node.type === 'CatalogPager');
 }
@@ -1152,7 +1194,7 @@ test('elevator opens a direct 30-floor selector and changes floors without touch
 
 test('real catalog covers thirty distinct themes and includes eleven specialized shop types on their assigned floors', () => {
   const { MALL_FLOORS, MALL_ITEMS } = mallCatalog;
-  assert.equal(MALL_ITEMS.length, 4520);
+  assert.equal(MALL_ITEMS.length, 4528);
   assert.equal(MALL_FLOORS.length, 30);
   assert.deepEqual(
     MALL_FLOORS.map((floor) => floor.title),
@@ -1162,7 +1204,7 @@ test('real catalog covers thirty distinct themes and includes eleven specialized
     Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [
       category, MALL_ITEMS.filter((item) => item.category === category).length,
     ])),
-    { shop: 1517, facility: 1500, decor: 1503 },
+    { shop: 1525, facility: 1500, decor: 1503 },
   );
   const saintEdwardClub = MALL_ITEMS.find((item) => item.id === 'saint-edward-west-castle-restaurant');
   assert.equal(saintEdwardClub?.floor, 16);
@@ -1190,7 +1232,7 @@ test('real catalog covers thirty distinct themes and includes eleven specialized
     ],
   );
   for (let floor = 10; floor <= 19; floor += 1) {
-    const expectedShopCount = floor === 11 || floor === 16 ? 51 : 50;
+    const expectedShopCount = floor === 12 ? 52 : [11, 14, 16, 19].includes(floor) ? 51 : 50;
     const expectedDecorCount = floor === 15 ? 51 : 50;
     assert.deepEqual(
       Object.fromEntries(['shop', 'facility', 'decor'].map((category) => [

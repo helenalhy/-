@@ -16,6 +16,7 @@ import { useHabits } from '@/context/HabitsContext';
 import { MallObjectVisual } from '@/components/MallVisuals';
 import { ShopInteriorScene } from '@/components/ShopInteriorScene';
 import { CosmeticsTryOn } from '@/components/CosmeticsTryOn';
+import { ClothingTryOn } from '@/components/ClothingTryOn';
 import { PhotoStudioTryOn } from '@/components/PhotoStudioTryOn';
 import { ShopDisplayFixturePanel } from '@/components/ShopDisplayFixturePanel';
 import { DogStaffCustomizer, type DogStaffListArtStyle } from '@/components/DogStaffCustomizer';
@@ -468,6 +469,8 @@ export default function MallShopInteriorScreen() {
             {shop.shopType === 'cosmetics' && (
               <CosmeticsTryOn products={cosmeticsTryOnProducts} />
             )}
+            {shop.id === 'bridal-gown-house' && <ClothingTryOn kind="bridal" />}
+            {shop.id === 'lace-fabric-studio' && <ClothingTryOn kind="custom" />}
             {shop.id === 'portrait-photo-studio' && <PhotoStudioTryOn />}
 
             <View style={[styles.areaPager, { backgroundColor: colors.card, borderColor: colors.border }]}>

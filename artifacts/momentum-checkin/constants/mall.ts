@@ -194,6 +194,14 @@ export const MALL_ITEMS: MallItem[] = [
   item(6, 'fluffy-marshmallow-cafe', '毛茸茸棉花糖cafe', '在雲朵棉花糖香氣中，和可愛狗狗店員一起休息。', 'coffee', 'shop', 105, 0, c.candyPeach),
   item(16, 'saint-edward-west-castle-restaurant', '聖愛德華西堡', '古堡中的私人會所餐廳，提供雅緻的用餐與休憩空間。', 'coffee', 'shop', 160, 0, c.candyCaramel),
   item(11, 'portrait-photo-studio', '寫真館', '挑選喜歡的服飾與拍攝場景，預覽專屬卡通寫真造型。', 'camera', 'shop', 125, 0, c.candyLavender),
+  item(19, 'animal-pajama-boutique', '動物睡衣店', '挑選兔子、熊熊、狐狸等造型的可愛連身睡衣。', 'moon', 'shop', 120, 0, c.candyMint),
+  item(7, 'lace-fabric-studio', '萊斯布料店', '挑選蕾絲布料、花色與剪裁，預覽訂製服裝。', 'feather', 'shop', 110, 0, c.candyLavender),
+  item(14, 'halloween-magic-boutique', '萬聖節魔法小舖', '用南瓜、星星與可愛變裝服迎接萬聖節。', 'moon', 'shop', 110, 0, c.candyCoral),
+  item(2, 'easter-bunny-egg-shop', '復活節兔兔彩蛋店', '在森林花園挑選彩蛋、花籃與春日兔兔禮物。', 'gift', 'shop', 95, 0, c.candyMint),
+  item(12, 'christmas-snowflake-gifts', '聖誕雪花禮物店', '挑選冬日飾品、聖誕禮盒與柔光小燈。', 'gift', 'shop', 120, 0, c.candySky),
+  item(9, 'fresh-fruit-market', '鮮果專門店', '挑選當季水果、果籃和鮮切水果小點。', 'sun', 'shop', 85, 0, c.candyCoral),
+  item(30, 'moonlit-chinese-restaurant', '月下中菜館', '在燈籠夜色下享用點心、湯麵與家常中菜。', 'coffee', 'shop', 125, 0, c.candyCaramel),
+  item(12, 'snowflake-icecream-parlor', '雪花雪糕屋', '在冰晶雪國品嚐繽紛雪糕、聖代和脆皮甜筒。', 'heart', 'shop', 105, 0, c.candyPink),
 ];
 
 export const MALL_ITEM_BY_ID = Object.fromEntries(MALL_ITEMS.map((entry) => [entry.id, entry])) as Record<string, MallItem>;

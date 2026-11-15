@@ -559,6 +559,14 @@ type GeneralShopSpecialty =
   | 'privateClub'
   | 'chiikawa'
   | 'winnie'
+  | 'animalPajama'
+  | 'laceFabric'
+  | 'halloween'
+  | 'easter'
+  | 'christmas'
+  | 'fruitMarket'
+  | 'chineseCuisine'
+  | 'icecreamParlor'
   | 'photoStudio';
 
 const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
@@ -627,6 +635,54 @@ const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
     { key: 'forest-plush-rack', name: '百畝森林玩偶木架', description: '展示維尼、小豬、跳跳虎與屹耳玩偶。', icon: 'feather', price: 54, color: c.candyMint, visual: 'gallery-frames' },
     { key: 'storybook-sorting-table', name: '森林故事繪本整理桌', description: '整理百畝森林繪本與故事卡片。', icon: 'book-open', price: 44, color: c.candyPeach, visual: 'book-carousel' },
     { key: 'honey-gift-box-station', name: '蜂蜜罐禮物包裝台', description: '用森林葉片與蜂蜜色緞帶包裝小禮物。', icon: 'package', price: 48, color: c.candyCaramel, visual: 'craft-station' },
+  ],
+  animalPajama: [
+    { key: 'onesie-fitting-mirror', name: '動物連身睡衣試穿鏡', description: '從帽耳到腳套都能看清楚的全身鏡。', icon: 'square', price: 48, color: c.candyMint, visual: 'dress-display' },
+    { key: 'pajama-size-rack', name: '動物睡衣尺寸衣架', description: '依尺寸整理柔軟連身睡衣。', icon: 'shopping-bag', price: 54, color: c.candyPeach, visual: 'clothing-rack' },
+    { key: 'bunny-onesie-wardrobe', name: '兔兔耳連身睡衣衣櫃', description: '收納長耳、短耳與垂耳兔兔款。', icon: 'moon', price: 58, color: c.candyPink, visual: 'clothing-wardrobe' },
+    { key: 'animal-slipper-display', name: '動物腳套拖鞋展示台', description: '搭配睡衣陳列柔軟小腳套。', icon: 'gift', price: 38, color: c.candySky, visual: 'sculpture-plaza' },
+  ],
+  laceFabric: [
+    { key: 'lace-swatch-wall', name: '蕾絲布料花色選擇牆', description: '比較細緻花邊、網紗與棉布花色。', icon: 'grid', price: 48, color: c.candyLavender, visual: 'gallery-frames' },
+    { key: 'custom-measure-table', name: '訂製服裝量身工作台', description: '量度尺寸並整理客製剪裁需求。', icon: 'edit-3', price: 60, color: c.candyPeach, visual: 'craft-station' },
+    { key: 'fabric-roll-rack', name: '柔紗與緞布展示架', description: '展示不同色調的蕾絲、緞布和薄紗。', icon: 'feather', price: 52, color: c.candyPink, visual: 'clothing-rack' },
+    { key: 'custom-dress-preview-mirror', name: '訂製洋裝搭配鏡', description: '預覽布料、裙型和飾邊的組合。', icon: 'square', price: 44, color: c.candySky, visual: 'dress-display' },
+  ],
+  halloween: [
+    { key: 'pumpkin-costume-rack', name: '南瓜變裝服展示架', description: '陳列可愛南瓜和小魔法師造型服。', icon: 'shopping-bag', price: 50, color: c.candyCoral, visual: 'clothing-rack' },
+    { key: 'friendly-bat-mobile', name: '友善蝙蝠星月吊飾', description: '以不嚇人的小蝙蝠和星星點綴店內。', icon: 'moon', price: 32, color: c.candyLavender, visual: 'starlight-mobile' },
+    { key: 'halloween-candy-case', name: '萬聖節糖果分格櫃', description: '把南瓜造型糖果和小禮物分類展示。', icon: 'gift', price: 42, color: c.candyLemon, visual: 'candy-display' },
+    { key: 'witch-hat-stand', name: '星星巫師帽展示台', description: '搭配柔和彩色帽帶展示派對帽款。', icon: 'star', price: 38, color: c.candyLavender, visual: 'sculpture-plaza' },
+  ],
+  easter: [
+    { key: 'painted-egg-display', name: '手繪復活節彩蛋架', description: '展示花朵、星星與格紋彩蛋。', icon: 'gift', price: 38, color: c.candyLemon, visual: 'candy-display' },
+    { key: 'bunny-basket-table', name: '兔兔彩蛋花籃桌', description: '把彩蛋和春日小花放進編織籃。', icon: 'package', price: 42, color: c.candyMint, visual: 'colorful-planter' },
+    { key: 'spring-ribbon-wall', name: '春日緞帶禮物牆', description: '展示復活節小禮物與柔色緞帶。', icon: 'feather', price: 34, color: c.candyPink, visual: 'gallery-frames' },
+    { key: 'easter-bunny-plush-rack', name: '復活節兔兔玩偶架', description: '陳列不同花色的兔兔絨毛玩偶。', icon: 'heart', price: 46, color: c.candyPeach, visual: 'clothing-rack' },
+  ],
+  christmas: [
+    { key: 'ornament-tree-display', name: '聖誕樹飾品展示台', description: '展示星星、雪花和糖果色吊飾。', icon: 'star', price: 46, color: c.candyMint, visual: 'starlight-mobile' },
+    { key: 'holiday-gift-wall', name: '冬日禮盒陳列牆', description: '按尺寸排列包好緞帶的節日禮盒。', icon: 'gift', price: 44, color: c.candyRose, visual: 'gallery-frames' },
+    { key: 'stocking-hanger', name: '雪花襪與花環掛架', description: '懸掛手作聖誕襪、花環和小卡片。', icon: 'package', price: 38, color: c.candyCoral, visual: 'clothing-rack' },
+    { key: 'cocoa-warming-counter', name: '熱可可迎賓暖檯', description: '為逛店客人準備一杯暖暖可可。', icon: 'coffee', price: 52, color: c.candyCaramel, visual: 'food-prep' },
+  ],
+  fruitMarket: [
+    { key: 'seasonal-fruit-island', name: '當季鮮果分層展示島', description: '分色擺放草莓、柑橘、葡萄和熱帶水果。', icon: 'sun', price: 42, color: c.candyCoral, visual: 'colorful-planter' },
+    { key: 'fruit-gift-box-table', name: '水果禮盒包裝工作台', description: '把新鮮水果和緞帶包成探訪禮盒。', icon: 'gift', price: 48, color: c.candyPeach, visual: 'craft-station' },
+    { key: 'fresh-cut-chiller', name: '鮮切水果玻璃冷藏櫃', description: '展示冰涼水果杯和當日果盤。', icon: 'droplet', price: 58, color: c.candySky, visual: 'coral-aquarium' },
+    { key: 'fruit-sampling-counter', name: '時令水果試吃吧台', description: '準備小份切片讓客人品嚐果香。', icon: 'heart', price: 44, color: c.candyLemon, visual: 'tasting-court' },
+  ],
+  chineseCuisine: [
+    { key: 'dim-sum-steamer-stack', name: '港式點心蒸籠展示架', description: '展示蒸餃、包子與迷你燒賣。', icon: 'sun', price: 58, color: c.candyPeach, visual: 'food-prep' },
+    { key: 'round-table-dining-set', name: '中式圓桌用餐組', description: '擺好茶壺、餐碟與共享點心。', icon: 'grid', price: 54, color: c.candyCoral, visual: 'tasting-court' },
+    { key: 'tea-service-cabinet', name: '中式茶具與餐具櫃', description: '收納茶杯、筷子和陶瓷小碟。', icon: 'coffee', price: 46, color: c.candyLemon, visual: 'gallery-frames' },
+    { key: 'noodle-broth-counter', name: '暖湯麵食備餐檯', description: '準備湯麵、蔥花和每日新鮮配料。', icon: 'droplet', price: 56, color: c.candyMint, visual: 'food-prep' },
+  ],
+  icecreamParlor: [
+    { key: 'gelato-flavor-freezer', name: '雪花口味玻璃冷凍櫃', description: '分格展示當日雪糕與雪酪口味。', icon: 'droplet', price: 58, color: c.candySky, visual: 'ice-cream-machine' },
+    { key: 'waffle-cone-stand', name: '現烤脆皮甜筒架', description: '收納新鮮烘好的甜筒與餅杯。', icon: 'sun', price: 50, color: c.candyPeach, visual: 'bakery-oven' },
+    { key: 'sundae-topping-island', name: '彩果聖代配料島', description: '陳列莓果、堅果和餅乾碎配料。', icon: 'package', price: 44, color: c.candyPink, visual: 'candy-display' },
+    { key: 'snowflake-sundae-table', name: '雪花雙球分享桌', description: '安排座位分享雙球雪糕和聖代。', icon: 'heart', price: 42, color: c.candyLavender, visual: 'tasting-court' },
   ],
   craft: [
     { key: 'craft-workbench', name: '手作材料工作台', description: '準備剪刀、布料和各種創作材料。', icon: 'tool', price: 50, color: c.candyPeach, visual: 'craft-station' },
@@ -726,6 +782,14 @@ const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> 
 const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
   ['chiikawa', /chiikawa|吉伊卡哇|ちいかわ/i],
   ['winnie', /winnie|pooh|小熊維尼|百畝森林|跳跳虎|屹耳/i],
+  ['animalPajama', /animal-pajama|animal-onesie|動物睡衣|連身睡衣/i],
+  ['laceFabric', /lace-fabric|fabric-studio|萊斯布料|蕾絲布料|服裝訂製/i],
+  ['halloween', /halloween|萬聖節|南瓜變裝/i],
+  ['easter', /easter|復活節|彩蛋店/i],
+  ['christmas', /christmas|聖誕節|聖誕雪花/i],
+  ['fruitMarket', /fresh-fruit-market|鮮果專門店|水果專賣/i],
+  ['chineseCuisine', /chinese-cuisine|中菜館|中式餐館/i],
+  ['icecreamParlor', /snowflake-icecream|雪花雪糕|霜雪雪糕/i],
   ['privateClub', /saint-edward-west-castle|聖愛德華西堡|私人會所/i],
   ['photoStudio', /portrait-photo-studio|寫真館|個人寫真|photo.?studio|portrait.?studio/i],
   ['onsen', /溫泉|櫻花暖湯|湯宿|湯煙|泡湯|onsen|hot.?spring/i],
@@ -898,6 +962,102 @@ const GENERAL_SPECIALTY_FIXTURES: Record<GeneralShopSpecialty, DecorationFixture
     specialtyFixture('winnie', 'eeyore-blue-gift-case', '屹耳藍灰收藏禮盒櫃', '以藍灰色調陳列屹耳主題紀念品。', 'gift', 37, 'candy-display'),
     specialtyFixture('winnie', 'hundred-acre-lantern', '百畝森林蜂蜜暖燈', '為森林故事角落添上一盞蜂蜜色小燈。', 'sun', 30, 'garden-lights'),
   ],
+  animalPajama: [
+    specialtyFixture('animalPajama', 'onesie-wardrobe', '動物連身睡衣衣櫃', '按動物造型展示完整連身睡衣。', 'shopping-bag', 42, 'clothing-wardrobe'),
+    specialtyFixture('animalPajama', 'bunny-ear-rack', '兔耳睡衣展示架', '陳列長耳兔兔與短耳兔兔睡衣。', 'heart', 36, 'clothing-rack'),
+    specialtyFixture('animalPajama', 'bear-suit-display', '熊熊睡衣造型展示台', '展示柔軟熊耳帽與連身衣套裝。', 'gift', 38, 'dress-display'),
+    specialtyFixture('animalPajama', 'animal-slipper-shelf', '動物腳套拖鞋架', '配搭連身睡衣的動物造型腳套。', 'grid', 31, 'gallery-frames'),
+    specialtyFixture('animalPajama', 'fitting-curtain', '星月睡衣試穿簾幕', '留出舒適私密的睡衣試穿空間。', 'moon', 40, 'rainbow-arch'),
+    specialtyFixture('animalPajama', 'pajama-fabric-case', '親膚睡衣布料展示櫃', '展示柔軟棉布與透氣絨料樣本。', 'feather', 34, 'candy-display'),
+    specialtyFixture('animalPajama', 'sleep-cap-wall', '動物睡帽與眼罩牆', '以兔耳、貓耳睡帽搭配眼罩。', 'cloud', 29, 'gallery-frames'),
+    specialtyFixture('animalPajama', 'cozy-lounge-bench', '雲朵睡衣休息椅', '讓客人試穿後坐下感受布料。', 'heart', 35, 'wooden-bench'),
+    specialtyFixture('animalPajama', 'night-light', '月光晚安小夜燈', '以柔和月亮光點亮睡衣店角落。', 'sun', 27, 'garden-lights'),
+    specialtyFixture('animalPajama', 'animal-pajama-sign', '動物夢鄉迎賓牌', '用星星和爪印迎接睡衣店客人。', 'star', 28, 'neon-sign'),
+  ],
+  laceFabric: [
+    specialtyFixture('laceFabric', 'lace-swatch-wall', '蕾絲花色布卡展示牆', '排列蕾絲、網紗與棉布花樣布卡。', 'grid', 38, 'gallery-frames'),
+    specialtyFixture('laceFabric', 'fabric-roll-rack', '柔紗緞布卷料架', '按顏色整理緞布、棉布和薄紗。', 'feather', 36, 'clothing-rack'),
+    specialtyFixture('laceFabric', 'custom-measure-table', '訂製服裝量身工作台', '放置軟尺、打版紙與布料樣本。', 'edit-3', 44, 'craft-station'),
+    specialtyFixture('laceFabric', 'sewing-machine-table', '花邊服裝縫製工作桌', '展示縫紉機、線軸與未完成的衣樣。', 'settings', 46, 'craft-station'),
+    specialtyFixture('laceFabric', 'dress-preview-mirror', '訂製裙裝試搭全身鏡', '預覽布料與裙型搭配後的造型。', 'square', 40, 'dress-display'),
+    specialtyFixture('laceFabric', 'pattern-drafting-board', '服裝紙樣打版板', '用原創剪裁紙樣規劃訂製服裝。', 'image', 33, 'gallery-frames'),
+    specialtyFixture('laceFabric', 'button-and-ribbon-case', '鈕扣與緞帶配件櫃', '分類展示珍珠鈕扣、花邊和緞帶。', 'gift', 35, 'candy-display'),
+    specialtyFixture('laceFabric', 'fitting-room', '柔粉蕾絲試衣間', '為客製服裝預留換裝和整理空間。', 'columns', 42, 'rainbow-arch'),
+    specialtyFixture('laceFabric', 'finished-garment-rack', '訂製成衣掛架', '展示已完成的洋裝和上衣作品。', 'shopping-bag', 39, 'clothing-wardrobe'),
+    specialtyFixture('laceFabric', 'atelier-lamp', '布料工房柔光燈', '照亮蕾絲紋理與細緻縫線。', 'sun', 28, 'garden-lights'),
+  ],
+  halloween: [
+    specialtyFixture('halloween', 'pumpkin-costume-rack', '南瓜變裝服衣架', '展示柔和可愛的南瓜與魔法師服裝。', 'shopping-bag', 38, 'clothing-rack'),
+    specialtyFixture('halloween', 'friendly-bat-mobile', '星星友善蝙蝠吊飾', '以微笑蝙蝠和小星星裝飾天花板。', 'moon', 29, 'starlight-mobile'),
+    specialtyFixture('halloween', 'pumpkin-candy-case', '南瓜糖果分格展示櫃', '用南瓜小格收納節日糖果與貼紙。', 'gift', 40, 'candy-display'),
+    specialtyFixture('halloween', 'witch-hat-carousel', '星月魔法帽旋轉架', '展示不同顏色的尖帽和緞帶。', 'star', 34, 'sculpture-plaza'),
+    specialtyFixture('halloween', 'costume-fitting-mirror', '變裝造型試衣鏡', '從帽子到斗篷完整查看派對造型。', 'square', 39, 'dress-display'),
+    specialtyFixture('halloween', 'ghost-plush-display', '微笑小幽靈玩偶架', '陳列不嚇人的幽靈和南瓜玩偶。', 'cloud', 36, 'gallery-frames'),
+    specialtyFixture('halloween', 'trick-or-treat-basket', '不給糖就搗蛋禮物籃', '準備糖果袋和可愛變裝小禮物。', 'package', 33, 'colorful-planter'),
+    specialtyFixture('halloween', 'moonlight-lantern', '萬聖節月光燈籠', '用柔和紫橘光營造魔法夜色。', 'sun', 28, 'shell-lantern'),
+    specialtyFixture('halloween', 'spooky-story-frame', '奇幻夜故事畫框', '展示南瓜、月亮和小蝙蝠插畫。', 'image', 30, 'gallery-frames'),
+    specialtyFixture('halloween', 'halloween-welcome-sign', '萬聖節星光招牌', '以星星與糖果圖案迎接節日來客。', 'zap', 31, 'neon-sign'),
+  ],
+  easter: [
+    specialtyFixture('easter', 'painted-egg-display', '手繪彩蛋分格架', '以花朵、星星和彩點裝飾春日彩蛋。', 'gift', 35, 'candy-display'),
+    specialtyFixture('easter', 'bunny-plush-shelf', '復活節兔兔玩偶層架', '展示不同耳朵與蝴蝶結的兔兔玩偶。', 'heart', 38, 'gallery-frames'),
+    specialtyFixture('easter', 'spring-basket-table', '彩蛋花籃體驗桌', '用小花籃整理彩蛋和春日卡片。', 'package', 40, 'colorful-planter'),
+    specialtyFixture('easter', 'ribbon-gift-wall', '春日緞帶禮物牆', '展示以柔色緞帶包裝的節日禮物。', 'feather', 32, 'gallery-frames'),
+    specialtyFixture('easter', 'carrot-cookie-stand', '胡蘿蔔造型餅乾架', '陳列兔兔最喜歡的胡蘿蔔點心。', 'sun', 36, 'tasting-court'),
+    specialtyFixture('easter', 'egg-painting-station', '復活節彩蛋彩繪台', '準備顏料、筆刷和待完成的彩蛋。', 'edit-3', 42, 'craft-station'),
+    specialtyFixture('easter', 'flower-crown-display', '春日花冠展示架', '把小兔耳花冠和緞帶髮飾排好。', 'feather', 34, 'clothing-rack'),
+    specialtyFixture('easter', 'garden-bunny-bench', '森林兔兔休息椅', '在花園背景旁放一張柔軟小椅。', 'heart', 36, 'wooden-bench'),
+    specialtyFixture('easter', 'spring-window-lights', '春日彩蛋窗燈', '用柔粉和薄荷綠點亮森林小店。', 'sun', 27, 'garden-lights'),
+    specialtyFixture('easter', 'easter-greeting-frame', '復活節祝福畫框', '以原創兔子和彩蛋插畫迎接春天。', 'image', 29, 'gallery-frames'),
+  ],
+  christmas: [
+    specialtyFixture('christmas', 'ornament-display-tree', '星雪聖誕樹飾品架', '展示星星、雪花和小鈴鐺掛飾。', 'star', 40, 'starlight-mobile'),
+    specialtyFixture('christmas', 'wrapped-gift-wall', '緞帶聖誕禮盒牆', '依顏色展示緞帶與節日禮盒。', 'gift', 42, 'gallery-frames'),
+    specialtyFixture('christmas', 'stocking-rack', '雪花聖誕襪展示架', '掛上手繪圖案與小口袋聖誕襪。', 'package', 34, 'clothing-rack'),
+    specialtyFixture('christmas', 'winter-scarf-wardrobe', '冬日圍巾與斗篷衣櫃', '收納保暖圍巾、斗篷和毛帽。', 'shopping-bag', 44, 'clothing-wardrobe'),
+    specialtyFixture('christmas', 'snow-globe-table', '雪景水晶球展示桌', '擺放搖動後飄雪的迷你水晶球。', 'cloud', 38, 'sculpture-plaza'),
+    specialtyFixture('christmas', 'cocoa-service-counter', '熱可可迎賓服務檯', '為客人準備可可杯與小餅乾。', 'coffee', 48, 'food-prep'),
+    specialtyFixture('christmas', 'candy-cane-case', '糖果杖與糖果展示櫃', '收納彩色糖果杖與雪花糖果。', 'gift', 36, 'candy-display'),
+    specialtyFixture('christmas', 'holiday-card-rack', '冬日賀卡與信封架', '陳列節日賀卡和手寫祝福紙品。', 'book-open', 30, 'book-carousel'),
+    specialtyFixture('christmas', 'frosted-lamp', '霜雪窗邊暖燈', '在冰晶窗邊添上一盞蜂蜜色小燈。', 'sun', 28, 'garden-lights'),
+    specialtyFixture('christmas', 'christmas-welcome-sign', '聖誕雪花招牌', '以雪花和星星迎接冬日來客。', 'zap', 31, 'neon-sign'),
+  ],
+  fruitMarket: [
+    specialtyFixture('fruitMarket', 'seasonal-fruit-display', '當季鮮果分層展示櫃', '把不同顏色的水果分層陳列。', 'sun', 40, 'colorful-planter'),
+    specialtyFixture('fruitMarket', 'citrus-crate-stack', '柑橘木箱陳列台', '整齊堆放橙子、檸檬與柚子。', 'package', 34, 'spice-display'),
+    specialtyFixture('fruitMarket', 'berry-cold-case', '莓果鮮切冷藏櫃', '展示草莓、藍莓與水果杯。', 'droplet', 46, 'coral-aquarium'),
+    specialtyFixture('fruitMarket', 'fruit-gift-wrap-table', '水果禮盒包裝桌', '準備紙盒、緞帶和手繪祝福卡。', 'gift', 38, 'craft-station'),
+    specialtyFixture('fruitMarket', 'fresh-juice-press', '鮮果現榨小吧台', '用當季水果製作現榨果汁。', 'coffee', 52, 'tea-brewer'),
+    specialtyFixture('fruitMarket', 'fruit-tasting-counter', '水果試吃小吧台', '準備新鮮切片讓客人試吃。', 'heart', 37, 'tasting-court'),
+    specialtyFixture('fruitMarket', 'leafy-fruit-wall', '水果產地插畫牆', '用手繪地圖介紹水果產季與產地。', 'image', 29, 'gallery-frames'),
+    specialtyFixture('fruitMarket', 'woven-fruit-basket-rack', '藤編水果籃展示架', '以不同大小的藤籃盛放水果。', 'grid', 33, 'gallery-frames'),
+    specialtyFixture('fruitMarket', 'orchard-branch-lamp', '果園枝葉吊燈', '用葉片造型燈影增添果園氣氛。', 'sun', 27, 'garden-lights'),
+    specialtyFixture('fruitMarket', 'fruit-market-seat', '果香小憩長椅', '讓客人坐下慢慢挑選水果。', 'heart', 32, 'wooden-bench'),
+  ],
+  chineseCuisine: [
+    specialtyFixture('chineseCuisine', 'dim-sum-steamer', '港式點心蒸籠展示架', '展示蒸餃、包子、燒賣和蝦餃。', 'sun', 46, 'food-prep'),
+    specialtyFixture('chineseCuisine', 'round-dining-table', '中式圓桌共食席', '用轉盤共享點心與家常菜餚。', 'grid', 48, 'tasting-court'),
+    specialtyFixture('chineseCuisine', 'tea-and-porcelain-case', '茶具與青花瓷展示櫃', '陳列茶壺、茶杯和青花瓷小碟。', 'coffee', 38, 'gallery-frames'),
+    specialtyFixture('chineseCuisine', 'noodle-broth-counter', '暖湯麵食備餐檯', '整理湯麵、青菜和每日湯底。', 'droplet', 44, 'food-prep'),
+    specialtyFixture('chineseCuisine', 'dumpling-menu-board', '手作點心風味菜牌', '以插畫介紹不同蒸點與餃子餡料。', 'book-open', 30, 'gallery-frames'),
+    specialtyFixture('chineseCuisine', 'chopstick-service-station', '筷子與餐巾服務台', '收好筷子、茶匙和餐巾。', 'package', 32, 'food-prep'),
+    specialtyFixture('chineseCuisine', 'moon-window-lattice', '月下木格窗屏風', '以木格和月色營造安靜用餐角落。', 'columns', 40, 'rainbow-arch'),
+    specialtyFixture('chineseCuisine', 'lantern-dining-mobile', '燈籠餐席吊飾', '在餐桌上方掛起柔亮小燈籠。', 'sun', 29, 'starlight-mobile'),
+    specialtyFixture('chineseCuisine', 'family-banquette', '家常團圓長椅', '為家人朋友共食留出舒適座位。', 'heart', 38, 'wooden-bench'),
+    specialtyFixture('chineseCuisine', 'chef-specials-frame', '主廚今日推薦畫框', '展示每日點心和時令菜色插畫。', 'image', 31, 'gallery-frames'),
+  ],
+  icecreamParlor: [
+    specialtyFixture('icecreamParlor', 'gelato-flavor-case', '雪花口味玻璃冷凍櫃', '分格展示雪糕球、雪酪和季節口味。', 'droplet', 46, 'ice-cream-machine'),
+    specialtyFixture('icecreamParlor', 'waffle-cone-holder', '現烤脆皮甜筒收納架', '放好剛烤好的甜筒與餅杯。', 'sun', 38, 'bakery-oven'),
+    specialtyFixture('icecreamParlor', 'sundae-topping-bar', '彩果聖代配料吧台', '準備莓果、脆片和堅果配料。', 'package', 40, 'candy-display'),
+    specialtyFixture('icecreamParlor', 'ice-pop-freezer', '水果冰棒直立冷凍櫃', '展示草莓、芒果與葡萄造型冰棒。', 'droplet', 44, 'ice-cream-machine'),
+    specialtyFixture('icecreamParlor', 'gelato-menu-board', '手繪雪糕口味牌', '以插畫標出每日供應的雪糕口味。', 'image', 28, 'gallery-frames'),
+    specialtyFixture('icecreamParlor', 'scoop-counter', '雪花雙球點餐櫃台', '為客人準備甜筒、雪糕球和小碟。', 'coffee', 48, 'food-prep'),
+    specialtyFixture('icecreamParlor', 'snowflake-table', '雪花雙人分享桌', '安排座位一起分享冰淇淋聖代。', 'heart', 36, 'tasting-court'),
+    specialtyFixture('icecreamParlor', 'mint-snow-lamp', '薄荷雪花吊燈', '用薄荷綠與冰藍光點亮店內。', 'sun', 29, 'garden-lights'),
+    specialtyFixture('icecreamParlor', 'sprinkle-star-mobile', '糖針星星吊飾', '以彩色糖針和雪花點綴天花板。', 'star', 27, 'starlight-mobile'),
+    specialtyFixture('icecreamParlor', 'cone-display-stand', '三角甜筒展示台', '把繽紛甜筒造型陳列成小冰塔。', 'package', 34, 'sculpture-plaza'),
+  ],
   craft: [
     specialtyFixture('craft', 'pottery-wheel', '手作陶藝體驗轉盤', '留出一張桌面體驗捏陶和拉坯。', 'refresh-cw', 42, 'craft-station'),
     specialtyFixture('craft', 'yarn-wall', '彩線與毛線收納牆', '按色系排列編織用毛線和線軸。', 'grid', 34, 'spice-display'),
@@ -943,7 +1103,8 @@ function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpeci
 
 export type ShopInteriorSceneKey =
   | 'general' | 'cafe' | 'candy' | 'icecream' | 'bakery' | 'tea' | 'food' | 'private-club' | 'flower' | 'book' | 'toy' | 'craft'
-  | 'chiikawa' | 'winnie'
+  | 'chiikawa' | 'winnie' | 'animal-pajamas' | 'lace-fabric' | 'halloween' | 'easter' | 'christmas'
+  | 'fruit-market' | 'chinese-restaurant' | 'icecream-parlor'
   | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen'
   | 'swimwear' | 'cosplay' | 'electronics' | 'boutique' | 'cosmetics' | 'photo-studio';
 
@@ -957,6 +1118,14 @@ const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorScene
   privateClub: 'private-club',
   chiikawa: 'chiikawa',
   winnie: 'winnie',
+  animalPajama: 'animal-pajamas',
+  laceFabric: 'lace-fabric',
+  halloween: 'halloween',
+  easter: 'easter',
+  christmas: 'christmas',
+  fruitMarket: 'fruit-market',
+  chineseCuisine: 'chinese-restaurant',
+  icecreamParlor: 'icecream-parlor',
   flower: 'flower',
   book: 'book',
   toy: 'toy',
@@ -1226,6 +1395,17 @@ export function getShopTypeLabel(shopType?: MallShopType, shopId?: string): stri
   if (shopId === 'portrait-photo-studio') return '寫真館';
   if (shopId === 'chiikawa-land') return 'Chiikawa專賣店';
   if (shopId === 'winnie-hundred-acre-wood') return '小熊維尼專賣店';
+  const specialStoreLabels: Record<string, string> = {
+    'animal-pajama-boutique': '動物連身睡衣店',
+    'lace-fabric-studio': '蕾絲布料訂製店',
+    'halloween-magic-boutique': '萬聖節主題店',
+    'easter-bunny-egg-shop': '復活節主題店',
+    'christmas-snowflake-gifts': '聖誕節主題店',
+    'fresh-fruit-market': '水果專賣店',
+    'moonlit-chinese-restaurant': '中菜館',
+    'snowflake-icecream-parlor': '雪糕專賣店',
+  };
+  if (shopId && specialStoreLabels[shopId]) return specialStoreLabels[shopId];
   const labels: Record<MallShopType, string> = {
     general: '特色商店',
     womenswear: '女裝店',

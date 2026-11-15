@@ -69,6 +69,9 @@ export function MallWingPager({ counts, onWingChange, renderWing, focusWing, foc
           outline-offset: 2px !important;
           forced-color-adjust: auto;
         }
+        [data-testid^="mall-wing-content-"] :focus-visible {
+          scroll-margin: 8px;
+        }
       }
     `;
     document.head.appendChild(style);

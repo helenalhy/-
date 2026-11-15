@@ -345,9 +345,15 @@ test('mall wing tabs keep browser focus and selection in sync', {
         id: parent.dataset.testid ?? parent.tagName.toLowerCase(),
         containsRing: (!clipsX || (rect.left - clearance >= left - 1 && rect.right + clearance <= right + 1))
           && (!clipsY || (rect.top - clearance >= top - 1 && rect.bottom + clearance <= bottom + 1)),
+        overflowX: parentStyle.overflowX,
+        overflowY: parentStyle.overflowY,
+        bounds: { left, top, right, bottom },
       });
     }
     return {
+      targetId: target.dataset.testid ?? target.tagName.toLowerCase(),
+      targetBounds: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+      clearance,
       focused: document.activeElement === target,
       outlineStyle: style.outlineStyle,
       outlineWidth: Number.parseFloat(style.outlineWidth),
@@ -368,7 +374,7 @@ test('mall wing tabs keep browser focus and selection in sync', {
     assert.equal(indicator.forcedColorAdjust, 'auto', `${description} should use the browser's high-contrast colors`);
     assert.ok(
       indicator.clippingAncestors.every((ancestor) => ancestor.containsRing),
-      `${description} focus ring should not be clipped: ${JSON.stringify(indicator.clippingAncestors)}`,
+      `${description} focus ring should not be clipped: ${JSON.stringify(indicator)}`,
     );
   };
   const assertSelectedAndFocused = async (wingId) => {

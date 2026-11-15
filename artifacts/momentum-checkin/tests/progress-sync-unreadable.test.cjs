@@ -153,6 +153,17 @@ function mountBridge({
     if (name === '@clerk/expo') {
       return { useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: 'authenticated-user' }) };
     }
+    if (name === '@/constants/user-profile') {
+      const defaultProfile = { nickname: '', avatarId: 'sun' };
+      return {
+        DEFAULT_USER_PROFILE: defaultProfile,
+        normalizeUserProfile: (value) => value && typeof value === 'object'
+          ? { ...defaultProfile, ...value }
+          : { ...defaultProfile },
+        hasCustomUserProfile: (value) => Boolean(value?.nickname?.trim())
+          || (value?.avatarId !== undefined && value.avatarId !== defaultProfile.avatarId),
+      };
+    }
     if (name === '@workspace/api-client-react') {
       return {
         getGetProgressQueryKey: () => ['progress'],

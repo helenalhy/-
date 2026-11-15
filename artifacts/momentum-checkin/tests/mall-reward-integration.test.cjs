@@ -85,15 +85,20 @@ function createHarness() {
     },
     Animated: {
       Value: class {
-        setValue() {}
-        interpolate() { return 1; }
+        constructor(value) { this.value = value; }
+        setValue(value) { this.value = value; }
+        interpolate(config) { return { __animatedInterpolation: true, parent: this, config }; }
       },
       View: 'Animated.View',
-      parallel: () => ({ start() {}, stop() {} }),
-      spring: () => ({ start() {}, stop() {} }),
-      timing: () => ({ start() {}, stop() {} }),
-      multiply: () => 1,
+      parallel: (animations) => ({ animations, start() {}, stop() {} }),
+      sequence: (animations) => ({ animations, start() {}, stop() {} }),
+      loop: (animation) => ({ animation, start() {}, stop() {} }),
+      delay: (duration) => ({ duration, start() {}, stop() {} }),
+      spring: (value, config) => ({ value, config, start() {}, stop() {} }),
+      timing: (value, config) => ({ value, config, start() {}, stop() {} }),
+      multiply: (left, right) => ({ left, right }),
     },
+    Easing: { linear: (value) => value },
     findNodeHandle: () => 1,
     ImageBackground: 'ImageBackground',
     Keyboard: { dismiss() {} },
@@ -358,6 +363,7 @@ function createHarness() {
       nextSetItemFailure = { key, error };
     },
     shopInteriorCatalog: loadTsModule(path.join(appRoot, 'constants/mall-shop-interior.ts')),
+    dogStaffCustomization: loadTsModule(path.join(appRoot, 'constants/dog-staff-customization.ts')),
     storage,
     setPlatform: (platform) => { native.Platform.OS = platform; },
     setLocalSearchParams: (params) => { localSearchParams = params; },
@@ -1657,27 +1663,28 @@ test('cafe equipment is clearly labeled, illustrated, and purchased with earned 
   app.setLocalSearchParams({ itemId: shop.id });
 
   let interiorTree = app.renderShopInterior();
-  for (let page = 1; page < 5; page += 1) {
+  const catalog = app.shopInteriorCatalog.getShopInteriorDecorations(shop.shopType, shop.id, shop.name);
+  const machine = catalog.find((item) => item.name.endsWith('雙頭咖啡機'));
+  assert.ok(machine, 'the current cafe catalog includes its espresso machine');
+  const catalogPageSize = 10;
+  const machinePage = Math.floor(catalog.indexOf(machine) / catalogPageSize);
+  for (let page = 0; page < machinePage; page += 1) {
     await press(interiorTree, 'shop-decoration-page-next');
     interiorTree = app.renderShopInterior();
   }
-  const coffeeMachine = findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-store-', 'general-equipment-cafe-espresso-machine');
-  assert.equal(textContent(coffeeMachine).includes('雙頭咖啡機'), true);
-  assert.ok(findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-equipment-store-', 'general-equipment-cafe-espresso-machine'));
-  const machineVisual = findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-visual-store-', 'general-equipment-cafe-espresso-machine');
-  assert.equal(machineVisual.props.visual, 'coffee-machine');
+  const coffeeMachine = findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-store-', machine.id);
+  assert.ok(textContent(coffeeMachine).includes(machine.name));
+  assert.ok(findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-equipment-store-', machine.id));
+  const machineVisual = findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-visual-store-', machine.id);
+  assert.equal(machineVisual.props.visual, machine.visual);
 
-  const machinePlacementActionId = findByTestIdPrefixAndSuffix(
-    interiorTree,
-    'shop-decoration-place-store-',
-    'general-equipment-cafe-espresso-machine',
-  ).props.testID;
+  const machinePlacementActionId = findByTestIdPrefixAndSuffix(interiorTree, 'shop-decoration-place-store-', machine.id).props.testID;
   const machineDecorationId = machinePlacementActionId.replace('shop-decoration-place-', '');
   await press(interiorTree, machinePlacementActionId);
   app.renderProvider();
   interiorTree = app.renderShopInterior();
   const sceneTree = app.renderShopInteriorScene(interiorTree);
-  assert.equal(app.contextExports.useHabits().coins, 58);
+  assert.equal(app.contextExports.useHabits().coins, 120 - machine.price);
   assert.equal(
     app.contextExports.useHabits().shopInteriors[shop.id].placements['front-window'],
     machineDecorationId,
@@ -1753,24 +1760,10 @@ test('reopened cafe keeps staff and all furniture clear across five small-screen
   const shop = sourceApp.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
   assert.ok(shop);
 
-  const dogIds = [
-    'general-fluffy-staff-huahua',
-    'general-fluffy-staff-milkshake',
-    'general-fluffy-staff-xiaoniu',
-    'general-fluffy-staff-pudding',
-    'general-fluffy-staff-tangtang',
-    'general-fluffy-staff-pipi',
-    'general-fluffy-staff-amber',
-    'general-fluffy-staff-cloud',
-    'general-fluffy-staff-wonton',
-    'general-fluffy-staff-butter',
-    'general-fluffy-staff-sesame',
-    'general-fluffy-staff-snowball',
-    'general-fluffy-staff-maomao',
-  ];
+  const dogIds = sourceApp.dogStaffCustomization.DOG_STAFF_PROFILES.map(({ decorationId }) => decorationId);
   const areas = ['extension-1', 'extension-2', 'extension-3', 'extension-4', 'extension-5'];
   const slots = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table'];
-  const dogCounts = [3, 3, 3, 2, 2];
+  const dogCounts = [3, 3, 3, 3, 2];
   const dogStaffPlacements = {};
   const assignedDogIds = [];
   let dogIndex = 0;

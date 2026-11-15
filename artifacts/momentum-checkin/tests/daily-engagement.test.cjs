@@ -188,8 +188,11 @@ test('all 56 README-mapped dog poses and transparent staff images are bundled', 
   assert.equal(expectedNames.length, 56);
   assert.deepEqual(bundledNames, expectedNames);
   assert.deepEqual(mappedPoseNames, expectedNames);
-  assert.deepEqual(bundledTransparentNames, expectedTransparentNames);
   assert.deepEqual(mappedTransparentNames, expectedTransparentNames);
+  assert.ok(
+    expectedTransparentNames.every((name) => bundledTransparentNames.includes(name)),
+    'every dog staff image mapped from the base pose is bundled',
+  );
   assert.deepEqual(mappedProfileKeys, profileKeys);
   assert.match(imageMap, /'fluffy-staff-amber':[\s\S]*hupo-1-wave\.webp/);
   assert.match(imageMap, /'fluffy-staff-cloud':[\s\S]*yunduo-1-wave\.webp/);

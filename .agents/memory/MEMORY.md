@@ -15,3 +15,4 @@
 - [手機網頁打卡推播](web-push-reminders.md) — 使用者需要關閉網頁後仍可收到每日提醒；訪客可用、可選時間，當日已打卡就略過。
 - [Expo SVG 圖片資源](cross-platform-svg-assets.md) — SVG 明信片需用 expo-asset 取得跨平台圖片 URI，並避免 Hermes 不支援的字串 API。
 - [狗狗店員圖片與互動](dog-staff-image-assets.md) — 名單與放大畫面同步切換；餵食、五種不同玩具玩法和主題背景保留各狗狗原貌。
+- [客人圖集美術處理](guest-atlas-artwork.md) — AI 編輯不保證畫布尺寸；逐人等比例整理回原格位，再檢查透明邊緣及5F參考身高。

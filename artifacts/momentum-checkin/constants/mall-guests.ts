@@ -9,7 +9,7 @@ export const GUEST_SHEETS: ImageSourcePropType[] = [
   require('../assets/images/guests-floor-4.png'),
   require('../assets/images/guests-floor-5.png'),
   require('../assets/images/guests-floor-6.png'),
-  require('../assets/images/guests-floor-7.png'),
+  require('../assets/images/guests-floor-7.png'), // Beauty totes are painted into each shopper, so they share the existing walk/turn animation.
   require('../assets/images/guests-floor-8.png'),
   require('../assets/images/guests-floor-9.png'),
   require('../assets/images/guests-floor-10-carnival.png'),
@@ -39,7 +39,8 @@ export const GUEST_FRAME_SIZES_BY_FLOOR = Array.from({ length: 20 }, (_, index) 
 );
 export const GUEST_COUNTS_BY_FLOOR = [10, 10, 10, 12, 11, 10, 11, 13, 10, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 10] as const;
 export const COSMETICS_SHOP_FLOOR = 7;
-export const BEAUTY_BAG_GUEST_INDICES = [0, 2, 4, 6, 8, 10] as const;
+// Atlas metadata: all 11 original 7F guests (including the rainbow princess) now carry beauty totes.
+export const BEAUTY_BAG_GUEST_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 export const GUEST_FRAME_CELLS: ReadonlyArray<{ column: number; row: number }> = [
   { column: 0, row: 0 },

@@ -200,20 +200,80 @@ test('10F–19F shopper routes stay inside common phone-sized scenes', () => {
   }
 });
 
-test('7F cosmetics shoppers carry moving pastel beauty bags', () => {
+test('7F beauty totes belong to the full original cast without extra animated layers', () => {
   const {
     BEAUTY_BAG_GUEST_INDICES,
     COSMETICS_SHOP_FLOOR,
     GUEST_COUNTS_BY_FLOOR,
   } = guestConstants.exports;
   assert.equal(COSMETICS_SHOP_FLOOR, 7);
-  assert.deepEqual(BEAUTY_BAG_GUEST_INDICES, [0, 2, 4, 6, 8, 10]);
+  assert.deepEqual(BEAUTY_BAG_GUEST_INDICES, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   assert.equal(new Set(BEAUTY_BAG_GUEST_INDICES).size, BEAUTY_BAG_GUEST_INDICES.length);
   assert.ok(BEAUTY_BAG_GUEST_INDICES.every((index) => index < GUEST_COUNTS_BY_FLOOR[COSMETICS_SHOP_FLOOR - 1]));
 
   const customerScene = fs.readFileSync(path.join(__dirname, '../components/MallCustomers.tsx'), 'utf8');
-  assert.match(customerScene, /floor === COSMETICS_SHOP_FLOOR/);
-  assert.match(customerScene, /mall-guest-beauty-bag-/);
-  assert.match(customerScene, /Animated\.View/);
-  assert.match(customerScene, /candyPink.*candyLavender.*candyPeach.*candySky.*candyMint.*candyCoral/);
+  assert.match(customerScene, /const sheet = GUEST_SHEETS\[floor - 1\]/);
+  assert.match(customerScene, /source=\{sheet\}/);
+  assert.match(customerScene, /scaleX: facing/);
+  assert.match(customerScene, /translateY: bob/);
+  assert.match(customerScene, /if \(reducedMotion\) return/);
+  assert.doesNotMatch(customerScene, /beautyBagWrap|mall-guest-beauty-bag-/, 'painted totes must not be covered by duplicate floating bags');
+});
+
+test('7F beauty atlas preserves transparent cells, full silhouettes, and the 5F scale', () => {
+  const { GUEST_COUNTS_BY_FLOOR, GUEST_FRAME_CELLS, GUEST_FRAME_SIZES_BY_FLOOR } = guestConstants.exports;
+  const imageDirectory = path.join(__dirname, '../assets/images');
+  const boundsForFloor = (floor) => {
+    const { width, height, pixels } = readRgbaPng(path.join(imageDirectory, `guests-floor-${floor}.png`));
+    const cellWidth = width / 5;
+    const cellHeight = height / 3;
+    return GUEST_FRAME_CELLS.slice(0, GUEST_COUNTS_BY_FLOOR[floor - 1]).map(({ column, row }) => {
+      let left = cellWidth;
+      let right = -1;
+      let top = cellHeight;
+      let bottom = -1;
+      for (let y = 0; y < cellHeight; y += 1) {
+        for (let x = 0; x < cellWidth; x += 1) {
+          if (pixels[((row * cellHeight + y) * width + column * cellWidth + x) * 4 + 3] > 32) {
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y);
+          }
+        }
+      }
+      return { left, right, top, bottom, visibleHeight: (bottom - top + 1) / cellHeight * GUEST_FRAME_SIZES_BY_FLOOR[floor - 1].height };
+    });
+  };
+  const reference = boundsForFloor(5);
+  const referenceHeight = reference.reduce((sum, bounds) => sum + bounds.visibleHeight, 0) / reference.length;
+  const beautyGuests = boundsForFloor(7);
+  assert.equal(beautyGuests.length, 11, 'retain the ten shoppers plus the rainbow princess');
+  assert.deepEqual(GUEST_FRAME_SIZES_BY_FLOOR[6], GUEST_FRAME_SIZES_BY_FLOOR[4]);
+  for (const [index, bounds] of beautyGuests.entries()) {
+    assert.ok(bounds.left >= 4 && bounds.right < 188, `guest ${index} and their tote fit horizontally`);
+    assert.ok(bounds.top >= 10 && bounds.bottom < 246, `guest ${index} retains clear top and foot margins`);
+    assert.ok(Math.abs(bounds.visibleHeight - referenceHeight) <= 3, `guest ${index} matches the 5F visible height`);
+  }
+  const { width, pixels } = readRgbaPng(path.join(imageDirectory, 'guests-floor-7.png'));
+  for (let y = 512; y < 768; y += 1) {
+    for (let x = 192; x < width; x += 1) {
+      assert.equal(pixels[(y * width + x) * 4 + 3], 0, 'unused cells stay transparent');
+    }
+  }
+});
+
+test('7F beauty shoppers keep the shared phone-safe walking routes and pacing', () => {
+  const { GUEST_COUNTS_BY_FLOOR, GUEST_FRAME_SIZES_BY_FLOOR, GUEST_ROUTES, getGuestRouteBounds } = guestConstants.exports;
+  const frame = GUEST_FRAME_SIZES_BY_FLOOR[6];
+  for (const sceneSize of [320, 360, 375, 390, 402, 430]) {
+    for (const route of GUEST_ROUTES.slice(0, GUEST_COUNTS_BY_FLOOR[6])) {
+      const bounds = getGuestRouteBounds(route, frame, sceneSize);
+      assert.ok(bounds.fromX >= 0 && bounds.fromX + frame.width <= sceneSize);
+      assert.ok(bounds.toX >= 0 && bounds.toX + frame.width <= sceneSize);
+      assert.ok(bounds.top >= 0 && bounds.top + frame.height <= sceneSize);
+      assert.notEqual(bounds.fromX, bounds.toX);
+      assert.ok(route.duration >= 11000 && route.duration <= 19000);
+    }
+  }
 });

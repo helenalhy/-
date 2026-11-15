@@ -2042,6 +2042,112 @@ test('screen-reader labels follow each selected cafe dog and keep their outfits 
   }
 });
 
+test('failed dog outfit saves announce once, keep the saved look, and allow retry', async () => {
+  const shop = createHarness().mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  assert.ok(shop);
+
+  for (const platform of ['ios', 'android']) {
+    const app = createHarness();
+    app.setPlatform(platform);
+    app.storage.set(storageKeys.mall, JSON.stringify({
+      schemaVersion: 3,
+      coins: 500,
+      purchasedItems: [shop.id],
+      rewardedCheckIns: [],
+      rewardTokens: { facility: 0, shop: 0, decor: 0 },
+      placements: {},
+      shopInteriors: {},
+    }));
+    app.renderProvider();
+    await app.runEffects('provider');
+    app.renderProvider();
+    app.setLocalSearchParams({ itemId: shop.id });
+
+    let interiorTree = app.renderShopInterior();
+    let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, 'dog-staff-redeem-fluffy-staff-huahua');
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, 'dog-staff-tab-outfit');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-2');
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+    const dogId = 'general-fluffy-staff-huahua';
+    const originalLook = { ...app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId] };
+    const originalMall = app.storage.get(storageKeys.mall);
+    const announcementsBeforeFailure = app.announcements.length;
+    app.failNextStorageWrite(storageKeys.mall);
+    await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-3');
+
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    const failureNotice = findByTestId(customizerTree, 'dog-staff-customizer-notice');
+    assert.match(textContent(failureNotice), /造型未能保存：無法儲存商場資料/);
+    assert.equal(
+      failureNotice.props.accessibilityLiveRegion,
+      platform === 'ios' ? 'none' : 'polite',
+      `${platform} uses only its platform-specific failure announcement mechanism`,
+    );
+    if (platform === 'ios') {
+      assert.equal(app.announcements.length, announcementsBeforeFailure + 1);
+      assert.match(app.announcements.at(-1), /造型未能保存/);
+    } else {
+      assert.equal(app.announcements.length, announcementsBeforeFailure, 'Android does not send a second system announcement');
+    }
+    assert.deepEqual(
+      app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId],
+      originalLook,
+      'a failed save does not mark the requested outfit as worn',
+    );
+    assert.equal(app.storage.get(storageKeys.mall), originalMall, 'failed save preserves persisted outfit data');
+    assert.equal(
+      findByTestId(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-1').props.accessibilityState.selected,
+      false,
+      'the original default outfit remains unselected',
+    );
+    assert.equal(
+      findByTestId(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-2').props.accessibilityState.selected,
+      true,
+      'the previously saved outfit remains selected after failure',
+    );
+    assert.equal(
+      findByTestId(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-3').props.accessibilityState.selected,
+      false,
+      'the failed outfit remains available to choose again',
+    );
+
+    const announcementsBeforeRetry = app.announcements.length;
+    await press(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-3');
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    assert.equal(
+      app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogId].outfitId,
+      app.dogStaffCustomization.DOG_STAFF_STYLE_CATALOGS[dogId].outfits[2].id,
+      'retry success updates the saved outfit',
+    );
+    assert.equal(
+      findByTestId(customizerTree, 'dog-staff-look-fluffy-staff-huahua-outfit-3').props.accessibilityState.selected,
+      true,
+      'the successfully retried outfit is shown as worn',
+    );
+    if (platform === 'ios') {
+      assert.equal(app.announcements.length, announcementsBeforeRetry + 1);
+      assert.match(app.announcements.at(-1), /已保存花花的服裝/);
+    } else {
+      assert.equal(app.announcements.length, announcementsBeforeRetry);
+      assert.equal(
+        findByTestId(customizerTree, 'dog-staff-customizer-notice').props.accessibilityLiveRegion,
+        'polite',
+      );
+      assert.match(textContent(findByTestId(customizerTree, 'dog-staff-customizer-notice')), /已保存花花的服裝/);
+    }
+  }
+});
+
 test('dog outfits persist when walking dogs move between all six areas, while the 48 decor slots remain independent', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');

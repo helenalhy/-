@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { ImageSourcePropType } from 'react-native';
 import type { ShopDisplayProduct } from '@/constants/mall-shop-display';
@@ -155,6 +155,8 @@ function getLipSparklePoints(centerX: number, centerY: number, finish: ShopDispl
 
 export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] }) {
   const colors = useColors();
+  const { width } = useWindowDimensions();
+  const compactLayout = width < 360;
   const lipsticks = products.filter(({ illustration }) => illustration === 'lipstick');
   const eyeshadows = products.filter(({ illustration }) => illustration === 'palette');
   const [selectedGuestIndex, setSelectedGuestIndex] = useState(0);
@@ -234,11 +236,19 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
         testID="cosmetics-try-on-preview"
         accessible
         accessibilityLabel={`第 ${selectedGuestIndex + 1} 位客人妝容預覽：${selectedLipstick.name}搭配${selectedEyeshadow.name}`}
-        style={[styles.preview, { backgroundColor: colors.candyCream, borderColor: colors.border }]}
+        style={[
+          styles.preview,
+          compactLayout && styles.compactPreview,
+          { backgroundColor: colors.candyCream, borderColor: colors.border },
+        ]}
       >
         <View
           testID="cosmetics-try-on-portrait"
-          style={[styles.portraitStage, { backgroundColor: colors.candyPeach, borderColor: colors.candyPink }]}
+          style={[
+            styles.portraitStage,
+            compactLayout && styles.compactPortraitStage,
+            { backgroundColor: colors.candyPeach, borderColor: colors.candyPink },
+          ]}
         >
           <Image
             testID="cosmetics-try-on-guest-art"
@@ -301,7 +311,7 @@ export function CosmeticsTryOn({ products }: { products: ShopDisplayProduct[] })
             </Svg>
           </View>
         </View>
-        <View style={styles.previewCopy}>
+        <View style={[styles.previewCopy, compactLayout && styles.compactPreviewCopy]}>
           <Text style={[styles.previewEyebrow, { color: colors.primary }]}>客人妝容預覽</Text>
           <Text style={[styles.previewName, { color: colors.foreground }]} numberOfLines={1}>{selectedLipstick.name}</Text>
           <Text style={[styles.previewName, { color: colors.foreground }]} numberOfLines={1}>{selectedEyeshadow.name}</Text>
@@ -360,7 +370,9 @@ const styles = StyleSheet.create({
   freePill: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
   freeText: { fontSize: 11, fontWeight: '800' },
   preview: { minHeight: 174, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  compactPreview: { flexDirection: 'column', alignItems: 'center' },
   portraitStage: { width: 132, height: 132, flexShrink: 0, position: 'relative', borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
+  compactPortraitStage: { width: 148, height: 148 },
   guestPortrait: { position: 'absolute', width: '100%', height: '100%' },
   makeupLayer: { ...StyleSheet.absoluteFill, zIndex: 2 },
   guestChoiceList: { gap: 8, paddingRight: 4 },
@@ -369,6 +381,7 @@ const styles = StyleSheet.create({
   guestChoiceImage: { width: 58, height: 55 },
   guestChoiceName: { fontSize: 9, fontWeight: '700', textAlign: 'center' },
   previewCopy: { flex: 1, gap: 6 },
+  compactPreviewCopy: { width: '100%', flex: 0 },
   previewEyebrow: { fontSize: 11, fontWeight: '800' },
   previewName: { fontSize: 12, fontWeight: '700' },
   choiceGroup: { gap: 8 },

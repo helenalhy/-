@@ -159,6 +159,11 @@ test('fashion and boutique products use item-shaped animated illustrations inste
   assert.match(tryOn, /setSelectedGuestIndex/);
   assert.match(tryOn, /source=\{selectedGuest\.source\}/);
   assert.match(tryOn, /GUEST_PORTRAITS\.map/);
+  assert.match(tryOn, /const \{ width \} = useWindowDimensions\(\)/);
+  assert.match(tryOn, /const compactLayout = width < 360/);
+  assert.match(tryOn, /compactLayout && styles\.compactPreview/);
+  assert.match(tryOn, /compactPortraitStage: \{ width: 148, height: 148 \}/);
+  assert.match(tryOn, /<ScrollView horizontal showsHorizontalScrollIndicator=\{false\} contentContainerStyle=\{styles\.choiceList\}>/);
   assert.match(tryOn, /portraitStage: \{ width: 132, height: 132, flexShrink: 0/);
   assert.match(tryOn, /guestPortrait: \{ position: 'absolute', width: '100%', height: '100%'/);
   assert.match(tryOn, /makeupLayer: \{ \.\.\.StyleSheet\.absoluteFill, zIndex: 2/);

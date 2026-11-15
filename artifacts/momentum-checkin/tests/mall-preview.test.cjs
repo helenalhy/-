@@ -1355,6 +1355,74 @@ test('search result explains matches split across the name and description', () 
   );
 });
 
+test('search result match, placement, redemption and actions stay distinct to screen readers', () => {
+  const catalog = [
+    {
+      id: 'search-a11y-owned',
+      floor: 1,
+      name: '雲朵花園',
+      description: '雨天也適合散步',
+      category: 'decor',
+      price: 45,
+      ticketCost: 0,
+    },
+    {
+      id: 'search-a11y-unredeemed',
+      floor: 2,
+      name: '雲朵小屋',
+      description: '適合安靜休息',
+      category: 'shop',
+      price: 60,
+      ticketCost: 0,
+    },
+  ];
+
+  for (const platform of ['ios', 'android']) {
+    const app = mount({
+      purchasedItems: ['search-a11y-owned'],
+      mallPlacements: { 'floor-1-right': 'search-a11y-owned' },
+    }, catalog, platform);
+    app.find('mall-search-input').props.onChangeText('雲朵');
+    app.render();
+
+    const match = app.find('search-item-match-search-a11y-owned');
+    const location = app.find('search-item-location-search-a11y-owned');
+    const status = app.find('search-item-status-search-a11y-owned');
+    const viewLocationAction = app.find('search-location-search-a11y-owned');
+    const selectAction = app.find('search-select-search-a11y-owned');
+
+    assert.equal(match.props.accessibilityRole, 'text');
+    assert.equal(match.props.accessibilityLabel, '名稱符合「雲朵」');
+    assert.equal(location.props.accessibilityRole, 'text');
+    assert.equal(location.props.accessibilityLabel, textContent(location));
+    assert.equal(textContent(location), '1F · 主商場 · 店面區右側 · 45 金幣');
+    assert.equal(status.props.accessibilityRole, 'text');
+    assert.equal(status.props.accessibilityLabel, '已兌換 · 已擺放 · 免費搬動');
+    assert.equal(textContent(status), '已兌換 · 已擺放 · 免費搬動');
+
+    assert.equal(viewLocationAction.props.accessibilityRole, 'button');
+    assert.equal(viewLocationAction.props.accessibilityLabel, '查看雲朵花園目前擺放位置，不搬動物件');
+    assert.equal(selectAction.props.accessibilityRole, 'button');
+    assert.equal(
+      selectAction.props.accessibilityLabel,
+      '選擇雲朵花園，前往 1F，裝潢，已兌換，可免費重擺',
+    );
+    assert.notEqual(
+      viewLocationAction.props.accessibilityLabel,
+      selectAction.props.accessibilityLabel,
+      `${platform} exposes distinct labels for viewing and selecting`,
+    );
+
+    const unredeemed = app.find('search-select-search-a11y-unredeemed');
+    assert.equal(
+      unredeemed.props.accessibilityLabel,
+      '選擇雲朵小屋，前往 2F，店鋪，60 金幣，未兌換，先試擺再確認',
+      `${platform} explains the unredeemed state and selection action`,
+    );
+    assert.equal(app.find('search-location-search-a11y-unredeemed'), undefined);
+  }
+});
+
 test('long search match reasons wrap without truncating location, status or card actions', () => {
   const catalog = [
     {

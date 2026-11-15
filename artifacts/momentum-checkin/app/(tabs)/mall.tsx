@@ -1493,6 +1493,20 @@ export default function MallScreen() {
             const disabled = isLoading || (owned && !showCollection && !isSearching) || purchasing !== null || placementIntent !== null || (!owned && milestoneLocked);
             const placedSlotId = placedSlotsByItem.get(item.id);
             const placedPosition = placedSlotId ? getSlotPosition(placedSlotId) : null;
+            const searchPlacementLabel = isSearching
+              ? placedPosition
+                ? `${placedPosition.floor} · ${WING_NAMES[placedPosition.wing]} · ${placedPosition.label}${item.unlockCheckIns !== undefined ? ' · 里程碑裝飾' : ` · ${item.price} 金幣`}`
+                : owned
+                  ? `倉庫保存中 · 原屬 ${item.floor}F${item.unlockCheckIns !== undefined ? ' · 里程碑裝飾' : ` · ${item.price} 金幣`}`
+                  : `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.unlockCheckIns !== undefined ? '里程碑裝飾' : `${item.price} 金幣`}`
+              : null;
+            const searchRedemptionLabel = isSearching
+              ? owned
+                ? placedIds.has(item.id) ? '已兌換 · 已擺放 · 免費搬動' : '已兌換 · 倉庫保存中 · 免費擺放'
+                : milestoneLocked
+                  ? `里程碑裝飾 · 再完成 ${item.unlockCheckIns! - completedRewardCount} 次目標解鎖`
+                  : '未兌換 · 選取後前往所屬樓層試擺'
+              : null;
             return (
               <View key={item.id} style={[styles.catalogCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={[styles.catalogIcon, { backgroundColor: item.color }]}>
@@ -1506,14 +1520,12 @@ export default function MallScreen() {
                   <Text
                     testID={isSearching ? `search-item-location-${item.id}` : undefined}
                     numberOfLines={isSearching ? undefined : 2}
+                    accessibilityRole={isSearching ? 'text' : undefined}
+                    accessibilityLabel={searchPlacementLabel ?? undefined}
                     style={[styles.itemDescription, { color: colors.mutedForeground }]}
                   >
                     {isSearching
-                      ? placedPosition
-                        ? `${placedPosition.floor} · ${WING_NAMES[placedPosition.wing]} · ${placedPosition.label}${item.unlockCheckIns !== undefined ? ' · 里程碑裝飾' : ` · ${item.price} 金幣`}`
-                        : owned
-                          ? `倉庫保存中 · 原屬 ${item.floor}F${item.unlockCheckIns !== undefined ? ' · 里程碑裝飾' : ` · ${item.price} 金幣`}`
-                          : `${item.floor}F · ${MALL_FLOORS[item.floor - 1].title} · ${item.unlockCheckIns !== undefined ? '里程碑裝飾' : `${item.price} 金幣`}`
+                      ? searchPlacementLabel
                       : showCollection
                         ? `${item.floor}F 原屬選物 · ${item.description}`
                       : item.description}
@@ -1532,7 +1544,7 @@ export default function MallScreen() {
                       {getMallSearchMatchReason(item, searchTerms)}
                     </Text>
                   )}
-                  {isSearching ? <Text testID={`search-item-status-${item.id}`} style={[styles.sceneSub, { color: colors.primary }]}>{owned ? placedIds.has(item.id) ? '已兌換 · 已擺放 · 免費搬動' : '已兌換 · 倉庫保存中 · 免費擺放' : milestoneLocked ? `里程碑裝飾 · 再完成 ${item.unlockCheckIns! - completedRewardCount} 次目標解鎖` : '未兌換 · 選取後前往所屬樓層試擺'}</Text> : showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : item.unlockCheckIns !== undefined ? (
+                  {isSearching ? <Text testID={`search-item-status-${item.id}`} accessibilityRole="text" accessibilityLabel={searchRedemptionLabel ?? undefined} style={[styles.sceneSub, { color: colors.primary }]}>{searchRedemptionLabel}</Text> : showCollection || owned ? <Text style={[styles.sceneSub, { color: colors.primary }]}>{showCollection ? '倉庫保存中 · 免費擺放' : placedIds.has(item.id) ? '已擺放 · 點場景可存倉' : '已存倉 · 到倉庫免費取出'}</Text> : item.unlockCheckIns !== undefined ? (
                     <Text style={[styles.costText, { color: milestoneLocked ? colors.mutedForeground : colors.primary }]}>
                       {milestoneLocked ? `里程碑裝飾 · ${completedRewardCount}/${item.unlockCheckIns} 次` : '里程碑禮物 · 免費兌換'}
                     </Text>

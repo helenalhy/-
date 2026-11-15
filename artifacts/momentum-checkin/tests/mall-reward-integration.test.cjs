@@ -1937,6 +1937,111 @@ test('animal ear hat filter finds Huahua and Tangtang styles without saving a lo
   );
 });
 
+test('screen-reader labels follow each selected cafe dog and keep their outfits independent', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  const dogs = [
+    { key: 'fluffy-staff-huahua', id: 'general-fluffy-staff-huahua', name: '花花', breed: '淺啡色博美' },
+    { key: 'fluffy-staff-tangtang', id: 'general-fluffy-staff-tangtang', name: '糖糖', breed: '白色比熊' },
+  ];
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 500,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, `dog-staff-redeem-${dogs[0].key}`);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, `dog-staff-select-${dogs[1].key}`);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, `dog-staff-redeem-${dogs[1].key}`);
+  app.renderProvider();
+  interiorTree = app.renderShopInterior();
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+  function assertDogSelection(selectedDog) {
+    for (const dog of dogs) {
+      const button = findByTestId(customizerTree, `dog-staff-select-${dog.key}`);
+      assert.match(button.props.accessibilityLabel, new RegExp(`${dog.name}，${dog.breed}`));
+      assert.equal(button.props.accessibilityState.selected, dog.key === selectedDog.key);
+      assert.match(button.props.accessibilityLabel, dog.key === selectedDog.key ? /目前選取/ : /已兌換/);
+    }
+  }
+
+  async function chooseDistinctOutfitAndAccessory(dog) {
+    await press(customizerTree, 'dog-staff-tab-outfit');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, `dog-staff-look-${dog.key}-outfit-2`);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+    await press(customizerTree, 'dog-staff-tab-accessory');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, `dog-staff-look-${dog.key}-accessory-2`);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+
+  assertDogSelection(dogs[1]);
+  await press(customizerTree, `dog-staff-select-${dogs[0].key}`);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assertDogSelection(dogs[0]);
+  await chooseDistinctOutfitAndAccessory(dogs[0]);
+  const huahuaLook = {
+    ...app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogs[0].id],
+  };
+
+  await press(customizerTree, `dog-staff-select-${dogs[1].key}`);
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assertDogSelection(dogs[1]);
+  await chooseDistinctOutfitAndAccessory(dogs[1]);
+  const tangtangLook = {
+    ...app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dogs[1].id],
+  };
+  assert.notDeepEqual(huahuaLook, tangtangLook, 'the two dogs retain separate outfit and accessory IDs');
+
+  for (const [dog, look] of [[dogs[0], huahuaLook], [dogs[1], tangtangLook]]) {
+    await press(customizerTree, `dog-staff-select-${dog.key}`);
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    assertDogSelection(dog);
+
+    await press(customizerTree, 'dog-staff-tab-accessory');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    const accessory = findByTestId(customizerTree, `dog-staff-look-${dog.key}-accessory-2`);
+    assert.ok(accessory, `the ${dog.name} accessory option is rendered`);
+    assert.match(accessory.props.accessibilityLabel, new RegExp(`為${dog.name}選擇`));
+    assert.match(accessory.props.accessibilityLabel, /目前穿戴中/);
+    assert.equal(accessory.props.accessibilityState.selected, true);
+
+    await press(customizerTree, 'dog-staff-tab-outfit');
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    const outfit = findByTestId(customizerTree, `dog-staff-look-${dog.key}-outfit-2`);
+    assert.match(outfit.props.accessibilityLabel, new RegExp(`為${dog.name}選擇`));
+    assert.match(outfit.props.accessibilityLabel, /目前穿戴中/);
+    assert.equal(outfit.props.accessibilityState.selected, true);
+    assert.deepEqual(
+      app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dog.id],
+      look,
+      `switching staff does not modify ${dog.name}’s saved look`,
+    );
+  }
+});
+
 test('dog outfits persist when walking dogs move between all six areas, while the 48 decor slots remain independent', async () => {
   const app = createHarness();
   const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');

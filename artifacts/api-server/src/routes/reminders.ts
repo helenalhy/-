@@ -17,6 +17,10 @@ import {
   pushReminderSubscriptionsTable,
 } from "@workspace/db";
 import { serializeSnoozedReminder } from "../lib/reminder-schedule";
+import {
+  getReminderLocalDate,
+  isValidReminderTimeZone,
+} from "../lib/reminder-timezone";
 import { getOrCreateVapidKeys } from "../lib/vapid";
 
 const router: IRouter = Router();
@@ -39,26 +43,6 @@ function isSupportedPushEndpoint(endpoint: string): boolean {
   }
 }
 
-function isValidTimeZone(timeZone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone }).format();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function getLocalDate(timeZone: string, date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
 router.get("/reminders/config", async (_req, res): Promise<void> => {
   try {
     const keys = await getOrCreateVapidKeys();
@@ -77,7 +61,7 @@ router.put("/reminders/subscription", async (req, res): Promise<void> => {
 
   const { endpoint, p256dh, auth, reminderTimes, timeZone } = parsed.data;
   const inputHabitReminders = parsed.data.habitReminders;
-  if (!isSupportedPushEndpoint(endpoint) || !isValidTimeZone(timeZone)) {
+  if (!isSupportedPushEndpoint(endpoint) || !isValidReminderTimeZone(timeZone)) {
     res.status(400).json({ error: "Unsupported push endpoint or time zone" });
     return;
   }
@@ -197,7 +181,7 @@ router.put("/reminders/snooze", async (req, res): Promise<void> => {
     habitId: parsed.data.habitId,
     habitTitle,
     fireAt: fireAt.toISOString(),
-    localDate: getLocalDate(subscription.timeZone, fireAt),
+    localDate: getReminderLocalDate(subscription.timeZone, fireAt),
   };
   await db
     .update(pushReminderSubscriptionsTable)
@@ -219,6 +203,10 @@ router.put("/reminders/check-in", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid reminder status" });
     return;
   }
+  if (parsed.data.timeZone && !isValidReminderTimeZone(parsed.data.timeZone)) {
+    res.status(400).json({ error: "Invalid reminder time zone" });
+    return;
+  }
 
   const endpointHash = hashPushEndpoint(parsed.data.endpoint);
   const [subscription] = await db
@@ -231,12 +219,8 @@ router.put("/reminders/check-in", async (req, res): Promise<void> => {
     .limit(1);
 
   if (subscription) {
-    const localDate = new Intl.DateTimeFormat("en-CA", {
-      timeZone: subscription.timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
+    const timeZone = parsed.data.timeZone ?? subscription.timeZone;
+    const localDate = getReminderLocalDate(timeZone, new Date());
     const lastSentLocalDates = { ...(subscription.lastSentLocalDates ?? {}) };
     if (parsed.data.hasCheckedInToday && parsed.data.habitId) {
       delete lastSentLocalDates[`snooze:${parsed.data.habitId}`];
@@ -244,6 +228,7 @@ router.put("/reminders/check-in", async (req, res): Promise<void> => {
     await db
       .update(pushReminderSubscriptionsTable)
       .set({
+        timeZone,
         lastCheckInLocalDate: parsed.data.hasCheckedInToday ? localDate : null,
         lastSentLocalDates,
         updatedAt: new Date(),

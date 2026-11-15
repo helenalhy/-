@@ -332,6 +332,10 @@ components:
           maxLength: 128
         hasCheckedInToday:
           type: boolean
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 100
       required:
         - endpoint
         - hasCheckedInToday

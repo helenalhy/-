@@ -178,12 +178,15 @@ export const updateReminderCheckInStatusBodyEndpointMax = 4096;
 
 export const updateReminderCheckInStatusBodyHabitIdMax = 128;
 
+export const updateReminderCheckInStatusBodyTimeZoneMax = 100;
+
 
 
 export const UpdateReminderCheckInStatusBody = zod.object({
   "endpoint": zod.string().url().max(updateReminderCheckInStatusBodyEndpointMax),
   "habitId": zod.string().min(1).max(updateReminderCheckInStatusBodyHabitIdMax).optional(),
-  "hasCheckedInToday": zod.boolean()
+  "hasCheckedInToday": zod.boolean(),
+  "timeZone": zod.string().min(1).max(updateReminderCheckInStatusBodyTimeZoneMax).optional()
 })
 
 export const UpdateReminderCheckInStatusResponse = zod.object({

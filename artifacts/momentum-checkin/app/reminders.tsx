@@ -96,10 +96,15 @@ function buildHabitReminderPayload(
   });
 }
 
+function hasCheckedInOnCurrentLocalDate(habits: Habit[], timeZone: string): boolean {
+  const localDate = getLocalDate(new Date(), timeZone);
+  return habits.some((habit) => habit.checkIns.includes(localDate));
+}
+
 export default function ReminderSettingsScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { habits, today } = useHabits();
+  const { habits, today, isLoading } = useHabits();
   const [settings, setSettings] = useState<ReminderSettings>(DEFAULT_REMINDER_SETTINGS);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
     getWebPushSupport() ? Notification.permission : 'unsupported',
@@ -107,7 +112,7 @@ export default function ReminderSettingsScreen() {
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const timeZone = getBrowserTimeZone();
+  const [timeZone, setTimeZone] = useState(getBrowserTimeZone);
 
   useEffect(() => {
     let active = true;
@@ -136,6 +141,30 @@ export default function ReminderSettingsScreen() {
     });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+    const refreshTimeZone = () => setTimeZone(getBrowserTimeZone());
+    const interval = window.setInterval(refreshTimeZone, 30_000);
+    window.addEventListener('focus', refreshTimeZone);
+    document.addEventListener('visibilitychange', refreshTimeZone);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshTimeZone);
+      document.removeEventListener('visibilitychange', refreshTimeZone);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || isLoading || !settings.enabled || !settings.endpoint) return;
+    void updateReminderCheckInStatus({
+      endpoint: settings.endpoint,
+      hasCheckedInToday: hasCheckedInOnCurrentLocalDate(habits, timeZone),
+      timeZone,
+    }).catch(() => {
+      // The next timezone refresh or check-in will retry the server sync.
+    });
+  }, [habits, isLoading, settings.enabled, settings.endpoint, timeZone]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -293,7 +322,8 @@ export default function ReminderSettingsScreen() {
       setSettings(next);
       await updateReminderCheckInStatus({
         endpoint: payload.endpoint,
-        hasCheckedInToday: habits.some((habit) => habit.checkIns.includes(today)),
+        hasCheckedInToday: hasCheckedInOnCurrentLocalDate(habits, timeZone),
+        timeZone,
       });
       const habitReminderCount = buildHabitReminderPayload(habits, settings.habitReminders).length;
       setMessage(`已開啟提醒；每日共用時段 ${settings.reminderTimes.join('、')}，另有 ${habitReminderCount} 項習慣設有專屬提醒。`);
@@ -344,6 +374,11 @@ export default function ReminderSettingsScreen() {
       const next = { ...settings, enabled: true, endpoint: payload.endpoint };
       await saveReminderSettings(next);
       setSettings(next);
+      await updateReminderCheckInStatus({
+        endpoint: payload.endpoint,
+        hasCheckedInToday: hasCheckedInOnCurrentLocalDate(habits, timeZone),
+        timeZone,
+      });
       const habitReminderCount = buildHabitReminderPayload(habits, settings.habitReminders).length;
       setMessage(`提醒設定已儲存；每日共用時段 ${settings.reminderTimes.join('、')}，另有 ${habitReminderCount} 項習慣設有專屬提醒。`);
     } catch {

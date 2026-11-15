@@ -50,11 +50,16 @@ import {
   type EncouragementStyle,
 } from '@/lib/daily-personalization';
 import {
+  getLocalDate,
   getStreak,
   useHabits,
   type Habit,
 } from '@/context/HabitsContext';
 const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+
+function getBrowserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Hong_Kong';
+}
 
 type StartScenario = 'short-time' | 'stuck';
 
@@ -804,6 +809,8 @@ export function TodayScreen() {
     makeUpYesterday,
     deleteHabit,
   } = useHabits();
+  const reminderTimeZoneRef = useRef<string | null>(null);
+  const reminderTimeZoneSyncInFlight = useRef(false);
   const [focusHabit, setFocusHabit] = useState<Habit | null>(null);
   const [focusActionIsRecommendation, setFocusActionIsRecommendation] = useState(false);
   const [focusStartPrompt, setFocusStartPrompt] = useState<string | null>(null);
@@ -855,6 +862,41 @@ export function TodayScreen() {
       return () => { active = false; };
     }, []),
   );
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || isLoading) return undefined;
+    let active = true;
+    const syncReminderTimeZone = async () => {
+      const timeZone = getBrowserTimeZone();
+      if (reminderTimeZoneRef.current === timeZone || reminderTimeZoneSyncInFlight.current) return;
+      reminderTimeZoneSyncInFlight.current = true;
+      try {
+        const settings = await readReminderSettings();
+        if (!active || !settings.enabled || !settings.endpoint) return;
+        const localDate = getLocalDate();
+        await updateReminderCheckInStatus({
+          endpoint: settings.endpoint,
+          hasCheckedInToday: habits.some((habit) => habit.checkIns.includes(localDate)),
+          timeZone,
+        });
+        if (active) reminderTimeZoneRef.current = timeZone;
+      } catch {
+        // Keep the previous marker so the next interval or focus can retry.
+      } finally {
+        reminderTimeZoneSyncInFlight.current = false;
+      }
+    };
+    const refreshTimeZone = () => { void syncReminderTimeZone(); };
+    const interval = window.setInterval(refreshTimeZone, 30_000);
+    window.addEventListener('focus', refreshTimeZone);
+    document.addEventListener('visibilitychange', refreshTimeZone);
+    refreshTimeZone();
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshTimeZone);
+      document.removeEventListener('visibilitychange', refreshTimeZone);
+    };
+  }, [habits, isLoading]);
   useEffect(() => {
     let active = true;
     void AsyncStorage.getItem(DAILY_RECAP_REWARD_KEY)
@@ -997,9 +1039,10 @@ export function TodayScreen() {
       const reward = await toggleCheckIn(habit.id, step, rewardAmount);
       recordTodayEarnedCoins(reward);
       if (Platform.OS === 'web') {
-        const wasDone = habit.checkIns.includes(today);
+        const localDate = getLocalDate();
+        const wasDone = habit.checkIns.includes(localDate);
         const hasCheckedInToday = !wasDone || habits.some(
-          (item) => item.id !== habit.id && item.checkIns.includes(today),
+          (item) => item.id !== habit.id && item.checkIns.includes(localDate),
         );
         void readReminderSettings()
           .then((settings) => {
@@ -1008,6 +1051,7 @@ export function TodayScreen() {
               endpoint: settings.endpoint,
               habitId: habit.id,
               hasCheckedInToday,
+              timeZone: getBrowserTimeZone(),
             });
           })
           .catch(() => {});

@@ -132,6 +132,11 @@ export interface ReminderCheckInInput {
      */
   habitId?: string;
   hasCheckedInToday: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  timeZone?: string;
 }
 
 export interface ReminderSnoozeInput {

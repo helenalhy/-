@@ -427,7 +427,7 @@ export default function MallShopInteriorScreen() {
               />
               <View style={[styles.shopTypePill, { backgroundColor: colors.card }]}>
                 <Feather name="shopping-bag" size={13} color={colors.primary} />
-                <Text style={[styles.shopTypeText, { color: colors.primary }]}>{getShopTypeLabel(shop.shopType)}</Text>
+                <Text style={[styles.shopTypeText, { color: colors.primary }]}>{getShopTypeLabel(shop.shopType, shop.id)}</Text>
               </View>
               <Text testID="shop-interior-name" style={[styles.shopName, { color: colors.foreground }]}>{shop.name}</Text>
               <Text style={[styles.shopLocation, { color: colors.mutedForeground }]}>

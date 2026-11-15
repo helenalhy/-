@@ -817,7 +817,7 @@ function resolveProductTheme(
   if (/雪糕|冰淇淋|冰棒|冰沙|gelato|ice.?cream|smoothie/i.test(identity)) return 'icecream';
   if (/烘焙|麵包|曲奇|餅乾|甜甜圈|鬆餅|布丁|馬卡龍|巧克力|甜點|甜品|bakery|pastry/i.test(identity)) return 'bakery';
   if (/奶茶|茶|飲品|飲料|bubble.?tea|tea.?shop|冰飲/i.test(identity)) return 'tea';
-  if (/食堂|食館|小食|飯糰|咖喱|咖哩|披薩|意粉|可麗餅|料理|餐|kitchen|noodle|food/i.test(identity)) return 'food';
+  if (/食堂|食館|小食|飯糰|咖喱|咖哩|披薩|意粉|可麗餅|料理|餐|kitchen|noodle|food|restaurant/i.test(identity)) return 'food';
   if (/花|植物|園藝|苗圃|盆栽|花藝|flower|florist|plant/i.test(identity)) return 'flower';
   if (/書|文具|手帳|紙品|明信片|繪本|漫畫|雜誌|book|stationery/i.test(identity)) return 'book';
   if (/扭蛋|玩偶|玩具|遊戲|模型|積木|卡牌|街機|toy|capsule|arcade/i.test(identity)) return 'toy';

@@ -41,6 +41,8 @@ new Function('require', 'module', 'exports', constantsSource)(
 );
 const {
   getShopInteriorSceneKey,
+  getShopInteriorDecorations,
+  getShopTypeLabel,
   SHOP_INTERIOR_AREAS,
   SHOP_INTERIOR_SLOTS,
   SHOP_INTERIOR_PLACEMENT_IDS,
@@ -61,6 +63,7 @@ test('shop type and all inferred general specialties resolve to stable scene var
     ['toy-capsule-shop', '扭蛋玩具店', 'toy'],
     ['ceramic-studio', '陶土小店', 'craft'],
     ['theme-floor-15-shop-1', '櫻花暖湯紀念店', 'kimono'],
+    ['saint-edward-west-castle-restaurant', '聖愛德華西堡', 'private-club'],
   ];
   for (const [id, name, expected] of specialtyCases) {
     assert.equal(getShopInteriorSceneKey('general', id, name), expected, `${id} uses ${expected} room`);
@@ -74,6 +77,12 @@ test('shop type and all inferred general specialties resolve to stable scene var
   }
   assert.equal(getShopInteriorSceneKey('general', 'unclassified-shop', '小店'), 'general');
   assert.equal(getShopInteriorSceneKey('general', 'tea-room', '花草茶'), 'tea');
+  const clubDecorations = getShopInteriorDecorations('general', 'saint-edward-west-castle-restaurant', '聖愛德華西堡');
+  assert.ok(clubDecorations.length >= 50);
+  assert.ok(clubDecorations.some(({ name }) => name.includes('會員迎賓櫃台')));
+  assert.ok(clubDecorations.some(({ name }) => name.includes('西堡長桌宴席區')));
+  assert.ok(clubDecorations.every(({ name }) => !name.includes('婚紗量身調整台')));
+  assert.equal(getShopTypeLabel('general', 'saint-edward-west-castle-restaurant'), '私人會所餐廳');
 });
 
 test('interior page retains accessible slots and routes placement operations through the selected area key', () => {
@@ -319,9 +328,9 @@ const {
   separateHotspotPoints,
 } = anchorModule.exports;
 
-test('every one of twenty-two scenes defines in-bounds anchors for all eight slots', () => {
+test('every one of twenty-three scenes defines in-bounds anchors for all eight slots', () => {
+  assert.equal(Object.keys(SCENE_ANCHORS).length, 23);
   const slots = ['front-window', 'left-wall', 'center', 'right-wall', 'back-wall', 'counter', 'left-table', 'right-table'];
-  assert.equal(Object.keys(SCENE_ANCHORS).length, 22);
   for (const [scene, anchors] of Object.entries(SCENE_ANCHORS)) {
     assert.deepEqual(Object.keys(anchors).sort(), [...slots].sort(), scene);
     for (const { table, floor } of Object.values(anchors)) {
@@ -331,13 +340,13 @@ test('every one of twenty-two scenes defines in-bounds anchors for all eight slo
   }
 });
 
-test('all 22 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
+test('all 23 shop illustrations fit the scene and keep every slot marker visible in portrait and landscape', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const roomAssetsSource = fs.readFileSync(path.join(__dirname, '../constants/shop-room-images.ts'), 'utf8');
   const sceneAssets = [...roomAssetsSource.matchAll(/require\('\.\.\/assets\/images\/(shop-room-[^']+\.jpg)'\)/g)]
     .map(([, asset]) => asset);
-  assert.equal(sceneAssets.length, 22);
-  assert.equal(new Set(sceneAssets).size, 22);
+  assert.equal(sceneAssets.length, 23);
+  assert.equal(new Set(sceneAssets).size, 23);
   for (const asset of sceneAssets) {
     const assetPath = path.join(__dirname, '../assets/images', asset);
     assert.ok(fs.existsSync(assetPath), `missing scene illustration ${asset}`);

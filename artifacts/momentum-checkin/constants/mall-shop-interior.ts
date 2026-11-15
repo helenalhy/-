@@ -555,7 +555,8 @@ type GeneralShopSpecialty =
   | 'book'
   | 'toy'
   | 'craft'
-  | 'onsen';
+  | 'onsen'
+  | 'privateClub';
 
 const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
   cafe: [
@@ -623,6 +624,12 @@ const generalShopEquipment: Record<GeneralShopSpecialty, DecorationSeed[]> = {
     { key: 'onsen-supply-case', name: '溫泉用品玻璃展示櫃', description: '分格展示入浴鹽、香皂、浴巾與泡湯小物。', icon: 'grid', price: 58, color: c.candyPink, visual: 'onsen-supplies' },
     { key: 'yuzu-steam-kettle', name: '柚香蒸氣暖浴器', description: '以柚子與木香蒸氣營造暖湯氣氛。', icon: 'wind', price: 64, color: c.candyLemon, visual: 'onsen-steamer' },
     { key: 'yukata-care-rack', name: '浴衣與腰帶整理架', description: '掛放浴衣、腰帶與乾爽替換衣物。', icon: 'shopping-bag', price: 56, color: c.candyLavender, visual: 'onsen-yukata-rack' },
+  ],
+  privateClub: [
+    { key: 'members-reception-desk', name: '古堡會員迎賓櫃台', description: '在石拱門旁迎接會所會員與餐廳賓客。', icon: 'home', price: 58, color: c.candyCaramel, visual: 'food-prep' },
+    { key: 'private-dining-table', name: '聖愛德華私人宴席桌', description: '為會所餐廳安排一席雅緻的私人用餐空間。', icon: 'grid', price: 72, color: c.candyPeach, visual: 'tasting-court' },
+    { key: 'castle-menu-board', name: '西堡主廚菜單牌', description: '展示當日餐點與主廚推薦菜色。', icon: 'book-open', price: 38, color: c.candyRose, visual: 'gallery-frames' },
+    { key: 'club-service-console', name: '金邊餐飲服務台', description: '整理餐具、餐巾與桌邊服務用品。', icon: 'coffee', price: 52, color: c.candyLemon, visual: 'food-prep' },
   ],
 };
 
@@ -696,6 +703,7 @@ const shopEquipment: Record<Exclude<MallShopType, 'general'>, DecorationSeed[]> 
 };
 
 const generalSpecialtyPatterns: [GeneralShopSpecialty, RegExp][] = [
+  ['privateClub', /saint-edward-west-castle|聖愛德華西堡|私人會所/i],
   ['onsen', /溫泉|櫻花暖湯|湯宿|湯煙|泡湯|onsen|hot.?spring/i],
   ['cafe', /咖啡|coffee|cafe|烘豆/i],
   ['candy', /糖果|軟糖|棉花糖|彩糖|糖藝|糖霜|candy|sweets/i],
@@ -792,6 +800,20 @@ const GENERAL_SPECIALTY_FIXTURES: Record<GeneralShopSpecialty, DecorationFixture
     specialtyFixture('food', 'family-table', '家庭共享餐桌', '為一起用餐的客人準備座位。', 'grid', 39, 'tasting-court'),
     specialtyFixture('food', 'market-lamp', '市集暖香路燈', '為熱食攤位添上一盞暖色小燈。', 'sun', 26, 'garden-lights'),
   ],
+  privateClub: [
+    specialtyFixture('privateClub', 'stone-arch-lounge', '石拱門會員休息廳', '以暖色軟座迎接會所會員，延續古堡石拱廊氛圍。', 'home', 46, 'rest-pavilion'),
+    specialtyFixture('privateClub', 'reservation-stand', '餐廳訂席迎賓台', '整理私人宴席預約與迎賓安排。', 'book-open', 38, 'food-prep'),
+    specialtyFixture('privateClub', 'castle-banquet-table', '西堡長桌宴席區', '讓賓客在木雕長桌旁享用會所餐點。', 'grid', 48, 'tasting-court'),
+    specialtyFixture('privateClub', 'silverware-cabinet', '銀器與瓷器展示櫃', '展示餐盤、茶具和細緻餐具。', 'gift', 42, 'jewelry-case'),
+    specialtyFixture('privateClub', 'chef-recommendation-board', '主廚精選餐牌', '介紹每日套餐、甜點與無酒精飲品。', 'image', 32, 'gallery-frames'),
+    specialtyFixture('privateClub', 'members-crest-frame', '會員徽章古典畫框', '以原創盾形徽章裝飾私人會所牆面。', 'shield', 34, 'gallery-frames'),
+    specialtyFixture('privateClub', 'velvet-dining-bench', '絲絨餐廳長椅', '為靠牆餐席增添柔軟舒適的座位。', 'heart', 40, 'wooden-bench'),
+    specialtyFixture('privateClub', 'brass-castle-sconce', '古堡黃銅壁燈', '用溫暖燈光照亮石牆與餐桌。', 'sun', 30, 'garden-lights'),
+    specialtyFixture('privateClub', 'dessert-trolley', '餐後甜點推車', '推送小蛋糕、水果塔和茶點。', 'shopping-bag', 44, 'food-prep'),
+    specialtyFixture('privateClub', 'private-room-divider', '雕花私人包廂屏風', '為會所餐廳分隔出安靜的用餐包廂。', 'columns', 50, 'rest-pavilion'),
+    specialtyFixture('privateClub', 'dining-room-reservation-card', '會員餐席預約牌', '標示今日包廂與宴席安排。', 'book-open', 28, 'gallery-frames'),
+    specialtyFixture('privateClub', 'castle-tea-service-cart', '古堡茶點服務推車', '端上茶飲與無酒精餐後小點。', 'coffee', 36, 'food-prep'),
+  ],
   flower: [
     specialtyFixture('flower', 'bouquet-wall', '季節花束展示牆', '按花色展示每日新鮮花束。', 'feather', 37, 'flower-station'),
     specialtyFixture('flower', 'seedling-rack', '小苗與種子木架', '排列盆栽幼苗、種子與栽培小包。', 'grid', 32, 'colorful-planter'),
@@ -860,7 +882,7 @@ function inferGeneralShopSpecialty(shopId = '', shopName = ''): GeneralShopSpeci
 }
 
 export type ShopInteriorSceneKey =
-  | 'general' | 'cafe' | 'candy' | 'icecream' | 'bakery' | 'tea' | 'food' | 'flower' | 'book' | 'toy' | 'craft'
+  | 'general' | 'cafe' | 'candy' | 'icecream' | 'bakery' | 'tea' | 'food' | 'private-club' | 'flower' | 'book' | 'toy' | 'craft'
   | 'womenswear' | 'bridal' | 'eveningwear' | 'kimono' | 'supermarket' | 'hyakuen'
   | 'swimwear' | 'cosplay' | 'electronics' | 'boutique' | 'cosmetics';
 
@@ -871,6 +893,7 @@ const GENERAL_SCENE_BY_SPECIALTY: Record<GeneralShopSpecialty, ShopInteriorScene
   bakery: 'bakery',
   tea: 'tea',
   food: 'food',
+  privateClub: 'private-club',
   flower: 'flower',
   book: 'book',
   toy: 'toy',
@@ -938,7 +961,7 @@ const variantDecorations = (
 };
 
 const specialtyVariantDecorations = (specialty: GeneralShopSpecialty) =>
-  variantDecorations('general', 10, GENERAL_SPECIALTY_FIXTURES[specialty]);
+  variantDecorations('general', specialty === 'privateClub' ? 12 : 10, GENERAL_SPECIALTY_FIXTURES[specialty]);
 
 const featureDecorations = (type: MallShopType): ShopInteriorDecoration[] =>
   (signatureDecorations[type] ?? []).map((seed) =>
@@ -1112,7 +1135,7 @@ export function getShopInteriorDecorations(
   const specialty = type === 'general' ? inferGeneralShopSpecialty(shopId, shopName) : undefined;
   const active = type === 'general' && specialty
     ? [
-      ...legacyDecorations.general,
+      ...(specialty === 'privateClub' ? [] : legacyDecorations.general),
       ...specialtyVariantDecorations(specialty),
       ...specialtyEquipment('general', specialty),
     ]
@@ -1134,7 +1157,8 @@ export function getShopInteriorDecorations(
   return [...personalized, ...ownedLegacy];
 }
 
-export function getShopTypeLabel(shopType?: MallShopType): string {
+export function getShopTypeLabel(shopType?: MallShopType, shopId?: string): string {
+  if (shopId === 'saint-edward-west-castle-restaurant') return '私人會所餐廳';
   const labels: Record<MallShopType, string> = {
     general: '特色商店',
     womenswear: '女裝店',

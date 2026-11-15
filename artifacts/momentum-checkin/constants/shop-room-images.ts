@@ -8,6 +8,7 @@ export const SHOP_ROOM_IMAGES: Record<ShopInteriorSceneKey, number> = {
   bakery: require('../assets/images/shop-room-bakery.jpg'),
   tea: require('../assets/images/shop-room-tea.jpg'),
   food: require('../assets/images/shop-room-food.jpg'),
+  'private-club': require('../assets/images/shop-room-saint-edward-club.jpg'),
   flower: require('../assets/images/shop-room-florist.jpg'),
   book: require('../assets/images/shop-room-bookshop.jpg'),
   toy: require('../assets/images/shop-room-toy.jpg'),

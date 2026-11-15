@@ -620,6 +620,110 @@ test('DST spring-forward and fall-back advance local reward dates exactly once',
   }
 });
 
+test('Europe/London DST days roll rewards over once at local midnight', async () => {
+  const OriginalDate = global.Date;
+  const originalTimezone = process.env.TZ;
+  process.env.TZ = 'Europe/London';
+
+  const transitions = [
+    {
+      name: 'spring-forward',
+      start: [2026, 2, 29, 0, 0, 0],
+      next: [2026, 2, 30, 0, 0, 0],
+      startDate: '2026-03-29',
+      nextDate: '2026-03-30',
+      elapsed: 23 * 60 * 60 * 1000,
+    },
+    {
+      name: 'fall-back',
+      start: [2026, 9, 25, 0, 0, 0],
+      next: [2026, 9, 26, 0, 0, 0],
+      startDate: '2026-10-25',
+      nextDate: '2026-10-26',
+      elapsed: 25 * 60 * 60 * 1000,
+    },
+  ];
+
+  try {
+    for (const transition of transitions) {
+      let clock = new OriginalDate(...transition.start);
+      const nextMidnight = new OriginalDate(...transition.next);
+      assert.equal(
+        nextMidnight.getTime() - clock.getTime(),
+        transition.elapsed,
+        `${transition.name} is the expected local-day length in Europe/London`,
+      );
+
+      global.Date = class ControlledDate extends OriginalDate {
+        constructor(...args) {
+          if (args.length === 0) super(clock.getTime());
+          else super(...args);
+        }
+
+        static now() {
+          return clock.getTime();
+        }
+      };
+
+      const app = createHarness();
+      app.renderProvider();
+      await app.runEffects('provider');
+      app.renderProvider();
+
+      assert.equal(
+        app.contextExports.useHabits().today,
+        transition.startDate,
+        `${transition.name} starts on the expected London date`,
+      );
+      assert.equal(
+        await app.contextExports.useHabits().toggleCheckIn('starter-walk'),
+        20,
+        `${transition.name} date grants its first reward`,
+      );
+      app.renderProvider();
+      assert.equal(
+        await app.contextExports.useHabits().toggleCheckIn('starter-walk'),
+        0,
+        `${transition.name} date cannot reward the same goal twice`,
+      );
+      app.renderProvider();
+
+      clock = nextMidnight;
+      app.runNextTimer(transition.elapsed);
+      app.renderProvider();
+
+      assert.equal(
+        app.contextExports.useHabits().today,
+        transition.nextDate,
+        `${transition.name} local midnight advances to exactly the next date`,
+      );
+      assert.equal(
+        await app.contextExports.useHabits().toggleCheckIn('starter-walk'),
+        20,
+        'the goal earns its first reward on the new London date',
+      );
+      app.renderProvider();
+      assert.equal(
+        await app.contextExports.useHabits().toggleCheckIn('starter-walk'),
+        0,
+        'the goal cannot earn twice on the new London date',
+      );
+      app.renderProvider();
+
+      const state = app.contextExports.useHabits();
+      assert.equal(state.coins, 40, 'the goal earns once on each local calendar date');
+      assert.deepEqual(
+        JSON.parse(app.storage.get(storageKeys.mall)).rewardedCheckIns,
+        [`starter-walk:${transition.startDate}`, `starter-walk:${transition.nextDate}`],
+      );
+    }
+  } finally {
+    global.Date = OriginalDate;
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
+});
+
 test('timezone changes refresh today while earned rewards stay on their original local date', async () => {
   const OriginalDate = global.Date;
   const originalTimezone = process.env.TZ;

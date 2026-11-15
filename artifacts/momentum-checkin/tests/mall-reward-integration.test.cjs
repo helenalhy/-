@@ -334,6 +334,25 @@ function createHarness() {
     }
   }
 
+  function emitAppState(state) {
+    const originalSetTimeout = global.setTimeout;
+    const originalClearTimeout = global.clearTimeout;
+    global.setTimeout = (callback, delay) => {
+      const timer = { callback, delay, cleared: false };
+      scheduledTimers.push(timer);
+      return timer;
+    };
+    global.clearTimeout = (timer) => {
+      if (timer) timer.cleared = true;
+    };
+    try {
+      for (const listener of appStateListeners) listener(state);
+    } finally {
+      global.setTimeout = originalSetTimeout;
+      global.clearTimeout = originalClearTimeout;
+    }
+  }
+
   const contextExports = loadTsModule(path.join(appRoot, 'context/HabitsContext.tsx'));
   const mallScreen = loadTsModule(path.join(appRoot, 'app/(tabs)/mall.tsx'));
   const shopInteriorScreen = loadTsModule(path.join(appRoot, 'app/mall-shop/[itemId].tsx'));
@@ -359,6 +378,7 @@ function createHarness() {
     renderToday,
     runEffects,
     runNextTimer,
+    emitAppState,
     failNextStorageWrite: (key, error = new Error('simulated storage failure')) => {
       nextSetItemFailure = { key, error };
     },
@@ -515,6 +535,76 @@ test('today and first check-in reward roll over after local midnight without dup
     assert.deepEqual(
       JSON.parse(app.storage.get(storageKeys.mall)).rewardedCheckIns,
       [`starter-walk:${yesterday}`, `starter-walk:${today}`],
+    );
+  } finally {
+    global.Date = OriginalDate;
+  }
+});
+
+test('resuming after midnight refreshes today and makes the new date reward available once', async () => {
+  const OriginalDate = global.Date;
+  let clock = new OriginalDate(2026, 3, 1, 23, 59, 50);
+  global.Date = class ControlledDate extends OriginalDate {
+    constructor(...args) {
+      if (args.length === 0) super(clock.getTime());
+      else super(...args);
+    }
+
+    static now() {
+      return clock.getTime();
+    }
+  };
+
+  try {
+    const app = createHarness();
+    app.renderProvider();
+    await app.runEffects('provider');
+    app.renderProvider();
+
+    const yesterday = app.contextExports.getLocalDate();
+    assert.equal(
+      await app.contextExports.useHabits().toggleCheckIn('starter-walk'),
+      20,
+      'the goal earns its reward before the app is suspended',
+    );
+    app.renderProvider();
+    assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 0);
+    app.renderProvider();
+
+    app.emitAppState('inactive');
+    clock = new OriginalDate(2026, 3, 2, 0, 0, 1);
+    app.emitAppState('active');
+    app.renderProvider();
+
+    const today = app.contextExports.getLocalDate();
+    const state = app.contextExports.useHabits();
+    assert.notEqual(today, yesterday);
+    assert.equal(state.today, today, 'Today state refreshes to the local date after resume');
+    assert.equal(state.getCheckInReward('starter-walk'), 20);
+
+    const todayTree = app.renderToday();
+    const dateLabel = `${clock.getMonth() + 1} 月 ${clock.getDate()} 日`;
+    assert.ok(textContent(todayTree).includes(dateLabel), 'the Today screen shows the resumed local date');
+    const row = findNodes(todayTree, (node) =>
+      typeof node.type === 'function'
+      && node.type.name === 'HabitRow'
+      && node.props?.habit?.id === 'starter-walk',
+    )[0];
+    assert.ok(row, 'the goal remains available after resuming');
+    assert.equal(row.props.done, false, 'yesterday’s completion does not mark today complete');
+    assert.equal(row.props.reward, 20, 'the new date offers its first-check-in reward');
+
+    assert.equal(await state.toggleCheckIn('starter-walk'), 20);
+    app.renderProvider();
+    assert.equal(await app.contextExports.useHabits().toggleCheckIn('starter-walk'), 0);
+    app.renderProvider();
+
+    const resumedState = app.contextExports.useHabits();
+    assert.equal(resumedState.coins, 40, 'the goal earns once on each local date');
+    assert.deepEqual(
+      JSON.parse(app.storage.get(storageKeys.mall)).rewardedCheckIns,
+      [`starter-walk:${yesterday}`, `starter-walk:${today}`],
+      'the prior-date reward remains recorded once and the new date has its own claim',
     );
   } finally {
     global.Date = OriginalDate;

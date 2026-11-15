@@ -2762,3 +2762,73 @@ test('original companion art keeps the uploaded dog-scene background behind it',
   assert.match(modal, /blurRadius=\{18\}/);
   assert.match(modal, /originalDogBackdropTint/);
 });
+
+test('Huahua lion ears and Tangtang bear ears match in the look card, profile, and shop scene', async () => {
+  const app = createHarness();
+  const shop = app.mallCatalog.MALL_ITEMS.find((item) => item.id === 'fluffy-marshmallow-cafe');
+  const targetDogs = [
+    { key: 'fluffy-staff-huahua', id: 'general-fluffy-staff-huahua', kind: 'huahua', accessoryIndex: 1, ear: 'lion' },
+    { key: 'fluffy-staff-tangtang', id: 'general-fluffy-staff-tangtang', kind: 'tangtang', accessoryIndex: 2, ear: 'bear' },
+  ];
+  assert.ok(shop);
+  app.storage.set(storageKeys.mall, JSON.stringify({
+    schemaVersion: 3,
+    coins: 500,
+    purchasedItems: [shop.id],
+    rewardedCheckIns: [],
+    rewardTokens: { facility: 0, shop: 0, decor: 0 },
+    placements: {},
+    shopInteriors: {},
+  }));
+  app.renderProvider();
+  await app.runEffects('provider');
+  app.renderProvider();
+  app.setLocalSearchParams({ itemId: shop.id });
+
+  let interiorTree = app.renderShopInterior();
+  let customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  for (const dog of targetDogs) {
+    await press(customizerTree, `dog-staff-select-${dog.key}`);
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    await press(customizerTree, `dog-staff-redeem-${dog.key}`);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  }
+
+  await press(customizerTree, 'dog-staff-tab-accessory');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  await press(customizerTree, 'dog-staff-accessory-filter-animal-ears');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+  for (const dog of targetDogs) {
+    await press(customizerTree, `dog-staff-select-${dog.key}`);
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+    const choiceId = `${dog.id}:accessory:animal-ears:${dog.ear}`;
+    const lookCard = findByTestId(
+      customizerTree,
+      `dog-staff-look-${dog.key}-accessory-${dog.accessoryIndex}`,
+    );
+    assert.ok(lookCard, `${dog.ear} hat is available in the filtered catalog`);
+    const cardDog = findNodes(lookCard, (node) => node.type?.name === 'DogAttendant')[0];
+    assert.equal(cardDog?.props.kind, dog.kind);
+    assert.equal(cardDog?.props.accessoryId, choiceId, `${dog.ear} hat appears on its look card`);
+
+    await press(customizerTree, `dog-staff-look-${dog.key}-accessory-${dog.accessoryIndex}`);
+    app.renderProvider();
+    interiorTree = app.renderShopInterior();
+    customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+    const savedLook = app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[dog.id];
+    assert.equal(savedLook.accessoryId, choiceId, `${dog.ear} hat is saved for the right dog`);
+    const matchingPreviews = findNodes(
+      customizerTree,
+      (node) => node.type?.name === 'DogAttendant' && node.props.accessoryId === choiceId,
+    );
+    assert.ok(matchingPreviews.length >= 2, 'the profile preview and selected look card show the saved hat');
+
+    const sceneTree = app.renderShopInteriorScene(interiorTree);
+    const walker = findByTestId(sceneTree, `dog-staff-walker-${dog.key}`);
+    assert.equal(walker?.props.look.accessoryId, choiceId, `${dog.ear} hat carries into the shop scene`);
+  }
+});

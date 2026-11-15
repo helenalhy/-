@@ -374,6 +374,28 @@ test('dog outfit previews and controls stay clear and operable on narrow screens
   assert.match(attendant, /canvas: \{ width: 50, height: 45/);
 });
 
+test('lion and bear ear hats have distinct silhouettes that stay above the eyes', () => {
+  const attendant = fs.readFileSync(path.join(__dirname, '../components/DogAttendant.tsx'), 'utf8');
+  const styleDimensions = (styleName) => {
+    const declaration = attendant.match(new RegExp(`${styleName}: \\{([^}]+)\\}`))?.[1];
+    assert.ok(declaration, `${styleName} is defined`);
+    return Object.fromEntries(
+      [...declaration.matchAll(/(width|height|top): (\d+)/g)].map(([, key, value]) => [key, Number(value)]),
+    );
+  };
+  const animalEarMapping = attendant.match(/const animalEarShape = animalEarKind[\s\S]*?\)\[animalEarKind\]/)?.[0];
+  assert.match(animalEarMapping ?? '', /lion: s\.lionAnimalEar/);
+  assert.match(animalEarMapping ?? '', /bear: s\.bearAnimalEar/);
+
+  const lion = styleDimensions('lionAnimalEar');
+  const bear = styleDimensions('bearAnimalEar');
+  assert.notDeepEqual([lion.width, lion.height], [bear.width, bear.height]);
+  const eyeTop = styleDimensions('head').top + styleDimensions('eye').top;
+  assert.ok(Math.max(lion.height, bear.height) < eyeTop, 'neither hat ear reaches the eyes');
+  const hatBand = styleDimensions('animalEarHatBand');
+  assert.ok(hatBand.top + hatBand.height < eyeTop, 'the headband stays on the forehead, clear of the eyes');
+});
+
 test('all fourteen dogs get distinct illustrated care colors and five-second action animations', () => {
   const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
   const colorBlock = scene.match(/const DOG_CARE_COLOR_TOKENS:[\s\S]*?\n};/)?.[0];

@@ -51,11 +51,11 @@ export function DogAttendant({
   const animalEarColor = accessory?.shape === 'animal-ears' ? accessory.color : outfit?.color;
   const animalEarAccent = accessory?.shape === 'animal-ears' ? accessory.accentColor : outfit?.accentColor;
   const animalEarShape = animalEarKind ? ({
-    lion: s.roundAnimalEar,
+    lion: s.lionAnimalEar,
     rabbit: s.longAnimalEar,
     fox: s.pointedAnimalEar,
     duck: s.shortAnimalEar,
-    bear: s.roundAnimalEar,
+    bear: s.bearAnimalEar,
     cat: s.pointedAnimalEar,
     deer: s.pointedAnimalEar,
     koala: s.largeRoundAnimalEar,
@@ -362,6 +362,8 @@ const s = StyleSheet.create({
   leftAnimalEar: { left: 3, transform: [{ rotate: '-22deg' }] },
   rightAnimalEar: { right: 3, transform: [{ rotate: '22deg' }] },
   roundAnimalEar: { borderRadius: 7 },
+  lionAnimalEar: { width: 9, height: 8, borderRadius: 6, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  bearAnimalEar: { width: 11, height: 10, borderRadius: 8 },
   longAnimalEar: { width: 7, height: 14, borderTopLeftRadius: 4, borderTopRightRadius: 5, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
   pointedAnimalEar: { width: 8, height: 12, borderTopLeftRadius: 2, borderTopRightRadius: 7, borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
   shortAnimalEar: { width: 8, height: 7, borderRadius: 5 },

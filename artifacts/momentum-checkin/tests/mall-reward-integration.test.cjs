@@ -1899,10 +1899,45 @@ test('animal ear hat filter finds Huahua and Tangtang styles without saving a lo
   const huahuaLookBeforeFilter = { ...app.contextExports.useHabits().shopInteriors[shop.id].dogStaffLooks[huahuaId] };
   await press(customizerTree, 'dog-staff-tab-accessory');
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
-  assert.ok(findByTestId(customizerTree, 'dog-staff-accessory-filter-all'));
-  assert.ok(findByTestId(customizerTree, 'dog-staff-accessory-filter-animal-ears'));
+  const accessoryFilterGroup = findByTestId(customizerTree, 'dog-staff-accessory-filter-group');
+  assert.equal(accessoryFilterGroup.props.accessibilityRole, 'radiogroup');
+  assert.equal(accessoryFilterGroup.props.accessibilityLabel, '配飾分類');
+  const allFilter = findByTestId(customizerTree, 'dog-staff-accessory-filter-all');
+  const animalEarsFilter = findByTestId(customizerTree, 'dog-staff-accessory-filter-animal-ears');
+  assert.equal(allFilter.props.accessibilityRole, 'radio');
+  assert.equal(allFilter.props.accessibilityState.checked, true);
+  assert.equal(animalEarsFilter.props.accessibilityRole, 'radio');
+  assert.equal(animalEarsFilter.props.accessibilityLabel, '動物耳朵帽 10 款');
+  assert.equal(animalEarsFilter.props.accessibilityState.checked, false);
+
+  const earsButtonStyle = animalEarsFilter.props.style.find((style) => style?.minHeight === 44);
+  const earsButtonText = findByTestId(customizerTree, 'dog-staff-accessory-filter-label-animal-ears');
+  const earsTextStyle = earsButtonText.props.style.find((style) => style?.flexShrink === 1);
+  assert.equal(earsButtonStyle.maxWidth, '100%', 'the filter button can shrink to the available width');
+  assert.equal(earsButtonStyle.paddingVertical, 8, 'the button allows scaled text to increase its height');
+  assert.ok(earsTextStyle, 'the label can wrap instead of overflowing on narrow screens');
+  assert.notEqual(earsButtonText.props.allowFontScaling, false, 'the label keeps native font scaling enabled');
+
+  app.setPlatform('ios');
+  const priorAnnouncements = app.announcements.length;
   await press(customizerTree, 'dog-staff-accessory-filter-animal-ears');
   customizerTree = app.renderDogStaffCustomizer(interiorTree);
+
+  assert.equal(findByTestId(customizerTree, 'dog-staff-accessory-filter-all').props.accessibilityState.checked, false);
+  assert.equal(findByTestId(customizerTree, 'dog-staff-accessory-filter-animal-ears').props.accessibilityState.checked, true);
+  assert.equal(
+    app.announcements[priorAnnouncements],
+    '已選擇動物耳朵帽，顯示 10 款配飾。',
+    'iOS screen readers hear the selected filter and matching result count',
+  );
+  assert.equal(textContent(findByTestId(customizerTree, 'dog-staff-accessory-filter-results')), '顯示 10 款配飾');
+  app.setPlatform('android');
+  customizerTree = app.renderDogStaffCustomizer(interiorTree);
+  assert.equal(
+    findByTestId(customizerTree, 'dog-staff-accessory-filter-results').props.accessibilityLiveRegion,
+    'polite',
+    'Android screen readers are notified when the result count changes',
+  );
 
   assert.match(textContent(customizerTree), /花花・獅子耳朵帽/);
   assert.doesNotMatch(textContent(customizerTree), /草莓蝴蝶結/);

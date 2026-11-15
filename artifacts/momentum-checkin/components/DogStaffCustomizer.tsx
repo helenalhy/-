@@ -180,6 +180,17 @@ export function DogStaffCustomizer({
     }
   }
 
+  function selectAccessoryFilter(filter: AccessoryFilter, resultCount: number) {
+    setAccessoryFilter(filter);
+    setPage(1);
+    setNotice('');
+    if (Platform.OS === 'ios') {
+      AccessibilityInfo.announceForAccessibility(
+        `已選擇${filter === 'all' ? '全部' : '動物耳朵帽'}，顯示 ${resultCount} 款配飾。`,
+      );
+    }
+  }
+
   async function chooseLook(choiceId: string) {
     if (savingLook || !isOwned) return;
     const nextLook: DogStaffLook = activeTab === 'accessory'
@@ -561,7 +572,12 @@ export function DogStaffCustomizer({
           </View>
 
           {activeTab === 'accessory' ? (
-            <View style={styles.accessoryFilters} accessibilityLabel="配飾分類">
+            <View
+              testID="dog-staff-accessory-filter-group"
+              style={styles.accessoryFilters}
+              accessibilityRole="radiogroup"
+              accessibilityLabel="配飾分類"
+            >
               {([
                 ['all', `全部 ${catalog.accessories.length} 款`],
                 ['animal-ears', `動物耳朵帽 ${catalog.accessories.filter(({ shape }) => shape === 'animal-ears').length} 款`],
@@ -571,13 +587,14 @@ export function DogStaffCustomizer({
                   <Pressable
                     key={filter}
                     testID={`dog-staff-accessory-filter-${filter}`}
-                    accessibilityRole="button"
+                    accessibilityRole="radio"
                     accessibilityLabel={label}
-                    accessibilityState={{ selected }}
+                    accessibilityState={{ checked: selected }}
                     onPress={() => {
-                      setAccessoryFilter(filter);
-                      setPage(1);
-                      setNotice('');
+                      const resultCount = filter === 'all'
+                        ? catalog.accessories.length
+                        : catalog.accessories.filter(({ shape }) => shape === 'animal-ears').length;
+                      selectAccessoryFilter(filter, resultCount);
                     }}
                     style={[
                       styles.accessoryFilter,
@@ -587,13 +604,26 @@ export function DogStaffCustomizer({
                       },
                     ]}
                   >
-                    <Text style={[styles.accessoryFilterText, { color: selected ? colors.primary : colors.mutedForeground }]}>
+                    <Text
+                      testID={`dog-staff-accessory-filter-label-${filter}`}
+                      style={[styles.accessoryFilterText, { color: selected ? colors.primary : colors.mutedForeground }]}
+                    >
                       {label}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+          ) : null}
+          {activeTab === 'accessory' ? (
+            <Text
+              testID="dog-staff-accessory-filter-results"
+              accessibilityRole="text"
+              accessibilityLiveRegion={Platform.OS === 'android' ? 'polite' : undefined}
+              style={[styles.accessoryFilterResults, { color: colors.mutedForeground }]}
+            >
+              顯示 {choices.length} 款配飾
+            </Text>
           ) : null}
 
           <View style={styles.lookPager}>
@@ -731,8 +761,9 @@ const styles = StyleSheet.create({
   tab: { flex: 1, minWidth: 0, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tabText: { fontSize: 10, fontWeight: '800', textAlign: 'center', lineHeight: 14 },
   accessoryFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  accessoryFilter: { minHeight: 38, borderWidth: 1, borderRadius: 12, justifyContent: 'center', paddingHorizontal: 12 },
-  accessoryFilterText: { fontSize: 10, fontWeight: '800' },
+  accessoryFilter: { minHeight: 44, maxWidth: '100%', borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 8 },
+  accessoryFilterText: { flexShrink: 1, fontSize: 12, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
+  accessoryFilterResults: { fontSize: 12, lineHeight: 18 },
   lookPager: { minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pageCount: { fontSize: 10, fontWeight: '700' },
   pageActions: { flexDirection: 'row', gap: 7 },

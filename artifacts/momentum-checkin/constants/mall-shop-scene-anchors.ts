@@ -110,7 +110,8 @@ export function clampHotspotPoint(
   width: number,
   height: number,
   horizontalInset = 42,
-  topInset = 50,
+  // Largest floor props remain below the shop-name plaque.
+  topInset = 102,
   bottomInset = 18,
 ): AnchorPoint {
   return {
@@ -119,11 +120,16 @@ export function clampHotspotPoint(
   };
 }
 
-/** Nudges crowded controls while keeping them close to their scene-specific furniture anchors. */
+/**
+ * Keeps object footprints, empty markers, and their labels apart. The vertical
+ * clearance accounts for a 1.2x floor object above its anchor and a label below.
+ */
 export function separateHotspotPoints(points: AnchorPoint[], width: number, height: number): AnchorPoint[] {
-  if (width <= 320 && width >= 252 && height >= 252) {
+  if (width <= 320 && width >= 288 && height >= 288) {
     const compactColumns = [42, width / 2, width - 42];
-    const compactRows = [50, height / 2, height - 18];
+    const topRow = 102;
+    const bottomRow = height - 18;
+    const compactRows = [topRow, (topRow + bottomRow) / 2, bottomRow];
     const available = compactRows.flatMap((y) => compactColumns.map((x) => ({ x, y })));
     const placed: AnchorPoint[] = [];
     for (const point of points) {
@@ -144,7 +150,7 @@ export function separateHotspotPoints(points: AnchorPoint[], width: number, heig
 
   const laidOut: AnchorPoint[] = [];
   const collides = (candidate: AnchorPoint) => laidOut.some((point) => (
-    Math.abs(candidate.x - point.x) < 84 && Math.abs(candidate.y - point.y) < 58
+    Math.abs(candidate.x - point.x) < 84 && Math.abs(candidate.y - point.y) < 76
   ));
 
   for (const rawPoint of points) {

@@ -139,14 +139,14 @@ test('all interior controls and labels stay separate within a narrow phone scene
       assert.equal(points.length, 8, `${sceneKey} keeps all eight controls at ${width}px`);
       for (const point of points) {
         assert.ok(point.x >= 42 && point.x <= width - 42, `${sceneKey} label fits horizontally at ${width}px`);
-        assert.ok(point.y >= 50 && point.y <= height - 18, `${sceneKey} label fits vertically at ${width}px`);
+        assert.ok(point.y >= 102 && point.y <= height - 18, `${sceneKey} label fits vertically at ${width}px`);
       }
       for (let first = 0; first < points.length; first += 1) {
         for (let second = first + 1; second < points.length; second += 1) {
           const xDistance = Math.abs(points[first].x - points[second].x);
           const yDistance = Math.abs(points[first].y - points[second].y);
           assert.ok(
-            xDistance >= 84 || yDistance >= 68,
+            xDistance >= 84 || yDistance >= 76,
             `${sceneKey} labels and touch areas do not overlap at ${width}px`,
           );
         }
@@ -156,6 +156,131 @@ test('all interior controls and labels stay separate within a narrow phone scene
 
   assert.match(scene, /imageStage: \{ width: '100%', maxWidth: 510, aspectRatio: 1/);
   assert.match(scene, /slotLabelPill: \{[\s\S]*?maxWidth: 84/);
+});
+
+test('placed objects and unused slot labels stay clear after portrait or landscape rotation', () => {
+  const scene = fs.readFileSync(path.join(__dirname, '../components/ShopInteriorScene.tsx'), 'utf8');
+  const page = fs.readFileSync(path.join(__dirname, '../app/mall-shop/[itemId].tsx'), 'utf8');
+  const shopCases = {
+    cafe: {
+      counter: { id: 'cafe-espresso-machine', visual: 'coffee-machine' },
+      'left-table': { id: 'cafe-pastry-oven', visual: 'bakery-oven' },
+      'right-wall': { id: 'cafe-neon-sign', visual: 'neon-sign' },
+    },
+    womenswear: {
+      'front-window': { id: 'fashion-wardrobe', visual: 'clothing-wardrobe' },
+      counter: { id: 'fashion-sewing-station', visual: 'sewing' },
+      'right-wall': { id: 'fashion-wall-mirror', visual: 'mirror' },
+    },
+    cosmetics: {
+      'left-wall': { id: 'cosmetics-display-case', visual: 'display-case' },
+      center: { id: 'cosmetics-lipstick-stand', visual: 'jewelry' },
+      'back-wall': { id: 'cosmetics-wall-sign', visual: 'neon-sign' },
+    },
+  };
+  const orientations = [
+    { name: 'narrow portrait', viewport: { width: 288, height: 640 }, stageWidth: 288 },
+    { name: 'landscape', viewport: { width: 640, height: 288 }, stageWidth: 510 },
+  ];
+
+  for (const { name: orientation, viewport, stageWidth } of orientations) {
+    assert.ok(stageWidth <= viewport.width, `${orientation} scene fits the available viewport width`);
+    for (const [sceneKey, placements] of Object.entries(shopCases)) {
+      const stageHeight = stageWidth;
+      const slots = Object.keys(SCENE_ANCHORS[sceneKey]);
+      const rawPoints = slots.map((slot) => {
+        const decoration = placements[slot];
+        const profile = decoration ? classifyDecoration(decoration) : { cls: 'tabletop' };
+        return mapCoverPoint(
+          resolveObjectAnchor(sceneKey, slot, profile.cls),
+          stageWidth,
+          stageHeight,
+        );
+      });
+      const points = separateHotspotPoints(rawPoints, stageWidth, stageHeight);
+      const pointBySlot = Object.fromEntries(slots.map((slot, index) => [slot, points[index]]));
+      const placedObjects = Object.entries(placements).map(([slot, decoration]) => {
+        const point = pointBySlot[slot];
+        const profile = classifyDecoration(decoration);
+        const visualHeight = 47 * profile.scale;
+        const visualWidth = 62 * profile.scale;
+        return {
+          slot,
+          bounds: {
+            left: point.x - visualWidth / 2,
+            right: point.x + visualWidth / 2,
+            top: point.y - visualHeight,
+            bottom: point.y,
+          },
+        };
+      });
+      const labels = slots.map((slot) => {
+        const point = pointBySlot[slot];
+        return {
+          slot,
+          bounds: { left: point.x - 42, right: point.x + 42, top: point.y + 1, bottom: point.y + 17 },
+        };
+      });
+      const emptyMarkers = slots
+        .filter((slot) => !placements[slot])
+        .map((slot) => {
+          const point = pointBySlot[slot];
+          return {
+            slot,
+            bounds: { left: point.x - 19, right: point.x + 19, top: point.y - 38, bottom: point.y },
+          };
+        });
+      const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      const plaque = {
+        left: stageWidth * 0.14,
+        right: stageWidth * 0.86,
+        top: 12,
+        bottom: 42,
+      };
+
+      for (const { slot, bounds } of placedObjects) {
+        assert.ok(bounds.left >= 0 && bounds.right <= stageWidth, `${sceneKey}/${slot} object stays in bounds at ${orientation}`);
+        assert.ok(bounds.top >= 0 && bounds.bottom <= stageHeight, `${sceneKey}/${slot} object is not vertically cropped at ${orientation}`);
+        assert.ok(!overlaps(bounds, plaque), `${sceneKey}/${slot} object does not cover the shop name at ${orientation}`);
+        for (const label of labels) {
+          if (label.slot === slot) continue;
+          assert.ok(
+            !overlaps(bounds, label.bounds),
+            `${sceneKey}/${slot} object does not cover the ${label.slot} position label at ${orientation}`,
+          );
+        }
+        for (const marker of emptyMarkers) {
+          assert.ok(
+            !overlaps(bounds, marker.bounds),
+            `${sceneKey}/${slot} object does not cover the unused ${marker.slot} marker at ${orientation}`,
+          );
+        }
+      }
+      for (let first = 0; first < placedObjects.length; first += 1) {
+        for (let second = first + 1; second < placedObjects.length; second += 1) {
+          assert.ok(
+            !overlaps(placedObjects[first].bounds, placedObjects[second].bounds),
+            `${sceneKey} ${placedObjects[first].slot} and ${placedObjects[second].slot} objects stay distinct at ${orientation}`,
+          );
+        }
+      }
+      for (const { slot, bounds } of labels) {
+        assert.ok(bounds.left >= 0 && bounds.right <= stageWidth, `${sceneKey}/${slot} label fits horizontally at ${orientation}`);
+        assert.ok(bounds.top >= 0 && bounds.bottom <= stageHeight, `${sceneKey}/${slot} label fits vertically at ${orientation}`);
+      }
+      for (let first = 0; first < labels.length; first += 1) {
+        for (let second = first + 1; second < labels.length; second += 1) {
+          assert.ok(
+            !overlaps(labels[first].bounds, labels[second].bounds),
+            `${sceneKey} ${labels[first].slot} and ${labels[second].slot} labels stay distinct at ${orientation}`,
+          );
+        }
+      }
+    }
+  }
+
+  assert.match(scene, /imageStage: \{ width: '100%', maxWidth: 510, aspectRatio: 1/);
+  assert.match(page, /<ScrollView[\s\S]*?<ShopInteriorScene[\s\S]*?<\/ScrollView>/, 'short landscape viewports can scroll past the full square scene');
 });
 
 test('six areas each expose eight slots (48 total) and legacy/main placements remain backward compatible', () => {
